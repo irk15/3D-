@@ -202,8 +202,14 @@ input[type=range]{flex:1; min-width:0; accent-color:var(--accent); height:20px}
         <label class="tg">Landmark labels<input class="sw" type="checkbox" id="tLabels" checked></label>
         <label class="tg">On-frame zoom buttons<input class="sw" type="checkbox" id="tHud" checked></label>
         <label class="tg">Clouds<input class="sw" type="checkbox" id="tClouds" checked></label>
-        <label class="tg"><span>High quality<small>Ambient occlusion, lake reflections, 1.5× pixels</small></span><input class="sw" type="checkbox" id="tHQ" checked></label>
       </div>
+      <div class="row" style="justify-content:space-between"><span style="font-weight:600;font-size:12.5px">Quality</span><output id="qOut" class="hint" style="font-family:var(--mono)">Auto</output></div>
+      <div class="seg" role="group" aria-label="Quality" id="qual">
+        <button type="button" data-q="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-q="high" aria-pressed="false">Ultra</button>
+        <button type="button" data-q="fast" aria-pressed="false">Fast</button>
+      </div>
+      <p class="hint">Auto watches the frame rate and lowers resolution and effects to keep motion smooth.</p>
     </section>
     <section class="sec" aria-labelledby="hEx">
       <h3 id="hEx">Export · 1920 × 1080</h3>
@@ -271,10 +277,12 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.62;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false; // the city is static: shadows redraw only when the sun or the view moves
 stage.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(34, 16 / 9, 3, 90000);
+camera.layers.enable(1);
 camera.position.set(1200, 900, 6200);
 
 // =====================================================================
@@ -347,6 +355,7 @@ sunLight.shadow.mapSize.set(4096, 4096);
 const SC = sunLight.shadow.camera;
 SC.left = -1700; SC.right = 1700; SC.top = 1700; SC.bottom = -1700; SC.near = 100; SC.far = 9000;
 sunLight.shadow.bias = -0.0004; sunLight.shadow.normalBias = 1.2;
+sunLight.shadow.camera.layers.enable(1);
 scene.add(sunLight, sunLight.target);
 const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x4a4136, 0.6);
 scene.add(hemi);
@@ -382,7 +391,7 @@ function makeWaterNormals(size = 512) {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
 const water = new Water(new THREE.PlaneGeometry(120000, 120000), {
-  textureWidth: 1024, textureHeight: 1024, waterNormals: makeWaterNormals(),
+  textureWidth: 768, textureHeight: 768, waterNormals: makeWaterNormals(),
   sunDirection: new THREE.Vector3(), sunColor: 0xffffff, waterColor: 0x062433, distortionScale: 2.6, fog: true
 });
 water.rotation.x = -Math.PI / 2; water.position.y = -2.5;
@@ -390,6 +399,9 @@ water.rotation.x = -Math.PI / 2; water.position.y = -2.5;
 water.material.uniforms.uAmbW = { value: 0.1 };
 water.material.fragmentShader = water.material.fragmentShader.replace('uniform vec3 waterColor;', 'uniform vec3 waterColor;\nuniform float uAmbW;').replace('vec3( 0.1 ) + reflectionSample', 'vec3( uAmbW ) + reflectionSample');
 water.material.uniforms.size.value = 0.6;
+// reflection can refresh every Nth frame on slower machines (set by auto quality)
+let reflEvery = 1, frameNo = 0;
+{ const obr = water.onBeforeRender; water.onBeforeRender = function (...a) { if (reflEvery === 1 || frameNo % reflEvery === 0) obr.apply(this, a); }; }
 scene.add(water);
 
 // =====================================================================
@@ -634,7 +646,7 @@ class Batch {
     if (!this.items.has(key)) this.items.set(key, []);
     this.items.get(key).push([x, y, z, w, h, d, rotY, style, rnd(), lit, floorH, color]);
   }
-  build(parent) {
+  build(parent, layer = 0) {
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), p = new THREE.Vector3(), col = new THREE.Color();
     let total = 0;
     for (const list of this.items.values()) {
@@ -650,7 +662,7 @@ class Batch {
       im.geometry = this.geo.clone();
       im.geometry.setAttribute('aStyle', new THREE.InstancedBufferAttribute(st, 4));
       im.castShadow = this.cast; im.receiveShadow = true;
-      im.computeBoundingSphere();
+      im.computeBoundingSphere(); if (layer) im.layers.set(layer);
       parent.add(im); total += list.length;
     }
     return total;
@@ -974,14 +986,16 @@ for (let i = 0; i < 4500; i++) { const k = Math.floor(rnd() * (DON.length - 1)),
 for (let i = 0; i < 9000; i++) { const x = rr(-2600, 1800), z = rr(950, 2500); if (inPoly(x, z, ISLANDS) && !inPoly(x, z, LAGOON) && !(x < -1100 && z < 1500) && hash2(Math.floor(x / 140), Math.floor(z / 140)) < 0.62) trees.push([x, z, rr(3.2, 6.5)]); }
 for (const x of Object.values(NS)) for (let z = -2950; z < 500; z += rr(12, 20)) if (rnd() < 0.45 && onMainland(x, z)) trees.push([x + (rnd() < .5 ? -13 : 13), z, rr(3, 5)]);
 
-const countTowers = towers.build(city) + lowrise.build(city) + houses.build(city);
+// layer 1 = small detail (houses, trees, cars): drawn normally but skipped by the lake reflection
+const DETAIL = 1;
+const countTowers = towers.build(city) + lowrise.build(city) + houses.build(city, DETAIL);
 
 // trees: autumn colours follow the real date (Toronto's canopy turns in October)
 const month = new Date().getMonth();
 const autumn = month === 9 ? 0.7 : month === 10 ? 0.85 : month === 8 ? 0.2 : 0;
 const bare = month === 11 || month <= 2;
 const treeMesh = (() => {
-  const parts = [new THREE.IcosahedronGeometry(0.75, 2).translate(0, 1.25, 0), new THREE.IcosahedronGeometry(0.55, 2).translate(0.38, 1.0, 0.22), new THREE.IcosahedronGeometry(0.5, 2).translate(-0.34, 1.05, -0.2), new THREE.CylinderGeometry(0.08, 0.1, 0.8, 5).translate(0, 0.4, 0)];
+  const parts = [new THREE.IcosahedronGeometry(0.8, 1).translate(0, 1.2, 0), new THREE.IcosahedronGeometry(0.55, 0).translate(0.36, 0.95, 0.2)]; // ~100 triangles per tree
   for (const p of parts) p.deleteAttribute('uv');
   const g = mergeGeometries(parts.map(x => x.index ? x.toNonIndexed() : x));
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
@@ -993,7 +1007,7 @@ const treeMesh = (() => {
     m4.makeScale(sc, sc * rr(0.9, 1.3), sc).setPosition(x, 0, z); im.setMatrixAt(i, m4);
     im.setColorAt(i, col.set(bare ? '#5a4c40' : rnd() < autumn ? pick(fall) : pick(greens)));
   });
-  im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere();
+  im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); im.layers.set(DETAIL);
   city.add(im); return im;
 })();
 
@@ -1030,11 +1044,11 @@ for (const r of ROADS) {
 const carGeo = new THREE.BoxGeometry(4.4, 1.5, 1.9).translate(0, 0.75, 0);
 const carMesh = new THREE.InstancedMesh(carGeo, new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.6 }), CARS.length);
 { const col = new THREE.Color(); const cc = ['#e9e9e9', '#1b1c1e', '#8a8f95', '#2b3f6b', '#7a1d1d', '#c9c9c9', '#3a3d40', '#f2f2f2']; CARS.forEach((c, i) => carMesh.setColorAt(i, col.set(pick(cc)))); }
-carMesh.castShadow = false; carMesh.receiveShadow = true; carMesh.frustumCulled = false; city.add(carMesh);
+carMesh.castShadow = false; carMesh.receiveShadow = true; carMesh.frustumCulled = false; carMesh.layers.set(DETAIL); city.add(carMesh);
 const lightGeo = (n) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); return g; };
 const headPts = new THREE.Points(lightGeo(CARS.length), new THREE.PointsMaterial({ color: 0xfff1d8, size: 3.4, sizeAttenuation: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
 const tailPts = new THREE.Points(lightGeo(CARS.length), new THREE.PointsMaterial({ color: 0xff2a14, size: 3.0, sizeAttenuation: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-headPts.frustumCulled = tailPts.frustumCulled = false;
+headPts.frustumCulled = tailPts.frustumCulled = false; headPts.layers.set(DETAIL); tailPts.layers.set(DETAIL);
 city.add(headPts, tailPts);
 // street lights along every arterial (only visible after dusk)
 const streetLights = (() => {
@@ -1043,13 +1057,13 @@ const streetLights = (() => {
   for (const x of Object.values(NS)) for (let z = -2950; z < 600; z += 30) pts.push(x - 13, 9, z, x + 13, 9, z);
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   const p = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffb46a, size: 4.2, sizeAttenuation: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-  city.add(p); return p;
+  p.layers.set(DETAIL); city.add(p); return p;
 })();
 // streetcars (TTC red) on King and Queen
 const STREETCARS = [];
 for (const z of [EW.King, EW.Queen]) for (let i = 0; i < 9; i++) STREETCARS.push({ z: z + (i % 2 ? 2.2 : -2.2), dir: i % 2 ? -1 : 1, u: rnd(), v: 7 / 7000 });
 const scMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(30, 3.6, 2.6).translate(0, 1.8, 0), new THREE.MeshStandardMaterial({ color: 0xc8202a, roughness: 0.4, metalness: 0.3, emissive: 0xffd9a0, emissiveIntensity: 0 }), STREETCARS.length);
-scMesh.frustumCulled = false; scMesh.castShadow = true; city.add(scMesh);
+scMesh.frustumCulled = false; scMesh.castShadow = false; scMesh.layers.set(DETAIL); city.add(scMesh);
 
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s1 = new THREE.Vector3(1, 1, 1), _p = new THREE.Vector3();
 function updateTraffic(dt) {
@@ -1084,7 +1098,7 @@ function ferryModel() {
   const hull = new THREE.Mesh(new THREE.BoxGeometry(38, 4, 11), boatMat); hull.position.y = 1; g.add(hull);
   const deck = new THREE.Mesh(new THREE.BoxGeometry(30, 3.2, 9.5), new THREE.MeshStandardMaterial({ color: 0x1d2b4a, roughness: 0.4 })); deck.position.y = 4.2; g.add(deck);
   const top = new THREE.Mesh(new THREE.BoxGeometry(22, 2, 8.5), boatMat); top.position.y = 6.6; g.add(top);
-  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  g.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
   return g;
 }
 const FERRIES = [
@@ -1111,7 +1125,6 @@ const plane = (() => {
   const ht = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 10), m); ht.position.set(-15, 6, 0); g.add(ht);
   const navR = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3020, toneMapped: false })); navR.position.set(2, 1.4, -14); g.add(navR);
   const navG = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6), new THREE.MeshBasicMaterial({ color: 0x30ff60, toneMapped: false })); navG.position.set(2, 1.4, 14); g.add(navG);
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   city.add(g); return g;
 })();
 let simT = 0;
@@ -1152,7 +1165,7 @@ const clouds = new THREE.Mesh(new THREE.PlaneGeometry(140000, 140000, 1, 1).rota
   fragmentShader: `uniform float uTime; uniform vec3 uSunCol; uniform vec3 uShade; uniform float uCover; uniform float uNight; varying vec2 vP; varying float vD;
     float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
     float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
-    float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++){ v += a * n(p); p = p * 2.03 + 17.1; a *= 0.5; } return v; }
+    float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++){ v += a * n(p); p = p * 2.03 + 17.1; a *= 0.5; } return v; }
     void main(){
       vec2 p = vP / 5200.0 + vec2(uTime * 0.0021, uTime * 0.0009);
       float c = fbm(p); float d = fbm(p * 2.7 - 3.1);
@@ -1338,11 +1351,14 @@ function applySky(sol) {
     scene.environmentIntensity = 0.9 * (1 - 0.85 * n) + 0.05;
   }
 }
+let shadowKey = '';
 function placeSun() {
   const ld = sunLight.userData.dir || sunDir;
   sunLight.target.position.copy(shadowCenter);
   sunLight.position.copy(shadowCenter).addScaledVector(ld, 5000);
   sunLight.target.updateMatrixWorld();
+  const key = shadowCenter.x + ',' + shadowCenter.z + ',' + ld.x.toFixed(4) + ',' + ld.y.toFixed(4) + ',' + ld.z.toFixed(4);
+  if (key !== shadowKey) { shadowKey = key; renderer.shadowMap.needsUpdate = true; }
 }
 
 // =====================================================================
@@ -1352,8 +1368,8 @@ const rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, sample
 const composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, camera));
 const gtao = new GTAOPass(scene, camera, 2, 2);
-gtao.updateGtaoMaterial({ radius: 9, distanceExponent: 1.4, thickness: 6, scale: 1.0, samples: 12, distanceFallOff: 0.6 });
-gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 12 });
+gtao.updateGtaoMaterial({ radius: 9, distanceExponent: 1.4, thickness: 6, scale: 1.0, samples: 8, distanceFallOff: 0.6 });
+gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 8 });
 gtao.blendIntensity = 0.85;
 composer.addPass(gtao);
 const bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), 0.2, 0.55, 0.88);
@@ -1370,7 +1386,15 @@ composer.addPass(grade);
 composer.addPass(new OutputPass());
 
 // ---------- sizing: a true 16:9 frame ----------
-let dpr = 1, hq = true, exporting = false;
+let dpr = 1, exporting = false;
+// quality tiers: pixel ratio, ambient occlusion, how often the lake reflection refreshes
+const TIERS = [
+  { name: 'Ultra', ratio: 1.5, ao: true, refl: 1 },
+  { name: 'High', ratio: 1.15, ao: true, refl: 1 },
+  { name: 'Balanced', ratio: 1.0, ao: false, refl: 2 },
+  { name: 'Fast', ratio: 0.8, ao: false, refl: 3 }
+];
+let qualityMode = 'auto', tier = 1;
 const narrowMQ = matchMedia('(max-width: 900px)');
 function resize() {
   if (exporting) return;
@@ -1382,7 +1406,10 @@ function resize() {
   const w = Math.max(280, Math.floor(Math.min(availW, availH * 16 / 9)));
   const h = Math.floor(w * 9 / 16);
   stage.style.width = w + 'px'; stage.style.height = h + 'px';
-  dpr = hq ? Math.min(window.devicePixelRatio || 1, 1.5) : 1;
+  const T = TIERS[tier];
+  dpr = Math.min(window.devicePixelRatio || 1, T.ratio);
+  if (tier >= 2) dpr = T.ratio;
+  gtao.enabled = T.ao; reflEvery = T.refl;
   setRenderSize(w, h, dpr);
 }
 function setRenderSize(w, h, ratio) {
@@ -1604,6 +1631,7 @@ setInterval(() => { if (!document.hidden && !exporting) updateLive(); }, 15000);
 // ---------- loop ----------
 let paused = false, speed = 1, last = performance.now(), tick = 0;
 function renderCity(dt, realDt) {
+  frameNo++;
   if (!paused) { cineT += dt; updateTraffic(dt * speed); updateHarbour(dt * speed); U_TIME.value += dt; cloudU.uTime.value += dt * speed; water.material.uniforms.time.value += dt * 0.6 * speed; }
   updateCamera(dt, realDt);
   beacon.visible = (Math.floor(performance.now() / 900) % 2) === 0 || env.n < 0.3;
@@ -1622,6 +1650,7 @@ function frame(now) {
   }
   renderCity(dt, rawDt);
   updateLabels();
+  autoQuality(rawDt);
   if ((tick++ & 7) === 0) { oView.textContent = viewName; oAlt.textContent = `${Math.round(camera.position.y).toLocaleString('en-CA')} m altitude`; }
 }
 updateLive();
@@ -1652,13 +1681,36 @@ function setPreview(min) {
 tod.addEventListener('input', () => setPreview(+tod.value));
 bLive.addEventListener('click', () => setPreview(null));
 document.querySelectorAll('[data-tod]').forEach(b => b.addEventListener('click', () => { tod.value = b.dataset.tod; setPreview(+b.dataset.tod); }));
-const tTitle = $('tTitle'), tLabels = $('tLabels'), tHud = $('tHud'), tClouds = $('tClouds'), tHQ = $('tHQ');
+const tTitle = $('tTitle'), tLabels = $('tLabels'), tHud = $('tHud'), tClouds = $('tClouds');
 const ovs = [$('ovTitle'), $('ovLive'), $('ovFoot')];
 tTitle.addEventListener('change', () => ovs.forEach(o => o.hidden = !tTitle.checked));
 tLabels.addEventListener('change', () => labelsEl.hidden = !tLabels.checked);
 tHud.addEventListener('change', () => $('hud').hidden = !tHud.checked);
 tClouds.addEventListener('change', () => clouds.visible = tClouds.checked);
-tHQ.addEventListener('change', () => { hq = tHQ.checked; gtao.enabled = hq; water.material.uniforms.distortionScale.value = 3.2; resize(); });
+// ---------- auto quality: hold ~60 fps by stepping resolution and effects ----------
+const qOut = $('qOut');
+let fpsAcc = 0, fpsN = 0, fpsWin = 0, goodWins = 0, lastChange = 0;
+function setTier(t) { t = clamp(t, 0, TIERS.length - 1); if (t === tier) return; tier = t; lastChange = performance.now(); resize(); }
+function showQuality(fps) { qOut.textContent = `${qualityMode === 'auto' ? 'Auto · ' : ''}${TIERS[tier].name}${fps ? ` · ${Math.round(fps)} fps` : ''}`; }
+function autoQuality(rawDt) {
+  if (phase !== 'city' || rawDt <= 0 || rawDt > 0.5) return;
+  fpsAcc += rawDt; fpsN++; fpsWin += rawDt;
+  if (fpsWin < 1.2) return;
+  const fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; fpsWin = 0;
+  showQuality(fps);
+  if (qualityMode !== 'auto') return;
+  const now = performance.now();
+  if (fps < 42 && now - lastChange > 1500) { goodWins = 0; setTier(tier + 1); }
+  else if (fps > 57) { if (++goodWins >= 4 && now - lastChange > 8000 && tier > 0) { goodWins = 0; setTier(tier - 1); } }
+  else goodWins = 0;
+}
+document.querySelectorAll('#qual button').forEach(b => b.addEventListener('click', () => {
+  qualityMode = b.dataset.q;
+  document.querySelectorAll('#qual button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  if (qualityMode === 'high') setTier(0); else if (qualityMode === 'fast') setTier(3); else setTier(1);
+  showQuality(0);
+}));
+showQuality(0);
 let stash = null;
 function toggleAll() { const els = [tTitle, tLabels, tHud]; if (!stash) { stash = els.map(e => e.checked); els.forEach(e => { e.checked = false; e.dispatchEvent(new Event('change')); }); } else { els.forEach((e, i) => { e.checked = stash[i]; e.dispatchEvent(new Event('change')); }); stash = null; } }
 function setStatus(msg, err = false) { statusEl.textContent = msg; statusEl.classList.toggle('err', err); }
@@ -1733,7 +1785,7 @@ function composite(ctx, items) {
 async function atOutputSize(fn) {
   exporting = true;
   const cssW = stage.clientWidth, cssH = stage.clientHeight, ratio = OUT_W / cssW;
-  setRenderSize(cssW, cssH, ratio);
+  setRenderSize(cssW, cssH, ratio); reflEvery = 1; gtao.enabled = true;
   try { return await fn(ratio); } finally { exporting = false; resize(); last = performance.now(); }
 }
 const busy = v => { $('bShot').disabled = v; $('bRec').disabled = v; };

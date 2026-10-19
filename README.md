@@ -4,6 +4,8 @@ Interactive Three.js creations, each with its own folder and URL.
 
 Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root) → Save.
 
+- [Skyline Penthouse VR](https://irk15.github.io/3D-/skyline-penthouse-vr/): the penthouse for Meta Quest 3 / WebXR (thumbstick walk, snap turn, teleport, wrist menu, hand-tracking pinch, spatial sound; Fast / Balanced / Sharp presets). Open in the Quest Browser and tap Enter VR
+- [Skyline Penthouse](https://irk15.github.io/3D-/skyline-penthouse/): walkable luxury penthouse on the 54th floor over a living Toronto skyline (1,500 cars, planes, helicopter, boats, time of day)
 - [Cala Rosa](https://irk15.github.io/3D-/cala-rosa/): Mediterranean seaside village with nineteen moving townsfolk, birds, boats and midday / golden / blue hour lighting
 - [Little Red Corner](https://irk15.github.io/3D-/little-red-corner/): interactive miniature with twelve residents, varied activities, day/night lighting and camera controls
 - [Toronto Live City · Smooth](https://irk15.github.io/3D-/toronto-live-smooth/): faster version with low-poly trees and auto quality (holds ~60 fps)

@@ -14,3 +14,4 @@ Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / 
 - [Harbour Atelier](https://irk15.github.io/3D-/harbour/)
 
 Static HTML, CSS, and JavaScript. Three.js is bundled; its license is included in each vendor directory. Dua Lipa poster is an unofficial fan concept. No music is bundled.
+- [Cahier Section B](https://irk15.github.io/3D-/french/): TEF Canada speaking study notebook (arguments, objections and replies, phrases, idioms, practice)

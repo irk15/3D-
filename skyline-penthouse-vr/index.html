@@ -1,0 +1,1851 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#05070d"><meta name="description" content="Walk or teleport through a luxury Toronto penthouse in WebXR on Meta Quest, with a living skyline of 1,500 cars, planes, a helicopter, boats and spatial sound."><link rel="icon" href="data:,">
+<title>Skyline Penthouse VR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: full-bleed WebGL view with a thin HUD ring (brand top-left, actions top-right, time dock bottom). */
+:root{
+  --ink:#f4efe6; --ink-dim:#b9b2a6; --glass:rgba(14,16,22,.52); --glass-line:rgba(244,239,230,.16);
+  --accent:#ffb866; --bg:#05070d;
+  --f-display:'Syne','Outfit',system-ui,sans-serif; --f-body:'Outfit',system-ui,sans-serif; --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+body{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;box-sizing:border-box}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;background:var(--bg)}
+#c.drag{cursor:grabbing}
+.hud{position:fixed;inset:0;pointer-events:none;box-sizing:border-box;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 14px) max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;justify-content:space-between;gap:12px}
+.hud>*{pointer-events:auto}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;pointer-events:none}
+.row>*{pointer-events:auto}
+.brand{display:flex;flex-direction:column;gap:2px;text-shadow:0 1px 14px rgba(0,0,0,.55);min-width:0}
+.brand b{font-family:var(--f-display);font-weight:700;font-size:clamp(17px,2.4vw,24px);letter-spacing:.02em}
+.brand span{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+button,.chip{font:500 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink);background:var(--glass);border:1px solid var(--glass-line);
+  padding:10px 13px;border-radius:999px;cursor:pointer;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:background .15s,border-color .15s,color .15s}
+button:hover{background:rgba(40,44,56,.7)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{color:#1a1208;background:var(--accent);border-color:var(--accent)}
+.dock{align-self:center;display:flex;flex-direction:column;gap:10px;align-items:stretch;width:min(640px,100%);padding:12px 14px 12px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.dock-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.clock{font:500 22px/1 var(--f-mono);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.phase{font:400 11px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+input[type=range]{width:100%;margin:0;accent-color:var(--accent);height:22px;background:transparent}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{padding:8px 11px;font-size:11px}
+.hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 168px);font:400 12px/1.4 var(--f-mono);letter-spacing:.06em;color:var(--ink);background:var(--glass);border:1px solid var(--glass-line);padding:9px 14px;border-radius:12px;text-align:center;max-width:calc(100% - 32px);pointer-events:none;transition:opacity .8s}
+.hint.off{opacity:0}
+.stick{position:fixed;left:max(22px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 190px);width:104px;height:104px;border-radius:50%;background:rgba(14,16,22,.35);border:1px solid var(--glass-line);display:none;touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(244,239,230,.5)}
+@media (pointer:coarse){.stick{display:block}.hint{bottom:calc(env(safe-area-inset-bottom,0px) + 300px)}}
+.loading{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);font:500 13px var(--f-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);transition:opacity .9s;z-index:5}
+.loading.done{opacity:0;pointer-events:none}
+.loading div{display:flex;flex-direction:column;gap:12px;align-items:center}
+.loading em{display:block;width:180px;height:2px;background:var(--glass-line);overflow:hidden;border-radius:2px}
+.loading em::after{content:"";display:block;height:100%;width:40%;background:var(--accent);animation:ld 1.2s ease-in-out infinite}
+@keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+.fail{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px;font:400 15px/1.5 var(--f-body);color:var(--ink);background:var(--bg);z-index:6}
+@media (prefers-reduced-motion:reduce){.loading em::after{animation:none}}
+@media (max-width:520px){.actions button{padding:9px 11px;font-size:11px}.clock{font-size:19px}}
+.vrbar{position:fixed;left:max(16px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 66px);z-index:3;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 32px)}
+.vrbtn{background:var(--accent);color:#1a1208;border-color:var(--accent);font-size:13px;padding:12px 22px}
+.vrbtn:hover{background:#ffc784}
+.vrbtn:disabled{opacity:.6;cursor:not-allowed;background:var(--glass);color:var(--ink-dim);border-color:var(--glass-line)}
+.vrq{display:flex;gap:4px;padding:3px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-line)}
+.vrq button{border:0;background:transparent;padding:9px 12px;font-size:11px;-webkit-backdrop-filter:none;backdrop-filter:none}
+.vrq button[aria-pressed="true"]{background:var(--accent);color:#1a1208}
+.vrnote{position:fixed;left:max(16px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 118px);z-index:3;max-width:min(430px,calc(100% - 32px));text-align:left;font:400 11px/1.5 var(--f-mono);letter-spacing:.05em;color:var(--ink);padding:8px 12px;background:var(--glass);border:1px solid var(--glass-line);border-radius:12px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);pointer-events:none}
+</style>
+</head><body>
+<canvas id="c" aria-label="First-person view inside a luxury penthouse looking over the Toronto skyline"></canvas>
+<div class="hud">
+  <div class="row">
+    <div class="brand"><b>Skyline Penthouse</b><span>Toronto &middot; floor 54 &middot; 176 m</span></div>
+    <div class="actions">
+      <button id="bTour" aria-pressed="false">Tour</button>
+      <button id="bLights" aria-pressed="true">Lights</button>
+      <button id="bPlay" aria-pressed="false">Run clock</button>
+      <button id="bQ" aria-pressed="false">Performance</button>
+    </div>
+  </div>
+  <div class="dock">
+    <div class="dock-top"><span class="clock" id="clock">18:35</span><span class="phase" id="phase">Blue hour</span></div>
+    <input id="time" type="range" min="0" max="24" step="0.01" value="18.58" aria-label="Time of day">
+    <div class="chips" id="chips">
+      <button data-t="7.6">Sunrise</button><button data-t="13">Midday</button><button data-t="17.6">Golden hour</button><button data-t="18.58">Blue hour</button><button data-t="22.3">Night</button><button data-t="3.2">Deep night</button>
+    </div>
+  </div>
+</div>
+<div class="hint" id="hint">Drag to look &middot; W A S D to walk &middot; scroll to zoom &middot; walk out through the glass door to the terrace</div>
+<div class="stick" id="stick" aria-hidden="true"><i id="knob"></i></div>
+<div class="loading" id="loading"><div>Building the city<em></em></div></div>
+<div class="fail" id="fail"><div>This view needs WebGL 2, which this browser or device did not provide.<br>Try a recent desktop browser.</div></div>
+<div class="vrbar" id="vrbar">
+  <button id="bVR" class="vrbtn" disabled>Checking VR&hellip;</button>
+  <div class="vrq" id="vrq" role="group" aria-label="VR quality"><button data-q="fast" aria-pressed="false">Fast</button><button data-q="balanced" aria-pressed="true">Balanced</button><button data-q="sharp" aria-pressed="false">Sharp</button></div>
+  <button id="bSound" aria-pressed="false">Sound</button>
+</div>
+<div class="vrnote" id="vrnote"></div>
+
+<script src="vendor/three.bundle.js"></script>
+<script>
+(function(){ 'use strict';
+const VR_BUILD = true;
+/* ================= CORE ================= */
+const $ = id => document.getElementById(id);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const DEG = Math.PI / 180;
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rand = mulberry32(20261018);
+function hash2(x, y) { const h = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return h - Math.floor(h); }
+function vnoise2(x, y) { const ix = Math.floor(x), iy = Math.floor(y); let fx = x - ix, fy = y - iy; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy); const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1); return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy; }
+function fbm2(x, y, o) { o = o || 4; let s = 0, a = .5; for (let i = 0; i < o; i++) { s += a * vnoise2(x, y); x = x * 2.03 + 17.1; y = y * 2.03 + 9.7; a *= .5; } return s; }
+const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+
+const GROUND = 176;              // street level sits this far below the penthouse floor (m)
+const canvas = $('c');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: VR_BUILD, stencil: false, powerPreference: 'high-performance' });
+  if (!renderer.capabilities.isWebGL2) throw new Error('webgl2');
+} catch (e) { $('fail').style.display = 'grid'; $('loading').style.display = 'none'; throw e; }
+let DPR = Math.min(window.devicePixelRatio || 1, 1.25);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const hdrOK = renderer.extensions.has('EXT_color_buffer_float');
+if (VR_BUILD) { renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local-floor'); }
+if (!hdrOK) { renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; }
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x101420, 0.00036);
+const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 14000);
+camera.rotation.order = 'YXZ';
+const rig3 = new THREE.Group(); rig3.name = 'rig'; scene.add(rig3); rig3.add(camera);   // dolly: moved by VR locomotion, identity on desktop
+
+/* shared uniforms for every custom shader */
+const U = {
+  uTime: { value: 0 }, uLDir: { value: new THREE.Vector3(0, 1, 0) }, uLCol: { value: new THREE.Color() },
+  uAmbSky: { value: new THREE.Color() }, uAmbGround: { value: new THREE.Color() },
+  uSkyH: { value: new THREE.Color() }, uSkyZ: { value: new THREE.Color() },
+  uNight: { value: 1 }, uFogCol: { value: new THREE.Color() }, uFogDens: { value: 0.00036 },
+  uSunDir: { value: new THREE.Vector3(1, 0, 0) }, uMoonDir: { value: new THREE.Vector3(-1, 1, 0).normalize() },
+  uGlow: { value: new THREE.Color() }, uGlowAmt: { value: 1 }, uStars: { value: 0 }, uMoonVis: { value: 0 },
+  uCloudCol: { value: new THREE.Color() }, uCloudCover: { value: 0.5 }, uCityGlow: { value: new THREE.Color() }, uLite: { value: 0 }
+};
+
+/* ============== SHADER CHUNKS ============== */
+const GLSL_COMMON = `
+float h21(vec2 p){ vec3 p3=fract(vec3(p.xyx)*.1031); p3+=dot(p3,p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
+float h31(vec3 p3){ p3=fract(p3*.1031); p3+=dot(p3,p3.zyx+31.32); return fract((p3.x+p3.y)*p3.z); }
+float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1.,0.)),f.x), mix(h21(i+vec2(0.,1.)),h21(i+vec2(1.,1.)),f.x), f.y); }
+float fbm(vec2 p){ float a=.5,s=0.; for(int i=0;i<4;i++){ s+=a*vnoise(p); p=p*2.03+17.1; a*=.5; } return s; }
+`;
+const GLSL_END = `
+#include <tonemapping_fragment>
+#include <encodings_fragment>
+`;
+
+/* ============== SKY ============== */
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: U, side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+  fragmentShader: `precision highp float;
+uniform vec3 uSunDir,uMoonDir,uSkyZ,uSkyH,uGlow,uCloudCol,uCityGlow; uniform float uGlowAmt,uStars,uTime,uCloudCover,uMoonVis,uNight,uLite;
+varying vec3 vDir;` + GLSL_COMMON + `
+void main(){
+  vec3 d = normalize(vDir);
+  float y = d.y, up = max(y,0.);
+  vec3 col = mix(uSkyH, uSkyZ, 1.-exp(-up*3.0));
+  if (y<0.) col = uSkyH*mix(1.,.75,clamp(-y*8.,0.,1.));
+  float sd = max(dot(d,uSunDir),0.);
+  float az = max(dot(normalize(d.xz+1e-5), normalize(uSunDir.xz+1e-5)),0.);
+  col += uGlow*uGlowAmt*(pow(sd,6.)*.22 + pow(sd,40.)*.8 + pow(az,4.)*exp(-up*6.5)*.6);
+  col += uGlow*28.*smoothstep(.99962,.99984,sd)*step(-0.02,uSunDir.y);
+  float md = dot(d,uMoonDir);
+  vec3 mx = normalize(cross(vec3(0.,1.,0.), uMoonDir)); vec3 my = cross(uMoonDir, mx);
+  vec2 mp = vec2(dot(d,mx), dot(d,my))/.0205; float mr = length(mp);
+  float moonDisc = 0.;
+  if (mr<1. && md>0.){
+    float zz = sqrt(1.-mr*mr); vec3 sl = normalize(vec3(dot(uSunDir,mx),dot(uSunDir,my),dot(uSunDir,uMoonDir)));
+    float ph = smoothstep(-.05,.12,dot(vec3(mp,zz),sl));
+    float tx = .62+.5*fbm(mp*2.6+4.)+.15*fbm(mp*9.);
+    moonDisc = (ph*tx*3.4+.05)*smoothstep(1.,.94,mr);
+  }
+  col += vec3(.85,.91,1.)*(moonDisc + pow(max(md,0.),500.)*.35 + pow(max(md,0.),50.)*.04)*uMoonVis;
+  if (y>0. && uStars>.01){
+    vec3 sp=d*170.; vec3 id=floor(sp); vec3 f=fract(sp)-.5;
+    float r=h31(id); vec3 j=vec3(h31(id+1.7),h31(id+3.1),h31(id+5.3))-.5;
+    float st=smoothstep(.2,.0,length(f-j*.55))*step(.985,r)*(.35+.65*h31(id+9.));
+    st*=.75+.25*sin(uTime*2.5+r*60.);
+    col += vec3(.9,.95,1.)*st*uStars*smoothstep(.02,.3,y)*3.;
+  }
+  if (y>.012){
+    vec2 cp = d.xz/(y+.12)*.9 + vec2(uTime*.004,uTime*.0016);
+    float c = fbm(cp*1.3);
+    float c2 = uLite>.5 ? c-.02 : fbm(cp*1.3 + uSunDir.xz*.07);
+    float cov = smoothstep(1.-uCloudCover, 1.-uCloudCover+.26, c) * smoothstep(.012,.18,y);
+    float lit = clamp(.62+(c-c2)*5.,.3,1.2);
+    vec3 cc = uCloudCol*lit + uGlow*uGlowAmt*.5*pow(sd,3.);
+    col = mix(col, cc, cov*.9);
+  }
+  col += uCityGlow*exp(-up*9.)*smoothstep(-.1,.9,-d.z)*(.45+.55*exp(-pow((d.x-.2)*2.4,2.)));
+  gl_FragColor = vec4(col,1.);
+` + GLSL_END + `}`
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 48, 28), skyMat);
+sky.frustumCulled = false; sky.renderOrder = -10;
+scene.add(sky);
+
+/* ============== CITY GRID ============== */
+const OX = 60, OZ = 45, CX = 120, CZ = 90;
+const BI0 = -20, BI1 = 19, BJ0 = -21, BJ1 = 1;           // inclusive block index ranges
+const hwX = i => (Math.abs(i) % 4 === 0) ? 12 : 7;        // half road width, roads that run along z
+const hwZ = j => (Math.abs(j) % 5 === 0) ? 14 : 7;        // half road width, roads that run along x
+const CN_POS = new THREE.Vector3(360, -GROUND, -1170);
+const RC_POS = new THREE.Vector3(360, -GROUND, -1350);
+const RESERVED = { '-1,-1': 'tower', '2,-14': 'cn', '2,-15': 'park', '2,-16': 'rc' };
+const nbx = BI1 - BI0 + 1, nbz = BJ1 - BJ0 + 1;
+const blockTex = new Uint8Array(nbx * nbz * 4);
+const insts = [];       // {x,y,z,sx,sy,sz,seed,type,tint,crown}
+const beaconList = [];  // tall tower tops
+
+function pickHeight(cx, cz, r) {
+  const dc = Math.hypot((cx - 150) / 650, (cz + 1000) / 430), core = Math.exp(-dc * dc * 1.1);
+  const dm = Math.hypot(cx / 520, (cz + 60) / 300), mid = Math.exp(-dm * dm);
+  const base = 8 + r() * 16;
+  let h;
+  if (r() < 0.14 + 0.72 * core + 0.22 * mid) h = base + 30 + r() * (60 + 250 * core + 90 * mid);
+  else h = base + r() * 24 * (1 + core);
+  if (cz > -260 && Math.abs(cx) < 420) h = Math.min(h, 62 + 20 * r());
+  else if (cz > -520 && Math.abs(cx) < 300) h = Math.min(h, 125);
+  return Math.min(h, 308);
+}
+function pickType(h, r) {
+  const q = r();
+  if (h > 180) return q < .5 ? 0 : q < .75 ? 3 : q < .87 ? 4 : 1;
+  if (h > 60) return q < .45 ? 1 : q < .8 ? 0 : q < .9 ? 2 : 5;
+  return q < .4 ? 2 : q < .7 ? 5 : 1;
+}
+function addInst(x, yBase, z, sx, sy, sz, seed, type, tint, crown) {
+  insts.push({ x, y: yBase + sy / 2, z, sx, sy, sz, seed, type, tint, crown });
+}
+(function buildCity() {
+  const r = mulberry32(777);
+  for (let bi = BI0; bi <= BI1; bi++) for (let bj = BJ0; bj <= BJ1; bj++) {
+    const ti = ((bj - BJ0) * nbx + (bi - BI0)) * 4;
+    const key = bi + ',' + bj, res = RESERVED[key];
+    const park = res ? (res === 'park' || res === 'tower') : r() < 0.1;
+    blockTex[ti] = park ? 255 : 0; blockTex[ti + 1] = Math.floor(r() * 255); blockTex[ti + 2] = 0; blockTex[ti + 3] = 255;
+    if (park || res) continue;
+    const x0 = bi * CX + OX + hwX(bi) + 4.3, x1 = (bi + 1) * CX + OX - hwX(bi + 1) - 4.3;
+    const z0 = bj * CZ + OZ + hwZ(bj) + 4.3, z1 = (bj + 1) * CZ + OZ - hwZ(bj + 1) - 4.3;
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const nLots = 1 + Math.floor(r() * 3), lotW = (x1 - x0) / nLots, lotD = z1 - z0;
+    for (let l = 0; l < nLots; l++) {
+      const lx = x0 + lotW * (l + .5);
+      const h = pickHeight(lx, cz, r), type = pickType(h, r), seed = r() * 100, tint = r();
+      let w = lotW * (.78 + r() * .2), d = lotD * (.62 + r() * .3);
+      const bx = lx + (r() - .5) * (lotW - w) * .6, bz = cz + (r() - .5) * (lotD - d) * .6;
+      const gy = -GROUND;
+      if (h > 140) {
+        const podH = 10 + r() * 18, tw = Math.min(w * .8, 30 + r() * 18), td = Math.min(d * .8, 30 + r() * 16);
+        addInst(bx, gy, bz, w, podH, d, seed + 3, 2, tint, 0);
+        const th = h - podH;
+        addInst(bx, gy + podH, bz, tw, th, td, seed, type, tint, 0);
+        let top = h;
+        if (r() < .6) { const ch = th * (.05 + r() * .08); addInst(bx, gy + h, bz, tw * .7, ch, td * .7, seed + 9, type, tint, h > 190 && r() < .6 ? 1 : 0); top += ch; }
+        if (top > 110) beaconList.push(bx, gy + top, bz);
+      } else {
+        addInst(bx, gy, bz, w, h, d, seed, type, tint, 0);
+        if (h > 45 && r() < .5) { const ch = 4 + r() * 10; addInst(bx, gy + h, bz, w * .6, ch, d * .6, seed + 5, type, tint, 0); }
+        if (h > 110) beaconList.push(bx, gy + h, bz);
+      }
+    }
+  }
+  // the penthouse tower itself, with the terrace on its roof
+  addInst(0, -GROUND, -1, 19.6, GROUND - 0.55, 20.4, 42.7, 0, .5, 0);
+})();
+const blockDataTex = new THREE.DataTexture(blockTex, nbx, nbz, THREE.RGBAFormat);
+blockDataTex.magFilter = THREE.NearestFilter; blockDataTex.minFilter = THREE.NearestFilter; blockDataTex.needsUpdate = true;
+
+/* ============== BUILDINGS ============== */
+const bGeo = new THREE.BoxGeometry(1, 1, 1);
+const bCount = insts.length;
+const aSize = new Float32Array(bCount * 3), aInfo = new Float32Array(bCount * 4);
+const bMesh = new THREE.InstancedMesh(bGeo, new THREE.MeshBasicMaterial(), bCount);
+{
+  const m = new THREE.Matrix4();
+  for (let i = 0; i < bCount; i++) {
+    const b = insts[i];
+    m.makeScale(b.sx, b.sy, b.sz); m.setPosition(b.x, b.y, b.z);
+    bMesh.setMatrixAt(i, m);
+    aSize.set([b.sx, b.sy, b.sz], i * 3); aInfo.set([b.seed, b.type, b.tint, b.crown], i * 4);
+  }
+  bGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(aSize, 3));
+  bGeo.setAttribute('aInfo', new THREE.InstancedBufferAttribute(aInfo, 4));
+}
+bMesh.material = new THREE.ShaderMaterial({
+  uniforms: U,
+  vertexShader: `attribute vec3 aSize; attribute vec4 aInfo;
+varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;
+void main(){ vec4 wp = modelMatrix*instanceMatrix*vec4(position,1.); vWorld=wp.xyz; vLocal=position*aSize; vN=normal; vSize=aSize; vInfo=aInfo;
+  gl_Position = projectionMatrix*viewMatrix*wp; }`,
+  fragmentShader: `precision highp float;
+uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime;
+varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;` + GLSL_COMMON + `
+void main(){
+  vec3 N = normalize(vN);
+  vec3 toCam = cameraPosition - vWorld; float dist = length(toCam); vec3 V = toCam/dist;
+  float seed = vInfo.x, type = floor(vInfo.y+.5), tint = vInfo.z, crown = vInfo.w;
+  vec3 amb = mix(uAmbGround, uAmbSky, N.y*.5+.5);
+  vec3 sunL = uLCol*max(dot(N,uLDir),0.);
+  float v = vLocal.y + vSize.y*.5;
+  vec3 col; vec3 emis = vec3(0.);
+  if (N.y > .5) {
+    vec2 rc = floor(vLocal.xz/5.);
+    float rn = h21(rc+seed);
+    vec3 roof = vec3(.09,.09,.095)*(.7+.6*rn);
+    col = roof*(amb+sunL);
+    if (crown>.5) emis += vec3(1.,.8,.5)*.5*uNight;
+  } else {
+    float faceId = N.x>.5?0.:N.x<-.5?1.:N.z>.5?2.:3.;
+    float u = abs(N.x)>.5 ? vLocal.z : vLocal.x;
+    vec2 cell; vec2 m; vec3 wall; vec3 glass; float refl; float litP; float warmBias=.5;
+    if (type<.5)      { cell=vec2(2.4,3.9); m=vec2(.03,.2);  wall=vec3(.07,.1,.13); glass=vec3(.14,.24,.31); refl=.9;  litP=.45; }
+    else if (type<1.5){ cell=vec2(3.4,3.1); m=vec2(.13,.2);  wall=vec3(.42,.4,.37); glass=vec3(.08,.1,.12);  refl=.5;  litP=.38; warmBias=.8; }
+    else if (type<2.5){ cell=vec2(3.1,3.5); m=vec2(.22,.26); wall=vec3(.26,.11,.08); glass=vec3(.05,.06,.07); refl=.25; litP=.32; warmBias=.9; }
+    else if (type<3.5){ cell=vec2(1.9,4.0); m=vec2(.13,.22); wall=vec3(.02,.02,.025);glass=vec3(.12,.085,.05); refl=.55; litP=.5; }
+    else if (type<4.5){ cell=vec2(1.5,3.8); m=vec2(.3,.16);  wall=vec3(.62,.6,.55); glass=vec3(.04,.05,.06);  refl=.4;  litP=.5; }
+    else              { cell=vec2(4.4,3.6); m=vec2(.3,.3);   wall=vec3(.18,.18,.19);glass=vec3(.05,.06,.07);  refl=.25; litP=.2; warmBias=.8; }
+    vec2 g = vec2(u, v)/cell + vec2(seed*7.13, 0.);
+    vec2 id = floor(g), f = fract(g);
+    vec2 aa = fwidth(g)*.9;
+    float wx = smoothstep(m.x-aa.x, m.x+aa.x, f.x)*(1.-smoothstep(1.-m.x-aa.x, 1.-m.x+aa.x, f.x));
+    float wy = smoothstep(m.y-aa.y, m.y+aa.y, f.y)*(1.-smoothstep(1.-m.y-aa.y, 1.-m.y+aa.y, f.y));
+    float fade = clamp(max(aa.x,aa.y)*1.6-.2, 0., 1.);
+    float wm = mix(wx*wy, (1.-2.*m.x)*(1.-2.*m.y), fade);
+    float fl = h21(vec2(id.y, seed+faceId*7.7));
+    float wn = h21(id + seed*57. + faceId*3.1);
+    float chance = litP*mix(.3,1.8,fl);
+    float lit = mix(step(wn,chance), clamp(chance,0.,1.), fade);
+    vec3 warm = vec3(1.,.74,.42), cool = vec3(.72,.86,1.);
+    vec3 lc = mix(cool, warm, clamp(warmBias + (h21(id.yx+seed)-.5)*1.1, 0., 1.)) * (1.1+wn*1.5);
+    vec3 R = reflect(-V, N);
+    vec3 skyR = mix(uSkyH, uSkyZ, pow(clamp(R.y+.1,0.,1.),.6));
+    float fr = mix(.12, 1., pow(1.-max(dot(N,V),0.), 4.))*refl;
+    float spec = pow(max(dot(R,uLDir),0.), 40.)*refl;
+    vec3 gcol = glass*(amb*.9) + skyR*fr + uLCol*spec*.6;
+    vec3 wcol = wall*(amb + sunL);
+    float groundGlow = (1.-smoothstep(0.,70.,v))*uNight;
+    wcol += wall*vec3(.5,.3,.14)*groundGlow*.6;
+    col = mix(wcol, gcol, wm);
+    emis += lc*lit*wm*uNight*.85;
+    if (crown>.5 && v > vSize.y-5.) emis += mix(vec3(1.,.85,.6), vec3(.6,.8,1.), tint)*1.6*uNight*(.7+.3*sin(uTime*.7+seed));
+    if (crown<.5 && type<.5 && v > vSize.y-1.2 && tint>.75) emis += vec3(.5,.7,1.)*.9*uNight;
+    col *= mix(.55,1., smoothstep(0.,45.,v));
+  }
+  float f = 1.-exp(-uFogDens*uFogDens*dist*dist);
+  col = mix(col, uFogCol, f);
+  emis *= (1.-f*.7);
+  gl_FragColor = vec4(col+emis, 1.);
+` + GLSL_END + `}`
+});
+bMesh.frustumCulled = false;
+scene.add(bMesh);
+
+/* ============== GROUND, STREETS, LAKE, ISLANDS ============== */
+const groundMat = new THREE.ShaderMaterial({
+  uniforms: Object.assign({ tBlocks: { value: blockDataTex } }, U),
+  vertexShader: `varying vec3 vWorld; void main(){ vec4 wp=modelMatrix*vec4(position,1.); vWorld=wp.xyz; gl_Position=projectionMatrix*viewMatrix*wp; }`,
+  fragmentShader: `precision highp float;
+uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime; uniform sampler2D tBlocks;
+varying vec3 vWorld;` + GLSL_COMMON + `
+const float CX=120., CZ=90., OX=60., OZ=45.;
+float hwX(float i){ return mod(abs(i),4.)<.5 ? 12. : 7.; }
+float hwZ(float j){ return mod(abs(j),5.)<.5 ? 14. : 7.; }
+float shoreZ(float x){ return -2060. + 28.*sin(x*.0031) + 14.*sin(x*.0113+1.3); }
+float islandMask(vec2 p){
+  float zc = -2470. + 60.*sin(p.x*.0021);
+  float hw = 70. + 60.*vnoise(vec2(p.x*.004,3.));
+  float xm = smoothstep(-1700.,-1400.,p.x)*(1.-smoothstep(1300.,1800.,p.x));
+  float br = smoothstep(.22,.32,vnoise(vec2(p.x*.006,8.)));
+  return (1.-smoothstep(hw-14.,hw+14.,abs(p.y-zc)))*xm*br;
+}
+void main(){
+  vec2 p = vWorld.xz;
+  vec3 toCam = cameraPosition - vWorld; float dist = length(toCam); vec3 V = toCam/dist;
+  float aaw = max(fwidth(p.x), fwidth(p.y));
+  vec3 col; vec3 emis = vec3(0.); vec3 outc;
+  float shore = shoreZ(p.x);
+  float isl = islandMask(p);
+  float t = uTime;
+  if (p.y < shore && isl < .5) {
+    vec2 q = p*.02;
+    vec2 w1 = vec2(vnoise(q*vec2(1.,2.)+vec2(t*.4,0.)), vnoise(q*2.3+vec2(0.,-t*.35)));
+    vec3 n = normalize(vec3((w1.x-.5)*.14, 1., (w1.y-.5)*.14));
+    float rip = 1.-smoothstep(400.,3000.,dist);
+    n = normalize(mix(vec3(0.,1.,0.), n, .35+.65*rip));
+    vec3 R = reflect(-V, n);
+    float fr = .02 + .98*pow(1.-max(dot(n,V),0.), 5.);
+    vec3 skyR = mix(uSkyH, uSkyZ, pow(clamp(R.y,0.,1.),.5));
+    vec3 deep = vec3(.012,.05,.075)*(uAmbSky*1.6+.12);
+    col = mix(deep, skyR, fr);
+    float gl = pow(max(dot(R,uLDir),0.), 520.)*(.5+.9*vnoise(p*.16+vec2(t*.5,0.)));
+    col += uLCol*gl*5.;
+    float dsh = shore-p.y;
+    float streak = smoothstep(0.,50.,dsh)*exp(-dsh/520.)*exp(-pow((p.x-300.)/800.,2.))*vnoise(vec2(p.x*.06,p.y*.012+t*.3));
+    emis += vec3(1.,.6,.3)*streak*.35*uNight;
+    float f = 1.-exp(-uFogDens*uFogDens*dist*dist);
+    col = mix(col, uFogCol, f); emis *= (1.-f*.7);
+    outc = col+emis;
+  } else {
+    float ix = floor((p.x-OX)/CX+.5), jz = floor((p.y-OZ)/CZ+.5);
+    float dx = abs(p.x-(ix*CX+OX)), dz = abs(p.y-(jz*CZ+OZ));
+    float hx = hwX(ix), hz = hwZ(jz);
+    float inGrid = step(-20.5,ix)*step(ix,20.5)*step(-21.5,jz)*step(jz,2.5);
+    float aa = aaw*1.1+.02;
+    float roadX = (1.-smoothstep(hx-aa,hx+aa,dx))*inGrid;
+    float roadZ = (1.-smoothstep(hz-aa,hz+aa,dz))*inGrid;
+    float hwy = 1.-smoothstep(18.-aa,18.+aa,abs(p.y+1935.));
+    float road = max(max(roadX,roadZ),hwy);
+    float walk = max(max((1.-smoothstep(hx+2.8-aa,hx+2.8+aa,dx))*inGrid, (1.-smoothstep(hz+2.8-aa,hz+2.8+aa,dz))*inGrid),0.);
+    vec2 bidx = vec2(floor((p.x-OX)/CX), floor((p.y-OZ)/CZ));
+    vec2 buv = (bidx+vec2(20.5,21.5))/vec2(40.,23.);
+    vec4 bd = texture2D(tBlocks, buv);
+    float inB = step(0.,buv.x)*step(buv.x,1.)*step(0.,buv.y)*step(buv.y,1.);
+    float park = bd.r*inB;
+    float nz = fbm(p*.07);
+    vec3 asphalt = vec3(.03,.032,.036)*(.8+.5*vnoise(p*.4));
+    vec3 side = vec3(.13,.128,.12);
+    vec3 yard = vec3(.075,.078,.07)*(.8+.4*nz);
+    vec3 grass = vec3(.022,.065,.02)*(.65+.8*fbm(p*.045));
+    vec3 scrub = vec3(.04,.05,.04)*(.7+.6*nz);
+    vec3 land = mix(scrub, mix(yard, grass, park), inB);
+    float wf = step(-2060.,p.y)*step(p.y,-1850.);
+    land = mix(land, grass*1.1, wf*(1.-hwy));
+    col = mix(land, side, walk*(1.-road)*inGrid);
+    col = mix(col, asphalt, road);
+    // islands
+    vec3 isle = mix(vec3(.02,.055,.02), vec3(.09,.08,.05), vnoise(p*.05))*(.7+.5*fbm(p*.1));
+    col = mix(col, isle, isl);
+    // lane markings
+    float markZ = roadX*(1.-roadZ), markX = roadZ*(1.-roadX);
+    float yel = (hx>10.? (1.-smoothstep(.3,.3+aa,abs(dx-.45)))+(1.-smoothstep(.3,.3+aa,abs(dx+.45))) : 0.)*markZ;
+    float dash = step(mod(p.y,9.),4.5)*(1.-smoothstep(.16,.16+aa,abs(dx-hx*.5)));
+    float dashB = step(mod(p.x,9.),4.5)*(1.-smoothstep(.16,.16+aa,abs(dz-hz*.5)));
+    float hwl = step(mod(p.x,10.),5.)*(1.-smoothstep(.2,.2+aa,abs(abs(p.y+1935.)-6.)))*hwy;
+    float lineMask = clamp(markZ*(clamp(yel,0.,1.)+dash*.8)+markX*dashB*.8+hwl*.8,0.,1.)*(1.-smoothstep(900.,2600.,dist));
+    col = mix(col, vec3(.48,.44,.32), lineMask*.55);
+    // street lamps
+    float lampFade = 1.-smoothstep(260.,1000.,dist);
+    float lzA = mod(p.y+18.,36.)-18., lxA = mod(p.x+18.,36.)-18.;
+    float ldX = abs(dx-(hx-.9)), ldZ = abs(dz-(hz-.9));
+    float lampA = exp(-(ldX*ldX+lzA*lzA)/2.2)*markZ;
+    float lampB = exp(-(ldZ*ldZ+lxA*lxA)/2.2)*markX;
+    float poolA = exp(-(ldX*ldX+lzA*lzA)/90.)*markZ;
+    float poolB = exp(-(ldZ*ldZ+lxA*lxA)/90.)*markX;
+    vec3 sodium = vec3(1.,.6,.26);
+    emis += sodium*((lampA+lampB)*3.2+(poolA+poolB)*.35)*lampFade*uNight;
+    emis += sodium*road*.1*uNight*(1.-lampFade) + vec3(1.,.8,.55)*walk*(1.-road)*.035*uNight*inGrid;
+    // hwy lights
+    float lh = exp(-(pow(abs(abs(p.y+1935.)-17.5),2.)+pow(mod(p.x+20.,40.)-20.,2.))/2.5)*hwy;
+    emis += vec3(1.,.7,.4)*lh*3.*lampFade*uNight + vec3(1.,.7,.4)*hwy*.07*uNight*(1.-lampFade);
+    // lighting
+    vec3 lightIn = uAmbSky*(.55+.45*(1.-road*.35)) + uLCol*max(uLDir.y,0.)*(1.-road*.15);
+    col *= lightIn;
+    float f = 1.-exp(-uFogDens*uFogDens*dist*dist);
+    col = mix(col, uFogCol, f); emis *= (1.-f*.7);
+    outc = col+emis;
+  }
+  gl_FragColor = vec4(outc,1.);
+` + GLSL_END + `}`
+});
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000), groundMat);
+ground.rotation.x = -Math.PI / 2; ground.position.set(0, -GROUND, -3500); ground.frustumCulled = false;
+scene.add(ground);
+
+/* ============== LANDMARKS: CN Tower + Rogers Centre ============== */
+const landmarks = new THREE.Group(); scene.add(landmarks);
+const concrete = new THREE.MeshStandardMaterial({ color: 0xb9b8b2, roughness: .85, metalness: 0, envMapIntensity: .5 });
+const cnLED = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const cnLEDs = [];
+(function buildCN() {
+  const pts = [[24, 0], [21, 8], [14, 40], [9.5, 100], [7.6, 180], [6.6, 260], [6.2, 318], [6.4, 330], [10, 334], [19, 337], [22.5, 340], [22.5, 351], [18, 355], [11, 358], [6, 362], [5.6, 400], [5.2, 440], [9, 444], [9.2, 450], [5, 454], [3.6, 470], [2.4, 500], [1.2, 530], [.35, 553]];
+  const lathe = new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), 28);
+  const body = new THREE.Mesh(lathe, concrete);
+  body.position.copy(CN_POS); body.frustumCulled = false; landmarks.add(body);
+  // tripod buttresses
+  for (let k = 0; k < 3; k++) {
+    const a = k * Math.PI * 2 / 3 + .5;
+    const g = new THREE.BoxGeometry(5, 78, 18); g.translate(0, 39, 0);
+    const m = new THREE.Mesh(g, concrete); m.position.set(CN_POS.x + Math.cos(a) * 11, CN_POS.y, CN_POS.z + Math.sin(a) * 11); m.rotation.y = -a; landmarks.add(m);
+  }
+  // pod LED rings
+  const ringGeo = new THREE.CylinderGeometry(22.9, 22.9, 2.2, 28, 1, true);
+  const ring = new THREE.Mesh(ringGeo, cnLED); ring.position.set(CN_POS.x, CN_POS.y + 345.5, CN_POS.z); landmarks.add(ring); cnLEDs.push(ring);
+  const ring2 = new THREE.Mesh(new THREE.CylinderGeometry(9.4, 9.4, 1.4, 20, 1, true), cnLED); ring2.position.set(CN_POS.x, CN_POS.y + 447, CN_POS.z); landmarks.add(ring2);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.5, 8, 16, 1, true), cnLED); shaft.position.set(CN_POS.x, CN_POS.y + 120, CN_POS.z); // faint lit band low on the shaft
+  shaft.material = cnLED; landmarks.add(shaft);
+  // pod window band
+  const win = new THREE.Mesh(new THREE.CylinderGeometry(22.7, 22.7, 5, 28, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
+  win.position.set(CN_POS.x, CN_POS.y + 345.6, CN_POS.z); win.scale.set(1.002, 1, 1.002); win.userData.windowBand = true; landmarks.add(win); cnLEDs.push(win);
+})();
+const rcMat = new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: .5, metalness: .6, envMapIntensity: .8, side: THREE.DoubleSide });
+const rcLights = new THREE.MeshBasicMaterial({ color: 0xffe6b8 });
+(function buildRC() {
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(56, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), rcMat);
+  dome.scale.set(1, .5, 1); dome.position.set(RC_POS.x, RC_POS.y + 38, RC_POS.z);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(57, 60, 38, 40, 1, true), new THREE.MeshStandardMaterial({ color: 0x8c8a85, roughness: .9, side: THREE.DoubleSide }));
+  base.position.set(RC_POS.x, RC_POS.y + 19, RC_POS.z);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(57, 1.2, 6, 48), rcLights);
+  rim.rotation.x = Math.PI / 2; rim.position.set(RC_POS.x, RC_POS.y + 37.5, RC_POS.z);
+  landmarks.add(dome, base, rim);
+})();
+
+/* ================= PENTHOUSE INTERIOR ================= */
+const interior = new THREE.Group(); scene.add(interior);
+const colliders = [];
+const glowList = [];            // emissive materials that follow the lights toggle / time of day
+const flameMats = [];
+const col = (x0, x1, z0, z1) => colliders.push({ x0, x1, z0, z1 });
+
+function canvasTex(w, h, draw, srgb) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); draw(g, w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (srgb !== false) t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function woodTex(hue, sat, light, rows, seedA) {
+  return canvasTex(2048, 2048, (g, w, h) => {
+    const r = mulberry32(seedA);
+    const ph = h / rows;
+    for (let row = 0; row < rows; row++) {
+      let x = -r() * 900;
+      while (x < w) {
+        const len = 620 + r() * 760;
+        const l = light + (r() - .5) * 11, hh = hue + (r() - .5) * 6, s = sat + (r() - .5) * 10;
+        for (const ox of [0, -w]) {
+          g.fillStyle = `hsl(${hh},${s}%,${l}%)`;
+          g.fillRect(x + ox, row * ph, len, ph);
+          for (let k = 0; k < 14; k++) {
+            const yy = row * ph + r() * ph;
+            g.strokeStyle = `rgba(${r() < .5 ? '40,24,10' : '255,235,200'},${.035 + r() * .05})`;
+            g.lineWidth = .8 + r() * 1.6;
+            g.beginPath(); g.moveTo(x + ox, yy);
+            for (let sx = 0; sx <= len; sx += 60) g.lineTo(x + ox + sx, yy + Math.sin(sx * .01 + k) * 2.2);
+            g.stroke();
+          }
+          g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(x + ox, row * ph, 2, ph);
+        }
+        x += len;
+      }
+      g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, row * ph, w, 2);
+    }
+  });
+}
+function marbleTex(base, vein, seedA, size) {
+  size = size || 512;
+  return canvasTex(size, size, (g, w, h) => {
+    const img = g.createImageData(w, h), d = img.data, r0 = seedA * 10.1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const n = fbm2(x * .008 + r0, y * .008 + r0, 5);
+      const s = Math.abs(Math.sin((x * .004 + y * .0028 + n * 5.5) * Math.PI));
+      const v = Math.pow(1 - s, 9) * .8 + Math.pow(fbm2(x * .03, y * .03 + r0, 3), 3) * .25;
+      const i = (y * w + x) * 4;
+      d[i] = base[0] * (1 - v) + vein[0] * v; d[i + 1] = base[1] * (1 - v) + vein[1] * v; d[i + 2] = base[2] * (1 - v) + vein[2] * v; d[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  });
+}
+function artTex(kind, seedA) {
+  return canvasTex(512, 640, (g, w, h) => {
+    const r = mulberry32(seedA);
+    if (kind === 0) {           // colour fields
+      g.fillStyle = '#d9cdb8'; g.fillRect(0, 0, w, h);
+      const cols = ['#b4472b', '#1e2f3a', '#caa24b', '#6f7f6b'];
+      let y = 40;
+      for (let i = 0; i < 3; i++) { const hh = 120 + r() * 110; g.fillStyle = cols[Math.floor(r() * 4)]; g.globalAlpha = .92; g.fillRect(50, y, w - 100, hh); y += hh + 30; }
+      g.globalAlpha = 1;
+    } else if (kind === 1) {    // arcs
+      g.fillStyle = '#12161c'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 9; i++) { g.strokeStyle = ['#d8b66a', '#e9e2d0', '#a63d2f', '#3c6a78'][i % 4]; g.lineWidth = 6 + r() * 16; g.beginPath(); g.arc(w * (.2 + r() * .6), h * (.25 + r() * .5), 50 + r() * 190, r() * 6, r() * 6 + 2 + r() * 2); g.stroke(); }
+    } else {                    // mist gradient
+      const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#0b1d33'); gr.addColorStop(.55, '#c9784a'); gr.addColorStop(1, '#f1d7a8'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(8,12,20,.9)';
+      for (let i = 0; i < 26; i++) { const bw = 10 + r() * 36, bh = 20 + r() * 150; g.fillRect(i * (w / 26), h - bh * (.6 + .4 * Math.sin(i)), bw, bh * 2); }
+    }
+  });
+}
+
+const floorTex = woodTex(30, 22, 37, 21, 11); floorTex.repeat.set(18 / 4, 12.4 / 4);
+const deckTex = woodTex(24, 12, 33, 21, 5);
+const rugTex = canvasTex(1024, 700, (g, w, h) => {
+  g.fillStyle = '#cbbfa8'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#2b2d33'; g.lineWidth = 26; g.strokeRect(40, 40, w - 80, h - 80);
+  g.strokeStyle = '#8a7a5c'; g.lineWidth = 4; g.strokeRect(86, 86, w - 172, h - 172);
+  const r = mulberry32(4);
+  for (let i = 0; i < 26000; i++) { g.strokeStyle = `rgba(${r() < .5 ? '60,50,35' : '255,250,235'},${.05 + r() * .08})`; g.lineWidth = 1; const x = r() * w, y = r() * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - .5) * 8, y + (r() - .5) * 8); g.stroke(); }
+});
+const marbleW = marbleTex([236, 232, 225], [96, 98, 104], 1);
+const marbleD = marbleTex([58, 58, 62], [175, 172, 165], 2);
+const travertine = marbleTex([214, 198, 170], [168, 148, 118], 3, 256);
+
+const std = (c, r, m, ex) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: r === undefined ? .8 : r, metalness: m || 0, envMapIntensity: .4 }, ex || {}));
+const M = {
+  floor: std(0xffffff, .26, 0, { map: floorTex, envMapIntensity: .8 }),
+  deck: std(0xffffff, .7, 0, { map: deckTex }),
+  plaster: std(0xd8d0c3, .92), plasterW: std(0xece7de, .95), ceil: std(0xefeae1, .95),
+  walnut: std(0x4a2d1c, .42, 0, { envMapIntensity: 1 }), oak: std(0x9a7650, .5),
+  brass: std(0xc9a257, .26, 1, { envMapIntensity: 1.3 }), steel: std(0x15161a, .45, .8),
+  marble: std(0xffffff, .16, 0, { map: marbleW, envMapIntensity: 1.2 }), marbleDark: std(0xffffff, .2, 0, { map: marbleD, envMapIntensity: 1.2 }),
+  trav: std(0xffffff, .75, 0, { map: travertine }),
+  boucle: std(0xe9e2d3, 1), camel: std(0xb7773f, .9), pine: std(0x2c4743, .9), sand: std(0xcdbb99, .95),
+  leather: std(0x7b4527, .45, 0, { envMapIntensity: 1 }), black: std(0x0e0e10, .6),
+  piano: new THREE.MeshPhysicalMaterial({ color: 0x040405, roughness: .1, metalness: 0, clearcoat: 1, clearcoatRoughness: .04, envMapIntensity: 1.6 }),
+  rug: std(0xffffff, 1, 0, { map: rugTex }),
+  concrete: std(0x8c8a85, .9), white: std(0xf1eee8, .6), leafG: std(0x2f6b34, .55, 0, { side: THREE.DoubleSide }), leafO: std(0x7d8f6a, .6, 0, { side: THREE.DoubleSide }), soil: std(0x2a2118, 1),
+  glass: new THREE.MeshStandardMaterial({ color: 0xdff1f5, roughness: .02, metalness: 0, transparent: true, opacity: .06, envMapIntensity: .6, depthWrite: false, side: THREE.DoubleSide }),
+  tile: std(0x2aa6b6, .3)
+};
+function glowMat(hex, k, kind) {
+  const m = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true });
+  glowList.push({ m, base: lin(hex).multiplyScalar(k), kind: kind || 'int' });
+  m.color.copy(glowList[glowList.length - 1].base);
+  return m;
+}
+const G = { warm: glowMat(0xffc27a, 1.7), warmSoft: glowMat(0xffb869, 1.2), cove: glowMat(0xffc08a, 2.1), orb: glowMat(0xffd49a, 2.6), amber: glowMat(0xff8f3a, 1.05), pool: glowMat(0x58e6ff, 1.6, 'pool'), ember: glowMat(0xff6a1f, 3, 'fire') };
+
+function roundedBoxGeo(w, h, d, r) {
+  r = Math.min(r, w * .49, h * .49, d * .49);
+  const g = new THREE.BoxGeometry(w, h, d, 4, 4, 4);
+  const pos = g.attributes.position, nor = g.attributes.normal;
+  const hx = w / 2, hy = h / 2, hz = d / 2, v = new THREE.Vector3(), inn = new THREE.Vector3(), n = new THREE.Vector3();
+  const rm = (c, H) => { const a = Math.abs(c) / H; return Math.sign(c) * (a > .99 ? H : a > .4 ? H - r : 0); };
+  for (let i = 0; i < pos.count; i++) {
+    v.set(rm(pos.getX(i), hx), rm(pos.getY(i), hy), rm(pos.getZ(i), hz));
+    inn.set(clamp(v.x, -(hx - r), hx - r), clamp(v.y, -(hy - r), hy - r), clamp(v.z, -(hz - r), hz - r));
+    n.copy(v).sub(inn); const len = n.length();
+    if (len < 1e-6) n.set(nor.getX(i), nor.getY(i), nor.getZ(i)); else n.divideScalar(len);
+    v.copy(inn).addScaledVector(n, r);
+    pos.setXYZ(i, v.x, v.y, v.z); nor.setXYZ(i, n.x, n.y, n.z);
+  }
+  return g;
+}
+function mesh(geo, mat, x, y, z, parent) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (parent || interior).add(m); return m; }
+const box = (w, h, d, mat, x, y, z, p) => mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, p);
+const rb = (w, h, d, r, mat, x, y, z, p) => mesh(roundedBoxGeo(w, h, d, r), mat, x, y, z, p);
+const cyl = (rt, rbm, h, seg, mat, x, y, z, p) => mesh(new THREE.CylinderGeometry(rt, rbm, h, seg), mat, x, y, z, p);
+
+/* ---- shell: floor, ceiling, walls, glass wall ---- */
+const CEIL = 3.4;
+box(18.8, .3, 12.4, M.floor, 0, -.15, 2, interior);
+{ // floor texture scale: map is a plain box, so give it its own UV repeat
+  const f = interior.children[interior.children.length - 1]; f.material = M.floor;
+}
+box(19.6, .5, 12.8, M.ceil, 0, CEIL + .25, 2.2);                 // ceiling + roof slab
+box(.4, 4, 12.8, M.plaster, -9.2, 1.9, 2);                         // left wall
+box(.4, 4, 12.8, M.plaster, 9.2, 1.9, 2);                          // right wall
+box(18.8, 4, .4, M.plasterW, 0, 1.9, 8.2);                         // back wall
+// baseboards
+box(18, .1, .04, M.black, 0, .05, 7.97); box(.04, .1, 11.9, M.black, -8.97, .05, 2); box(.04, .1, 11.9, M.black, 8.97, .05, 2);
+// glass wall: floor-to-ceiling glass with slim bronze mullions and an open door at the centre
+const GZ = -4;
+for (const [a, b] of [[-9, -1.1], [1.1, 9]]) { const gm = box(b - a, CEIL, .02, M.glass, (a + b) / 2, CEIL / 2, GZ); gm.userData.ns = 1; }
+for (const x of [-9, -6.75, -4.5, -2.25, -1.1, 1.1, 2.25, 4.5, 6.75, 9]) box(.075, CEIL, .16, M.steel, x, CEIL / 2, GZ);
+box(18.4, .22, .2, M.steel, 0, CEIL - .1, GZ);                     // header
+box(18.4, .06, .2, M.steel, 0, .03, GZ);                           // sill track
+col(-9.4, -1.1, GZ - .18, GZ + .18); col(1.1, 9.4, GZ - .18, GZ + .18);
+col(-9.5, -9, -4.3, 8.5); col(9, 9.5, -4.3, 8.5); col(-9.5, 9.5, 8, 8.6);
+
+/* ---- ceiling architecture ---- */
+for (const z of [-2.2, 1.6, 5.2]) box(18.6, .2, .3, M.walnut, 0, CEIL - .1, z);
+{ // soffit + cove LED all around
+  const s = .55;
+  box(18.6, .22, s, M.ceil, 0, CEIL - .11, 7.7); box(18.6, .22, s, M.ceil, 0, CEIL - .11, -3.7);
+  box(s, .22, 11.4, M.ceil, -8.7, CEIL - .11, 2); box(s, .22, 11.4, M.ceil, 8.7, CEIL - .11, 2);
+  box(17.4, .035, .05, G.cove, 0, CEIL - .24, 7.4); box(17.4, .035, .05, G.cove, 0, CEIL - .24, -3.4);
+  box(.05, .035, 10.8, G.cove, -8.4, CEIL - .24, 2); box(.05, .035, 10.8, G.cove, 8.4, CEIL - .24, 2);
+}
+{ // recessed downlights
+  const n = 24, g = new THREE.CircleGeometry(.085, 14); g.rotateX(Math.PI / 2);
+  const im = new THREE.InstancedMesh(g, G.warm, n); const m4 = new THREE.Matrix4(); let k = 0;
+  for (const z of [-2.9, .6, 4.1, 7]) for (const x of [-7.6, -4.6, -1.6, 1.6, 4.6, 7.6]) { m4.setPosition(x, CEIL - .005, z); im.setMatrixAt(k++, m4); }
+  im.userData.ns = 1; interior.add(im);
+}
+
+/* ---- living area ---- */
+const rug = box(5.8, .03, 4.2, M.rug, 5.2, .015, .9); rug.userData.ns = 0;
+function makeSofa() {
+  const g = new THREE.Group(), W = 4.4;
+  rb(W, .36, 1.02, .06, M.boucle, 0, .26, 0, g);
+  rb(W, .56, .3, .11, M.boucle, 0, .62, .43, g);
+  for (const sx of [-1, 1]) rb(.26, .52, 1.02, .1, M.boucle, sx * (W / 2 - .13), .56, 0, g);
+  for (let i = 0; i < 3; i++) { const cx = (i - 1) * (W - .56) / 3; rb((W - .56) / 3 - .03, .2, .8, .08, M.boucle, cx, .53, -.07, g); const b = rb((W - .56) / 3 - .08, .46, .22, .1, M.boucle, cx, .85, .24, g); b.rotation.x = .2; }
+  rb(1.12, .36, 1.42, .06, M.boucle, W / 2 - .56, .26, -1.2, g); rb(.94, .2, 1.3, .08, M.boucle, W / 2 - .56, .53, -1.2, g);
+  const pl = [[-1.5, M.camel, .1], [-1.1, M.pine, -.15], [1.2, M.sand, .08]];
+  for (const [x, m, rz] of pl) { const p = rb(.5, .46, .15, .07, m, x, .78, .06, g); p.rotation.set(-.18, .2, rz); }
+  const th = rb(.9, .05, .4, .02, M.camel, 1.5, .66, -.2, g); th.rotation.set(0, .2, 0);
+  return g;
+}
+const sofa = makeSofa(); sofa.position.set(5.2, 0, 3.4); interior.add(sofa); col(2.9, 7.5, 1.4, 3.95);
+// coffee tables
+cyl(.72, .72, .3, 40, M.trav, 4.4, .17, .9); cyl(.4, .4, .5, 32, M.steel, 3.45, .27, .1);
+box(.4, .04, .3, M.white, 4.2, .34, .8).rotation.y = .3; box(.34, .04, .26, M.walnut, 4.2, .38, .8).rotation.y = .1;
+cyl(.07, .05, .22, 18, M.white, 4.75, .44, 1.05); cyl(.012, .012, .5, 6, M.walnut, 4.75, .72, 1.05);
+col(3.6, 5.2, .15, 1.65); col(3.1, 3.8, -.3, .5);
+// lounge chairs
+function makeLounge() {
+  const g = new THREE.Group();
+  cyl(.3, .34, .08, 24, M.brass, 0, .05, 0, g); cyl(.05, .05, .25, 12, M.brass, 0, .18, 0, g);
+  rb(.84, .22, .8, .09, M.leather, 0, .38, 0, g); rb(.84, .6, .2, .1, M.leather, 0, .7, .34, g).rotation.x = .16;
+  for (const sx of [-1, 1]) rb(.16, .34, .74, .07, M.leather, sx * .4, .55, -.02, g);
+  return g;
+}
+const lA = makeLounge(); lA.position.set(2.1, 0, .7); lA.rotation.y = -Math.PI / 2 - .15; interior.add(lA); col(1.6, 2.7, .1, 1.3);
+const lB = makeLounge(); lB.position.set(4.7, 0, -1.5); lB.rotation.y = Math.PI + .12; interior.add(lB); col(4.2, 5.3, -2, -.95);
+// arc lamp
+{
+  const curve = new THREE.CubicBezierCurve3(new THREE.Vector3(8, 0, 4.4), new THREE.Vector3(8, 3.2, 4.4), new THREE.Vector3(6.6, 3.2, 3.2), new THREE.Vector3(6.05, 2.45, 2.55));
+  mesh(new THREE.TubeGeometry(curve, 40, .018, 8), M.brass, 0, 0, 0);
+  cyl(.28, .3, .05, 24, M.marbleDark, 8, .025, 4.4);
+  const shade = mesh(new THREE.SphereGeometry(.26, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), M.brass, 6.05, 2.46, 2.55); shade.rotation.x = Math.PI; shade.scale.y = .8; shade.material = M.brass;
+  mesh(new THREE.SphereGeometry(.17, 16, 12), G.orb, 6.05, 2.36, 2.55);
+}
+// fireplace wall
+{
+  box(.28, CEIL, 4.6, M.marbleDark, 8.86, CEIL / 2, 1.1);
+  box(.5, .5, 4.6, M.marbleDark, 8.7, .25, 1.1);                      // hearth bench
+  box(.3, .46, 2.9, M.black, 8.7, 1.0, 1.1);                          // opening
+  box(.22, .08, 3, M.brass, 8.74, 1.27, 1.1); box(.22, .08, 3, M.brass, 8.74, .73, 1.1);
+  const bed = box(.18, .06, 2.7, G.ember, 8.72, .78, 1.1); bed.userData.ns = 1;
+  const fm = new THREE.ShaderMaterial({
+    uniforms: { uTime: U.uTime, uInt: { value: 1 }, uAsp: { value: 2.9 / .5 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: `precision highp float; uniform float uTime,uInt,uAsp; varying vec2 vUv;` + GLSL_COMMON + `
+void main(){ vec2 p=vUv; float x=p.x*uAsp;
+  float n=fbm(vec2(x*2.6,p.y*2.2-uTime*1.7)), n2=fbm(vec2(x*5.+3.,p.y*3.-uTime*2.6));
+  float h=n*.6+n2*.4; float fl=clamp(1.1-p.y*1.25+(h-.45)*1.5,0.,1.)*smoothstep(0.,.1,p.y)*smoothstep(0.,.07,p.x)*smoothstep(1.,.93,p.x);
+  vec3 c=mix(vec3(1.,.28,.04),vec3(1.,.8,.32),fl*fl); gl_FragColor=vec4(c*fl*uInt*2.2,fl);
+` + GLSL_END + `}`
+  });
+  flameMats.push(fm);
+  const fp = new THREE.Mesh(new THREE.PlaneGeometry(2.9, .5), fm); fp.position.set(8.66, 1.02, 1.1); fp.rotation.y = -Math.PI / 2; fp.userData.ns = 1; interior.add(fp);
+  col(8.2, 9, -1.3, 3.5);
+}
+// back wall: slatted walnut feature, credenza, art
+{
+  const slatGeo = new THREE.BoxGeometry(.05, 3.1, .07), n = 74, im = new THREE.InstancedMesh(slatGeo, M.walnut, n), m4 = new THREE.Matrix4();
+  for (let i = 0; i < n; i++) { m4.setPosition(.7 + i * .112, 1.65, 7.9); im.setMatrixAt(i, m4); }
+  interior.add(im);
+  box(8.4, 3.1, .04, G.amber, 4.9, 1.65, 7.99);
+  rb(3.6, .72, .5, .03, M.walnut, 3.4, .5, 7.62); for (const x of [2.5, 3.4, 4.3]) box(.7, .05, .02, M.brass, x, .74, 7.36);
+  const a1 = box(1.6, 2, .04, new THREE.MeshStandardMaterial({ map: artTex(1, 9), roughness: .6 }), 3.4, 1.9, 7.84);
+  const fr = box(1.66, 2.06, .03, M.brass, 3.4, 1.9, 7.86);
+  const sc = mesh(new THREE.TorusKnotGeometry(.2, .055, 100, 12), M.brass, 5.9, .96, 7.6); sc.rotation.x = .4;
+  cyl(.2, .22, .3, 24, M.marble, 5.9, .66, 7.6);
+  col(2.6, 6.4, 7.2, 8);
+}
+// left wall: art + wine wall
+{
+  const a2 = box(.04, 1.9, 2.5, new THREE.MeshStandardMaterial({ map: artTex(0, 3), roughness: .6 }), -8.97, 1.75, 0.9);
+  const a3 = box(.04, 1.5, 1.1, new THREE.MeshStandardMaterial({ map: artTex(2, 5), roughness: .6 }), -8.97, 1.7, -2.2);
+  box(.5, .06, 3.2, M.walnut, -8.7, .62, .9).userData.ns = 0; rb(.4, .5, 3.2, .03, M.walnut, -8.72, .25, .9);
+  // wine wall (glass niche with lit bottles)
+  box(.5, 2.8, 3.4, M.black, -8.9, 1.4, 5.3); box(.04, 2.6, 3.2, G.amber, -8.66, 1.4, 5.3);
+  const bg = new THREE.CylinderGeometry(.04, .04, .32, 8); bg.rotateZ(Math.PI / 2);
+  const bm = new THREE.InstancedMesh(bg, std(0x1b2a1b, .3), 60), m4 = new THREE.Matrix4(); let k = 0;
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 10; c++) { m4.setPosition(-8.62, .5 + r * .36, 3.9 + c * .31); bm.setMatrixAt(k++, m4); }
+  interior.add(bm);
+  col(-9, -8.5, 3.5, 7);
+}
+/* ---- dining ---- */
+{
+  box(3.5, .07, 1.2, M.oak, -4.2, .76, 1.0); rb(3.5, .04, 1.2, .015, M.walnut, -4.2, .72, 1.0);
+  for (const x of [-5.6, -2.8]) box(.1, .72, .9, M.steel, x, .36, 1.0);
+  const chair = new THREE.Group();
+  rb(.46, .07, .46, .03, M.sand, 0, .47, 0, chair); const bk = rb(.46, .5, .06, .03, M.sand, 0, .78, .22, chair); bk.rotation.x = .12;
+  for (const [x, z] of [[-.2, -.2], [.2, -.2], [-.2, .2], [.2, .2]]) cyl(.014, .014, .47, 8, M.brass, x, .235, z, chair);
+  for (const x of [-5.5, -4.65, -3.8, -2.95]) { const a = chair.clone(); a.position.set(x, 0, -.2); a.rotation.y = Math.PI; interior.add(a); const b = chair.clone(); b.position.set(x, 0, 2.2); interior.add(b); }
+  const e1 = chair.clone(); e1.position.set(-6.35, 0, 1); e1.rotation.y = -Math.PI / 2; interior.add(e1);
+  const e2 = chair.clone(); e2.position.set(-2.05, 0, 1); e2.rotation.y = Math.PI / 2; interior.add(e2);
+  col(-6.8, -1.6, -.5, 2.5);
+  // sculptural chandelier
+  const rods = new THREE.InstancedMesh(new THREE.CylinderGeometry(.004, .004, 1, 4), M.brass, 46), orbs = new THREE.InstancedMesh(new THREE.SphereGeometry(.055, 10, 8), G.orb, 46);
+  const m4 = new THREE.Matrix4(), rr = mulberry32(21);
+  for (let i = 0; i < 46; i++) {
+    const x = -4.2 + (rr() - .5) * 3.0, z = 1 + (rr() - .5) * .8, ln = .5 + rr() * 1.15, y = CEIL - .25 - ln;
+    m4.makeScale(1, ln, 1); m4.setPosition(x, CEIL - .25 - ln / 2, z); rods.setMatrixAt(i, m4);
+    m4.makeTranslation(x, y, z); orbs.setMatrixAt(i, m4);
+  }
+  box(3.3, .04, .9, M.brass, -4.2, CEIL - .22, 1); interior.add(rods, orbs); orbs.userData.ns = 1;
+  // table styling
+  cyl(.1, .07, .26, 14, M.white, -4.4, .9, 1.0); box(.55, .02, .22, M.brass, -3.4, .8, 1.05);
+}
+/* ---- kitchen ---- */
+{
+  rb(4.3, .93, 1.2, .02, M.walnut, -4.5, .465, 5.0); box(4.5, .06, 1.34, M.marble, -4.5, .96, 5.0);
+  box(.06, .94, 1.34, M.marble, -6.7, .47, 5.0); box(.06, .94, 1.34, M.marble, -2.3, .47, 5.0);
+  const stool = new THREE.Group();
+  cyl(.19, .19, .06, 20, M.leather, 0, .72, 0, stool); cyl(.02, .02, .7, 8, M.brass, 0, .36, 0, stool); cyl(.17, .17, .02, 16, M.brass, 0, .02, 0, stool); const rg = new THREE.Mesh(new THREE.TorusGeometry(.14, .01, 6, 16), M.brass.clone()); rg.rotation.x = Math.PI / 2; rg.position.y = .24; stool.add(rg);
+  for (const x of [-5.7, -4.6, -3.5, -2.9 - .0]) { if (x > -3) continue; const s = stool.clone(); s.position.set(x, 0, 3.95); interior.add(s); }
+  for (const x of [-5.6, -4.5, -3.4]) { // pendants
+    mesh(new THREE.CylinderGeometry(.05, .24, .3, 20, 1, true), M.brass, x, 2.1, 5.0).material = M.brass;
+    mesh(new THREE.SphereGeometry(.09, 12, 10), G.orb, x, 1.97, 5.0); cyl(.004, .004, 1.1, 4, M.brass, x, 2.8, 5.0);
+  }
+  const bowl = cyl(.16, .09, .08, 20, M.white, -3.2, 1.03, 5.1);
+  for (let i = 0; i < 5; i++) mesh(new THREE.SphereGeometry(.045, 10, 8), std(0xe7c93a, .6), -3.2 + (i - 2) * .05, 1.1 + (i % 2) * .03, 5.1 + (i % 3 - 1) * .03);
+  // back wall cabinetry
+  rb(8.2, .92, .64, .015, M.walnut, -5, .46, 7.65); box(8.3, .05, .7, M.marble, -5, .945, 7.65);
+  for (let i = 0; i < 8; i++) box(.4, .02, .015, M.brass, -8.6 + i * 1.02 + .5, .8, 7.325);
+  box(8.2, 1.5, .03, M.marble, -5, 1.7, 7.96);
+  rb(2.2, 2.7, .64, .015, M.walnut, -7.8, 1.35, 7.63); box(.02, 1.2, .05, M.brass, -6.8, 1.45, 7.3);     // tall unit
+  rb(3.6, .65, .38, .015, M.walnut, -3.8, 2.2, 7.8); box(2.2, .05, .38, M.oak, -6.4, 1.6, 7.8);          // wall cabinets + shelf
+  box(.03, .26, .03, M.brass, -4.2, 1.2, 7.7); mesh(new THREE.TorusGeometry(.12, .012, 6, 14, Math.PI), M.brass, -4.2, 1.34, 7.6).rotation.y = Math.PI / 2;
+  col(-9, -.9, 7.2, 8.2); col(-7, -2.1, 3.6, 5.95);
+}
+/* ---- piano ---- */
+{
+  const g = new THREE.Group(); g.position.set(-7.2, 0, -.4); interior.add(g);
+  const sh = new THREE.Shape();
+  sh.moveTo(-.75, 0); sh.lineTo(.75, 0); sh.lineTo(.75, .75); sh.bezierCurveTo(.75, 1.35, .45, 1.75, -.08, 1.96); sh.lineTo(-.75, 2); sh.lineTo(-.75, 0);
+  const caseGeo = new THREE.ExtrudeGeometry(sh, { depth: .24, bevelEnabled: true, bevelSize: .015, bevelThickness: .015, bevelSegments: 2, curveSegments: 24 });
+  const body = new THREE.Mesh(caseGeo, M.piano); body.rotation.x = -Math.PI / 2; body.position.set(0, .66, 0); g.add(body);
+  const lidPivot = new THREE.Group(); lidPivot.position.set(-.75, .92, 0); g.add(lidPivot);
+  const lidShape = new THREE.Shape(); lidShape.moveTo(0, .18); lidShape.lineTo(1.5, .18); lidShape.lineTo(1.5, .75); lidShape.bezierCurveTo(1.5, 1.35, 1.2, 1.75, .67, 1.96); lidShape.lineTo(0, 2); lidShape.lineTo(0, .18);
+  const lid = new THREE.Mesh(new THREE.ExtrudeGeometry(lidShape, { depth: .03, bevelEnabled: false }), M.piano); lid.rotation.x = -Math.PI / 2; lidPivot.add(lid); lidPivot.rotation.z = .62;
+  box(1.5, .02, .22, M.white, 0, .86, .08, g); // fallboard/keys slip
+  const kb = new THREE.Mesh(new THREE.BoxGeometry(1.26, .035, .14), std(0xf3efe6, .4)); kb.position.set(0, .865, .1); g.add(kb);
+  const bg = new THREE.BoxGeometry(.016, .02, .08), bm = new THREE.InstancedMesh(bg, M.black, 36), m4 = new THREE.Matrix4(); let k = 0;
+  for (let i = 0; i < 36; i++) { if ([2, 6, 9, 13, 16, 20, 23, 27, 30, 34].includes(i)) continue; m4.setPosition(-.6 + i * .0336, .89, .06); bm.setMatrixAt(k++, m4); }
+  bm.count = k; g.add(bm);
+  for (const [x, z] of [[-.62, .1], [.62, .1], [0, 1.5]]) cyl(.05, .035, .66, 12, M.piano, x, .33, -z + 0, g).position.z = -z * 1 + 0;
+  cyl(.05, .035, .66, 12, M.piano, -.62, .33, 1.9, g).position.z = -1.9;
+  // bench
+  rb(.95, .08, .4, .03, M.leather, 0, .5, .75, g); for (const x of [-.4, .4]) for (const z of [.6, .9]) cyl(.015, .015, .48, 8, M.piano, x, .24, z, g);
+  col(-8.15, -6.25, -2.7, .55);
+}
+/* ---- plants ---- */
+function makeTree(leafMat, height, spread, seedA, pot, leafSize, count) {
+  leafSize = leafSize || 1; count = count || 120;
+  const g = new THREE.Group(), r = mulberry32(seedA);
+  cyl(.04, .07, height * .65, 8, M.walnut, 0, height * .33, 0, g);
+  const lg = new THREE.SphereGeometry(1, 8, 6), n = count, im = new THREE.InstancedMesh(lg, leafMat, n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    const t = r(), a = r() * 6.283, rad = spread * (.25 + .75 * Math.sqrt(r())) * (.4 + t);
+    p.set(Math.cos(a) * rad, height * (.45 + t * .55), Math.sin(a) * rad); e.set(r() * 1.2, r() * 6.28, r() * 1.2); q.setFromEuler(e); s.set((.06 + r() * .04) * leafSize, .012, (.1 + r() * .05) * leafSize);
+    m4.compose(p, q, s); im.setMatrixAt(i, m4);
+  }
+  g.add(im);
+  if (pot) { cyl(.24, .19, .42, 20, M.white, 0, .21, 0, g); }
+  return g;
+}
+{ const f = makeTree(M.leafG, 1.9, .5, 3, true, 1.7, 70); f.position.set(-8.3, 0, -3.3); interior.add(f); col(-8.7, -7.9, -3.7, -2.9);
+  const f2 = makeTree(M.leafG, 1.6, .42, 8, true, 1.6, 60); f2.position.set(8.2, 0, 5.8); interior.add(f2); }
+
+/* ================= TERRACE ================= */
+const TZ0 = -4, TZ1 = -10.2, TX = 9.2;
+const pool = { x0: -8.6, x1: -.4, z0: -10, z1: -6.4 };
+{
+  const dk = M.deck;
+  const deckBox = (x0, x1, z0, z1) => {
+    const mt = dk.clone(); mt.map = deckTex.clone(); mt.map.needsUpdate = true; mt.map.repeat.set((x1 - x0) / 4, (z1 - z0) / 4);
+    return box(x1 - x0, .3, z1 - z0, mt, (x0 + x1) / 2, -.15, (z0 + z1) / 2);
+  };
+  deckBox(-TX, TX, pool.z1, TZ0 - .2); deckBox(pool.x1, TX, TZ1, pool.z1); deckBox(-TX, pool.x0, TZ1, pool.z1); deckBox(pool.x0, pool.x1, TZ1, pool.z0);
+  // pool basin + coping
+  box(pool.x1 - pool.x0, .1, pool.z1 - pool.z0, M.tile, (pool.x0 + pool.x1) / 2, -1.5, (pool.z0 + pool.z1) / 2);
+  const cop = M.marble;
+  box(pool.x1 - pool.x0 + .5, .08, .3, cop, (pool.x0 + pool.x1) / 2, .01, pool.z1 + .05);
+  box(.3, .08, pool.z1 - pool.z0, cop, pool.x0 - .1, .01, (pool.z0 + pool.z1) / 2); box(.3, .08, pool.z1 - pool.z0, cop, pool.x1 + .1, .01, (pool.z0 + pool.z1) / 2);
+  const wm = new THREE.ShaderMaterial({
+    uniforms: Object.assign({ uPool: { value: 1 } }, U),
+    vertexShader: `varying vec3 vW; void main(){ vec4 wp=modelMatrix*vec4(position,1.); vW=wp.xyz; gl_Position=projectionMatrix*viewMatrix*wp; }`,
+    fragmentShader: `precision highp float; uniform vec3 uLDir,uLCol,uSkyH,uSkyZ,uAmbSky; uniform float uTime,uNight,uPool; varying vec3 vW;` + GLSL_COMMON + `
+void main(){
+  vec3 V=normalize(cameraPosition-vW); vec2 p=vW.xz; float t=uTime;
+  vec2 w=vec2(vnoise(p*2.2+vec2(t*.5,0.))-.5, vnoise(p*2.4+vec2(0.,-t*.45))-.5)+vec2(vnoise(p*6.+t)-.5,vnoise(p*6.-t)-.5)*.5;
+  vec3 n=normalize(vec3(w.x*.2,1.,w.y*.2)); vec3 R=reflect(-V,n);
+  float fr=.03+.97*pow(1.-max(dot(n,V),0.),5.);
+  vec3 skyR=mix(uSkyH,uSkyZ,pow(clamp(R.y,0.,1.),.5));
+  float c=sin(p.x*3.1+t*.8)+sin(p.y*3.7-t*.7)+sin((p.x+p.y)*2.3+t*.6); c=pow(abs(c)*.33,2.5);
+  vec3 body=vec3(.0,.3,.36)*(uAmbSky*1.5+.06)+vec3(.0,.55,.7)*uPool*(.35+.45*c)*1.8*(.3+.7*uNight)+vec3(.02,.35,.4)*c*.15;
+  vec3 col=mix(body,skyR,fr);
+  col+=uLCol*pow(max(dot(R,uLDir),0.),180.)*3.;
+  gl_FragColor=vec4(col,1.);
+` + GLSL_END + `}`
+  });
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(pool.x1 - pool.x0, pool.z1 - pool.z0), wm);
+  water.rotation.x = -Math.PI / 2; water.position.set((pool.x0 + pool.x1) / 2, -.09, (pool.z0 + pool.z1) / 2); water.userData.ns = 1; interior.add(water);
+  window.__poolMat = wm;
+  col(pool.x0 - .4, pool.x1 + .4, pool.z0 - .3, pool.z1 + .2);
+  // overhang roof over the first 2.4 m of terrace, with its own downlights
+  box(18.8, .45, 2.5, M.ceil, 0, CEIL + .22, -5.3);
+  const dl = new THREE.CircleGeometry(.08, 12); dl.rotateX(Math.PI / 2); const im = new THREE.InstancedMesh(dl, G.warm, 8), m4 = new THREE.Matrix4();
+  for (let i = 0; i < 8; i++) { m4.setPosition(-7.8 + i * 2.25, CEIL - .005, -5.2); im.setMatrixAt(i, m4); } im.userData.ns = 1; interior.add(im);
+  box(18.8, .04, .05, G.cove, 0, CEIL - .005, -6.5);
+  // balustrade: glass with brass rails
+  const bz = TZ1 + .05;
+  const bg = box(TX * 2, 1.15, .03, M.glass, 0, .6, bz); bg.userData.ns = 1;
+  for (const s of [-1, 1]) { const sg = box(.03, 1.15, TZ0 - TZ1, M.glass, s * TX, .6, (TZ0 + TZ1) / 2); sg.userData.ns = 1; box(.06, .05, TZ0 - TZ1 + .1, M.brass, s * TX, 1.2, (TZ0 + TZ1) / 2); }
+  box(TX * 2, .05, .06, M.brass, 0, 1.2, bz); box(TX * 2 + .1, .08, .1, M.steel, 0, .04, bz);
+  for (let x = -TX; x <= TX + .01; x += 2.3) box(.05, 1.2, .08, M.steel, x, .6, bz);
+  col(-9.6, 9.6, TZ1 - .6, TZ1 + .15); col(-9.6, -TX + .1, TZ1, TZ0); col(TX - .1, 9.6, TZ1, TZ0);
+  // loungers + fire bowl + planters
+  const lounger = new THREE.Group();
+  rb(.8, .26, 2, .05, M.oak, 0, .22, 0, lounger); rb(.74, .12, 1.2, .05, M.white, 0, .41, .35, lounger);
+  const back = rb(.74, .12, .8, .05, M.white, 0, .6, -.72, lounger); back.rotation.x = -.7;
+  for (const x of [-.34, .34]) for (const z of [-.9, .9]) cyl(.03, .03, .12, 8, M.steel, x, .06, z, lounger);
+  for (const [x, z, ry] of [[3.6, -7.9, .22], [5.1, -7.9, .22]]) { const l = lounger.clone(); l.position.set(x, 0, z); l.rotation.y = Math.PI + ry; interior.add(l); }
+  col(2.9, 5.8, -9, -6.9);
+  cyl(.5, .42, .5, 28, M.concrete, 7.4, .25, -7.1); const fp = cyl(.38, .38, .02, 24, M.black, 7.4, .5, -7.1);
+  const ff = new THREE.ShaderMaterial({ uniforms: { uTime: U.uTime, uInt: { value: 1 }, uAsp: { value: 1 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, vertexShader: flameMats[0].vertexShader, fragmentShader: flameMats[0].fragmentShader });
+  flameMats.push(ff);
+  for (const ry of [0, Math.PI / 2]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(.55, .5), ff); pl.position.set(7.4, .76, -7.1); pl.rotation.y = ry; pl.userData.ns = 1; interior.add(pl); }
+  col(6.8, 8, -7.7, -6.5);
+  for (const z of [-9.4, -8.0, -5.2]) { rb(.5, .55, 1.2, .02, M.concrete, 8.75, .28, z); const t = makeTree(M.leafO, 1.5, .5, 40 + z * 3, false, .55, 220); t.position.set(8.75, .5, z); interior.add(t); }
+  col(8.4, 9.3, -10.1, -4.5);
+  box(.6, .5, .6, M.marble, 2.4, .25, -7.9 + 1.6).userData.ns = 0; // side table
+  cyl(.15, .15, .04, 16, M.brass, 2.4, .52, -6.3);
+}
+// terrace tower mass below the deck so the facade reads when looking down
+box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
+
+/* ---- castShadow / matrix freeze ---- */
+interior.traverse(o => {
+  if (o.isMesh && !o.userData.ns && !(o.material && (o.material.transparent || o.material.type === 'MeshBasicMaterial'))) { o.castShadow = true; o.receiveShadow = true; }
+  if (o.isInstancedMesh && !o.userData.ns && o.material.type !== 'MeshBasicMaterial') { o.castShadow = true; o.receiveShadow = true; }
+});
+M.floor.map.repeat.set(18.8 / 4, 12.4 / 4);
+interior.traverse(o => { if (!o.userData.anim) { o.updateMatrix(); o.matrixAutoUpdate = false; } });
+
+/* ---- lighting rig ---- */
+const rig = {};
+function pl(name, col_, x, y, z, base, dist, decay) { const l = new THREE.PointLight(col_, 0, dist, decay || 1.6); l.position.set(x, y, z); scene.add(l); rig[name] = { l, base }; return l; }
+pl('living', 0xffb87a, 4.6, 2.7, 1.0, .95, 13);
+pl('dining', 0xffc084, -4.2, 2.3, 1.0, 1.05, 11);
+pl('kitchen', 0xffc58c, -4.5, 2.8, 5.0, .8, 10);
+pl('fire', 0xff7a2a, 7.9, .9, 1.1, 1.3, 9);
+pl('piano', 0xffbf80, -6.8, 2.6, -1.4, .5, 8);
+pl('pool', 0x41dfff, -4.5, -.7, -8.2, 1.7, 10);
+pl('pit', 0xff7a2a, 7.4, .8, -7.1, 1.0, 7);
+const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+sunLight.castShadow = true; sunLight.shadow.mapSize.set(2048, 2048);
+Object.assign(sunLight.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 1, far: 160 });
+sunLight.shadow.bias = -.0005; sunLight.shadow.normalBias = .04;
+sunLight.target.position.set(0, 0, 1); scene.add(sunLight, sunLight.target);
+const ambient = new THREE.AmbientLight(0xffffff, .0); scene.add(ambient);
+
+/* ================= GLOW POINT SYSTEM (headlights, strobes, beacons) ================= */
+function glowMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: { uTime: U.uTime, uFogDens: U.uFogDens, uPx: { value: 800 }, uLevel: { value: 1 }, uMin: { value: 1.6 }, uMax: { value: 46 } },
+    vertexShader: `attribute vec3 aColor; attribute float aSize; attribute vec3 aBlink; uniform float uTime,uPx,uLevel,uMin,uMax,uFogDens; varying vec3 vCol;
+void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv; float d=-mv.z;
+  float ph=fract((uTime+aBlink.y)/max(aBlink.x,.001));
+  float on=aBlink.x>0. ? smoothstep(0.,.02,ph)*(1.-smoothstep(aBlink.z,aBlink.z+.03,ph)) : 1.;
+  float px=aSize*uPx/d; float fg=1.-exp(-uFogDens*uFogDens*d*d);
+  vCol=aColor*on*uLevel*clamp(px/uMin,.2,1.)*(1.-fg*.6); gl_PointSize=clamp(px,uMin,uMax); }`,
+    fragmentShader: `precision highp float; varying vec3 vCol; void main(){ float d=length(gl_PointCoord-.5)*2.; if(d>1.) discard; float a=exp(-d*d*4.2); gl_FragColor=vec4(vCol*a,1.);
+#include <tonemapping_fragment>
+#include <encodings_fragment>
+}`,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+  });
+}
+function makePoints(cap, dynamic) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(cap * 3), colr = new Float32Array(cap * 3), size = new Float32Array(cap), blink = new Float32Array(cap * 3);
+  const use = dynamic ? THREE.DynamicDrawUsage : THREE.StaticDrawUsage;
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(use));
+  geo.setAttribute('aColor', new THREE.BufferAttribute(colr, 3));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  geo.setAttribute('aBlink', new THREE.BufferAttribute(blink, 3));
+  const mat = glowMaterial(), pts = new THREE.Points(geo, mat); pts.frustumCulled = false; scene.add(pts);
+  return {
+    pts, mat, geo, pos, n: 0,
+    add(x, y, z, r, g, b, s, per, ph, duty) { const i = this.n++; pos.set([x, y, z], i * 3); colr.set([r, g, b], i * 3); size[i] = s; blink.set([per || 0, ph || 0, duty || .5], i * 3); return i; },
+    finish() { geo.setDrawRange(0, this.n); }
+  };
+}
+
+/* ---- static lights: tower beacons, CN Tower strobes, runway ---- */
+const sPts = makePoints(beaconList.length / 3 + 140, false);
+{
+  const r = mulberry32(99);
+  for (let i = 0; i < beaconList.length; i += 3) sPts.add(beaconList[i], beaconList[i + 1] + 2, beaconList[i + 2], 3.2, .12, .06, 9, 1.6 + r() * .8, r() * 2, .5);
+  const top = CN_POS.y + 553;
+  sPts.add(CN_POS.x, top - 4, CN_POS.z, 4.5, .1, .05, 16, 1.4, 0, .55); sPts.add(CN_POS.x, top - 30, CN_POS.z, 4, .1, .05, 14, 1.4, .7, .55); sPts.add(CN_POS.x, CN_POS.y + 447, CN_POS.z, 2.5, .1, .05, 10, 2, .3, .5);
+  const y = -GROUND + .6;
+  for (let x = -1300; x <= -700; x += 20) { sPts.add(x, y, -2448, 1.2, 1.2, 1.1, 2.6); sPts.add(x, y, -2462, 1.2, 1.2, 1.1, 2.6); }
+  for (let k = 0; k < 10; k++) sPts.add(-1300 - 30 - k * 30, y, -2455, 3, 3, 3, 4, 1.4, k * .11, .06);
+  for (let z = -2448; z >= -2462; z -= 2) { sPts.add(-1300, y, z, .1, 1.4, .3, 2.4); sPts.add(-700, y, z, 1.6, .1, .1, 2.4); }
+  sPts.finish();
+}
+
+/* ---- cars ---- */
+const NCARS = 1500;
+const carGeo = new THREE.BoxGeometry(1.9, 1.5, 4.5);
+const carMesh = new THREE.InstancedMesh(carGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), NCARS);
+carMesh.frustumCulled = false; carMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(carMesh);
+const cPts = makePoints(NCARS * 2, true);
+const car = { axis: new Uint8Array(NCARS), line: new Float32Array(NCARS), lane: new Float32Array(NCARS), dir: new Float32Array(NCARS), pos: new Float32Array(NCARS), spd: new Float32Array(NCARS), lo: new Float32Array(NCARS), hi: new Float32Array(NCARS) };
+{
+  const r = mulberry32(1234), pal = [0xf2f2f2, 0xf2f2f2, 0xd9d9d9, 0x1a1a1c, 0x1a1a1c, 0x8a8d93, 0x7a1f1f, 0x1f3a63, 0xf2c230, 0xd8d8d0, 0x3b3f45];
+  const c = new THREE.Color();
+  for (let i = 0; i < NCARS; i++) {
+    let axis, line, lo, hi, dir = r() < .5 ? 1 : -1, spd, lane;
+    for (let tries = 0; tries < 12; tries++) {
+      const q = r();
+      if (q < .1) { axis = 2; line = -1935; lo = -2500; hi = 2600; lane = 3.6 + Math.floor(r() * 3) * 3.6; spd = 20 + r() * 12; }
+      else if (q < .55) { axis = 0; const ii = Math.floor(r() * 41) - 20; line = ii * CX + OX; lo = -1845; hi = 225; lane = hwX(ii) * (.28 + r() * .35); spd = 7 + r() * 9; }
+      else { axis = 1; const jj = Math.floor(r() * 24) - 21; line = jj * CZ + OZ; lo = -2340; hi = 2460; lane = hwZ(jj) * (.28 + r() * .35); spd = 7 + r() * 9; }
+      const p0 = lo + r() * (hi - lo), wx = axis === 0 ? line : p0, wz = axis === 0 ? p0 : line;
+      if (r() < Math.exp(-Math.hypot(wx, wz) / 1500) + .1) { car.pos[i] = p0; break; }
+      car.pos[i] = p0;
+    }
+    car.axis[i] = axis; car.line[i] = line; car.lane[i] = lane; car.dir[i] = dir; car.spd[i] = spd; car.lo[i] = lo; car.hi[i] = hi;
+    carMesh.setColorAt(i, c.setHex(pal[Math.floor(r() * pal.length)]));
+    // headlights white, tail lights red
+    cPts.add(0, 0, 0, 1.7, 1.5, 1.2, 5.5); cPts.add(0, 0, 0, 1.15, .07, .03, 4.5);
+  }
+  cPts.finish(); carMesh.instanceColor.needsUpdate = true;
+}
+function updateCars(dt) {
+  const arr = carMesh.instanceMatrix.array, pp = cPts.pos, y = -GROUND + .8;
+  for (let i = 0; i < NCARS; i++) {
+    let p = car.pos[i] + car.dir[i] * car.spd[i] * dt;
+    if (p > car.hi[i]) p = car.lo[i]; else if (p < car.lo[i]) p = car.hi[i];
+    car.pos[i] = p;
+    const off = car.lane[i] * car.dir[i], ax = car.axis[i];
+    const x = ax === 0 ? car.line[i] + off : p, z = ax === 0 ? p : car.line[i] + off;
+    const o = i * 16;
+    if (ax === 0) { arr[o] = 1; arr[o + 2] = 0; arr[o + 8] = 0; arr[o + 10] = 1; } else { arr[o] = 0; arr[o + 2] = -1; arr[o + 8] = 1; arr[o + 10] = 0; }
+    arr[o + 1] = 0; arr[o + 3] = 0; arr[o + 4] = 0; arr[o + 5] = 1; arr[o + 6] = 0; arr[o + 7] = 0; arr[o + 9] = 0; arr[o + 11] = 0; arr[o + 12] = x; arr[o + 13] = y; arr[o + 14] = z; arr[o + 15] = 1;
+    const fx = ax === 0 ? 0 : car.dir[i] * 2.2, fz = ax === 0 ? car.dir[i] * 2.2 : 0, h = i * 6;
+    pp[h] = x + fx; pp[h + 1] = y + .2; pp[h + 2] = z + fz; pp[h + 3] = x - fx; pp[h + 4] = y + .2; pp[h + 5] = z - fz;
+  }
+  carMesh.instanceMatrix.needsUpdate = true; cPts.geo.attributes.position.needsUpdate = true;
+}
+
+/* ---- aircraft, helicopter, boats ---- */
+const mPts = makePoints(160, true);
+const planeMat = new THREE.MeshLambertMaterial({ color: 0xe9ecef });
+function makePlane(len) {
+  const g = new THREE.Group(), r = len * .065;
+  const fus = new THREE.Mesh(new THREE.CylinderGeometry(r * .3, r, len, 10), planeMat); fus.rotation.x = Math.PI / 2; g.add(fus);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(len * .92, .25, len * .13), planeMat); wing.position.z = -len * .06; g.add(wing);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(.3, len * .17, len * .12), planeMat); fin.position.set(0, r + len * .07, -len * .42); g.add(fin);
+  const st = new THREE.Mesh(new THREE.BoxGeometry(len * .32, .2, len * .07), planeMat); st.position.set(0, r * .6, -len * .44); g.add(st);
+  for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.CylinderGeometry(r * .32, r * .32, len * .12, 8), planeMat); e.rotation.x = Math.PI / 2; e.position.set(sx * len * .22, -r * .6, len * .02); g.add(e); }
+  g.userData.len = len; scene.add(g); return g;
+}
+const flights = [];
+function addFlight(len, spawn, lights) {
+  const g = makePlane(len), f = { g, pos: new THREE.Vector3(), vel: new THREE.Vector3(), t: 0, delay: 0, spawn, lights: [] };
+  for (const L of lights) f.lights.push({ off: new THREE.Vector3(L[0] * len, L[1] * len, L[2] * len), idx: mPts.add(0, 0, 0, L[3], L[4], L[5], L[6], L[7], L[8], L[9]) });
+  spawn(f); flights.push(f); return f;
+}
+const NAVS = (w) => [[.46, 0, -.06, 1.6, .08, .05, 5, 0, 0, .5], [-.46, 0, -.06, .05, 1.5, .2, 5, 0, 0, .5], [0, .1, -.46, 1.6, 1.6, 1.6, 8, 1.15, 0, .05], [0, .09, .1, 1.6, .1, .06, 6, 1.6, .4, .1], [.0, -.05, .45, 2.2, 2.1, 1.9, 7, 0, 0, .5]];
+const rr = mulberry32(4242);
+function airliner(dirSign, alt, zc, speed, delay) {
+  return addFlight(38, f => { f.pos.set(dirSign > 0 ? -2900 : 2900, -GROUND + alt + rr() * 90, zc + (rr() - .5) * 400); f.vel.set(dirSign * speed, (rr() - .5) * 1.5, (rr() - .5) * 6); f.delay = f.t === 0 ? delay : rr() * 6; f.t = 1; }, NAVS(38));
+}
+airliner(1, 470, -1500, 62, 0); airliner(-1, 620, -2300, 70, 18);
+airliner(1, 360, -900, 58, 40);
+addFlight(24, f => { f.pos.set(-1450, -GROUND + 12, -2455); f.vel.set(54, 8.5, 6); f.delay = f.t === 0 ? 4 : 10 + rr() * 20; f.t = 1; }, NAVS(24));
+// helicopter with searchlight
+const heli = { g: new THREE.Group(), rotor: null, a: 0 };
+{
+  const b = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshLambertMaterial({ color: 0x1c2330 })); b.scale.set(2.1, 1.9, 4.8); heli.g.add(b);
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(.25, .5, 9, 8), new THREE.MeshLambertMaterial({ color: 0x1c2330 })); t.rotation.x = Math.PI / 2; t.position.z = -6.5; heli.g.add(t);
+  const rot = new THREE.Group(); rot.position.y = 2.3;
+  for (let k = 0; k < 2; k++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(15, .08, .55), new THREE.MeshBasicMaterial({ color: 0x14161c, transparent: true, opacity: .55 })); bl.rotation.y = k * Math.PI / 2; rot.add(bl); }
+  heli.g.add(rot); heli.rotor = rot; heli.g.scale.setScalar(1.8); scene.add(heli.g);
+  heli.lights = [mPts.add(0, 0, 0, 2.4, .1, .06, 7, 1.1, 0, .12), mPts.add(0, 0, 0, 2.2, 2.2, 2.2, 8, .9, .3, .06), mPts.add(0, 0, 0, 1.2, 2, 1.6, 6, 0, 0, .5)];
+  heli.target = mPts.add(0, 0, 0, 1.1, 1.3, 1.5, 70);
+  const beamMat = new THREE.ShaderMaterial({ uniforms: { uA: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: `precision highp float; uniform float uA; varying vec2 vUv; void main(){ float a=pow(vUv.y,.6)*.16*uA; gl_FragColor=vec4(vec3(.8,.9,1.)*a,a);
+#include <tonemapping_fragment>
+#include <encodings_fragment>
+}` });
+  const bg = new THREE.CylinderGeometry(.03, 1, 1, 28, 1, true); bg.translate(0, -.5, 0);
+  heli.beam = new THREE.Mesh(bg, beamMat); heli.beam.frustumCulled = false; scene.add(heli.beam);
+}
+function updateHeli(t) {
+  const a = t * .052, cx = 160, cz = -780, R = 430;
+  const px = cx + Math.cos(a) * R, pz = cz + Math.sin(a) * R * .8, py = -GROUND + 215 + Math.sin(t * .3) * 6;
+  const tx = Math.cos(a), tz = Math.sin(a) * .8;
+  heli.g.position.set(px, py, pz); heli.g.rotation.set(.08, Math.atan2(-Math.sin(a) * R, Math.cos(a) * R * .8) + Math.PI, 0);
+  heli.g.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a) * .8);
+  heli.rotor.rotation.y = t * 38; heli.g.updateMatrixWorld();
+  const p = mPts.pos, put = (idx, v) => { p[idx * 3] = v.x; p[idx * 3 + 1] = v.y; p[idx * 3 + 2] = v.z; };
+  const v = new THREE.Vector3();
+  put(heli.lights[0], v.set(0, 3.4, -9).applyMatrix4(heli.g.matrixWorld)); put(heli.lights[1], v.set(0, -2, -15).applyMatrix4(heli.g.matrixWorld)); put(heli.lights[2], v.set(0, -1.9, 4).applyMatrix4(heli.g.matrixWorld));
+  const gx = cx + Math.cos(t * .031 + 1) * 380, gz = cz + Math.sin(t * .043) * 320 - 60, gy = -GROUND + 40;
+  p[heli.target * 3] = gx; p[heli.target * 3 + 1] = gy; p[heli.target * 3 + 2] = gz;
+  const dx = gx - px, dy = gy - (py - 3), dz = gz - pz, L = Math.hypot(dx, dy, dz);
+  heli.beam.position.set(px, py - 3, pz);
+  heli.beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), new THREE.Vector3(dx / L, dy / L, dz / L));
+  heli.beam.scale.set(L * .075, L, L * .075);
+}
+// boats
+const NBOATS = 16;
+const boatHull = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), NBOATS);
+const boatTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xeeeeee }), NBOATS);
+boatHull.frustumCulled = boatTop.frustumCulled = false; scene.add(boatHull, boatTop);
+const boats = [];
+{
+  const r = mulberry32(55), c = new THREE.Color();
+  for (let i = 0; i < NBOATS; i++) {
+    const big = i < 3, L = big ? 80 + r() * 90 : 9 + r() * 22, W = big ? 14 + r() * 8 : L * .3, Hh = big ? 12 : L * .16;
+    const z = big ? -2780 - r() * 700 : -2180 - r() * 120 + (r() < .4 ? -130 : 0), dir = r() < .5 ? 1 : -1;
+    const b = { L, W, Hh, z, dir, x: -2500 + r() * 5000, spd: (big ? 5 : 3 + r() * 6) };
+    b.lights = [mPts.add(0, 0, 0, 1.6, 1.5, 1.3, big ? 14 : 5), mPts.add(0, 0, 0, .1, 1.3, .3, big ? 9 : 3.4), mPts.add(0, 0, 0, 1.5, .1, .1, big ? 9 : 3.4)];
+    boats.push(b);
+    boatHull.setColorAt(i, c.setHex(big ? [0x7a2b22, 0x23324a, 0x2e2e30][i] : 0xf0f0f0)); boatTop.setColorAt(i, c.setHex(big ? 0xd7d7d2 : 0xfafafa));
+  }
+}
+mPts.finish();
+function updateBoats(dt) {
+  const m = new THREE.Matrix4(), s = new THREE.Vector3(), q = new THREE.Quaternion(), p = new THREE.Vector3(), pp = mPts.pos;
+  boats.forEach((b, i) => {
+    b.x += b.dir * b.spd * dt; if (b.x > 2700) b.x = -2700; if (b.x < -2700) b.x = 2700;
+    const y = -GROUND + b.Hh * .5 + .2;
+    s.set(b.L, b.Hh, b.W); p.set(b.x, y, b.z); m.compose(p, q, s); boatHull.setMatrixAt(i, m);
+    s.set(b.L * .38, b.Hh * .7, b.W * .7); p.set(b.x - b.dir * b.L * .12, y + b.Hh * .85, b.z); m.compose(p, q, s); boatTop.setMatrixAt(i, m);
+    const mastY = -GROUND + b.Hh * 2.3 + 2;
+    pp.set([b.x, mastY, b.z], b.lights[0] * 3); pp.set([b.x + b.dir * b.L * .45, y + b.Hh * .4, b.z - b.W * .5], b.lights[1] * 3); pp.set([b.x + b.dir * b.L * .45, y + b.Hh * .4, b.z + b.W * .5], b.lights[2] * 3);
+  });
+  boatHull.instanceMatrix.needsUpdate = boatTop.instanceMatrix.needsUpdate = true;
+  if (boatHull.instanceColor) boatHull.instanceColor.needsUpdate = boatTop.instanceColor.needsUpdate = true;
+}
+function updateFlights(dt, t) {
+  const pp = mPts.pos;
+  for (const f of flights) {
+    if (f.delay > 0) { f.delay -= dt; f.g.visible = false; for (const L of f.lights) pp.set([0, -9999, 0], L.idx * 3); continue; }
+    f.g.visible = true; f.pos.addScaledVector(f.vel, dt);
+    if (Math.abs(f.pos.x) > 3000 || f.pos.y > 1500) { f.spawn(f); continue; }
+    f.g.position.copy(f.pos); f.g.lookAt(f.pos.x + f.vel.x, f.pos.y + f.vel.y, f.pos.z + f.vel.z); f.g.updateMatrixWorld();
+    const v = new THREE.Vector3();
+    for (const L of f.lights) { v.copy(L.off).applyMatrix4(f.g.matrixWorld); pp.set([v.x, v.y, v.z], L.idx * 3); }
+  }
+}
+// birds
+const NB = 46, birdPos = new Float32Array(NB * 3);
+const birds = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(birdPos, 3).setUsage(THREE.DynamicDrawUsage)), new THREE.PointsMaterial({ color: 0x141414, size: 1.5, sizeAttenuation: true, fog: false }));
+birds.frustumCulled = false; scene.add(birds);
+function updateBirds(t) {
+  for (let i = 0; i < NB; i++) {
+    const a = t * (.16 + (i % 5) * .008) + i * .5, rr_ = 60 + (i % 7) * 7;
+    birdPos[i * 3] = -40 + Math.cos(a) * rr_; birdPos[i * 3 + 1] = 18 + Math.sin(a * 1.7 + i) * 7 + (i % 4) * 3 + Math.sin(t * 9 + i) * .35; birdPos[i * 3 + 2] = -230 + Math.sin(a) * rr_ * .6;
+  }
+  birds.geometry.attributes.position.needsUpdate = true;
+}
+
+/* ================= TIME OF DAY ================= */
+const SKY_KEYS = [[-90, '#010208', '#02040a', '#000000', 0], [-24, '#02040c', '#080d1e', '#000000', 0], [-15, '#050c26', '#18204a', '#40305a', .25], [-10, '#0b1b4a', '#34386f', '#a04a70', .7], [-6, '#173064', '#7a5585', '#f0885a', 1], [-2.5, '#26498a', '#e0707a', '#ff8d45', 1.15], [.5, '#3365a8', '#f7a867', '#ffb561', 1.1], [4, '#4a7fbd', '#f3c795', '#ffd6a5', .8], [10, '#4e8ad0', '#bcd3e8', '#ffe6c0', .45], [25, '#3d84d8', '#a9cdee', '#fff5e0', .25], [90, '#2c78d2', '#9ec8f0', '#ffffff', .15]].map(k => ({ e: k[0], z: lin(k[1]), h: lin(k[2]), g: lin(k[3]), a: k[4] }));
+function skyAt(e) {
+  let i = 0; while (i < SKY_KEYS.length - 2 && e > SKY_KEYS[i + 1].e) i++;
+  const a = SKY_KEYS[i], b = SKY_KEYS[i + 1], t = clamp((e - a.e) / (b.e - a.e), 0, 1);
+  return { z: a.z.clone().lerp(b.z, t), h: a.h.clone().lerp(b.h, t), g: a.g.clone().lerp(b.g, t), a: lerp(a.a, b.a, t) };
+}
+const LAT = 43.65 * DEG;
+function astroDir(hours, dec, offsetDeg) {
+  const H = (hours - 13.05) * 15 * DEG + (offsetDeg || 0) * DEG;
+  return new THREE.Vector3(Math.cos(dec) * Math.sin(H), Math.sin(LAT) * Math.sin(dec) + Math.cos(LAT) * Math.cos(dec) * Math.cos(H), Math.sin(dec) * Math.cos(LAT) - Math.cos(dec) * Math.sin(LAT) * Math.cos(H)).normalize();
+}
+const vrHook = { active: false, exposure: 1.3, update: null, after: null };   // filled in by the VR layer (VR build only)
+const state = { h: 18.58, lights: true, tour: false, play: false, perf: false, cover: .42, envDirty: true, envAt: -9 };
+const sunColLow = lin('#ff7a2e'), sunColMid = lin('#ffc890'), sunColHigh = lin('#fff4e6'), moonCol = lin('#9db6ff');
+function phaseName(e, h) {
+  const pm = h > 13.05;
+  if (e > 18) return 'Daylight'; if (e > 4) return pm ? 'Late afternoon' : 'Morning light';
+  if (e > -1) return pm ? 'Golden hour' : 'Sunrise'; if (e > -6) return pm ? 'Sunset glow' : 'First light';
+  if (e > -12) return pm ? 'Blue hour' : 'Dawn blue'; return 'Night';
+}
+let lastElev = 0;
+function applyTime(h) {
+  state.h = h;
+  const sun = astroDir(h, -9.5 * DEG, 0), moon = astroDir(h, -20 * DEG, -90);
+  const e = Math.asin(sun.y) / DEG, me = Math.asin(moon.y) / DEG; lastElev = e;
+  const k = skyAt(e);
+  U.uSkyZ.value.copy(k.z); U.uSkyH.value.copy(k.h); U.uGlow.value.copy(k.g); U.uGlowAmt.value = k.a;
+  U.uSunDir.value.copy(sun); U.uMoonDir.value.copy(moon);
+  const day = smooth(-4, 14, e), sunMix = smooth(-3, 1.5, e), night = smooth(6, -4, e);
+  U.uNight.value = night;
+  U.uMoonVis.value = smooth(-2, 6, me) * (1 - smooth(2, 16, e));
+  U.uStars.value = smooth(-5, -14, e) * (me > 0 ? .65 : 1);
+  const sunI = .5 * smooth(-1, 3, e) + 3.4 * smooth(3, 35, e);
+  const sc = e < 8 ? sunColLow.clone().lerp(sunColMid, smooth(-1, 8, e)) : sunColMid.clone().lerp(sunColHigh, smooth(8, 35, e));
+  const moonI = .5 * smooth(-4, 8, me) * (1 - sunMix);
+  const ldir = moon.clone().lerp(sun, sunMix).normalize(); U.uLDir.value.copy(ldir);
+  const lcol = sc.clone().multiplyScalar(sunI * sunMix).add(moonCol.clone().multiplyScalar(moonI)); U.uLCol.value.copy(lcol);
+  const amb = k.z.clone().lerp(k.h, .5).multiplyScalar(.5 + .95 * day).add(new THREE.Color(.012, .009, .007).multiplyScalar(night * 1.5).add(new THREE.Color(.004, .006, .014).multiplyScalar(me > 0 ? 1 : 0)));
+  U.uAmbSky.value.copy(amb); U.uAmbGround.value.set(.1, .09, .075).multiplyScalar(day).add(new THREE.Color(.012, .009, .006).multiplyScalar(night));
+  const fog = k.h.clone().lerp(k.z, .12).multiplyScalar(.97); U.uFogCol.value.copy(fog); scene.fog.color.copy(fog);
+  U.uCityGlow.value.set(.9, .46, .2).multiplyScalar(.06 * night);
+  U.uCloudCover.value = state.cover;
+  const ccol = new THREE.Color(1, 1, 1).multiplyScalar(.55 * day).add(amb.clone().multiplyScalar(.9)).add(k.g.clone().multiplyScalar(k.a * .5 * smooth(-9, 0, e))).add(new THREE.Color(.03, .035, .06).multiplyScalar(1 - day)).add(U.uCityGlow.value.clone().multiplyScalar(.8));
+  U.uCloudCol.value.copy(ccol);
+  // direct light for lit interior (sun or moon through the glass)
+  sunLight.position.copy(ldir).multiplyScalar(90).add(sunLight.target.position);
+  sunLight.color.copy(lcol.clone().multiplyScalar(1 / Math.max(.0001, Math.max(lcol.r, lcol.g, lcol.b, .0001))));
+  const li = Math.max(lcol.r, lcol.g, lcol.b); sunLight.intensity = li;
+  sunLight.castShadow = li > .08 && !state.perf;
+  // interior rig
+  const L = state.lights ? (1 - .62 * day) : 0;
+  for (const nm of ['living', 'dining', 'kitchen', 'piano']) rig[nm].l.intensity = rig[nm].base * L;
+  rig.fire.l.intensity = rig.fire.base; rig.pit.l.intensity = rig.pit.base * (.5 + .5 * night);
+  rig.pool.l.intensity = rig.pool.base * (state.lights ? .35 + .65 * night : .15 * night);
+  for (const g of glowList) { const f = g.kind === 'int' ? L : g.kind === 'pool' ? (state.lights ? .5 + .5 * night : .1 + .2 * night) : 1; g.m.color.copy(g.base).multiplyScalar(f); }
+  if (window.__poolMat) window.__poolMat.uniforms.uPool.value = state.lights ? 1 : .3;
+  // night glass look + city
+  cPts.mat.uniforms.uLevel.value = .1 + .9 * night; mPts.mat.uniforms.uLevel.value = .45 + .55 * night; sPts.mat.uniforms.uLevel.value = .3 + .7 * night;
+  heli.beam.material.uniforms.uA.value = smooth(.25, .9, night);
+  birds.visible = day > .55;
+  rcLights.color.setRGB(1, .86, .62).multiplyScalar(.15 + 1.6 * night);
+  cnLEDs[1].material.color.setRGB(1, .85, .6).multiplyScalar(.2 + 1.5 * night);
+  renderer.toneMappingExposure = (vrHook.active ? vrHook.exposure : 1.3) - .6 * smooth(-8, 22, e);
+  if (finalPass) {
+    finalPass.uniforms.uExposure.value = 1.0 - .3 * smooth(-8, 22, e);
+    bloom.strength = lerp(.5, .16, day); bloom.threshold = lerp(.95, 1.7, day); bloom.radius = .45;
+  }
+  $('clock').textContent = String(Math.floor(h)).padStart(2, '0') + ':' + String(Math.floor((h % 1) * 60)).padStart(2, '0');
+  $('phase').textContent = phaseName(e, h);
+  state.envDirty = true;
+}
+
+/* ================= ENVIRONMENT (reflections) ================= */
+const pmrem = new THREE.PMREMGenerator(renderer);
+let envRT = null;
+function rebuildEnv() {
+  // additive sprites cannot be blended into PMREM's packed target, so hide them while the cube is captured
+  const hide = [interior, sPts.pts, cPts.pts, mPts.pts, heli.beam, heli.g, birds, carMesh, boatHull, boatTop].concat(flights.map(f => f.g));
+  const was = hide.map(o => o.visible); hide.forEach(o => o.visible = false);
+  const sp = sky.position.clone(); sky.position.set(0, 0, 0); scene.environment = null;
+  const xrWas = renderer.xr.enabled; renderer.xr.enabled = false;
+  const extraHide = vrHook.active && vrHook.hideForEnv ? vrHook.hideForEnv() : [];
+  const rt = pmrem.fromScene(scene, 0, 1, 12000);
+  renderer.xr.enabled = xrWas; extraHide.forEach(f => f());
+  if (envRT) envRT.dispose(); envRT = rt; scene.environment = rt.texture;
+  hide.forEach((o, i) => o.visible = was[i]); sky.position.copy(sp);
+  state.envDirty = false;
+}
+
+/* ================= POST ================= */
+let composer = null, bloom = null, finalPass = null, msaaRT = null;
+function setupPost() {
+  if (!hdrOK) return;
+  const w = Math.floor(innerWidth * DPR), h = Math.floor(innerHeight * DPR);
+  msaaRT = new THREE.WebGLMultisampleRenderTarget(w, h, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+  msaaRT.samples = /msaa0/.test(location.hash) ? 0 : 4;
+  composer = new THREE.EffectComposer(renderer, msaaRT);
+  composer.setPixelRatio(DPR); composer.setSize(innerWidth, innerHeight);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .8, .65, .75); composer.addPass(bloom);
+  finalPass = new THREE.ShaderPass({
+    uniforms: { tDiffuse: { value: null }, uExposure: { value: 1 }, uTime: U.uTime },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: `precision highp float; uniform sampler2D tDiffuse; uniform float uExposure,uTime; varying vec2 vUv;
+vec3 aces(vec3 x){ const float a=2.51,b=.03,c=2.43,d=.59,e=.14; return clamp((x*(a*x+b))/(x*(c*x+d)+e),0.,1.); }
+float hash(vec2 p){ vec3 p3=fract(vec3(p.xyx)*.1031); p3+=dot(p3,p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
+void main(){
+  vec3 c=texture2D(tDiffuse,vUv).rgb*uExposure;
+  c=aces(c);
+  float l=dot(c,vec3(.2126,.7152,.0722)); c=mix(vec3(l),c,1.1);
+  c=pow(c,vec3(1./2.2));
+  c=mix(c,c*c*(3.-2.*c),.18);
+  vec2 q=vUv-.5; c*=1.-dot(q,q)*.55;
+  c+=(hash(vUv*vec2(1920.,1080.)+fract(uTime)*91.)-.5)*.018;
+  gl_FragColor=vec4(c,1.);
+}`
+  });
+  composer.addPass(finalPass);
+}
+setupPost();
+
+/* ================= PLAYER, CONTROLS ================= */
+const player = { pos: new THREE.Vector3(0, 1.65, 5.4), yaw: 0, pitch: .03, vel: new THREE.Vector3(), fov: 68, fovT: 68 };
+const keys = {}; const stick = { x: 0, y: 0, id: -1 };
+let hintOff = false; setTimeout(() => dismissHint(), 9000);
+function dismissHint() { if (!hintOff) { hintOff = true; $('hint').classList.add('off'); } }
+const R_PLAYER = .3;
+function blocked(x, z) { for (const c of colliders) if (x > c.x0 - R_PLAYER && x < c.x1 + R_PLAYER && z > c.z0 - R_PLAYER && z < c.z1 + R_PLAYER) return true; return x < -8.75 || x > 8.75 || z > 7.7 || z < -9.9; }
+addEventListener('keydown', e => { if (e.target && e.target.tagName === 'INPUT') return; keys[e.code] = true; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); if (/^(Key[WASDZ]|Arrow)/.test(e.code)) { stopTour(); dismissHint(); } });
+addEventListener('keyup', e => { keys[e.code] = false; });
+let drag = null;
+canvas.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && stick.id === e.pointerId) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY, touch: e.pointerType === 'touch' }; canvas.setPointerCapture(e.pointerId); canvas.classList.add('drag'); stopTour(); dismissHint(); });
+canvas.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId) return; const k = drag.touch ? .0042 : .0028; player.yaw -= (e.clientX - drag.x) * k; player.pitch = clamp(player.pitch - (e.clientY - drag.y) * k, -1.3, 1.3); drag.x = e.clientX; drag.y = e.clientY; });
+const endDrag = e => { if (drag && drag.id === e.pointerId) { drag = null; canvas.classList.remove('drag'); } };
+canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('wheel', e => { e.preventDefault(); player.fovT = clamp(player.fovT + e.deltaY * .03, 24, 85); dismissHint(); }, { passive: false });
+{
+  const st = $('stick'), kn = $('knob');
+  const mv = e => { const r = st.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; let dx = (e.clientX - cx) / (r.width / 2), dy = (e.clientY - cy) / (r.height / 2); const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = -dy; kn.style.transform = `translate(${dx * 30}px,${dy * 30}px)`; };
+  st.addEventListener('pointerdown', e => { stick.id = e.pointerId; st.setPointerCapture(e.pointerId); mv(e); stopTour(); dismissHint(); });
+  st.addEventListener('pointermove', e => { if (stick.id === e.pointerId) mv(e); });
+  const up = e => { if (stick.id === e.pointerId) { stick.id = -1; stick.x = stick.y = 0; kn.style.transform = ''; } };
+  st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+}
+/* ---- guided tour ---- */
+const TOUR = [
+  [0, 1.65, 5.6, 0, .02, 3], [0, 1.65, -1.6, 0, .04, 9], [0, 1.65, -5.2, -.05, .06, 7],
+  [1.4, 1.65, -7.4, -.3, .22, 8], [-.4, 1.65, -6.2, .55, .02, 8], [6.6, 1.65, -5.4, -1.25, .05, 8],
+  [.8, 1.65, -4.5, -3.0, .0, 7], [2.6, 1.65, -.6, -3.14, -.02, 8], [-1.2, 1.65, 1.4, -3.3, .0, 7], [-1.6, 1.65, 3.2, -1.6, .02, 7], [0, 1.65, 4.6, 0, .02, 7]
+];
+const tour = { t: 0, seg: 0, on: false };
+function startTour() { state.tour = true; tour.on = true; tour.seg = 0; tour.t = 0; TOUR[0][0] = player.pos.x; TOUR[0][2] = player.pos.z; TOUR[0][3] = player.yaw; TOUR[0][4] = player.pitch; $('bTour').setAttribute('aria-pressed', 'true'); }
+function stopTour() { if (!tour.on) return; state.tour = false; tour.on = false; $('bTour').setAttribute('aria-pressed', 'false'); }
+function catmull(a, b, c, d, t) { const t2 = t * t, t3 = t2 * t; return .5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3); }
+function updateTour(dt) {
+  const n = TOUR.length, K = i => TOUR[((i % n) + n) % n], a = K(tour.seg), b = K(tour.seg + 1);
+  tour.t += dt / b[5];
+  if (tour.t >= 1) { tour.t -= 1; tour.seg = (tour.seg + 1) % n; return; }
+  const p = K(tour.seg - 1), q = K(tour.seg + 2), s = smooth(0, 1, tour.t);
+  player.pos.x = catmull(p[0], a[0], b[0], q[0], s); player.pos.z = catmull(p[2], a[2], b[2], q[2], s); player.pos.y = 1.65;
+  const ya = a[3], yb = tour.seg === n - 1 ? 0 : b[3];
+  player.yaw = lerp(ya, yb, s); player.pitch = lerp(a[4], b[4], s);
+}
+/* ---- movement ---- */
+function updatePlayer(dt, t) {
+  if (tour.on) { updateTour(dt); return; }
+  let fx = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + stick.y, sx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + stick.x;
+  const l = Math.hypot(fx, sx); if (l > 1) { fx /= l; sx /= l; }
+  const sp = (keys.ShiftLeft || keys.ShiftRight ? 4.6 : 2.5);
+  const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
+  const tvx = (-sy * fx + cy * sx) * sp, tvz = (-cy * fx - sy * sx) * sp, k = 1 - Math.exp(-10 * dt);
+  player.vel.x += (tvx - player.vel.x) * k; player.vel.z += (tvz - player.vel.z) * k;
+  const nx = player.pos.x + player.vel.x * dt, nz = player.pos.z + player.vel.z * dt;
+  if (!blocked(nx, player.pos.z)) player.pos.x = nx; else player.vel.x = 0;
+  if (!blocked(player.pos.x, nz)) player.pos.z = nz; else player.vel.z = 0;
+  player.pos.y = 1.65 + Math.sin(t * 8.5) * .011 * Math.min(1, Math.hypot(player.vel.x, player.vel.z) / 2);
+  if (keys.KeyZ) player.fovT = 30; else if (player.fovT === 30 && !keys.KeyZ) player.fovT = 68;
+}
+
+/* ================= UI ================= */
+function setPressed(id, v) { $(id).setAttribute('aria-pressed', v ? 'true' : 'false'); }
+$('bTour').addEventListener('click', () => { if (tour.on) stopTour(); else { startTour(); dismissHint(); } });
+$('bLights').addEventListener('click', () => { state.lights = !state.lights; setPressed('bLights', state.lights); applyTime(state.h); });
+$('bPlay').addEventListener('click', () => { state.play = !state.play; setPressed('bPlay', state.play); });
+$('bQ').addEventListener('click', () => {
+  state.perf = !state.perf; setPressed('bQ', state.perf);
+  DPR = state.perf ? .75 : Math.min(window.devicePixelRatio || 1, 1.25); resize(); if (bloom) bloom.enabled = !state.perf; renderer.shadowMap.enabled = !state.perf; applyTime(state.h);
+  scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+});
+const tSlider = $('time'); let tween = null;
+tSlider.addEventListener('input', () => { tween = null; applyTime(parseFloat(tSlider.value)); });
+$('chips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const to = parseFloat(b.dataset.t);
+  let from = state.h; let d = to - from; if (d > 12) d -= 24; if (d < -12) d += 24;
+  tween = { from, d, t: 0, dur: clamp(Math.abs(d) * .22, .8, 3.2) };
+});
+function updateTween(dt) {
+  if (!tween) return; tween.t += dt / tween.dur; const s = smooth(0, 1, Math.min(1, tween.t));
+  let h = tween.from + tween.d * s; h = (h % 24 + 24) % 24; tSlider.value = h; applyTime(h); if (tween.t >= 1) tween = null;
+}
+
+/* ================= RESIZE ================= */
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setPixelRatio(DPR); renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (composer) { composer.setPixelRatio(DPR); composer.setSize(w, h); }
+}
+addEventListener('resize', resize);
+
+/* ================= LOOP ================= */
+const clock = new THREE.Clock(); let T = 0, frames = 0, slow = 0, accum = 0, booted = false;
+applyTime(state.h);
+function frame(_time, xrFrame) {
+  const dt = Math.min(clock.getDelta(), .05); T += dt; U.uTime.value = T;
+  if (state.play) { state.h = (state.h + dt * .12) % 24; tSlider.value = state.h; applyTime(state.h); }
+  updateTween(dt);
+  if (vrHook.active) {
+    vrHook.update(dt, xrFrame, T);
+  } else {
+    updatePlayer(dt, T);
+    player.fov += (player.fovT - player.fov) * (1 - Math.exp(-9 * dt));
+    camera.fov = player.fov; camera.updateProjectionMatrix();
+    camera.position.copy(player.pos); camera.rotation.set(player.pitch, player.yaw, 0);
+    sky.position.copy(camera.position);
+    const px = (renderer.domElement.height / 2) / Math.tan(camera.fov * DEG / 2);
+    for (const p of [sPts, cPts, mPts]) p.mat.uniforms.uPx.value = px;
+  }
+  updateCars(dt); updateFlights(dt, T); updateBoats(dt); updateHeli(T); updateBirds(T);
+  // living flames + light flicker
+  const fl = 1 + Math.sin(T * 11) * .06 + Math.sin(T * 17.3) * .05 + Math.sin(T * 5.1) * .08;
+  rig.fire.l.intensity = rig.fire.base * fl; rig.pit.l.intensity = rig.pit.base * (.5 + .5 * U.uNight.value) * fl;
+  { const c = new THREE.Color().setHSL((T * .04) % 1, .75, .55).multiplyScalar(.3 + 2.4 * U.uNight.value); cnLED.color.copy(c); }
+  if (state.envDirty && T - state.envAt > (vrHook.active ? 2.5 : .9)) { rebuildEnv(); state.envAt = T; }
+  if (vrHook.active) { renderer.render(scene, camera); if (vrHook.after) vrHook.after(); }
+  else if (composer && !window.__nopost) composer.render(dt); else renderer.render(scene, camera);
+  frames++;
+  if (!booted && frames > 2) { booted = true; setTimeout(() => $('loading').classList.add('done'), 150); }
+  // adaptive resolution
+  accum += dt; if (vrHook.active) { frames = 0; accum = 0; } else if (accum > 2.5) { const fps = frames / accum; frames = 0; accum = 0; if (fps < 26 && DPR > .6) { DPR = Math.max(.55, DPR - .2); resize(); } }
+  if (!VR_BUILD) requestAnimationFrame(frame);
+}
+rebuildEnv();
+resize();
+if (VR_BUILD) renderer.setAnimationLoop(frame); else requestAnimationFrame(frame);
+window.__dbg = { rebuildEnv, sky, ground, bMesh, landmarks, carMesh, interior, composer: () => composer, bloom: () => bloom, hdrOK, player, camera, state, applyTime, scene, renderer, tour: () => startTour() };
+
+/* ================= SOUNDSCAPE (procedural WebAudio, no audio files) ================= */
+// City rumble + traffic hiss, terrace wind, two crackling fires, the circling helicopter, jet fly-pasts and an
+// occasional far-off siren. Everything is synthesised from filtered noise, positioned in 3D with HRTF panners.
+const audio = (() => {
+  let ctx = null, master = null, on = true;
+  const N = {}, fires = [];
+  const A = { get on() { return on; }, get ready() { return !!ctx; } };
+  const smoothS = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  function noiseBuf(kind, secs) {
+    const n = Math.floor(ctx.sampleRate * secs), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+    let l = 0;
+    for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; if (kind === 'brown') { l = (l + .02 * w) / 1.02; d[i] = l * 3.5; } else d[i] = w; }
+    const F = 4096;                                   // cross-fade the tail into the head so the loop has no click
+    for (let k = 0; k < F; k++) { const t = k / F; d[n - F + k] = d[n - F + k] * (1 - t) + d[k] * t; }
+    return b;
+  }
+  function loopSrc(buf) {
+    const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.loopStart = 4096 / ctx.sampleRate; s.loopEnd = buf.duration;
+    s.start(0, .2 + Math.random() * (buf.duration - .5)); return s;
+  }
+  const filt = (type, f, q) => { const n = ctx.createBiquadFilter(); n.type = type; n.frequency.value = f; if (q != null) n.Q.value = q; return n; };
+  const gain = v => { const g = ctx.createGain(); g.gain.value = v; return g; };
+  function panner(x, y, z, ref, roll) {
+    const p = ctx.createPanner(); p.panningModel = 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = ref; p.rolloffFactor = roll; p.maxDistance = 20000;
+    setPos(p, x, y, z); return p;
+  }
+  function setPos(p, x, y, z) { if (p.positionX) { p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z; } else p.setPosition(x, y, z); }
+
+  function start() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ctx = new AC(); master = gain(on ? .85 : 0);
+    const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
+    const brown = noiseBuf('brown', 7), white = noiseBuf('white', 5);
+
+    // city bed
+    { const s = loopSrc(brown), lp = filt('lowpass', 170); N.rumble = gain(.3); s.connect(lp); lp.connect(N.rumble); N.rumble.connect(master); }
+    { const s = loopSrc(white), bp = filt('bandpass', 1500, .35); N.hiss = gain(.008); s.connect(bp); bp.connect(N.hiss); N.hiss.connect(master); }
+    // terrace wind
+    { const s = loopSrc(white), bp = filt('bandpass', 430, .6), lp = filt('lowpass', 1400); N.wind = gain(0); s.connect(bp); bp.connect(lp); lp.connect(N.wind); N.wind.connect(master); }
+    // fires: low roar + random crackles
+    const crack = ctx.createBuffer(1, Math.floor(ctx.sampleRate * .06), ctx.sampleRate), cd = crack.getChannelData(0);
+    for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (cd.length * .16));
+    N.crack = crack;
+    function addFire(x, y, z, k) {
+      const p = panner(x, y, z, 1.1, 1.5); p.connect(master);
+      const s = loopSrc(brown), bp = filt('bandpass', 650, .5), g = gain(.34 * k); s.connect(bp); bp.connect(g); g.connect(p);
+      fires.push({ p, x, y, z, k });
+    }
+    addFire(7.9, .9, 1.1, 1); addFire(7.4, .8, -7.1, .7);
+    // helicopter: filtered noise chopped at blade rate
+    { const p = panner(0, 0, 0, 90, 1.25); p.connect(master);
+      const s = loopSrc(white), bp = filt('bandpass', 190, 1.3), am = gain(.5), lfo = ctx.createOscillator(), depth = gain(.5);
+      lfo.frequency.value = 11.5; lfo.connect(depth); depth.connect(am.gain); lfo.start();
+      s.connect(bp); bp.connect(am); N.heliG = gain(.9); am.connect(N.heliG); N.heliG.connect(p); N.heliP = p; }
+    // jet fly-pasts
+    { const p = panner(0, 0, 0, 300, 1); p.connect(master);
+      const s = loopSrc(brown), lp = filt('lowpass', 520), g = gain(0); s.connect(lp); lp.connect(g); g.connect(p); N.jetG = g; N.jetP = p; }
+    N.nextSiren = performance.now() + 25000 + Math.random() * 30000;
+    N.white = white;
+    setInterval(tick, 110);
+  }
+
+  function crackle(f) {
+    const s = ctx.createBufferSource(); s.buffer = N.crack; s.playbackRate.value = .55 + Math.random() * 1.5;
+    const hp = filt('highpass', 900 + Math.random() * 1400), g = gain((.05 + Math.random() * .2) * f.k);
+    s.connect(hp); hp.connect(g); g.connect(f.p); s.start();
+  }
+  function siren() {
+    const now = ctx.currentTime, o = ctx.createOscillator(), lfo = ctx.createOscillator(), dep = gain(220), bp = filt('bandpass', 950, 1.4), g = gain(0);
+    o.type = 'sawtooth'; o.frequency.value = 840; lfo.frequency.value = .22; lfo.connect(dep); dep.connect(o.frequency);
+    const a = Math.random() * Math.PI * 2, r = 700 + Math.random() * 600, y = -176, p = panner(Math.cos(a) * r, y, -700 + Math.sin(a) * r, 120, 1.3);
+    const b = a + (Math.random() - .5) * .8;
+    if (p.positionX) { p.positionX.linearRampToValueAtTime(Math.cos(b) * r, now + 14); p.positionZ.linearRampToValueAtTime(-700 + Math.sin(b) * r, now + 14); }
+    o.connect(bp); bp.connect(g); g.connect(p); p.connect(master);
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(.05, now + 4); g.gain.linearRampToValueAtTime(.05, now + 10); g.gain.linearRampToValueAtTime(0, now + 14);
+    o.start(now); lfo.start(now); o.stop(now + 14.5); lfo.stop(now + 14.5);
+  }
+  const L = { x: 0, y: 0, z: 0 };
+  function tick() {
+    if (!ctx || ctx.state !== 'running' || !on) return;
+    for (const f of fires) { const d = Math.hypot(L.x - f.x, L.z - f.z); if (d < 18 && Math.random() < .55 * f.k) crackle(f); }
+    if (performance.now() > N.nextSiren) { siren(); N.nextSiren = performance.now() + 50000 + Math.random() * 70000; }
+  }
+
+  A.start = start;
+  A.toggle = () => { on = !on; if (master) master.gain.setTargetAtTime(on ? .85 : 0, ctx.currentTime, .12); if (on) start(); return on; };
+  A.update = (px, py, pz, fx, fy, fz, T) => {
+    if (!ctx) return;
+    L.x = px; L.y = py; L.z = pz;
+    const l = ctx.listener;
+    if (l.positionX) { l.positionX.value = px; l.positionY.value = py; l.positionZ.value = pz; l.forwardX.value = fx; l.forwardY.value = fy; l.forwardZ.value = fz; l.upX.value = 0; l.upY.value = 1; l.upZ.value = 0; }
+    else { l.setPosition(px, py, pz); l.setOrientation(fx, fy, fz, 0, 1, 0); }
+    // how "outside" the listener is: the glass wall sits at z = -4, a door gap leaks sound indoors
+    let out = smoothS(-3.7, -4.7, pz);
+    if (pz > -4) out = Math.max(out, .4 * Math.exp(-Math.hypot(Math.max(0, Math.abs(px) - 1.1), pz + 4) / 2.6));
+    const night = (typeof U !== 'undefined') ? U.uNight.value : 0, t = ctx.currentTime;
+    N.rumble.gain.setTargetAtTime((.14 + .42 * out) * (1 - .3 * night), t, .3);
+    N.hiss.gain.setTargetAtTime((.003 + .016 * out) * (1 - .45 * night), t, .3);
+    N.wind.gain.setTargetAtTime(out * (.05 + .035 * Math.sin(T * .45) + .025 * Math.sin(T * 1.27 + 1)), t, .25);
+    // helicopter + jets follow the real moving objects
+    if (N.heliP && typeof heli !== 'undefined') { const hp = heli.g.position; setPos(N.heliP, hp.x, hp.y, hp.z); }
+    if (N.jetP && typeof flights !== 'undefined') {
+      let best = null, bd = 1e9;
+      for (const f of flights) { if (f.delay > 0) continue; const d = Math.hypot(f.pos.x - px, f.pos.y - py, f.pos.z - pz); if (d < bd) { bd = d; best = f; } }
+      if (best) { setPos(N.jetP, best.pos.x, best.pos.y, best.pos.z); N.jetG.gain.setTargetAtTime(Math.pow(Math.max(0, 1 - bd / 3200), 2) * .9 * (1 - .6 * (1 - out)), t, .5); } else N.jetG.gain.setTargetAtTime(0, t, .5);
+    }
+  };
+  return A;
+})();
+
+/* ================= WEBXR · META QUEST ================= */
+// Immersive-VR layer: stereo render (direct path, no post chain), dolly rig, thumbstick walking with snap turn,
+// arc teleport, hand-tracking pinch teleport, a wrist menu you click with the right controller, comfort vignette,
+// spatial audio and three quality presets tuned for the Quest's mobile GPU.
+const VRQ = {
+  fast:     { label: 'Fast',     scale: .70, fov: 1.0, cars: 450,  shadow: 0,    lite: 1, lights: ['living', 'fire', 'pool'] },
+  balanced: { label: 'Balanced', scale: .85, fov: .80, cars: 900,  shadow: 1024, lite: 1, lights: ['living', 'dining', 'fire', 'pool', 'pit'] },
+  sharp:    { label: 'Sharp',    scale: 1.0, fov: .45, cars: 1500, shadow: 2048, lite: 0, lights: ['living', 'dining', 'kitchen', 'piano', 'fire', 'pool', 'pit'] }
+};
+const vr = { q: 'balanced', session: null, supported: false, seated: false, seatY: 0, vel: new THREE.Vector3(), snapReady: true, aiming: false, aimCtrl: null,
+  vig: 0, blink: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
+try { const sq = localStorage.getItem('penthouseVRQ'); if (VRQ[sq]) vr.q = sq; } catch (e) { }
+const ACCENT = 0xffb866;
+
+/* ---------- pre-session page UI ---------- */
+const bVR = $('bVR'), vrNote = $('vrnote');
+function refreshQButtons() { document.querySelectorAll('#vrq button').forEach(b => b.setAttribute('aria-pressed', b.dataset.q === vr.q ? 'true' : 'false')); }
+refreshQButtons();
+$('vrq').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; vr.q = b.dataset.q; try { localStorage.setItem('penthouseVRQ', vr.q); } catch (er) { } refreshQButtons(); });
+$('bSound').addEventListener('click', () => { audio.start(); const on = audio.toggle(); $('bSound').setAttribute('aria-pressed', on ? 'true' : 'false'); });
+(async function checkVR() {
+  if (!navigator.xr || !navigator.xr.isSessionSupported) { bVR.textContent = 'VR unavailable here'; bVR.disabled = true; vrNote.textContent = 'To enter VR, open this page in the Meta Quest Browser (or any WebXR headset browser). On a desktop it still works as a walkable preview.'; return; }
+  try { vr.supported = await navigator.xr.isSessionSupported('immersive-vr'); } catch (e) { vr.supported = false; }
+  bVR.disabled = !vr.supported;
+  bVR.textContent = vr.supported ? 'Enter VR' : 'VR not supported';
+  vrNote.textContent = vr.supported ? 'Quest: left stick walks, right stick snap-turns, push right stick forward to teleport. Your left wrist holds the menu.' : 'This browser has no immersive VR. Open it in the Meta Quest Browser to enter VR; the page still works as a walkable preview.';
+})();
+bVR.addEventListener('click', async () => {
+  if (vr.session || !vr.supported) return;
+  audio.start();                                                // must start inside the click gesture
+  renderer.xr.setFramebufferScaleFactor(VRQ[vr.q].scale);
+  try {
+    const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'], optionalFeatures: ['hand-tracking', 'bounded-floor'] });
+    vr.session = session;
+    await renderer.xr.setSession(session);
+  } catch (err) { vr.session = null; vrNote.textContent = 'Could not start VR: ' + ((err && err.message) || err); console.warn(err); }
+});
+
+/* ---------- controllers, hands, visuals ---------- */
+const dark = new THREE.MeshStandardMaterial({ color: 0x14171d, roughness: .34, metalness: .55 });
+const glowAcc = new THREE.MeshBasicMaterial({ color: ACCENT, toneMapped: false });
+function makeControllerModel() {
+  const g = new THREE.Group();
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(.017, .02, .11, 18), dark); handle.rotation.x = .2; handle.position.set(0, -.02, .015); g.add(handle);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.03, 18, 12), dark); head.scale.set(1.1, .7, 1.5); head.position.set(0, .04, -.012); g.add(head);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.048, .0055, 8, 32), dark); ring.rotation.x = 1.15; ring.position.set(0, .075, -.045); g.add(ring);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(.0042, 8, 6), glowAcc); led.position.set(0, .0455, -.03); g.add(led);
+  const stickTop = new THREE.Mesh(new THREE.CylinderGeometry(.009, .009, .012, 12), glowAcc); stickTop.position.set(0, .043, .0); stickTop.rotation.x = .1; g.add(stickTop);
+  g.traverse(o => o.frustumCulled = false);
+  return g;
+}
+const JOINT_GEO = new THREE.SphereGeometry(1, 10, 8), SKIN = new THREE.MeshStandardMaterial({ color: 0xcdb09c, roughness: .8, metalness: 0 });
+const ctrl = [], grip = [], hands = [], handMesh = [], side = [null, null];
+for (let i = 0; i < 2; i++) {
+  const c = renderer.xr.getController(i), g = renderer.xr.getControllerGrip(i), h = renderer.xr.getHand(i);
+  rig3.add(c, g, h); g.add(makeControllerModel());
+  const im = new THREE.InstancedMesh(JOINT_GEO, SKIN, 26); im.frustumCulled = false; im.visible = false; h.add(im);
+  ctrl.push(c); grip.push(g); hands.push(h); handMesh.push(im);
+  c.addEventListener('connected', e => { const d = e.data; c.userData.src = d; c.userData.hand = !!d.hand; if (d.handedness === 'left') side[0] = i; else if (d.handedness === 'right') side[1] = i; attachMenu(); });
+  c.addEventListener('disconnected', () => { c.userData.src = null; c.userData.hand = false; });
+  c.addEventListener('selectstart', () => { if (c.userData.hand) { vr.aiming = true; vr.aimCtrl = c; } });
+  c.addEventListener('selectend', () => { if (c.userData.hand && vr.aimCtrl === c) endAim(); });
+}
+function updateHandMeshes() {
+  for (let i = 0; i < 2; i++) {
+    const h = hands[i], im = handMesh[i], show = !!ctrl[i].userData.hand;
+    im.visible = show; grip[i].children[0].visible = !show; if (!show) continue;
+    let k = 0; const q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3(), m = new THREE.Matrix4();
+    for (const name in h.joints) { const j = h.joints[name]; if (!j.visible) continue; const r = (j.jointRadius || .008) * 1.25; s.set(r, r, r); m.compose(j.position, q, s); im.setMatrixAt(k++, m); }
+    im.count = k; im.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/* teleport arc + landing ring */
+const ARC_N = 44;
+const arcGeo = new THREE.BufferGeometry(); arcGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ARC_N * 3), 3));
+const arcMat = new THREE.LineBasicMaterial({ color: 0x7ee7ff, transparent: true, opacity: .9, toneMapped: false });
+const arcLine = new THREE.Line(arcGeo, arcMat); arcLine.frustumCulled = false; arcLine.visible = false; scene.add(arcLine);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0x7ee7ff, transparent: true, opacity: .9, toneMapped: false, side: THREE.DoubleSide, depthWrite: false });
+const ring = new THREE.Group();
+{ const r1 = new THREE.Mesh(new THREE.RingGeometry(.2, .27, 40), ringMat); r1.rotation.x = -Math.PI / 2; ring.add(r1);
+  const r2 = new THREE.Mesh(new THREE.CircleGeometry(.2, 32), new THREE.MeshBasicMaterial({ color: 0x7ee7ff, transparent: true, opacity: .16, toneMapped: false, side: THREE.DoubleSide, depthWrite: false })); r2.rotation.x = -Math.PI / 2; ring.add(r2);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(.06, .16, 16), ringMat); cone.position.y = .45; cone.rotation.x = Math.PI; ring.add(cone); }
+ring.visible = false; ring.traverse(o => o.frustumCulled = false); scene.add(ring);
+const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _p = new THREE.Vector3(), _q = new THREE.Quaternion();
+function worldRay(c) { c.updateMatrixWorld(true); _o.setFromMatrixPosition(c.matrixWorld); _d.set(0, 0, -1).transformDirection(c.matrixWorld); }
+function pathClear(x0, z0, x1, z1) {
+  const L = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(L / .25);
+  for (let i = 1; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; if (Math.hypot(x - x0, z - z0) < .55) continue; if (blocked(x, z)) return false; }
+  return true;
+}
+function updateArc() {
+  worldRay(vr.aimCtrl); const pos = arcGeo.attributes.position.array, V0 = 8.5, G = 9.8, FLOOR = .02;
+  let hit = null, last = ARC_N - 1;
+  for (let i = 0; i < ARC_N; i++) {
+    const t = i * .042; _p.set(_o.x + _d.x * V0 * t, _o.y + _d.y * V0 * t - .5 * G * t * t, _o.z + _d.z * V0 * t);
+    if (!hit && i > 0 && _p.y <= FLOOR) { const py = pos[(i - 1) * 3 + 1], f = (py - FLOOR) / Math.max(1e-4, py - _p.y); hit = new THREE.Vector3(pos[(i - 1) * 3] + (_p.x - pos[(i - 1) * 3]) * f, FLOOR, pos[(i - 1) * 3 + 2] + (_p.z - pos[(i - 1) * 3 + 2]) * f); last = i; }
+    if (hit && i >= last) { pos[i * 3] = hit.x; pos[i * 3 + 1] = hit.y; pos[i * 3 + 2] = hit.z; } else { pos[i * 3] = _p.x; pos[i * 3 + 1] = _p.y; pos[i * 3 + 2] = _p.z; }
+  }
+  arcGeo.attributes.position.needsUpdate = true;
+  const ok = !!hit && !blocked(hit.x, hit.z) && pathClear(head.wx, head.wz, hit.x, hit.z);
+  vr.hit.ok = ok; if (hit) { vr.hit.x = hit.x; vr.hit.z = hit.z; }
+  arcLine.visible = true; ring.visible = !!hit; if (hit) ring.position.set(hit.x, .03, hit.z);
+  const col = ok ? 0x7ee7ff : 0xff6b5e; arcMat.color.setHex(col); ringMat.color.setHex(col); ring.children[1].material.color.setHex(col);
+  ring.children[2].visible = ok;
+}
+function endAim() {
+  if (vr.aiming && vr.hit.ok) teleportTo(vr.hit.x, vr.hit.z);
+  vr.aiming = false; vr.aimCtrl = null; arcLine.visible = false; ring.visible = false;
+}
+function teleportTo(x, z) { headWorld(); rig3.position.x += x - head.wx; rig3.position.z += z - head.wz; headWorld(); vr.blink = 1; }
+
+/* comfort vignette + teleport blink: a clip-space quad, identical in both eyes */
+const vigMat = new THREE.ShaderMaterial({
+  uniforms: { uAmt: { value: 0 }, uBlink: { value: 0 } }, transparent: true, depthTest: false, depthWrite: false,
+  vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = vec4(position.xy, 0., 1.); }`,
+  fragmentShader: `precision mediump float; uniform float uAmt,uBlink; varying vec2 vP;
+void main(){ float r = length(vP); float a = smoothstep(1.02 - .62*uAmt, 1.5 - .45*uAmt, r) * uAmt * .92; gl_FragColor = vec4(0., 0., 0., max(a, uBlink)); }`
+});
+const vigMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), vigMat); vigMesh.frustumCulled = false; vigMesh.renderOrder = 9999; vigMesh.visible = false; scene.add(vigMesh);
+
+/* ---------- wrist menu (canvas texture, clicked with the right controller) ---------- */
+const MENU = { W: 512, H: 400, hover: -1, dirty: true, lastMin: -1, lastTxt: '' };
+MENU.cv = document.createElement('canvas'); MENU.cv.width = MENU.W; MENU.cv.height = MENU.H; MENU.g = MENU.cv.getContext('2d');
+MENU.tex = new THREE.CanvasTexture(MENU.cv); MENU.tex.encoding = THREE.sRGBEncoding; MENU.tex.anisotropy = 4;
+MENU.mesh = new THREE.Mesh(new THREE.PlaneGeometry(.256, .2), new THREE.MeshBasicMaterial({ map: MENU.tex, transparent: true, toneMapped: false, side: THREE.DoubleSide }));
+MENU.mesh.rotation.x = -Math.PI / 2 + .42; MENU.mesh.position.set(0, .085, -.015); MENU.mesh.visible = false; MENU.mesh.frustumCulled = false;
+const PRESETS = [['Sunrise', 7.6], ['Midday', 13], ['Golden', 17.6], ['Blue hour', 18.58], ['Night', 22.3], ['Deep night', 3.2]];
+function gotoTime(to) { const from = state.h; let d = to - from; if (d > 12) d -= 24; if (d < -12) d += 24; tween = { from, d, t: 0, dur: clamp(Math.abs(d) * .22, .8, 3.2) }; MENU.dirty = true; }
+function toggleLights() { state.lights = !state.lights; applyTime(state.h); MENU.dirty = true; }
+function toggleClock() { state.play = !state.play; MENU.dirty = true; }
+function toggleSound() { audio.start(); audio.toggle(); MENU.dirty = true; }
+function cycleQuality() { const ks = Object.keys(VRQ); vr.q = ks[(ks.indexOf(vr.q) + 1) % ks.length]; applyVRQuality(vr.q); MENU.dirty = true; }
+function toggleSeat() { vr.seated = !vr.seated; vr.seatY = vr.seated ? .4 : 0; MENU.dirty = true; }
+MENU.items = [];
+PRESETS.forEach((p, i) => MENU.items.push({ x: 19 + (i % 3) * 162, y: 88 + Math.floor(i / 3) * 62, w: 150, h: 52, label: () => p[0], on: () => Math.abs(((state.h - p[1] + 36) % 24) - 12) < .5, act: () => gotoTime(p[1]) }));
+[['Lights', () => state.lights, toggleLights], ['Clock', () => state.play, toggleClock], ['Sound', () => audio.on, toggleSound]].forEach((b, i) => MENU.items.push({ x: 19 + i * 162, y: 222, w: 150, h: 52, label: () => b[0], on: b[1], act: b[2] }));
+MENU.items.push({ x: 19, y: 286, w: 214, h: 52, label: () => 'Quality: ' + VRQ[vr.q].label, on: () => false, act: cycleQuality });
+MENU.items.push({ x: 243, y: 286, w: 140, h: 52, label: () => vr.seated ? 'Seated' : 'Standing', on: () => vr.seated, act: toggleSeat });
+MENU.items.push({ x: 393, y: 286, w: 100, h: 52, label: () => 'Exit VR', on: () => false, act: () => { if (vr.session) vr.session.end(); } });
+function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function drawMenu() {
+  const g = MENU.g, W = MENU.W, H = MENU.H; g.clearRect(0, 0, W, H);
+  rrect(g, 2, 2, W - 4, H - 4, 26); g.fillStyle = 'rgba(12,14,20,.93)'; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(255,184,102,.55)'; g.stroke();
+  g.textBaseline = 'alphabetic';
+  const hh = Math.floor(state.h), mm = Math.floor((state.h % 1) * 60);
+  g.fillStyle = '#f4efe6'; g.font = '500 54px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 24, 66);
+  g.fillStyle = '#b9b2a6'; g.font = '400 22px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'right'; g.fillText($('phase').textContent.toUpperCase(), W - 24, 60);
+  g.textAlign = 'center'; g.font = '500 23px "IBM Plex Mono", ui-monospace, monospace';
+  MENU.items.forEach((it, i) => {
+    const on = it.on(), hov = MENU.hover === i;
+    rrect(g, it.x, it.y, it.w, it.h, 26); g.fillStyle = on ? '#ffb866' : hov ? 'rgba(255,255,255,.26)' : 'rgba(255,255,255,.1)'; g.fill();
+    if (hov) { g.lineWidth = 3; g.strokeStyle = '#7ee7ff'; g.stroke(); }
+    g.fillStyle = on ? '#1a1208' : '#f4efe6'; g.fillText(it.label(), it.x + it.w / 2, it.y + it.h / 2 + 8);
+  });
+  g.fillStyle = '#8f897f'; g.font = '400 17px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'center';
+  g.fillText('L stick walk  ·  R stick turn  ·  push R stick forward = teleport', W / 2, 366); g.fillText('A next time  ·  B lights  ·  X clock  ·  Y sound', W / 2, 388);
+  MENU.tex.needsUpdate = true; MENU.dirty = false;
+}
+let menuParent = null;
+function attachMenu() {
+  const li = side[0]; if (li == null) return; const gp = grip[li];
+  if (menuParent !== gp) { gp.add(MENU.mesh); menuParent = gp; }
+}
+const _mp = new THREE.Vector3(), _mn = new THREE.Vector3(), _inv = new THREE.Matrix4(), _lo = new THREE.Vector3(), _ld = new THREE.Vector3();
+function updateMenu(frame) {
+  const m = MENU.mesh; if (!menuParent) return;
+  m.updateWorldMatrix(true, false);
+  m.getWorldPosition(_mp); _mn.set(0, 0, 1).transformDirection(m.matrixWorld);
+  const hx = head.wx, hy = rig3.position.y + head.ly, hz = head.wz;
+  const toHead = new THREE.Vector3(hx - _mp.x, hy - _mp.y, hz - _mp.z), dist = toHead.length(); toHead.divideScalar(dist || 1);
+  const vis = dist < .8 && _mn.dot(toHead) > .3 && !ctrl[side[0] ?? 0].userData.hand;
+  m.visible = vis;
+  let hover = -1;
+  const r = side[1] != null ? ctrl[side[1]] : null;
+  if (vis && r && !r.userData.hand) {
+    worldRay(r); _inv.copy(m.matrixWorld).invert(); _lo.copy(_o).applyMatrix4(_inv); _ld.copy(_d).transformDirection(_inv);
+    if (_ld.z < -.01 && _lo.z > 0) {
+      const t = -_lo.z / _ld.z, lx = _lo.x + _ld.x * t, ly = _lo.y + _ld.y * t;
+      if (t < 1.4 && Math.abs(lx) < .14 && Math.abs(ly) < .11) {
+        const u = (lx / .256 + .5) * MENU.W, v = (.5 - ly / .2) * MENU.H;
+        for (let i = 0; i < MENU.items.length; i++) { const it = MENU.items[i]; if (u >= it.x && u <= it.x + it.w && v >= it.y && v <= it.y + it.h) { hover = i; break; } }
+        MENU.laser = t; _p.copy(_o).addScaledVector(_d, t); MENU.hit = _p.clone();
+      }
+    }
+  }
+  if (hover !== MENU.hover) { MENU.hover = hover; MENU.dirty = true; }
+  const mk = Math.floor(state.h * 60), txt = $('phase').textContent;
+  if (mk !== MENU.lastMin || txt !== MENU.lastTxt) { MENU.lastMin = mk; MENU.lastTxt = txt; MENU.dirty = true; }
+  if (MENU.dirty && vis) drawMenu();
+  laser.visible = hover >= 0 && vis;
+  if (laser.visible) { const p = laserGeo.attributes.position.array; p[0] = _o.x; p[1] = _o.y; p[2] = _o.z; p[3] = MENU.hit.x; p[4] = MENU.hit.y; p[5] = MENU.hit.z; laserGeo.attributes.position.needsUpdate = true; }
+  return hover;
+}
+const laserGeo = new THREE.BufferGeometry(); laserGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+const laser = new THREE.Line(laserGeo, new THREE.LineBasicMaterial({ color: 0x7ee7ff, transparent: true, opacity: .85, toneMapped: false })); laser.frustumCulled = false; laser.visible = false; scene.add(laser);
+
+/* ---------- head pose + locomotion ---------- */
+const head = { lx: 0, ly: 1.6, lz: 0, lyaw: 0, wx: 0, wz: 0, fwd: new THREE.Vector3(0, 0, -1), ok: false };
+function readHead(frame) {
+  const ref = renderer.xr.getReferenceSpace(), pose = frame && ref ? frame.getViewerPose(ref) : null; if (!pose) return;
+  const p = pose.transform.position, o = pose.transform.orientation;
+  head.lx = p.x; head.ly = p.y; head.lz = p.z; _q.set(o.x, o.y, o.z, o.w);
+  head.fwd.set(0, 0, -1).applyQuaternion(_q); head.lyaw = Math.atan2(-head.fwd.x, -head.fwd.z); head.ok = true;
+}
+function headWorld() {
+  const c = Math.cos(rig3.rotation.y), s = Math.sin(rig3.rotation.y);
+  head.wx = rig3.position.x + c * head.lx + s * head.lz; head.wz = rig3.position.z - s * head.lx + c * head.lz;
+}
+function turnAboutHead(a) { headWorld(); const ox = head.wx, oz = head.wz; rig3.rotation.y += a; headWorld(); rig3.position.x += ox - head.wx; rig3.position.z += oz - head.wz; headWorld(); }
+function pollInputs(session) {
+  const old = vr.in; vr.prev = { l: old.l ? old.l.b : [], r: old.r ? old.r.b : [] }; vr.in = { l: null, r: null };
+  for (const src of session.inputSources) {
+    const gp = src.gamepad; if (!gp || (src.handedness !== 'left' && src.handedness !== 'right')) continue;
+    const a = gp.axes, k = src.handedness === 'left' ? 'l' : 'r';
+    vr.in[k] = { x: a.length >= 4 ? a[2] : (a[0] || 0), y: a.length >= 4 ? a[3] : (a[1] || 0), b: gp.buttons.map(b => b.pressed) };
+  }
+}
+const edge = (k, i) => !!(vr.in[k] && vr.in[k].b[i] && !(vr.prev[k] && vr.prev[k][i]));
+const PRESET_ORDER = PRESETS.map(p => p[1]); let presetIdx = 3;
+function vrUpdate(dt, frame, T) {
+  const session = renderer.xr.getSession(); if (!session) return;
+  readHead(frame); headWorld(); pollInputs(session);
+  const L = vr.in.l, R = vr.in.r;
+  // --- buttons: A next time, B lights, X clock, Y sound (trigger clicks the wrist menu)
+  if (edge('r', 4)) { presetIdx = (presetIdx + 1) % PRESET_ORDER.length; gotoTime(PRESET_ORDER[presetIdx]); }
+  if (edge('r', 5)) toggleLights();
+  if (edge('l', 4)) toggleClock();
+  if (edge('l', 5)) toggleSound();
+  // --- smooth locomotion (left stick), relative to where the head faces
+  let mx = 0, mz = 0, moving = 0;
+  if (L && !vr.aiming) {
+    const dead = .2, mag = Math.hypot(L.x, L.y);
+    if (mag > dead) {
+      const k = (mag - dead) / (1 - dead) / mag, sp = (L.b[3] ? 4.0 : 2.1), yaw = rig3.rotation.y + head.lyaw, f = -L.y * k, sx = L.x * k;
+      mx = (-Math.sin(yaw) * f + Math.cos(yaw) * sx) * sp; mz = (-Math.cos(yaw) * f - Math.sin(yaw) * sx) * sp; moving = Math.min(1, mag);
+    }
+  }
+  const kk = 1 - Math.exp(-12 * dt); vr.vel.x += (mx - vr.vel.x) * kk; vr.vel.z += (mz - vr.vel.z) * kk;
+  const dx = vr.vel.x * dt, dz = vr.vel.z * dt;
+  if (Math.abs(dx) + Math.abs(dz) > 1e-6) {
+    if (!blocked(head.wx + dx, head.wz)) rig3.position.x += dx; else vr.vel.x = 0;
+    headWorld();
+    if (!blocked(head.wx, head.wz + dz)) rig3.position.z += dz; else vr.vel.z = 0;
+    headWorld();
+  }
+  vr.speed = Math.hypot(vr.vel.x, vr.vel.z);
+  // --- snap turn + teleport aim (right stick)
+  if (R) {
+    if (!vr.aiming && R.y < -.7 && Math.abs(R.x) < .6) { vr.aiming = true; vr.aimCtrl = ctrl[side[1] != null ? side[1] : 1]; }
+    else if (vr.aiming && vr.aimCtrl && !vr.aimCtrl.userData.hand && R.y > -.3) endAim();
+    if (!vr.aiming) {
+      if (Math.abs(R.x) > .7 && vr.snapReady) { turnAboutHead(-Math.sign(R.x) * 30 * DEG); vr.snapReady = false; vr.blink = Math.max(vr.blink, .35); }
+      if (Math.abs(R.x) < .3) vr.snapReady = true;
+    }
+  }
+  // --- seated height + keep the rig at floor level (local-floor reference space)
+  rig3.position.y += (vr.seatY - rig3.position.y) * (1 - Math.exp(-6 * dt));
+  rig3.updateMatrixWorld(true);
+  if (vr.aiming && vr.aimCtrl) updateArc();
+  const hover = updateMenu(frame);
+  if (hover >= 0 && edge('r', 0)) MENU.items[hover].act();
+  updateHandMeshes();
+  // --- comfort vignette follows speed; blink fades out
+  const tv = Math.min(1, vr.speed / 1.8) * .8; vr.vig += (tv - vr.vig) * (1 - Math.exp(-7 * dt)); vr.blink = Math.max(0, vr.blink - dt * 5);
+  vigMat.uniforms.uAmt.value = vr.vig; vigMat.uniforms.uBlink.value = vr.blink; vigMesh.visible = vr.vig > .01 || vr.blink > .01;
+  // --- keep the player state in sync (so leaving VR drops you where you were) + sky/audio/glow scale
+  player.pos.set(head.wx, 1.65, head.wz); player.yaw = rig3.rotation.y + head.lyaw; player.pitch = 0;
+  sky.position.set(head.wx, 1.65, head.wz);
+  const hy = rig3.position.y + head.ly, c = Math.cos(rig3.rotation.y), s = Math.sin(rig3.rotation.y);
+  audio.update(head.wx, hy, head.wz, c * head.fwd.x + s * head.fwd.z, head.fwd.y, -s * head.fwd.x + c * head.fwd.z, T);
+  for (const p of [sPts, cPts, mPts]) p.mat.uniforms.uPx.value = vr.px || 900;
+}
+vrHook.update = vrUpdate;
+vrHook.after = function () {
+  // per-eye pixel scale for the glow sprites, from the actual XR projection
+  const xc = renderer.xr.getCamera(camera), c0 = xc.cameras && xc.cameras[0];
+  const sess = renderer.xr.getSession(), bl = sess && sess.renderState && sess.renderState.baseLayer;
+  if (c0 && bl) vr.px = (bl.framebufferHeight / 2) * c0.projectionMatrix.elements[5];
+};
+vrHook.hideForEnv = function () {
+  const list = [ctrl[0], ctrl[1], grip[0], grip[1], hands[0], hands[1], arcLine, ring, vigMesh, laser], was = list.map(o => o.visible);
+  list.forEach(o => o.visible = false); return [() => list.forEach((o, i) => o.visible = was[i])];
+};
+
+/* ---------- quality presets ---------- */
+function setFoveation(f) {   // r128 has no renderer.xr.setFoveation; the layer attribute is what the Quest browser honours
+  if (typeof renderer.xr.setFoveation === 'function') { renderer.xr.setFoveation(f); return; }
+  const bl = vr.session && vr.session.renderState && vr.session.renderState.baseLayer; if (bl && 'fixedFoveation' in bl) bl.fixedFoveation = f;
+}
+function allMats(fn) { scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(fn); }); }
+function applyVRQuality(q) {
+  const Q = VRQ[q]; vr.q = q; try { localStorage.setItem('penthouseVRQ', q); } catch (e) { }
+  carMesh.count = Q.cars; cPts.geo.setDrawRange(0, Q.cars * 2);
+  for (const nm of Object.keys(rig)) rig[nm].l.visible = Q.lights.includes(nm);
+  renderer.shadowMap.enabled = !!Q.shadow; state.perf = !Q.shadow;
+  if (Q.shadow && sunLight.shadow.mapSize.x !== Q.shadow) { sunLight.shadow.mapSize.set(Q.shadow, Q.shadow); if (sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; } }
+  U.uLite.value = Q.lite;
+  setFoveation(Q.fov);
+  allMats(m => m.needsUpdate = true);
+  applyTime(state.h); refreshQButtons();
+}
+
+/* ---------- session start / end ---------- */
+renderer.xr.addEventListener('sessionstart', () => {
+  vr.session = renderer.xr.getSession();
+  vrHook.active = true; vrHook.exposure = 1.3;
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  stopTour(); state.play = false; setPressed('bPlay', false);
+  rig3.position.set(player.pos.x, 0, player.pos.z); rig3.rotation.set(0, player.yaw, 0); vr.vel.set(0, 0, 0);
+  vr.seatY = vr.seated ? .4 : 0; vr.aiming = false; vr.blink = 1; MENU.dirty = true; attachMenu();
+  applyVRQuality(vr.q);
+  state.envAt = T;                             // do not rebuild reflections straight away
+  vr.px = 900;
+});
+renderer.xr.addEventListener('sessionend', () => {
+  vr.session = null; vrHook.active = false;
+  renderer.outputEncoding = hdrOK ? THREE.LinearEncoding : THREE.sRGBEncoding; renderer.toneMapping = hdrOK ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+  carMesh.count = NCARS; cPts.geo.setDrawRange(0, NCARS * 2);
+  for (const nm of Object.keys(rig)) rig[nm].l.visible = true;
+  renderer.shadowMap.enabled = true; state.perf = false; U.uLite.value = 0;
+  if (sunLight.shadow.mapSize.x !== 2048) { sunLight.shadow.mapSize.set(2048, 2048); if (sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; } }
+  rig3.position.set(0, 0, 0); rig3.rotation.set(0, 0, 0); vigMesh.visible = false; arcLine.visible = ring.visible = laser.visible = false; MENU.mesh.visible = false;
+  camera.position.copy(player.pos); camera.rotation.set(0, player.yaw, 0);
+  allMats(m => m.needsUpdate = true);
+  applyTime(state.h); resize();
+});
+
+window.__dbg = Object.assign(window.__dbg || {}, { vr, rig: rig3, head, MENU, ctrl, hands, applyVRQuality, teleportTo, vigMat });
+
+})();
+</script>
+</body></html>

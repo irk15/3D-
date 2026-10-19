@@ -1,0 +1,989 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cahier Section B</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: the teacher's exercise notebook. One ruled page, content on loose sheets,
+   the formula in the teacher's replies underlined in coloured pen. Dark mode is the chalkboard. */
+:root{
+  --paper:#F4F6FB; --sheet:#FFFFFF; --ink:#14203A; --ink2:#46536F; --ink3:#7C879D; --line:#D8DDEA;
+  --pen:#2336C6; --on-pen:#FFFFFF; --pen-soft:#E4E8FB;
+  --red:#C0243A; --red-soft:#FDEBEE;
+  --ok:#14804F; --ok-soft:#E1F3EA; --amber:#8F5F00; --amber-soft:#FFF1D0; --violet:#6B3FBF; --violet-soft:#EEE7FA;
+  --grid:rgba(70,60,190,.09); --grid2:rgba(70,60,190,.17); --margin:rgba(192,36,58,.5);
+  --shadow:0 1px 0 rgba(20,32,58,.05),0 10px 24px -14px rgba(20,32,58,.35);
+  --font-display:"Gloock","Iowan Old Style",Georgia,serif;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10201C; --sheet:#183029; --ink:#EDF3EA; --ink2:#B9C9BF; --ink3:#8A9D92; --line:#2C4439;
+    --pen:#93B6FF; --on-pen:#0C1A33; --pen-soft:#223A63;
+    --red:#FF8C93; --red-soft:#3B2528;
+    --ok:#72D8A6; --ok-soft:#1B3E30; --amber:#F2C45A; --amber-soft:#3A3115; --violet:#C4A8FF; --violet-soft:#33284F;
+    --grid:rgba(237,243,234,.045); --grid2:rgba(237,243,234,.09); --margin:rgba(255,140,147,.4);
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 10px 24px -14px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10201C; --sheet:#183029; --ink:#EDF3EA; --ink2:#B9C9BF; --ink3:#8A9D92; --line:#2C4439;
+  --pen:#93B6FF; --on-pen:#0C1A33; --pen-soft:#223A63;
+  --red:#FF8C93; --red-soft:#3B2528;
+  --ok:#72D8A6; --ok-soft:#1B3E30; --amber:#F2C45A; --amber-soft:#3A3115; --violet:#C4A8FF; --violet-soft:#33284F;
+  --grid:rgba(237,243,234,.045); --grid2:rgba(237,243,234,.09); --margin:rgba(255,140,147,.4);
+  --shadow:0 1px 0 rgba(0,0,0,.2),0 10px 24px -14px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  font-family:var(--font-body); font-size:16px; line-height:1.6; color:var(--ink);
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid2) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid2) 1px,transparent 1px),
+    linear-gradient(var(--grid) 1px,transparent 1px);
+  background-size:32px 32px,32px 32px,8px 8px;
+  padding-block:22px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.page{max-width:900px;margin:0 auto;position:relative}
+@media (min-width:1020px){ .page::before{content:"";position:absolute;top:-22px;bottom:-56px;left:-26px;width:2px;background:var(--margin)} }
+h1,h2,h3,h4,p{margin:0}
+:focus-visible{outline:3px solid var(--pen);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.tiny{font-size:11px}
+.muted{color:var(--ink2)}
+.red{color:var(--red)}
+.small{font-size:14px}
+.ic{display:inline-flex;vertical-align:-3px}
+
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:12px}
+.brand{font-family:var(--font-display);font-size:32px;line-height:1}
+.brand small{display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);margin-top:8px}
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:2px solid var(--line);margin-bottom:24px}
+.tab{appearance:none;background:none;border:0;padding:10px 14px;font:inherit;font-weight:700;color:var(--ink2);cursor:pointer;border-bottom:4px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--pen)}
+
+.btn{font:inherit;font-weight:700;border-radius:6px;padding:8px 14px;border:1.5px solid var(--ink);background:var(--sheet);color:var(--ink);cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center;min-height:42px}
+.btn.primary{background:var(--pen);border-color:var(--pen);color:var(--on-pen)}
+.btn.ghost{border-color:var(--line)}
+.btn.sm{padding:4px 10px;min-height:34px;font-size:14px}
+.btn[aria-pressed="true"]{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg-wrap{display:flex;flex-direction:column;gap:6px;min-width:0}
+.seg-wrap .lbl{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:6px;overflow:hidden;align-self:flex-start;max-width:100%}
+.seg-b{font:inherit;font-weight:700;padding:7px 12px;border:0;background:var(--sheet);color:var(--ink2);cursor:pointer;min-height:38px}
+.seg-b+.seg-b{border-left:1.5px solid var(--ink)}
+.seg-b.on{background:var(--ink);color:var(--paper)}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:20px;min-width:0}
+.input{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--ink3);border-radius:6px;background:var(--sheet);color:var(--ink)}
+.h2{font-family:var(--font-display);font-weight:400;font-size:30px;line-height:1.1;margin-bottom:12px}
+.h3{font-family:var(--font-display);font-weight:400;font-size:22px;line-height:1.15;margin-bottom:8px}
+.lede{max-width:62ch;color:var(--ink2);font-size:17px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.stack-s{display:flex;flex-direction:column;gap:10px}
+
+.hero h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,7vw,56px);line-height:1.04;text-wrap:balance;margin-bottom:12px}
+.hero h1 .ul{text-decoration:underline wavy var(--red) 2px;text-underline-offset:8px}
+.counts{display:flex;gap:6px 18px;flex-wrap:wrap;margin:16px 0 4px;color:var(--ink2)}
+.counts b{color:var(--ink);font-weight:500}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;align-items:start;counter-increment:s}
+.steps li::before{content:counter(s);font-family:var(--font-display);font-size:24px;line-height:1;color:var(--pen);text-align:center}
+.steps strong{display:block}
+.ex{font-style:italic;color:var(--ink2)}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+mark{background:none;color:inherit;padding:0 1px;border-radius:2px;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.k-understand{text-decoration-color:var(--pen);background:var(--pen-soft)}
+.k-reassure{text-decoration-color:var(--ok);background:var(--ok-soft)}
+.k-deny{text-decoration-color:var(--red);background:var(--red-soft)}
+.k-proof{text-decoration-color:var(--amber);background:var(--amber-soft)}
+.k-close{text-decoration-color:var(--violet);background:var(--violet-soft)}
+.nohl mark{background:none;text-decoration:none}
+.chip{font:12px var(--font-mono);padding:3px 10px;border:1.5px solid var(--line);border-radius:999px;color:var(--ink);background:var(--sheet);display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+button.chip{cursor:pointer}
+button.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.badge{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:2px 9px;border:1.5px solid currentColor;white-space:nowrap}
+.b-notes{color:var(--ok)} .b-part{color:var(--amber)} .b-draft{color:var(--violet)}
+
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tools{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.tools .grow{flex:1 1 220px;min-width:0}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:10px}
+.topic{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--sheet);text-align:left;font:inherit;color:var(--ink);min-width:0}
+button.topic{cursor:pointer}
+button.topic:hover{border-color:var(--pen)}
+.topic .n{font-family:var(--font-display);font-size:22px;color:var(--pen);line-height:1}
+.topic .fr{font-weight:700}
+.catblock{margin-bottom:34px}
+.catblock>.h2{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.catblock>.h2 small{font-family:var(--font-body);font-size:15px;color:var(--ink2)}
+.sub{font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);margin:22px 0 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.arg{padding:10px 0;border-bottom:1px dashed var(--line);display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.arg:last-child{border-bottom:0}
+.arg .tx{min-width:0;flex:1}
+.arg .hd{font-weight:700;margin-bottom:2px}
+.draftbox{border:1.5px dashed var(--violet);border-radius:8px;padding:16px;background:var(--sheet);display:flex;flex-direction:column;gap:10px;min-width:0}
+.draftbox+.draftbox{margin-top:12px}
+.scen{padding:0;overflow:hidden}
+.scen+.scen{margin-top:12px}
+.scen>summary{cursor:pointer;padding:14px 18px;display:flex;flex-direction:column;gap:2px;list-style:none}
+.scen>summary::-webkit-details-marker{display:none}
+.scen>summary .st{font-family:var(--font-display);font-size:21px;line-height:1.15}
+.scen>summary::after{content:"Open";position:absolute}
+.scen[open]>summary{border-bottom:1px solid var(--line);background:var(--paper)}
+.scen .body{padding:6px 18px 18px}
+.scen>summary{position:relative;padding-right:70px}
+.scen>summary::after{content:"+";right:18px;top:12px;font-family:var(--font-display);font-size:26px;color:var(--pen)}
+.scen[open]>summary::after{content:"\2212"}
+.ctx{font-size:14px;color:var(--ink2);font-style:italic;margin:12px 0 0}
+.obj{padding:14px 0;border-bottom:1px dashed var(--line);display:flex;flex-direction:column;gap:10px}
+.obj:last-child{border-bottom:0}
+.obj-q p.fr{font-weight:700}
+.obj-q p.en{font-size:14px;color:var(--ink2)}
+.obj-r p{white-space:pre-wrap}
+.none{font-size:14px;color:var(--ink2);border:1.5px dashed var(--ink3);border-radius:6px;padding:8px 12px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tagrow{display:flex;gap:6px;flex-wrap:wrap}
+.pcard{padding:24px}
+.pq{font-family:var(--font-display);font-size:clamp(22px,4.5vw,30px);line-height:1.25;margin:6px 0}
+.pbar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--ok)}
+.idioms{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px}
+.idiom h3{font-family:var(--font-display);font-weight:400;font-size:23px;line-height:1.15;margin-bottom:4px}
+.lines{display:flex;flex-direction:column}
+.line{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--line)}
+.line:last-child{border-bottom:0}
+.line .en{font-size:14px;color:var(--ink2)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:16px}
+.empty{border:1.5px dashed var(--ink3);border-radius:8px;padding:18px;color:var(--ink2)}
+details.notes summary{cursor:pointer;font-weight:700;color:var(--pen)}
+details.notes ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:reduce){ *{scroll-behavior:auto!important} }
+</style>
+<div class="page" id="app"></div>
+<script>
+(function(){
+'use strict';
+
+/* ---------- helpers ---------- */
+function h(tag, props){
+  var el=document.createElement(tag);
+  if(props){ for(var k in props){ var v=props[k]; if(v==null||v===false) continue;
+    if(k==='class') el.className=v;
+    else if(k==='on'){ for(var ev in v) el.addEventListener(ev,v[ev]); }
+    else if(k==='value') el.value=v;
+    else if(v===true) el.setAttribute(k,'');
+    else el.setAttribute(k,v);
+  } }
+  var add=function(c){ if(c==null||c===false) return; if(Array.isArray(c)) c.forEach(add); else if(c instanceof Node) el.appendChild(c); else el.appendChild(document.createTextNode(String(c))); };
+  for(var i=2;i<arguments.length;i++) add(arguments[i]);
+  return el;
+}
+function put(el){ for(var i=1;i<arguments.length;i++){ var c=arguments[i]; if(c==null||c===false) continue; el.append(c); } }
+var SPEAK_SVG='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+function speakIcon(){ var s=document.createElement('span'); s.className='ic'; s.innerHTML=SPEAK_SVG; return s; }
+function stripAcc(s){ return String(s||'').toLowerCase().replace(/[’‘`]/g,"'").normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+function shuffled(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+var O=function(o,en,r,extra){ var x={o:o,en:en,r:r}; if(extra) for(var k in extra) x[k]=extra[k]; return x; };
+
+/* ---------- content: the teacher's Section B notes, sorted ---------- */
+var TOPICS={
+ 1:{fr:"Les avantages de trier les déchets régulièrement",en:"The benefits of sorting waste regularly"},
+ 2:{fr:"L'importance des personnes âgées dans notre vie",en:"The importance of elderly people in our lives"},
+ 3:{fr:"L'importance d'être multilingue",en:"The importance of being multilingual"},
+ 4:{fr:"Pourquoi faut-il pratiquer le sport régulièrement ?",en:"Why should we exercise regularly?"},
+ 5:{fr:"Les avantages de voyager dans la pleine nature",en:"The benefits of travelling in the wild"},
+ 6:{fr:"Les avantages de l'installation de panneaux solaires à la maison",en:"The benefits of installing solar panels at home"},
+ 7:{fr:"Les avantages de l'installation d'éoliennes à la maison",en:"The benefits of installing wind turbines at home"},
+ 8:{fr:"Les avantages de pratiquer le covoiturage",en:"The benefits of carpooling"},
+ 9:{fr:"Quels sont les bénéfices du télétravail ?",en:"What are the benefits of working from home?"},
+ 10:{fr:"Pourquoi faut-il recycler ?",en:"Why should we recycle?"},
+ 11:{fr:"Pourquoi doit-on organiser des événements sociaux et culturels ?",en:"Why should we organise social and cultural events?"},
+ 12:{fr:"Pour quelles raisons faut-il participer au nettoyage des plages ?",en:"Why take part in beach clean-ups?"},
+ 13:{fr:"L'importance d'avoir un animal de compagnie à la maison",en:"The importance of having a pet at home"},
+ 14:{fr:"Pourquoi faut-il protéger le patrimoine mondial ?",en:"Why should we protect world heritage?"},
+ 15:{fr:"L'importance des voitures électriques",en:"The importance of electric cars"},
+ 16:{fr:"L'importance de faire du yoga",en:"The importance of doing yoga"},
+ 17:{fr:"Pourquoi faut-il participer aux sports d'aventure ?",en:"Why take part in adventure sports?"},
+ 18:{fr:"Pourquoi participer à un marathon ?",en:"Why take part in a marathon?"},
+ 19:{fr:"La nécessité de faire du bénévolat",en:"The need to volunteer"},
+ 20:{fr:"Pourquoi louer une voiture au lieu de l'acheter ?",en:"Why rent a car instead of buying one?"},
+ 21:{fr:"L'importance de sortir avec des amis",en:"The importance of going out with friends"}
+};
+var COV={1:'notes',3:'notes',4:'notes',5:'notes',11:'notes',12:'notes',13:'notes',17:'notes',19:'notes',2:'part',10:'part',21:'part',6:'draft',7:'draft',8:'draft',9:'draft',14:'draft',15:'draft',16:'draft',18:'draft',20:'draft'};
+var COVLABEL={notes:'In your notes',part:'Partly in notes + draft',draft:'Draft only'};
+
+var INTRO=[
+ "Ce programme / cette activité est crucial(e) pour…",
+ "C'est une opportunité unique qui va sûrement t'aider à…",
+ "C'est l'occasion idéale pour…",
+ "C'est une activité incroyable qui va te permettre de te détendre…",
+ "Ça permet de…",
+ "C'est excellent pour…",
+ "C'est le projet idéal qui facilite / contribue à…",
+ "Il va t'autoriser à…",
+ "Cette association va te donner la possibilité de…",
+ "Grâce à cette initiative…"
+];
+var KIT=[
+ {t:"To argue and reassure (with the teacher's English)",lines:[
+  ["Ne t'inquiète pas.","Don't worry."],
+  ["Je ne pense pas que tu aies raison.","I don't think you're right."],
+  ["Je ne pense pas que tout soit vrai.","I don't think everything is true."],
+  ["Je te connais depuis ton enfance. Tu vois toujours les mauvais côtés ; il faut que tu voies le verre à moitié plein.","I've known you since childhood. You always see the bad side; you have to see the glass half full."],
+  ["Avec ce type de programme, tu auras l'occasion de…","With this type of programme you'll have the chance to…"],
+  ["Ça vaut la peine.","It's worth it."],
+  ["Il faut quand même essayer.","You should try it anyway."],
+  ["Tu pourrais penser que ce genre d'activité n'est pas forcément pour toi. Mais laisse-moi t'expliquer…","You might think this kind of activity isn't necessarily for you. But let me explain…"],
+  ["C'est une occasion unique.","It's a unique opportunity."]
+ ]},
+ {t:"To express enthusiasm and opportunity",lines:[
+  ["C'est une chance à ne pas manquer.","It's a chance not to be missed."],
+  ["C'est une opportunité exceptionnelle.","It's an exceptional opportunity."],
+  ["On ne vit ça qu'une fois dans sa vie.","You only live this once."],
+  ["C'est vraiment le moment idéal.","It's really the ideal time."]
+ ]},
+ {t:"To highlight benefits",lines:[
+  ["Cela présente de nombreux avantages.","It has many advantages."],
+  ["Tu vas en tirer beaucoup de bénéfices.","You'll get a lot out of it."],
+  ["C'est la solution parfaite pour toi.","It's the perfect solution for you."],
+  ["Franchement, tu ne le regretteras pas.","Honestly, you won't regret it."]
+ ]},
+ {t:"To create urgency",lines:[
+  ["Il faut en profiter tant que c'est possible.","You have to take advantage of it while you can."],
+  ["C'est maintenant ou jamais.","It's now or never."],
+  ["Si tu attends, tu risques de le manquer.","If you wait, you risk missing it."]
+ ]},
+ {t:"To reassure",lines:[
+  ["Il n'y a aucun risque.","There is no risk."],
+  ["Tout est parfaitement organisé.","Everything is perfectly organised."],
+  ["Tu peux avoir confiance.","You can trust it."]
+ ]}
+];
+var SORTING=[
+ "C'est une opportunité unique qui va sûrement t'aider à la préservation des ressources naturelles, à la réduction de la pollution et à l'essor d'une économie circulaire, créatrice d'emplois.",
+ "Grâce à cette initiative, nous favorisons le recyclage et la réutilisation.",
+ "Le tri des déchets est un outil majeur contre la pollution.",
+ "Cette activité est cruciale pour réduire la quantité de déchets incinérés, ce qui diminue les émissions de polluants nocifs dans l'air.",
+ "Le tri des déchets est crucial dans la lutte contre le changement climatique.",
+ "Nos gestes quotidiens en matière de tri des déchets ont donc un impact direct sur la protection de la biodiversité."
+];
+var IDIOMS=[
+ {fr:"Avoir du pain sur la planche",en:"To have a lot of work to do",use:"Je sais que tu as du pain sur la planche, mais cette activité va te permettre de te détendre."},
+ {fr:"Coûter les yeux de la tête",en:"To be extremely expensive",use:"Ne t'inquiète pas, ce service ne coûte pas les yeux de la tête."},
+ {fr:"Tomber dans les pommes",en:"To faint, or to be shocked. The teacher uses it for a shockingly low price.",use:"Le prix est si bas que tu vas tomber dans les pommes."},
+ {fr:"Se mettre sur son trente-et-un",en:"To dress up for a special event or a night out",use:"On pourrait se mettre sur notre trente-et-un pour cette soirée."},
+ {fr:"Avoir un coup de cœur",en:"To fall in love with something, such as a place or an item",use:"La semaine dernière, un de mes cousins a essayé cette activité et il a eu un vrai coup de cœur pour elle."},
+ {fr:"Faire d'une pierre deux coups",en:"To kill two birds with one stone",use:"Tu verras que cette activité te permettrait de faire d'une pierre deux coups : d'un côté, tu pourrais améliorer ta concentration et, de l'autre, tes chances de sélection augmenteraient."}
+];
+
+/* Universal replies, taken from the notes, that fit almost any ad */
+var UNIV={id:'univ',title:"Universal replies",en:"Replies that work for almost any ad",ctx:"Five objections that come up again and again.",pitch:[],items:[
+ O("Cette activité comporte des risques.","This activity has risks.","Tu t'inquiètes pour rien. Le personnel est formé pour aider et minimiser les risques. Ils suivent toutes les mesures de sécurité. Ils offrent même une petite formation sur place pour rassurer les clients. Au cas où tu te blesserais, ils prennent en charge tous les frais médicaux de leurs clients. Il y a quatre ans, une personne s'est blessée parce qu'elle n'avait pas fait attention aux instructions du guide. Malgré l'erreur du client, l'agence a réglé tous ses frais médicaux."),
+ O("C'est beaucoup trop cher pour mon budget.","It's much too expensive for my budget.","Certes, c'est un investissement au début, mais sache que cela te permettra d'économiser à long terme. Je sais que le budget est serré en ce moment, mais sache qu'on peut payer en plusieurs fois."),
+ O("C'est vraiment fatigant pour moi.","It's really tiring for me.","Sache qu'une activité physique permet en réalité de libérer des endorphines et de recharger tes batteries."),
+ O("Ce n'est pas pour moi ! Je n'ai pas d'expérience.","It's not for me! I have no experience.","Ne t'inquiète pas, c'est justement une activité parfaite pour les débutants ! Tu n'as besoin d'aucune expérience préalable. De plus, il y aura un entraîneur sur place pour tout nous expliquer pas à pas."),
+ O("Je ne suis pas disponible, mon travail m'occupe beaucoup.","I'm not available, work keeps me busy.","Je comprends tout à fait ton point de vue. Cependant, ne t'inquiète pas. Ce programme est conçu pour les personnes comme toi qui ont du pain sur la planche. En fait, c'est complètement en ligne et les horaires sont flexibles. Tu n'auras même pas besoin de te déplacer. Tu peux donc choisir les horaires qui te conviennent. Comme ça, tu auras l'occasion de travailler et de rencontrer des célibataires en ligne à tout moment.",{note:"Written in the notes for an online dating service. Swap the last sentence for your own ad."})
+]};
+
+var CATS=[
+ {id:'env',title:"Environment and recycling",fr:"Environnement et recyclage",topics:[1,6,10,12,14],
+  args:[
+   {h:"Topic 1. Model sentences: sorting waste",list:SORTING},
+   {h:"Topic 12. Beach clean-up and volunteering: the social side",t:"Regarde la photo sur l'affiche : l'ambiance a l'air vraiment chaleureuse et dynamique. Il y a plein de personnes expérimentées. C'est une excellente opportunité pour rencontrer des gens de la région qui partagent les mêmes valeurs écologiques que nous."},
+   {h:"Topic 12. Beach clean-up and volunteering: easy to join",t:"Ne t'inquiète pas pour l'organisation : tout le matériel, comme les gants et les sacs poubelle, semble fourni par l'association. Ça ne va nous prendre qu'une matinée ou quelques heures durant le week-end. Ce n'est pas grand-chose dans notre emploi du temps, mais cela fait une énorme différence pour la nature."}
+  ],sc:[],drafts:[6,10,14]},
+ {id:'transport',title:"Transport and getting around",fr:"Transport et mobilité",topics:[8,15,20],args:[],sc:['velo'],drafts:[8,15,20]},
+ {id:'health',title:"Sport, health and adventure",fr:"Sport, santé et aventure",topics:[4,16,17,18],
+  args:[
+   {h:"Topic 4. Outdoor exercise and mental health (from the Amazon notes)",list:[
+    "L'exercice est bénéfique pour la santé mentale.",
+    "L'exercice en plein air peut augmenter les niveaux de dopamine, de sérotonine et d'autres endorphines naturelles qui favorisent une humeur positive.",
+    "Après avoir fait de l'exercice en extérieur, on peut ressentir une hausse de l'estime de soi.",
+    "Faire de l'exercice à l'extérieur ou dans la nature peut encore améliorer la performance cognitive. C'est important pour lutter contre le burn-out.",
+    "Leur politique en cas de mauvais temps est exceptionnelle : ils remboursent la somme complète en cas d'annulation de l'activité.",
+    "Cela peut avoir un impact positif sur la qualité de notre sommeil.",
+    "La pratique d'activités de plein air pendant la journée peut contribuer à remettre nos horloges internes à l'heure.",
+    "Se déconnecter : cela nous permet de nous déconnecter des facteurs de stress de la vie quotidienne, d'apprécier la beauté de la nature et de pratiquer des activités qui nous apportent de la joie."
+   ]}
+  ],sc:['cheval','plongee'],drafts:[16,18]},
+ {id:'nature',title:"Nature and travel",fr:"Nature et voyages",topics:[5],args:[],sc:['nature','suisse','amazonie'],drafts:[]},
+ {id:'work',title:"Work, money and housing",fr:"Travail, argent et logement",topics:[9],args:[],sc:['domicile','revente','chambre'],drafts:[9]},
+ {id:'learn',title:"Languages and learning",fr:"Langues et apprentissage",topics:[3],args:[],sc:['langue'],drafts:[]},
+ {id:'people',title:"Family, friends and community",fr:"Famille, amis et communauté",topics:[2,11,19,21],args:[],sc:['agee','culture','rencontres'],drafts:[2,21],
+  see:"Topic 19 (volunteering): see the clean-up arguments under Environment and recycling."},
+ {id:'animals',title:"Animals",fr:"Animaux",topics:[13],args:[],sc:['chien'],drafts:[]}
+];
+
+var SC={
+ velo:{id:'velo',title:"Tour en vélo",en:"Bike tour",ctx:"The Section B notes stop after these three arguments. A separate tab in the doc, « Tour en Velo », continues the topic.",
+  pitch:[
+   "Ce programme est utile pour rester en forme. Faire du vélo aide à rester actif. Cela contribue à réduire le stress, la dépression et l'anxiété. C'est la raison pour laquelle tu dois essayer cette activité, pour voyager et prendre soin de ta santé.",
+   "Les vélos ne polluent pas comme les voitures. Ils n'utilisent pas d'essence (petrol) et ils sont bons pour l'atmosphère. Grâce à cette activité, tu n'auras pas à rester coincé dans les embouteillages.",
+   "Économique : en ce moment, le gouvernement offre des réductions aux habitants. Voilà pourquoi c'est le moment idéal pour y participer et profiter de ce prix réduit."
+  ],items:[]},
+ cheval:{id:'cheval',title:"Horse riding",en:"Horse riding (the notes mention horses but never name the activity)",
+  pitch:["La santé : c'est une activité en plein air qui va t'aider à te détendre après de longues journées de travail. C'est mieux pour recharger les batteries, récupérer de l'énergie et réduire le stress."],
+  items:[
+   O("C'est cher.","It's expensive.","Ne t'inquiète pas. Ils offrent de très bons services et fournissent tous les équipements de sécurité. Prendre soin des chevaux coûte cher, c'est pourquoi les tarifs sont élevés."),
+   O("Il fait chaud ces jours-ci.","It's hot these days.","Ce n'est pas un grand problème. J'ai vérifié la météo : il fera beau et frais le mois prochain. Le mois prochain sera le meilleur moment pour y aller et faire cette activité. Ils offrent des boissons énergisantes gratuites pendant les pauses."),
+   O("Je n'ai pas d'expérience, il y a beaucoup de risques.","I have no experience, there are lots of risks.","Je comprends ton point de vue. C'est pour les personnes comme toi, qui sont débutantes. La première semaine, il y aura une formation pour se sentir à l'aise avec le cheval. Mon ami Paul a essayé cette activité pour la première fois l'année dernière. Il a apprécié son guide, qui était calme, drôle et expérimenté. Il a aidé les touristes."),
+   O("Je travaille, je n'ai pas le temps.","I'm working, I have no time.","Je comprends que ce soit difficile maintenant. Le mois prochain, les vacances d'été vont commencer. Nous pouvons prévoir de participer à cette activité. Ce serait une expérience hors du commun."),
+   O("C'est trop loin de chez moi.","It's too far from my home.","Ça vaut le coup (it's worth it). Il faut quand même essayer. La vue est incroyable et je peux t'accompagner. Tu peux te faire des amis et faire du covoiturage (carpooling)."),
+   O("En cas d'accident, il est difficile de trouver l'hôpital.","If there's an accident, the hospital is hard to find.","Ils ont leurs équipes médicales sur place. Il y aura des guides pour t'enseigner sur place.")
+  ]},
+ plongee:{id:'plongee',title:"Scuba diving",en:"Scuba diving course",
+  pitch:[
+   "Tu vas pouvoir apprendre la plongée en seulement un week-end, ce qui va ensuite te permettre de faire une nouvelle activité pendant tes vacances.",
+   "Tu vas pouvoir découvrir un nouvel univers, les fonds marins. C'est vraiment magique, avec les poissons, mais aussi les plantes et même les épaves de bateaux.",
+   "Tu vas peut-être te découvrir une nouvelle passion et, pourquoi pas, en faire plus tard ton métier : enseigner la plongée aux débutants et gagner de l'argent."
+  ],items:[
+   O("Je ne pense pas que ce genre de piscine existe dans ma ville.","I don't think that kind of pool exists in my city.","J'ai une bonne nouvelle pour toi. Il y a une piscine ouverte au centre-ville. Elle s'appelle Deep Spot. Elle est à seulement 20 minutes de chez toi."),
+   O("Faire de la plongée dans une piscine, je pense que c'est trop ennuyeux.","Diving in a pool is too boring.","Je comprends ton point de vue. C'est ennuyeux dans la piscine, cependant, une fois que tu auras appris cette compétence, tu pourras plonger dans les mers ou les océans en autonomie, et c'est magique. Tu auras l'occasion de découvrir un nouvel univers, la vie aquatique."),
+   O("Je ne vois pas l'utilité d'avoir un certificat de plongée.","I don't see the point of a diving certificate.","Ce n'est pas juste pour obtenir un certificat, c'est une compétence pour la vie que tu peux utiliser pour sauver la vie des autres.")
+  ]},
+ nature:{id:'nature',title:"Cabin stay in the wild",en:"Cabin stay in the wild",
+  pitch:[
+   {h:"Advantage",t:"On sera près de la nature."},
+   {h:"Advantage",t:"C'est calme et sympa parce que nous serons très loin de la ville."},
+   {h:"Advantage",t:"Il y aura de la sécurité : le personnel est très expérimenté et connaît toutes les techniques pour éloigner les animaux."}
+  ],items:[
+   O("Il n'y a pas d'eau ni d'électricité.","No water and no electricity.","Ce n'est pas un grand problème. Il y a beaucoup de chutes d'eau et on peut y boire de l'eau. Il y a des lampes dans la cabane. Ils vont même nous apprendre à produire de la lumière avec du bois."),
+   O("Où aller aux toilettes et se doucher ?","Where do I use the toilet and shower?","On peut se doucher sous une chute d'eau. C'est vraiment amusant et rafraîchissant. Ne t'inquiète pas pour l'intimité : les toilettes sont tout près. Franchement, tu n'auras pas beaucoup à marcher pour ça. Toutes les directions sont indiquées. De plus, ils vont fournir une carte pour trouver les toilettes."),
+   O("Il y a des moustiques.","There are mosquitoes.","Je comprends ton point de vue. Cependant, ne t'en fais pas pour ça. La cabane est équipée de moustiquaires. Sois rassuré(e) : ils nettoient la cabane régulièrement pour qu'il n'y ait aucun risque d'insectes. Mon ami a récemment participé à ce programme. Il l'a vraiment adoré et il a été impressionné par leurs services exceptionnels."),
+   O("Il y a des animaux.","There are wild animals.","Il n'y a pas de risque, parce que la cabane est conçue de manière que la plupart des animaux ne puissent pas y monter. En plus, le personnel est expérimenté et connaît toutes les techniques pour éloigner les animaux. Ces animaux sont habitués aux gens, donc ils n'entrent pas sur ce territoire. Il y a des feux d'artifice dans toutes les cabanes. Il y a une porte qui sécurise les personnes dans la cabane."),
+   O("J'ai peur de dormir en pleine nature.","I'm afraid to sleep out in the wild.","Pas du tout. Au contraire, on aura la possibilité de regarder les étoiles pendant la nuit. C'est très calme et tranquille. La vue du ciel est magnifique, c'est magique. Je suis sûr(e) que tu n'as jamais vu cette vue en ville, à cause de la pollution."),
+   O("Comment trouver à manger ?","How will we find food?","Le petit-déjeuner est fourni par l'association. Ensuite, pour le déjeuner et le dîner, le guide nous aidera à identifier les fruits et les légumes comestibles. Il y a des poissons dans les rivières, donc nous pouvons organiser un barbecue le soir. C'est l'occasion de manger la cuisine locale et naturelle de la région, sans pesticides ni engrais chimiques."),
+   O("C'est ennuyeux, il n'y a pas d'activités.","It's boring, there's nothing to do.","Il y a beaucoup d'endroits naturels à explorer, comme les montagnes, la chute d'eau, de grands arbres et différentes variétés d'oiseaux. Il y a des activités engageantes comme la chasse au trésor et, à la fin, nous recevons des cadeaux et des surprises (le prix). Ils vont nous diviser en trois équipes et il y aura des concours. Mon voisin a participé aux concours : son équipe a gagné et il a reçu des cadeaux et le prix. Il était vraiment content et satisfait de leurs services."),
+   O("Et en cas d'accident ? Il n'y a pas d'hôpital.","What if there's an accident? There's no hospital.","Je comprends, il est possible d'avoir des blessures légères. En fait, ces dix dernières années, il n'y a jamais eu d'accident grave. Leur équipe médicale est tout près. En plus, il y a un service d'assistance d'urgence qui intervient en quelques minutes si jamais tu rencontres un problème sur la route."),
+   O("Et s'il pleut toute la semaine ?","What if it rains all week?","Ne t'inquiète pas, j'ai déjà vérifié la météo : le mois prochain est parfait pour participer à ce programme, car il fera beau et il n'y a que 5 % de risque de pluie. Les oiseaux migrateurs vont revenir dans la région et, franchement, ça vaut vraiment le coup. On ne vit ça qu'une fois dans la vie."),
+   O("On peut se perdre, il n'y a pas de GPS.","We could get lost, there's no GPS.","Je ne pense pas que tout soit vrai. En fait, ils nous surveillent régulièrement. Il y a des panneaux de danger partout où il y a des animaux.")
+  ]},
+ suisse:{id:'suisse',title:"Trip to Switzerland",en:"Group trip to Switzerland",
+  pitch:[],items:[
+   O("Je n'ai pas le temps, je travaille sur un projet.","I have no time, I'm working on a project.","T'inquiète pas, c'est juste pour une semaine (ce n'est que pour une semaine). Tu travailles dur depuis plus de deux mois, tu mérites des vacances. C'est vraiment important pour te déstresser et profiter de la vie. C'est essentiel pour ta santé mentale et pour ton corps."),
+   O("Ça coûte cher.","It costs a lot.","Non, pas du tout. J'ai appelé l'agence et j'ai demandé s'il y avait des réductions pour un groupe. Heureusement, on m'a dit qu'il y a une réduction de 20 %. C'est très avantageux par rapport aux autres entreprises. Ça coûte … dollars par personne. Tu sais, ils offrent beaucoup plus de services que les autres. En fait, l'hôtel est très bien situé et le repas est inclus. Tu n'auras même pas à payer les transports.",{note:"The notes leave the price blank. Use the price from your ad."}),
+   O("Il n'y a pas beaucoup d'activités à faire.","There isn't much to do.","Je ne pense pas que tout soit vrai. J'ai regardé une vidéo sur YouTube : il y a beaucoup d'activités sportives à faire. Mon ami y est allé l'année dernière et il a fait du cyclisme, de la randonnée, et il est même possible de faire du parachutisme. De plus, toutes ces activités se déroulent dans un environnement naturel. Tu es une personne qui adore ce type d'activités. Grâce à ce voyage, tu auras l'occasion d'y participer et je suis certain(e) que tu vas l'apprécier. Il y a aussi un festival d'été au centre-ville."),
+   O("Les hôtels ne sont pas bons.","The hotels aren't good.","Sois rassuré(e) : je comprends que l'hôtel soit un trois étoiles, cependant c'est vraiment génial. Il y a une piscine et une grande chambre avec deux lits. Il y a des restaurants à proximité. Franchement, j'ai entendu dire que c'est un très bon hôtel, très bien situé au bord d'un lac. J'ai lu des commentaires de touristes sur Google et ils étaient satisfaits de la qualité du service. Ça vaut le coup."),
+   O("Je ne veux pas voyager en groupe.","I don't want to travel in a group.","Les groupes sont petits : il n'y a que cinq personnes par groupe. C'est la meilleure occasion de rencontrer de nouvelles personnes. C'est idéal pour faire des activités en groupe."),
+   O("Je n'aime pas les voyages guidés.","I don't like guided trips.","Je pense que voyager dans un nouveau pays est mieux avec un guide. J'ai vu des profils de guides : ils sont très expérimentés. Nous avons la possibilité de choisir notre guide. Le guide de mon ami était une femme amusante et gentille. Le guide nous aidera à découvrir ce pays tout en nous racontant son histoire unique et exceptionnelle. Il y a un autre avantage : il peut nous aider à prendre des photos."),
+   O("En été, il fait trop chaud.","It's too hot in summer.","J'ai vérifié la météo : le mois prochain, il fera beau.")
+  ]},
+ amazonie:{id:'amazonie',title:"Amazon jungle experience",en:"Amazon jungle experience",
+  pitch:[
+   "Nous allons apprendre à cuisiner dans la jungle en autonomie. C'est le meilleur moment pour goûter la cuisine locale des habitants. On aura l'occasion d'apprendre des compétences comme le travail d'équipe, la solidarité et l'entraide avec les autres participants. Ce sera vraiment une expérience qui nous aidera à comprendre la vie des personnes qui vivent sans technologie."
+  ],items:[
+   O("Il y a des animaux dangereux.","There are dangerous animals.","Je suis certain(e) que nous resterons loin des zones animalières. On sera en sécurité.",{inferred:true}),
+   O("Il y a un risque de maladies et d'insectes.","There's a risk of disease and insects.","Ne t'en fais pas pour ça : avec les précautions nécessaires, comme des crèmes et des tenues spéciales, nous pouvons diminuer le risque de maladies graves. De plus, pendant la nuit, le personnel allume un feu, ce qui est vraiment utile contre les insectes et les animaux.",{inferred:true})
+  ],notes:"Two unfinished notes in the doc, kept here as written: « il devrait être une solution » and « les personnes expérimentées »."},
+ domicile:{id:'domicile',title:"Teaching at people's homes",en:"Home tutoring through an agency",
+  pitch:[],items:[
+   O("Je n'ai jamais enseigné, je ne sais pas faire ça.","I've never taught, I don't know how.","Il y aura une formation avant le début du travail. T'inquiète pas. Au début, c'est toujours difficile, mais au fur et à mesure tu vas apprendre comment ça fonctionne. Je sais que ça peut être compliqué. Tu n'auras qu'un seul étudiant. En fait, tu peux commencer avec des enfants et, après quelques mois, tu peux même enseigner à des adultes."),
+   O("Je pense que ça peut être dangereux d'aller chez des inconnus.","Going to strangers' homes could be dangerous.","Je comprends ton point de vue, mais sois rassuré(e). Grâce à cette agence, tu auras l'opportunité de faire trois cours d'essai. Pendant ce temps, tu pourras choisir tes étudiants et, si tu penses que c'est dangereux, tu peux résilier le contrat à tout moment."),
+   O("Je ne suis pas à l'aise pour travailler chez les gens.","I'm not comfortable working in people's homes.","Tous les étudiants, y compris leur famille, qui s'inscrivent à cette agence doivent présenter leur casier judiciaire. Au fait, jusqu'à aujourd'hui, il n'y a jamais eu d'accident avec des profs. L'agence permet également d'enseigner à l'étudiant dans des lieux publics."),
+   O("Je n'aime pas trop les enfants, ils sont bruyants et indisciplinés.","I don't like children much, they're noisy and undisciplined.",null),
+   O("Je suis trop timide, c'est très difficile d'enseigner dans ce cas.","I'm too shy, so teaching would be very hard.",null),
+   O("Je pense que le salaire ne sera pas très intéressant.","I think the pay won't be very good.",null),
+   O("Je n'ai pas de voiture, ce sera compliqué d'aller dans plusieurs endroits différents.","I have no car, getting to several places will be hard.",null)
+  ],notes:"The last four objections are in the notes without replies. Practise writing your own with the pattern on the Start page."},
+ revente:{id:'revente',title:"Reselling your belongings",en:"Reselling your belongings through an association",
+  pitch:[
+   "Tout d'abord, tu peux vendre tes affaires personnelles et gagner de l'argent en retour. C'est une excellente occasion de faire des économies.",
+   "Ensuite, cette activité t'aidera à te débarrasser des objets superflus et à créer de l'espace chez toi.",
+   "Cette association est très connue dans la ville. Elle travaille dans ce domaine depuis dix ans. Elle est fiable."
+  ],items:[
+   O("Je n'ai pas le temps, c'est une activité chronophage.","I have no time, it's time-consuming.","Pas du tout. Cette association se charge de collecter tes affaires chez toi. Ils sont rapides et ça ne prendra que 20 minutes. Le personnel est formé et professionnel."),
+   O("Ça ne m'intéresse pas.","I'm not interested.","Tu as ton ordinateur que tu n'utilises plus depuis un an. Tu peux le vendre et gagner de l'argent, que tu peux utiliser pour acheter une montre moderne."),
+   O("C'est très loin de chez moi.","It's very far from my home.","Ne t'inquiète pas. L'organisation est ouverte pendant le week-end. Ils peuvent venir récupérer les objets chez toi. Ce n'est pas un grand problème. Tu dois quand même essayer."),
+   O("Ce genre d'association, ce sont des arnaques.","These associations are scams.","Ce n'est pas vrai. Mon ami a vendu son ordinateur portable le mois dernier. Il était très content. Il a gagné beaucoup d'argent, avec lequel il a acheté un nouveau vélo.")
+  ]},
+ chambre:{id:'chambre',title:"Renting out your room (Alyx Voyage)",en:"Renting out a room to tourists on a website",
+  ctx:"Introduction",pitch:[
+   "C'est lié à la location d'une belle chambre disponible dans ton appartement. C'est un site internet qui s'appelle Alyx Voyage : tu peux envoyer les photos de ta chambre aux touristes. Tu as de grandes fenêtres dans ta chambre, elle est très confortable. Les touristes vont sûrement aimer ta chambre. Qu'est-ce que tu en penses ?"
+  ],items:[
+   O("Ça ne m'intéresse pas, je suis trop timide pour faire cette activité.","I'm not interested, I'm too shy for this.","Ne t'inquiète pas, c'est pour les personnes comme toi. Tu auras l'occasion de parler et de socialiser avec des personnes du monde entier. Grâce à ce site, tu rencontreras des personnes intéressantes. Tu peux vaincre (overcome) ta timidité."),
+   O("C'est risqué, je travaille pendant la journée.","It's risky, I work during the day.","Ne t'inquiète pas, tu as déjà des caméras de sécurité dans ton appartement. Tu peux surveiller les touristes. Ce n'est pas un grand problème."),
+   O("Les touristes sont négligents.","Tourists are careless.","Tout n'est pas vrai. Tu peux mentionner à l'avance, dans l'annonce, les règles à suivre pour rester dans ta chambre. En cas de problème, tu peux demander des frais supplémentaires. Récemment, mon ami a loué son appartement à une famille de quatre personnes. Malheureusement, leur enfant a cassé la fenêtre. Les touristes ont payé des frais supplémentaires pour ça."),
+   O("Ils ne nettoient pas la chambre, ils sont sales.","They don't clean the room, they're dirty.","Je comprends ton point de vue. Tous les touristes ne se ressemblent pas. Il faut leur expliquer à l'avance les règles à respecter dans ta chambre."),
+   O("Ils vont arriver tard la nuit.","They'll arrive late at night.","Ne t'inquiète pas, tu as une porte automatique chez toi. Donc ils ne vont pas te déranger pendant la nuit."),
+   O("Je n'ai pas le temps de chercher des touristes.","I have no time to look for tourists.","Ce n'est pas grave. Tu n'as pas à chercher les touristes : tu peux poster des photos de ta chambre sur internet. L'agence va tout faire pour toi.")
+  ]},
+ langue:{id:'langue',title:"Language courses",en:"Language courses at an institute",
+  pitch:[
+   "Les cours de langue sont importants pour voyager dans d'autres pays et rencontrer des personnes de cultures différentes.",
+   "Cela aide à se faire de nouveaux amis.",
+   "Cela va augmenter tes chances d'être sélectionné(e) lors d'un entretien d'embauche (hiring interview)."
+  ],items:[
+   O("Je n'ai pas le temps.","I have no time.","Ne t'inquiète pas. Les horaires des cours sont flexibles. Il est possible d'assister au cours pendant le week-end. Les cours ne durent qu'une heure et il est possible de maîtriser les bases en deux semaines de cours."),
+   O("Ça coûte cher.","It costs a lot.","Je comprends ton point de vue. Je pense que l'apprentissage d'une langue étrangère est essentiel. Franchement, cet institut est connu dans ce domaine. La qualité des cours qu'ils proposent est exceptionnelle. Les profs sont très expérimentés. Ils organisent des événements culturels de temps en temps."),
+   O("Je ne veux pas participer à un groupe.","I don't want to be in a group.","Ce n'est pas un grand problème. Les groupes sont petits : il n'y a que quatre étudiants par groupe, ce qui rend l'apprentissage de la langue plus facile. Ils proposent aussi des cours privés pendant le week-end."),
+   O("C'est trop difficile à mon âge.","It's too hard at my age.","Ce n'est pas vrai. Cet âge est parfait pour apprendre quelque chose de nouveau. Mon voisin a 50 ans. Malgré son âge, il a maîtrisé l'espagnol en six mois. Maintenant, il travaille dans une grande entreprise."),
+   O("Ça ne m'intéresse pas.","I'm not interested.","Tu sais, j'apprends l'espagnol depuis l'année dernière et je suis très contente. Grâce à cette langue, je gagne un très bon salaire.")
+  ]},
+ agee:{id:'agee',title:"Living with an elderly lady",en:"Sharing a home with an elderly lady",
+  ctx:"Context in the notes: her husband died recently, so she needs company. She has no mobility problems; you only help with household tasks.",
+  pitch:[],items:[
+   O("Je ne suis pas à l'aise avec les personnes âgées.","I'm not comfortable with elderly people.","Je comprends ton point de vue. Ce serait une nouvelle expérience pour toi. Au début, c'est toujours difficile, mais avec le temps tu verras des changements. Elles sont très sages et peuvent partager avec toi leurs expériences de vie."),
+   O("Apparemment, je vais devoir faire les tâches ménagères.","Apparently I'll have to do the housework.","Ne t'inquiète pas. Elle est autonome et, heureusement, elle peut faire la majorité de ses tâches seule. Tu dois juste l'aider avec les tâches liées à la nouvelle technologie. Par exemple : les opérations bancaires, réserver des billets en ligne, payer des factures."),
+   O("Je ne pourrai plus inviter mes amis pour faire la fête.","I won't be able to invite friends to party.","Ce n'est pas un grand problème. Son appartement a deux étages. Tu peux inviter tes amis au deuxième étage. Son appartement est insonorisé, donc ça ne dérangera pas cette dame."),
+   O("C'est sûrement dans une vieille maison, je préfère le style moderne.","It's surely an old house, I prefer modern.","Ce n'est pas vrai. Cette dame est très moderne. Tous les meubles sont neufs. Elle suit la tendance."),
+   O("Je ne pourrai plus écouter de la musique ni jouer aux jeux vidéo à cause du bruit.","I won't be able to play music or video games because of the noise.","Tu peux utiliser ton casque quand tu écoutes de la musique ou que tu joues aux jeux vidéo."),
+   O("Elle n'acceptera probablement pas que je vienne avec mon chat.","She probably won't accept my cat.","Ce n'est pas grave. Elle aime les animaux et elle a déjà un chat. Elle va certainement accepter ton chat.")
+  ]},
+ culture:{id:'culture',title:"Cultural event",en:"Cultural event over a weekend",
+  pitch:[
+   "Avec ce programme, tu auras l'occasion de rencontrer des personnes de différentes cultures.",
+   "Il est important de comprendre la valeur de notre culture.",
+   "Cela offre la possibilité de se faire de nouveaux amis du monde entier."
+  ],items:[
+   O("Il y aura beaucoup de monde.","There will be a crowd.","Ce n'est pas vrai. Les places sont limitées. La majorité des gens sont professionnels et sages. Tout le monde se concentre sur ses propres affaires. Je vais t'accompagner. Je suis sûr(e) que tu vas t'amuser."),
+   O("Il y a un risque qu'on me vole mes affaires.","Someone might steal my things.","Ne t'inquiète pas, cette association prend des mesures de sécurité. Tout le monde n'a pas le droit d'entrer. Ils vérifient la carte d'identité à l'entrée. Mon ami pensait la même chose. Mais l'année dernière il a participé à cet événement et il l'a vraiment adoré. Le service était incroyable."),
+   O("Je n'ai pas le temps.","I have no time.","Ne t'en fais pas pour ça. C'est tout près de chez toi. L'activité culturelle se déroule pendant le week-end. Tu peux participer deux heures le soir."),
+   O("Je ne suis pas disponible.","I'm not available.","Je comprends ton problème, mais le programme dure quatre jours. Tu peux décider d'y aller selon ta disponibilité."),
+   O("Je ne suis pas intéressé(e).","I'm not interested.","Tu sais que ton danseur préféré, Paul, va se produire pendant le week-end. C'est la meilleure occasion de rencontrer ton danseur préféré. Ça vaut le coup. Je suis certain(e) que le programme va te plaire.")
+  ]},
+ rencontres:{id:'rencontres',title:"Online dating programme",en:"Online programme to meet singles",
+  ctx:"Inferred from the phrase « célibataires en ligne » in the notes.",pitch:[],items:[
+   O("Je ne suis pas disponible, je suis occupé(e) par mon travail.","I'm not available, I'm busy with work.","Je comprends tout à fait ton point de vue. Cependant, ne t'inquiète pas. Ce programme est conçu pour les personnes comme toi qui ont du pain sur la planche. En fait, c'est complètement en ligne et les horaires sont flexibles. Tu n'auras même pas besoin de te déplacer. Tu peux donc choisir les horaires qui te conviennent. Comme ça, tu auras l'occasion de travailler et de rencontrer des célibataires en ligne à tout moment.")
+  ]},
+ chien:{id:'chien',title:"Having a dog",en:"Having a dog at home",
+  pitch:[
+   "Le chien va changer l'atmosphère de ta maison.",
+   "De plus, il va t'aider à réduire le stress.",
+   "En outre, le chien est comme un ami, un compagnon qui va t'aider à vaincre la solitude.",
+   "C'est important pour la sécurité de ta maison quand tu travailles."
+  ],items:[
+   O("J'ai peur des chiens.","I'm afraid of dogs.","Je comprends ton point de vue. Tu peux adopter un petit chien. Il y a beaucoup de races de chiens : tu peux choisir une race amicale et pas dangereuse. Tu peux aussi le faire vacciner."),
+   O("Les chiens sont méchants, ils vont détruire les meubles et la maison.","Dogs are mean, they'll destroy the furniture and the house.","Au début, c'est difficile, cependant tu peux l'inscrire à une formation avec un dresseur spécialisé. Après un mois de formation, le chien écoutera tes instructions."),
+   O("C'est très cher.","It's very expensive.","Ne t'inquiète pas. Tu peux prendre une assurance santé pour deux ans qui ne coûte pas très cher. La vaccination est incluse dans l'assurance. Mon ami a adopté un chien l'année dernière. Il ne dépense que 50 dollars par mois pour son chien, ça ne coûte pas les yeux de la tête."),
+   O("Il est très bruyant, il va déranger mes voisins.","It's very noisy, it will bother my neighbours.","Si le chien est dressé, il ne dérangera pas. Il n'aboiera pas sans raison. Ta maison est insonorisée, donc ce n'est pas un grand problème."),
+   O("Les chiens ne sont pas autorisés dans mon appartement.","Dogs aren't allowed in my flat.","Dans ce cas, tu voulais déménager dans une nouvelle maison. Donc, tu peux choisir un quartier où les chiens sont autorisés, ou des appartements qui acceptent les chiens. Franchement, il y a beaucoup de restaurants qui acceptent les chiens."),
+   O("C'est difficile de voyager avec un chien.","It's hard to travel with a dog.","Tu peux réserver un Airbnb qui accueille les chiens. Un petit chien peut t'accompagner dans ta voiture pendant le voyage. Ce n'est pas compliqué.")
+  ]}
+};
+
+/* Draft arguments for topics the notes do not cover. Written to follow the teacher's formulas. */
+var DRAFTS={
+ 2:{args:[
+   "Les personnes âgées sont une source de sagesse : elles partagent leurs expériences de vie avec nous.",
+   "Elles transmettent nos traditions, notre culture et l'histoire de notre famille aux plus jeunes.",
+   "Passer du temps avec elles leur apporte de la compagnie et réduit leur solitude.",
+   "Beaucoup d'entre elles ont construit la société dans laquelle nous vivons : c'est normal de leur dire merci."
+  ],items:[
+   O("Je n'ai rien en commun avec elles.","I have nothing in common with them.","Je comprends ton point de vue. Au début, c'est toujours difficile, mais avec le temps tu vas découvrir des histoires incroyables. Tu peux aussi les aider avec la nouvelle technologie, et c'est un bon sujet de conversation."),
+   O("Je n'ai pas le temps.","I have no time.","Ne t'inquiète pas, une heure le week-end suffit. Ce n'est pas grand-chose dans notre emploi du temps, mais ça fait une énorme différence pour eux.")
+  ]},
+ 6:{args:[
+   "Tout d'abord, les panneaux solaires produisent une énergie propre et renouvelable, ce qui réduit la pollution.",
+   "Ensuite, ils te permettent de baisser tes factures d'électricité à long terme.",
+   "De plus, ta maison prend de la valeur : c'est un vrai investissement.",
+   "Grâce à cette installation, tu deviens plus autonome et moins dépendant du réseau électrique."
+  ],items:[
+   O("C'est trop cher à installer.","It's too expensive to install.","Je comprends ton point de vue. C'est un investissement au début, mais sache que tu économises à long terme. En plus, le gouvernement offre souvent des aides et on peut payer en plusieurs fois."),
+   O("Il n'y a pas assez de soleil ici.","There isn't enough sun here.","Ce n'est pas vrai. Les panneaux produisent de l'électricité même quand le ciel est nuageux. Mon voisin en a installé l'année dernière et il est très content.")
+  ]},
+ 7:{args:[
+   "C'est une source d'énergie propre : le vent est gratuit et ne pollue pas.",
+   "Ça permet de produire sa propre électricité et de réduire les factures.",
+   "C'est un excellent moyen de lutter contre le changement climatique.",
+   "Grâce à cette initiative, tu contribues à une énergie durable pour la génération future."
+  ],items:[
+   O("C'est bruyant.","It's noisy.","Ne t'inquiète pas. Les petites éoliennes modernes sont conçues pour être silencieuses et on peut les installer loin des fenêtres."),
+   O("Il n'y a pas assez de vent chez moi.","There isn't enough wind where I live.","Je comprends ton point de vue. Avant l'installation, un technicien mesure le vent sur ton terrain, donc tu n'investis que si c'est rentable.")
+  ]},
+ 8:{args:[
+   "Le covoiturage réduit le nombre de voitures sur la route, donc la pollution et les embouteillages.",
+   "Tu partages les frais d'essence et de stationnement : c'est économique.",
+   "Pendant le trajet, tu peux discuter et te faire de nouveaux amis.",
+   "C'est moins stressant : tu ne conduis pas tous les jours."
+  ],items:[
+   O("Je préfère garder mon indépendance.","I prefer to keep my independence.","Je comprends ton point de vue. Tu peux choisir seulement quelques jours par semaine et les horaires sont flexibles."),
+   O("Je ne connais pas les autres passagers.","I don't know the other passengers.","Ne t'inquiète pas. Tu peux choisir des collègues de confiance, et les applications affichent les profils et les commentaires des conducteurs.")
+  ]},
+ 9:{args:[
+   "Tu gagnes du temps et de l'argent : plus besoin de te déplacer tous les jours.",
+   "Tu peux organiser ton emploi du temps et mieux équilibrer ta vie professionnelle et ta vie personnelle.",
+   "Tu es souvent plus concentré(e), loin du bruit du bureau.",
+   "C'est bon pour l'environnement : moins de déplacements, moins de pollution."
+  ],items:[
+   O("Je vais me sentir isolé(e).","I'll feel isolated.","Je comprends ton point de vue. Tu peux garder le contact avec l'équipe par visioconférence, et tu peux aller au bureau une ou deux fois par semaine."),
+   O("Je n'arrive pas à me concentrer à la maison.","I can't concentrate at home.","Ne t'inquiète pas. Il suffit d'aménager un coin de travail calme et de fixer des horaires réguliers. Au début, c'est difficile, mais avec le temps tu vas t'habituer.")
+  ]},
+ 10:{args:[
+   "Recycler permet de réutiliser les matériaux et de réduire l'extraction de nouvelles ressources.",
+   "Cela diminue la quantité de déchets, donc la pollution des sols et des océans.",
+   "Ça crée des emplois dans l'économie circulaire.",
+   "C'est un geste simple du quotidien qui a un impact réel sur l'environnement."
+  ],items:[
+   O("Ça prend trop de temps.","It takes too much time.","Pas du tout. Il suffit de mettre chaque déchet dans le bon bac, ça ne prend que quelques secondes. Ce n'est pas un grand problème."),
+   O("Une seule personne ne change rien.","One person changes nothing.","Je comprends ton point de vue. Mais tout le monde pense la même chose ! Nos gestes quotidiens ont un impact direct sur l'environnement et, si on est nombreux, ça fait une énorme différence.")
+  ]},
+ 14:{args:[
+   "Le patrimoine mondial est l'héritage de toute l'humanité : le protéger, c'est préserver notre histoire et notre culture.",
+   "Il attire des touristes, ce qui crée des emplois et fait vivre l'économie locale.",
+   "Si nous ne le protégeons pas aujourd'hui, les générations futures ne pourront pas le découvrir.",
+   "Grâce à cette initiative, on apprend à respecter les cultures du monde entier."
+  ],items:[
+   O("C'est le travail du gouvernement, pas le mien.","That's the government's job, not mine.","Je comprends ton point de vue. Pourtant, chaque citoyen peut agir : visiter avec respect, faire un don ou participer comme bénévole. En tant que citoyen responsable, c'est notre devoir."),
+   O("Ça coûte trop cher.","It costs too much.","C'est un investissement : ce que nous perdons ne reviendra jamais, et le tourisme culturel rapporte beaucoup à la région.")
+  ]},
+ 15:{args:[
+   "Elles ne produisent pas de gaz d'échappement, donc l'air de nos villes est plus propre.",
+   "Elles coûtent moins cher à utiliser : l'électricité revient moins cher que l'essence et l'entretien est plus simple.",
+   "Elles sont silencieuses, ce qui réduit le bruit en ville.",
+   "En ce moment, le gouvernement offre des aides à l'achat : c'est le moment idéal pour en profiter."
+  ],items:[
+   O("Il n'y a pas assez de bornes de recharge.","There aren't enough charging stations.","Ce n'est pas un grand problème. Il y en a de plus en plus et tu peux aussi recharger ta voiture chez toi pendant la nuit."),
+   O("L'autonomie est trop limitée.","The range is too limited.","Je comprends ton point de vue. Pour les trajets de tous les jours, l'autonomie est largement suffisante, et elle augmente avec chaque nouveau modèle.")
+  ]},
+ 16:{args:[
+   "Le yoga aide à se détendre et à réduire le stress après de longues journées de travail.",
+   "Il améliore la souplesse et la posture, et il diminue les douleurs de dos.",
+   "Il favorise la concentration et un meilleur sommeil.",
+   "C'est une activité accessible à tous, même aux débutants."
+  ],items:[
+   O("Je ne suis pas assez souple.","I'm not flexible enough.","Ne t'inquiète pas, c'est justement pour ça qu'on fait du yoga ! Les cours pour débutants s'adaptent à ton niveau et la souplesse vient avec le temps."),
+   O("Je n'ai pas le temps.","I have no time.","Ça ne prend que vingt minutes par jour, et tu peux le faire chez toi.")
+  ]},
+ 18:{args:[
+   "Se préparer à un marathon donne un objectif clair et améliore la santé du cœur.",
+   "C'est une expérience qui renforce la confiance en soi et la discipline.",
+   "L'ambiance est incroyable : on rencontre des gens motivés et on fait partie d'une grande communauté.",
+   "Beaucoup de marathons soutiennent une cause : on court pour une bonne action."
+  ],items:[
+   O("C'est trop fatigant pour moi.","It's too tiring for me.","Sache qu'une activité physique permet en réalité de libérer des endorphines et de recharger tes batteries. En plus, on s'entraîne progressivement, avec un programme sur plusieurs mois."),
+   O("Je n'ai jamais couru.","I've never run.","Ne t'inquiète pas, c'est parfait pour les débutants : tu peux commencer par une petite distance, et des clubs organisent des entraînements pas à pas.")
+  ]},
+ 20:{args:[
+   "Tu évites un gros achat : pas de grosse dépense au départ.",
+   "L'assurance, l'entretien et les réparations sont souvent inclus dans la location.",
+   "Tu choisis la voiture qui correspond à ton besoin du moment, petite pour la ville, grande pour un voyage.",
+   "Tu n'as pas à te soucier de la revente ni de la perte de valeur."
+  ],items:[
+   O("Au final, ça coûte plus cher.","In the end it costs more.","Je comprends ton point de vue. Mais si tu n'utilises la voiture que de temps en temps, c'est beaucoup plus économique. Certes, c'est un coût régulier, mais tu évites les mauvaises surprises."),
+   O("Je veux pouvoir faire autant de kilomètres que je veux.","I want to drive as many kilometres as I like.","Ne t'inquiète pas. Il existe des formules avec kilométrage illimité et tu peux choisir celle qui te convient.")
+  ]},
+ 21:{args:[
+   "Sortir avec des amis aide à se détendre et à réduire le stress.",
+   "Ça renforce les relations et aide à vaincre la solitude.",
+   "C'est l'occasion de découvrir de nouveaux endroits et de nouvelles activités.",
+   "Les amis nous soutiennent dans les moments difficiles et nous donnent de l'énergie."
+  ],items:[
+   O("Je suis trop fatigué(e) après le travail.","I'm too tired after work.","Je comprends ton point de vue. Mais sache qu'une sortie entre amis permet de recharger tes batteries. On peut aussi choisir une activité calme, comme un café."),
+   O("Ça coûte cher de sortir.","Going out costs a lot.","Ne t'inquiète pas, on peut faire des activités gratuites : une balade, un pique-nique ou un match au parc. Ça ne coûte pas les yeux de la tête.")
+  ]}
+};
+
+/* the teacher's formula, as patterns to underline */
+var PATTERNS=[
+ {cat:'deny',re:/ce n['’]est pas vrai|je ne pense pas que tout soit vrai|tout n['’]est pas vrai|tu t['’]inquiètes pour rien/i},
+ {cat:'understand',re:/je comprends(?: tout à fait)?(?: ton (?:point de vue|problème)| que [^.,;:]*)?|certes|tu pourrais penser que/i},
+ {cat:'reassure',re:/ne t['’](?:inquiète|en fais) pas(?: pour [^.,;:]*)?|t['’]inquiète pas|sois rassuré(?:\(e\))?|ce n['’]est pas (?:un )?grand(?:e)? (?:problème|chose)|ce n['’]est pas grave|pas du tout|aucun risque/i},
+ {cat:'proof',re:/mon (?:ami|voisin)(?: paul)?|un de mes cousins|j['’]ai (?:déjà )?(?:vérifié|regardé|lu|appelé|vu)(?: la météo| une vidéo| des commentaires| des profils)?|en fait|par exemple/i},
+ {cat:'close',re:/ça vaut (?:vraiment )?(?:le coup|la peine)|on ne vit ça qu['’]une fois(?: dans la vie)?|franchement|je suis (?:sûr|certain)(?:\(e\))? que|tu auras l['’]occasion de|il faut quand même essayer/i}
+];
+var CATNAMES={understand:'Show you understand',reassure:'Reassure',deny:'Say it isn\'t so',proof:'Prove it',close:'Close with energy'};
+function mark(text){
+  var frag=document.createDocumentFragment(),rest=text;
+  while(rest){
+    var best=null;
+    for(var i=0;i<PATTERNS.length;i++){ var m=PATTERNS[i].re.exec(rest); if(m&&m[0]&&(best===null||m.index<best.m.index)) best={m:m,p:PATTERNS[i]}; }
+    if(!best){ frag.append(rest); break; }
+    if(best.m.index>0) frag.append(rest.slice(0,best.m.index));
+    var s=document.createElement('mark'); s.className='k-'+best.p.cat; s.textContent=best.m[0]; frag.append(s);
+    rest=rest.slice(best.m.index+best.m[0].length);
+  }
+  return frag;
+}
+
+/* ---------- state, storage ---------- */
+var LS_KEY='cahier-b-v1';
+var S={tab:'start',cat:'overview',q:'',hl:true,openAll:false,known:{},db:null,uid:null,slow:false,
+  P:{cat:'all',show:'all',drafts:false,queue:[],idx:0,reveal:false}};
+var root=document.getElementById('app');
+try{ var raw=localStorage.getItem(LS_KEY); if(raw){ var d0=JSON.parse(raw); if(d0&&d0.known) S.known=d0.known; if(d0&&d0.slow) S.slow=true; } }catch(e){}
+var saveTimer=null,saving=false,dirty=false;
+function save(){ dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(flush,600); }
+async function flush(){
+  if(saving){ saveTimer=setTimeout(flush,500); return; }
+  if(!dirty) return;
+  dirty=false; saving=true;
+  var payload={known:S.known,slow:S.slow};
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(payload)); }catch(e){}
+  if(S.db&&S.uid){ try{ await S.db.doc('data/users/'+S.uid+'/cahier-b').set(payload); }catch(e){} }
+  saving=false;
+}
+function knownCount(ids){ var n=0; ids.forEach(function(i){ if(S.known[i]) n++; }); return n; }
+
+/* ---------- speech ---------- */
+var TTS={ok:('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window),voice:null};
+function pickVoice(){
+  if(!TTS.ok) return;
+  try{
+    var vs=speechSynthesis.getVoices()||[];
+    TTS.voice=vs.find(function(v){return /^fr[-_]CA/i.test(v.lang);})||vs.find(function(v){return /^fr[-_]FR/i.test(v.lang);})||vs.find(function(v){return /^fr/i.test(v.lang);})||null;
+  }catch(e){}
+}
+if(TTS.ok){ pickVoice(); try{ speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
+function speak(text){
+  if(!TTS.ok||!text) return;
+  try{
+    speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(text.replace(/\(e\)/g,'').replace(/…/g,'.'));
+    u.lang=TTS.voice?TTS.voice.lang:'fr-CA';
+    if(TTS.voice) u.voice=TTS.voice;
+    u.rate=S.slow?0.75:0.95;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function hear(text,label){
+  if(!TTS.ok) return null;
+  return h('button',{class:'btn sm ghost',type:'button','aria-label':'Listen in French',on:{click:function(){speak(text);}}},speakIcon(),label||'Listen');
+}
+
+/* ---------- data helpers ---------- */
+function pt(p){ return typeof p==='string'?{t:p}:p; }
+function itemId(prefix,i){ return prefix+':'+i; }
+function allPool(){
+  var pool=[];
+  var add=function(s,cat,draft,prefix){ s.items.forEach(function(it,i){ pool.push({id:itemId(prefix,i),o:it.o,en:it.en,r:it.r,cat:cat,sc:s.title,draft:draft}); }); };
+  add(UNIV,'univ',false,'univ');
+  CATS.forEach(function(c){
+    c.sc.forEach(function(sid){ add(SC[sid],c.id,false,sid); });
+    c.drafts.forEach(function(n){ add({items:DRAFTS[n].items,title:'Topic '+n+': '+TOPICS[n].en},c.id,true,'d'+n); });
+  });
+  return pool;
+}
+function matches(q){ var ts=Array.prototype.slice.call(arguments,1); return ts.some(function(t){ return stripAcc(t||'').indexOf(q)>=0; }); }
+
+/* ---------- shared UI ---------- */
+function seg(label,opts,val,on){
+  return h('div',{class:'seg-wrap'},h('div',{class:'lbl'},label),
+    h('div',{class:'seg',role:'radiogroup','aria-label':label},opts.map(function(o){
+      return h('button',{type:'button',role:'radio','aria-checked':String(o[0]===val),class:'seg-b'+(o[0]===val?' on':''),on:{click:function(){on(o[0]);}}},o[1]);
+    })));
+}
+function legend(){
+  return h('div',{class:'legend'},Object.keys(CATNAMES).map(function(k){ return h('span',{class:'chip'},h('mark',{class:'k-'+k},CATNAMES[k])); }));
+}
+function knownBtn(id){
+  var b=h('button',{class:'btn sm ghost',type:'button','aria-pressed':String(!!S.known[id])},S.known[id]?'Got it':'Mark as known');
+  b.addEventListener('click',function(){
+    if(S.known[id]) delete S.known[id]; else S.known[id]=1;
+    b.setAttribute('aria-pressed',String(!!S.known[id])); b.textContent=S.known[id]?'Got it':'Mark as known'; save();
+  });
+  return b;
+}
+function frText(text){ var p=h('p',{lang:'fr'}); if(S.hl) p.append(mark(text)); else p.textContent=text; return p; }
+function objEl(id,it){
+  var kids=[h('div',{class:'obj-q'},h('div',{class:'mono tiny red'},'Objection'),h('p',{class:'fr',lang:'fr'},it.o),h('p',{class:'en'},it.en))];
+  if(it.r){
+    kids.push(h('div',{class:'obj-r'},h('div',{class:'mono tiny muted',style:'margin-bottom:2px'},'Reply'),frText(it.r),
+      it.inferred?h('p',{class:'small muted',style:'margin-top:6px;font-style:italic'},'The notes give this reply without its objection. The objection is inferred.'):null,
+      it.note?h('p',{class:'small muted',style:'margin-top:6px;font-style:italic'},it.note):null));
+    kids.push(h('div',{class:'acts'},hear(it.o,'Listen to objection'),hear(it.r,'Listen to reply'),knownBtn(id)));
+  } else kids.push(h('div',{class:'none'},'No reply in the notes. Write your own with the five steps on the Start page, then say it out loud.'));
+  return h('article',{class:'obj'},kids);
+}
+function scenarioEl(s,open){
+  var body=h('div',{class:'body'});
+  if(s.ctx) body.append(h('p',{class:'ctx'},s.ctx));
+  if(s.pitch&&s.pitch.length){
+    body.append(h('div',{class:'sub'},'Arguments to present'));
+    s.pitch.forEach(function(p){ p=pt(p); body.append(h('div',{class:'arg'},h('div',{class:'tx'},p.h?h('div',{class:'hd mono tiny muted'},p.h):null,h('p',{lang:'fr'},p.t)),hear(p.t))); });
+  }
+  if(s.items&&s.items.length){
+    body.append(h('div',{class:'sub'},'Objections and replies'));
+    s.items.forEach(function(it,i){ body.append(objEl(s.id+':'+(it.__i!=null?it.__i:i),it)); });
+  }
+  if(s.notes) body.append(h('p',{class:'ctx'},s.notes));
+  return h('details',{class:'sheet scen',open:open},
+    h('summary',null,h('span',{class:'st'},s.title),h('span',{class:'mono tiny muted'},(s.items?s.items.length:0)+' objections'+(s.pitch&&s.pitch.length?' · '+s.pitch.length+' arguments':'')+' · '+(s.en&&s.en!==s.title?s.en:''))),
+    body);
+}
+function draftEl(n,d){
+  var tp=TOPICS[n];
+  var box=h('div',{class:'draftbox'},
+    h('div',{class:'row',style:'justify-content:space-between'},
+      h('div',null,h('div',{class:'mono tiny muted'},'Topic '+n),h('strong',{lang:'fr'},tp.fr),h('div',{class:'small muted'},tp.en)),
+      h('span',{class:'badge b-draft'},'Draft')));
+  d.args.forEach(function(a){ box.append(h('div',{class:'arg'},h('div',{class:'tx'},h('p',{lang:'fr'},a)),hear(a))); });
+  if(d.items.length){ box.append(h('div',{class:'sub',style:'margin:8px 0 0'},'Likely objections')); d.items.forEach(function(it,i){ box.append(objEl('d'+n+':'+(it.__i!=null?it.__i:i),it)); }); }
+  return box;
+}
+
+/* ---------- render ---------- */
+function render(){
+  root.replaceChildren();
+  put(root,h('header',{class:'top'},
+    h('div',{class:'brand'},'Cahier Section B',h('small',null,'TEF Canada · Expression orale · convaincre')),
+    h('div',{class:'row'},TTS.ok?seg('Voice speed',[[false,'Normal'],[true,'Slow']],S.slow,function(v){ S.slow=v; save(); render(); }):null)));
+  var tabs=[['start','Start here'],['phrases','Phrases'],['idioms','Idioms'],['args','Arguments by topic'],['practice','Practice']];
+  put(root,h('nav',{class:'tabs',role:'tablist'},tabs.map(function(t){
+    return h('button',{class:'tab',role:'tab','aria-selected':String(S.tab===t[0]),type:'button',on:{click:function(){ S.tab=t[0]; render(); window.scrollTo(0,0); }}},t[1]);
+  })));
+  var main=h('main');
+  put(root,main);
+  if(S.tab==='start') renderStart(main);
+  else if(S.tab==='phrases') renderPhrases(main);
+  else if(S.tab==='idioms') renderIdioms(main);
+  else if(S.tab==='args') renderArgs(main);
+  else renderPractice(main);
+}
+
+function renderStart(main){
+  var nObj=allPool().filter(function(x){return !x.draft;}).length;
+  put(main,
+    h('section',{class:'hero'},
+      h('h1',null,'Rassure. ',h('span',{class:'ul'},'Convaincs.'),' Conclus.'),
+      h('p',{class:'lede'},"Your teacher's Section B notes, sorted by topic: every argument, every objection with its reply, the phrases and the idioms. Listen to any line, then practise answering out loud."),
+      h('div',{class:'counts mono'},
+        h('span',null,h('b',null,'21'),' topics'),h('span',null,h('b',null,String(CATS.length)),' categories'),h('span',null,h('b',null,String(Object.keys(SC).length)),' scenarios'),
+        h('span',null,h('b',null,String(nObj)),' replies from the notes'),h('span',null,h('b',null,String(IDIOMS.length)),' idioms')),
+      h('div',{class:'row',style:'margin-top:16px'},
+        h('button',{class:'btn primary',type:'button',on:{click:function(){ S.tab='args'; S.cat='overview'; render(); }}},'Browse arguments by topic'),
+        h('button',{class:'btn',type:'button',on:{click:function(){ S.tab='practice'; buildQueue(); render(); }}},'Start practising'))),
+    h('section',{class:'sheet stack',style:'margin-top:26px'},
+      h('div',null,h('h2',{class:'h3'},'How the teacher builds an answer'),
+        h('p',{class:'muted small'},"Read from the replies in the notes, in the order they usually appear. It is a pattern, not a rule the notes state.")),
+      h('ol',{class:'steps'},
+        h('li',null,h('div',null,h('strong',null,'Hear the objection, then show you understood'),h('span',{class:'ex',lang:'fr'},"Je comprends ton point de vue. / Certes… / Tu pourrais penser que…"))),
+        h('li',null,h('div',null,h('strong',null,'Reassure with a concrete fix'),h('span',{class:'ex',lang:'fr'},"Ne t'inquiète pas. Les horaires sont flexibles. Ce n'est pas un grand problème."))),
+        h('li',null,h('div',null,h('strong',null,'Prove it: a fact you checked, or a friend\'s story'),h('span',{class:'ex',lang:'fr'},"J'ai vérifié la météo. / Mon ami a essayé cette activité l'année dernière."))),
+        h('li',null,h('div',null,h('strong',null,'Add a number from the ad'),h('span',{class:'ex',lang:'fr'},"Une réduction de 20 %. Cinq personnes par groupe. 5 % de risque de pluie."))),
+        h('li',null,h('div',null,h('strong',null,'Close with energy'),h('span',{class:'ex',lang:'fr'},"Ça vaut le coup. On ne vit ça qu'une fois dans la vie. Je suis sûr(e) que tu vas aimer.")))),
+      h('div',null,h('div',{class:'mono tiny muted',style:'margin-bottom:8px'},'In every reply on this page, the formula is underlined'),legend())),
+    h('section',{style:'margin-top:26px'},
+      h('details',{class:'sheet notes'},h('summary',null,'Notes on this page: what I changed and what is missing'),
+        h('ul',null,
+          h('li',null,'Source: the Google Doc « Group (F- 448 B2) », tab « section B speaking ». I read all of it.'),
+          h('li',null,"I corrected spelling and grammar in your teacher's French (for example « sois rassuré(e) », « tu auras », « cette agence », « moustiquaires », « ennuyeux ») and kept the content and wording otherwise."),
+          h('li',null,'The idiom « voir le verre à moitié plein » was garbled in the notes (« voir le verre monter », glossed as « see the grass to grow up »). It now reads « il faut que tu voies le verre à moitié plein », glass half full.'),
+          h('li',null,'« une carte pour l\'aisance » became « une carte pour trouver les toilettes » (« les aisances » is an old word for toilets).'),
+          h('li',null,'« Les cours durent seulement 1 heure de plus » was unclear, so it reads « ne durent qu\'une heure ». Check with your teacher.'),
+          h('li',null,"English glosses come from the notes where given. The rest are mine. The Amazon replies and the horse riding and online dating scenarios have no clear title in the notes, so those labels are my reading."),
+          h('li',null,'Topics with a violet « Draft » label are not from your teacher. I wrote them to follow her formulas. In the exam, take the details from the ad you are given.'),
+          h('li',null,'Not included: the images in the doc (the ads and posters) and the separate « Tour en Velo » tab, which has its own 77,000 characters. Only its first three arguments appear in your Section B tab.')))));
+}
+
+function renderPhrases(main){
+  put(main,h('h2',{class:'h2'},'Phrases'),
+    h('p',{class:'lede',style:'margin-bottom:20px'},'Openers for the presentation, then lines for arguing, reassuring and closing. Say each one aloud twice.'),
+    h('section',{class:'sheet',style:'margin-bottom:16px'},
+      h('h3',{class:'h3'},'Introduction phrases'),
+      h('div',{class:'lines'},INTRO.map(function(t){ return h('div',{class:'line'},h('span',{lang:'fr'},t),hear(t)); }))),
+    h('section',{class:'sheet',style:'margin-bottom:16px'},
+      h('h3',{class:'h3'},'Model sentences: sorting waste'),
+      h('p',{class:'muted small',style:'margin-bottom:8px'},'The notes use these to show how an introduction sounds on a real topic.'),
+      h('div',{class:'lines'},SORTING.map(function(t){ return h('div',{class:'line'},h('span',{lang:'fr'},t),hear(t)); }))),
+    h('div',{class:'two'},KIT.map(function(g){
+      return h('section',{class:'sheet'},h('h3',{class:'h3'},g.t),
+        h('div',{class:'lines'},g.lines.map(function(l){ return h('div',{class:'line'},h('div',null,h('div',{lang:'fr'},l[0]),h('div',{class:'en'},l[1])),hear(l[0])); })));
+    })));
+}
+function renderIdioms(main){
+  put(main,h('h2',{class:'h2'},'Idioms'),
+    h('p',{class:'lede',style:'margin-bottom:20px'},'Six expressions from the notes, each with the sentence your teacher uses to show it in action.'),
+    h('div',{class:'idioms'},IDIOMS.map(function(i){
+      return h('article',{class:'sheet idiom'},h('h3',{lang:'fr'},i.fr),h('p',{class:'muted',style:'margin-bottom:10px'},i.en),
+        h('div',{class:'mono tiny muted'},'In a sentence'),h('p',{lang:'fr',style:'margin:2px 0 10px'},i.use),h('div',{class:'acts'},hear(i.fr,'Idiom'),hear(i.use,'Sentence')));
+    })));
+}
+
+/* arguments tab */
+function topicCard(n,clickable){
+  var tp=TOPICS[n],c=COV[n];
+  var inner=[h('div',{class:'row',style:'justify-content:space-between'},h('span',{class:'n'},String(n)),h('span',{class:'badge b-'+(c==='notes'?'notes':c==='part'?'part':'draft')},COVLABEL[c])),h('div',{class:'fr',lang:'fr'},tp.fr),h('div',{class:'small muted'},tp.en)];
+  if(!clickable) return h('div',{class:'topic'},inner);
+  return h('button',{class:'topic',type:'button',on:{click:function(){ var cat=CATS.find(function(x){return x.topics.indexOf(n)>=0;}); S.cat=cat.id; S.q=''; render(); window.scrollTo(0,0); }}},inner);
+}
+function filterBlock(){
+  return null;
+}
+function renderArgs(main){
+  var search=h('input',{class:'input',id:'search',type:'search',placeholder:'Search the objections, replies and arguments (French or English)',value:S.q,'aria-label':'Search',autocomplete:'off'});
+  var results=h('div');
+  var pills=h('div',{class:'pills',role:'tablist'});
+  var draw=function(){
+    results.replaceChildren();
+    var q=stripAcc(S.q);
+    if(q){ drawSearch(results,q); return; }
+    if(S.cat==='overview') drawOverview(results);
+    else if(S.cat==='univ') results.append(catHeader({title:'Universal replies',fr:'Réponses pour tous les cas'},null),scenarioEl(UNIV,true));
+    else if(S.cat==='all') CATS.forEach(function(c){ results.append(drawCat(c)); });
+    else results.append(drawCat(CATS.find(function(c){return c.id===S.cat;})));
+  };
+  var drawPills=function(){
+    var list=[['overview','Overview'],['univ','Universal replies']].concat(CATS.map(function(c){return [c.id,c.title];})).concat([['all','Everything']]);
+    pills.replaceChildren.apply(pills,list.map(function(p){
+      return h('button',{class:'chip',type:'button','aria-pressed':String(!S.q&&S.cat===p[0]),on:{click:function(){ S.cat=p[0]; S.q=''; search.value=''; drawPills(); draw(); }}},p[1]);
+    }));
+  };
+  search.addEventListener('input',function(){ S.q=search.value; drawPills(); draw(); });
+  put(main,h('h2',{class:'h2'},'Arguments by topic'),
+    h('p',{class:'lede',style:'margin-bottom:18px'},'The 21 topics from the notes, grouped into eight categories. Your teacher\'s arguments, objections and replies sit under each one. Topics the notes do not cover have a violet draft.'),
+    h('div',{class:'tools'},
+      h('div',{class:'grow'},h('div',{class:'seg-wrap'},h('label',{class:'lbl',for:'search'},'Search'),search)),
+      seg('Teacher\'s formula',[[true,'Underlined'],[false,'Plain']],S.hl,function(v){ S.hl=v; draw(); drawHL(); }),
+      h('div',{class:'seg-wrap'},h('div',{class:'lbl'},'Scenarios'),h('button',{class:'btn',type:'button',on:{click:function(){ S.openAll=!S.openAll; render(); }}},S.openAll?'Collapse all':'Expand all'))),
+    pills,results);
+  function drawHL(){ render(); }
+  drawPills(); draw();
+}
+function catHeader(c,topics){
+  return h('h2',{class:'h2'},c.title,h('small',{lang:'fr'},c.fr));
+}
+function drawOverview(out){
+  out.append(h('p',{class:'muted',style:'margin-bottom:14px'},'Tap a topic to open its category. The label shows where its arguments come from.'));
+  CATS.forEach(function(c){
+    out.append(h('section',{class:'catblock'},h('h3',{class:'h3'},c.title,h('span',{class:'small muted',lang:'fr',style:'font-family:var(--font-body);margin-left:10px'},c.fr)),
+      h('div',{class:'tgrid'},c.topics.map(function(n){ return topicCard(n,true); }))));
+  });
+}
+function drawCat(c){
+  var sec=h('section',{class:'catblock'},catHeader(c));
+  sec.append(h('div',{class:'tgrid'},c.topics.map(function(n){ return topicCard(n,false); })));
+  if(c.see) sec.append(h('p',{class:'ctx'},c.see));
+  if(c.args.length){
+    sec.append(h('div',{class:'sub'},"Arguments from your teacher's notes"));
+    var box=h('div',{class:'sheet'});
+    c.args.forEach(function(a){
+      if(a.list){ box.append(h('div',{class:'hd mono tiny muted',style:'margin:4px 0'},a.h)); a.list.forEach(function(t){ box.append(h('div',{class:'arg'},h('div',{class:'tx'},h('p',{lang:'fr'},t)),hear(t))); }); }
+      else box.append(h('div',{class:'arg'},h('div',{class:'tx'},h('div',{class:'hd mono tiny muted'},a.h),h('p',{lang:'fr'},a.t)),hear(a.t)));
+    });
+    sec.append(box);
+  }
+  if(c.sc.length){
+    sec.append(h('div',{class:'sub'},'Scenarios from your teacher\'s notes'));
+    c.sc.forEach(function(sid){ sec.append(scenarioEl(SC[sid],S.openAll)); });
+  }
+  if(c.drafts.length){
+    sec.append(h('div',{class:'sub'},h('span',{class:'badge b-draft'},'Draft'),'Not from your teacher. Written to follow her formulas.'));
+    c.drafts.forEach(function(n){ sec.append(draftEl(n,DRAFTS[n])); });
+  }
+  return sec;
+}
+function drawSearch(out,q){
+  var found=0;
+  var addUniv=UNIV.items.map(function(it,i){ return Object.assign({__i:i},it); }).filter(function(it){ return matches(q,it.o,it.en,it.r); });
+  if(addUniv.length){ found+=addUniv.length; out.append(h('section',{class:'catblock'},h('h3',{class:'h3'},'Universal replies'),scenarioEl({id:'univ',title:'Universal replies',items:addUniv,pitch:[]},true))); }
+  CATS.forEach(function(c){
+    var sec=h('section',{class:'catblock'},h('h3',{class:'h3'},c.title)),n=0;
+    c.args.forEach(function(a){
+      var ts=a.list?a.list:[a.t];
+      var hit=ts.filter(function(t){ return matches(q,t,a.h); });
+      if(hit.length){ n+=hit.length; var box=h('div',{class:'sheet',style:'margin-bottom:12px'},h('div',{class:'hd mono tiny muted'},a.h)); hit.forEach(function(t){ box.append(h('div',{class:'arg'},h('div',{class:'tx'},h('p',{lang:'fr'},t)),hear(t))); }); sec.append(box); }
+    });
+    c.sc.forEach(function(sid){
+      var s=SC[sid],titleHit=matches(q,s.title,s.en,s.ctx);
+      var items=s.items.map(function(it,i){ return Object.assign({__i:i},it); }).filter(function(it){ return titleHit||matches(q,it.o,it.en,it.r); });
+      var pitch=(s.pitch||[]).filter(function(p){ p=pt(p); return titleHit||matches(q,p.t,p.h); });
+      if(items.length||pitch.length){ n+=items.length+pitch.length; sec.append(scenarioEl(Object.assign({},s,{items:items,pitch:pitch}),true)); }
+    });
+    c.drafts.forEach(function(k){
+      var d=DRAFTS[k],tp=TOPICS[k],hit=matches(q,tp.fr,tp.en);
+      var items=d.items.map(function(it,i){ return Object.assign({__i:i},it); }).filter(function(it){ return hit||matches(q,it.o,it.en,it.r); });
+      var args=d.args.filter(function(a){ return hit||matches(q,a); });
+      if(items.length||args.length){ n+=items.length+args.length; sec.append(draftEl(k,{args:args,items:items})); }
+    });
+    if(n){ found+=n; out.append(sec); }
+  });
+  if(!found) out.append(h('div',{class:'empty'},'Nothing matches that search. Try a shorter word, or an English one.'));
+}
+
+/* practice */
+function buildQueue(){
+  var P=S.P,pool=allPool().filter(function(x){
+    if(x.draft&&!P.drafts) return false;
+    if(!x.r) return false;
+    if(P.cat!=='all'&&x.cat!==P.cat) return false;
+    if(P.show==='todo'&&S.known[x.id]) return false;
+    return true;
+  });
+  P.queue=shuffled(pool); P.idx=0; P.reveal=false;
+}
+function renderPractice(main){
+  var P=S.P;
+  if(!P.queue.length&&P.idx===0&&!P._built){ P._built=true; buildQueue(); }
+  var cardHost=h('div');
+  var catOpts=[['all','All categories'],['univ','Universal replies']].concat(CATS.map(function(c){return [c.id,c.title];}));
+  var sel=h('select',{class:'input',id:'pcat','aria-label':'Category',on:{change:function(e){ P.cat=e.target.value; buildQueue(); drawCard(); }}},
+    catOpts.map(function(o){ var op=h('option',{value:o[0]},o[1]); if(o[0]===P.cat) op.selected=true; return op; }));
+  var all=allPool().filter(function(x){ return x.r&&!x.draft; });
+  var drawCard=function(){
+    cardHost.replaceChildren();
+    var total=P.queue.length;
+    if(!total){ cardHost.append(h('div',{class:'empty'},P.show==='todo'?'Nothing left to practise here. You have marked every card as known.':'No cards for this choice.')); return; }
+    if(P.idx>=total){
+      cardHost.append(h('section',{class:'sheet pcard stack'},h('h3',{class:'h3'},'Round finished'),h('p',{class:'muted'},'You went through '+total+' cards.'),
+        h('div',{class:'row'},h('button',{class:'btn primary',type:'button',on:{click:function(){ buildQueue(); drawCard(); }}},'Shuffle and go again'))));
+      return;
+    }
+    var it=P.queue[P.idx];
+    var meta=h('div',{class:'row',style:'justify-content:space-between'},
+      h('div',{class:'mono tiny muted'},'Card '+(P.idx+1)+' of '+total+' · '+it.sc),
+      it.draft?h('span',{class:'badge b-draft'},'Draft'):null);
+    var rep=h('div',{class:'stack-s'});
+    var drawReply=function(){
+      rep.replaceChildren();
+      if(!P.reveal){
+        rep.append(h('p',{class:'muted small'},'Answer out loud for about 30 seconds first. Use the five steps. Then check against your teacher.'),
+          h('button',{class:'btn primary',type:'button',on:{click:function(){ P.reveal=true; drawReply(); }}},'Show the reply'));
+      } else {
+        rep.append(h('div',{class:'mono tiny muted'},it.draft?'Draft reply':"Your teacher's reply"),frText(it.r),
+          h('div',{class:'acts'},hear(it.r,'Listen to reply')),
+          h('div',{class:'row',style:'margin-top:6px'},
+            h('button',{class:'btn primary',type:'button',on:{click:function(){ S.known[it.id]=1; save(); P.idx++; P.reveal=false; drawCard(); drawProg(); }}},'Got it'),
+            h('button',{class:'btn',type:'button',on:{click:function(){ delete S.known[it.id]; save(); P.queue.push(it); P.idx++; P.reveal=false; drawCard(); drawProg(); }}},'Again later'),
+            h('button',{class:'btn ghost',type:'button',on:{click:function(){ P.idx++; P.reveal=false; drawCard(); }}},'Skip')));
+      }
+    };
+    drawReply();
+    cardHost.append(h('section',{class:'sheet pcard stack'},meta,
+      h('div',null,h('div',{class:'mono tiny red'},'Your friend says'),h('p',{class:'pq',lang:'fr'},it.o),h('p',{class:'muted'},it.en)),
+      h('div',{class:'acts'},hear(it.o,'Listen to objection')),rep));
+  };
+  var prog=h('div');
+  var drawProg=function(){
+    var ids=all.map(function(x){return x.id;}),k=knownCount(ids);
+    prog.replaceChildren(h('div',{class:'row',style:'justify-content:space-between;margin-bottom:6px'},h('span',{class:'mono tiny muted'},'Known from your teacher\'s notes'),h('span',{class:'mono tiny'},k+' / '+ids.length)),
+      h('div',{class:'pbar'},h('i',{style:'width:'+(ids.length?k/ids.length*100:0)+'%'})));
+  };
+  put(main,h('h2',{class:'h2'},'Practice'),
+    h('p',{class:'lede',style:'margin-bottom:18px'},'A friend gives an objection. You answer out loud, then check the reply from the notes. Cards you know stay marked.'),
+    h('div',{class:'tools'},
+      h('div',{class:'seg-wrap grow'},h('label',{class:'lbl',for:'pcat'},'Category'),sel),
+      seg('Show',[['all','All cards'],['todo','Not yet known']],P.show,function(v){ P.show=v; buildQueue(); render(); }),
+      seg('Drafts',[[false,'Notes only'],[true,'Include drafts']],P.drafts,function(v){ P.drafts=v; buildQueue(); render(); })),
+    prog,h('div',{style:'height:16px'}),cardHost);
+  drawProg(); drawCard();
+}
+
+/* ---------- boot ---------- */
+render();
+(async function(){
+  try{
+    if(window.claude&&window.claude.use){
+      var res=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+      S.db=res[0];
+      try{ if(res[1]) S.uid=await res[1].id(); }catch(e){}
+      if(S.db&&S.uid){
+        try{
+          var snap=await S.db.doc('data/users/'+S.uid+'/cahier-b').get();
+          if(snap.exists){ var d=snap.data(); if(d&&d.known&&typeof d.known==='object'){ S.known=d.known; } if(d&&d.slow) S.slow=true; try{ localStorage.setItem(LS_KEY,JSON.stringify({known:S.known,slow:S.slow})); }catch(e){} render(); }
+        }catch(e){}
+      }
+    }
+  }catch(e){}
+})();
+})();
+</script>

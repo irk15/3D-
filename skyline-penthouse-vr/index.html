@@ -91,6 +91,7 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);height:22px;bac
   <button id="bSound" aria-pressed="false">Sound</button>
 </div>
 <div class="vrnote" id="vrnote"></div>
+<div style="position:fixed;left:16px;bottom:8px;z-index:5;font:11px ui-monospace,monospace;color:#ffd27e;opacity:.8">build: smooth-turn v3</div>
 
 <script src="vendor/three.bundle.js"></script>
 <script>
@@ -1543,7 +1544,7 @@ const VRQ = {
 };
 const vr = { q: 'fast', session: null, supported: false, seated: false, seatY: 0, vel: new THREE.Vector3(), snapReady: true, aiming: false, aimCtrl: null,
   vig: 0, blink: 0, smoothTurn: true, turnRate: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
-try { if (localStorage.getItem('penthouseVRturn') === 'n') vr.smoothTurn = false; } catch (e) { }
+try { if (localStorage.getItem('penthouseVRturn3') === 'n') vr.smoothTurn = false; } catch (e) { }
 try { const sq = localStorage.getItem('penthouseVRQ2'); if (VRQ[sq]) vr.q = sq; } catch (e) { }
 const ACCENT = 0xffb866;
 
@@ -1666,7 +1667,7 @@ function toggleLights() { state.lights = !state.lights; applyTime(state.h); MENU
 function toggleClock() { state.play = !state.play; MENU.dirty = true; }
 function toggleSound() { audio.start(); audio.toggle(); MENU.dirty = true; }
 function cycleQuality() { const ks = Object.keys(VRQ); vr.q = ks[(ks.indexOf(vr.q) + 1) % ks.length]; applyVRQuality(vr.q); resetGov(T); setLayerScale(VRQ[vr.q].scale); MENU.dirty = true; }
-function toggleTurn() { vr.smoothTurn = !vr.smoothTurn; try { localStorage.setItem('penthouseVRturn', vr.smoothTurn ? 's' : 'n'); } catch (e) { } MENU.dirty = true; }
+function toggleTurn() { vr.smoothTurn = !vr.smoothTurn; try { localStorage.setItem('penthouseVRturn3', vr.smoothTurn ? 's' : 'n'); } catch (e) { } MENU.dirty = true; }
 function toggleSeat() { vr.seated = !vr.seated; vr.seatY = vr.seated ? .4 : 0; MENU.dirty = true; }
 MENU.items = [];
 PRESETS.forEach((p, i) => MENU.items.push({ x: 19 + (i % 3) * 162, y: 88 + Math.floor(i / 3) * 62, w: 150, h: 52, label: () => p[0], on: () => Math.abs(((state.h - p[1] + 36) % 24) - 12) < .5, act: () => gotoTime(p[1]) }));
@@ -1682,7 +1683,7 @@ function drawMenu() {
   const hh = Math.floor(state.h), mm = Math.floor((state.h % 1) * 60);
   g.fillStyle = '#f4efe6'; g.font = '500 54px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 24, 66);
   g.fillStyle = '#b9b2a6'; g.font = '400 22px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'right'; g.fillText($('phase').textContent.toUpperCase(), W - 24, 52);
-  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76);
+  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76); g.textAlign = 'left'; g.fillStyle = '#ffd27e'; g.font = '400 15px ui-monospace, monospace'; g.fillText('BUILD smooth-turn v3 · ' + (vr.smoothTurn ? 'SMOOTH' : 'SNAP') + ' · R stick ' + ((vr.in.r ? vr.in.r.x : 0).toFixed(2)) + ',' + ((vr.in.r ? vr.in.r.y : 0).toFixed(2)), 24, 92); g.textAlign = 'right';
   g.textAlign = 'center'; g.font = '500 23px "IBM Plex Mono", ui-monospace, monospace';
   MENU.items.forEach((it, i) => {
     const on = it.on(), hov = MENU.hover === i;
@@ -1722,6 +1723,7 @@ function updateMenu(frame) {
     }
   }
   if (hover !== MENU.hover) { MENU.hover = hover; MENU.dirty = true; }
+  if (T - (MENU.rT || 0) > .25) { MENU.rT = T; MENU.dirty = true; }
   const st = gov.ema ? Math.round(1000 / gov.ema) + ' fps · ' + Math.round(gov.scale * 100) + '% res' : ''; if (st !== MENU.stat && (T - (MENU.statT || 0) > 1)) { MENU.stat = st; MENU.statT = T; MENU.dirty = true; }
   const mk = Math.floor(state.h * 60), txt = $('phase').textContent;
   if (mk !== MENU.lastMin || txt !== MENU.lastTxt) { MENU.lastMin = mk; MENU.lastTxt = txt; MENU.dirty = true; }
@@ -1751,7 +1753,9 @@ function pollInputs(session) {
   for (const src of session.inputSources) {
     const gp = src.gamepad; if (!gp || (src.handedness !== 'left' && src.handedness !== 'right')) continue;
     const a = gp.axes, k = src.handedness === 'left' ? 'l' : 'r';
-    vr.in[k] = { x: a.length >= 4 ? a[2] : (a[0] || 0), y: a.length >= 4 ? a[3] : (a[1] || 0), b: gp.buttons.map(b => b.pressed) };
+    // take whichever axes pair is actually deflected (Quest reports the thumbstick on [2],[3]; some builds use [0],[1])
+    const x2 = a[2] || 0, y2 = a[3] || 0, x0 = a[0] || 0, y0 = a[1] || 0, use0 = Math.hypot(x0, y0) > Math.hypot(x2, y2);
+    vr.in[k] = { x: use0 ? x0 : x2, y: use0 ? y0 : y2, b: gp.buttons.map(b => b.pressed) };
   }
 }
 const edge = (k, i) => !!(vr.in[k] && vr.in[k].b[i] && !(vr.prev[k] && vr.prev[k][i]));
@@ -1791,7 +1795,7 @@ function vrUpdate(dt, frame, T) {
     if (!vr.aiming) {
       if (vr.smoothTurn) {                                   // continuous turning: speed follows how far the stick is pushed
         const ax = Math.abs(R.x);
-        if (ax > .15) { const k = (ax - .15) / .85, rate = Math.sign(R.x) * k * k * 110 * DEG * 1 + Math.sign(R.x) * k * 25 * DEG; turnAboutHead(-rate * dt); vr.turnRate = Math.abs(rate) / DEG; }
+        if (ax > .12) { const k = Math.min(1, (ax - .12) / .7), rate = Math.sign(R.x) * (k * k * 100 + k * 40) * DEG; turnAboutHead(-rate * dt); vr.turnRate = Math.abs(rate) / DEG; }
       } else {
         if (Math.abs(R.x) > .7 && vr.snapReady) { turnAboutHead(-Math.sign(R.x) * 30 * DEG); vr.snapReady = false; vr.blink = Math.max(vr.blink, .35); }
         if (Math.abs(R.x) < .3) vr.snapReady = true;

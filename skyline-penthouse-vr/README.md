@@ -17,11 +17,11 @@ The same penthouse and skyline as `../skyline-penthouse/`, with an immersive Web
 A comfort vignette appears while walking and a short blink masks teleports and turns.
 
 ## Smooth movement
-The headset is locked to 72 Hz and an automatic governor lowers or raises the render resolution to hold that frame rate. Fast and Balanced also use lighter interior shading and only keep the nearest few lights live, so they look almost the same at a fraction of the GPU cost.
+The headset is locked to 72 Hz and an automatic governor lowers or raises the render resolution to hold that frame rate; the wrist menu shows the live fps and resolution. The city is drawn with a depth pre-pass and the sky last, so the expensive shaders only run on pixels you can actually see. Fast and Balanced also use lighter interior shading and only keep the nearest few lights live.
 
 ## Quality presets (pick before entering; the wrist menu can cycle them)
-- **Fast**: starts at 62% resolution, strong foveation, 300 cars, lightest shading, 2 live lights.
-- **Balanced** (default): starts at 78% resolution, 700 cars, light shading, 3 live lights.
+- **Fast** (default): starts at 60% resolution, strong foveation, no MSAA, 300 cars, lightest shading, 2 live lights.
+- **Balanced**: starts at 70% resolution, MSAA, 700 cars, 3 live lights, glossy floor reflections.
 - **Sharp**: up to 100% resolution, 1,500 cars, shadows, full reflections and all lights. Needs a lot of GPU.
 
 ## Sound

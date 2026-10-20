@@ -189,7 +189,7 @@ void main(){
 ` + GLSL_END + `}`
 });
 const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 48, 28), skyMat);
-sky.frustumCulled = false; sky.renderOrder = -10;
+sky.frustumCulled = false; sky.renderOrder = VR_BUILD ? 50 : -10;
 scene.add(sky);
 
 /* ============== CITY GRID ============== */
@@ -284,6 +284,7 @@ bMesh.material = new THREE.ShaderMaterial({
   uniforms: U,
   vertexShader: `attribute vec3 aSize; attribute vec4 aInfo;
 varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;
+invariant gl_Position;
 void main(){ vec4 wp = modelMatrix*instanceMatrix*vec4(position,1.); vWorld=wp.xyz; vLocal=position*aSize; vN=normal; vSize=aSize; vInfo=aInfo;
   gl_Position = projectionMatrix*viewMatrix*wp; }`,
   fragmentShader: `precision highp float;
@@ -352,6 +353,15 @@ void main(){
 });
 bMesh.frustumCulled = false;
 scene.add(bMesh);
+if (VR_BUILD) {
+  // Draw order tuned for mobile GPUs: interior first (nearest, hides what is behind it), then a depth-only pass for the city so the
+  // expensive building shader runs once per visible pixel, and the sky last so its clouds are only shaded where nothing covers it.
+  const dMat = new THREE.ShaderMaterial({ colorWrite: false, depthWrite: true,
+    vertexShader: `invariant gl_Position; void main(){ vec4 wp = modelMatrix*instanceMatrix*vec4(position,1.); gl_Position = projectionMatrix*viewMatrix*wp; }`,
+    fragmentShader: `void main(){ gl_FragColor = vec4(0.); }` });
+  const bDepth = new THREE.InstancedMesh(bGeo, dMat, bCount); bDepth.instanceMatrix = bMesh.instanceMatrix; bDepth.frustumCulled = false; bDepth.renderOrder = -2; scene.add(bDepth);
+  bMesh.renderOrder = -1; bMesh.material.depthWrite = false;
+}
 
 /* ============== GROUND, STREETS, LAKE, ISLANDS ============== */
 const groundMat = new THREE.ShaderMaterial({
@@ -503,7 +513,7 @@ const rcLights = new THREE.MeshBasicMaterial({ color: 0xffe6b8 });
 })();
 
 /* ================= PENTHOUSE INTERIOR ================= */
-const interior = new THREE.Group(); scene.add(interior);
+const interior = new THREE.Group(); scene.add(interior); if (VR_BUILD) interior.renderOrder = -5;
 const colliders = [];
 const glowList = [];            // emissive materials that follow the lights toggle / time of day
 const flameMats = [];

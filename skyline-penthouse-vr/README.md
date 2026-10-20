@@ -6,7 +6,7 @@ The same penthouse and skyline as `../skyline-penthouse/`, with an immersive Web
 | Input | Action |
 | --- | --- |
 | Left stick | Walk (click the stick to sprint), relative to where you look |
-| Right stick left / right | 30 degree snap turn |
+| Right stick left / right | Smooth turning (speed follows the stick). Switch to 30 degree snap turn with the Smooth/Snap button on the wrist menu |
 | Right stick forward, release | Aim and teleport (blue arc = valid, red = blocked) |
 | Left wrist (raise it toward your face) | Menu: time of day, lights, run clock, sound, quality, seated/standing, exit |
 | Right trigger | Click the menu with the laser |
@@ -14,7 +14,7 @@ The same penthouse and skyline as `../skyline-penthouse/`, with an immersive Web
 | X / Y | Run the clock / sound |
 | Hand tracking | Pinch and release to teleport |
 
-A comfort vignette appears while walking and a short blink masks teleports and turns.
+A comfort vignette appears while walking or turning, and a short blink masks teleports.
 
 ## Smooth movement
 The headset is locked to 72 Hz and an automatic governor lowers or raises the render resolution to hold that frame rate; the wrist menu shows the live fps and resolution. The city is drawn with a depth pre-pass and the sky last, so the expensive shaders only run on pixels you can actually see. Fast and Balanced also use lighter interior shading and only keep the nearest few lights live.

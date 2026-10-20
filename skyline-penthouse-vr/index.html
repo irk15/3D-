@@ -69,6 +69,7 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);height:22px;bac
     <div class="actions">
       <button id="bTour" aria-pressed="false">Tour</button>
       <button id="bLights" aria-pressed="true">Lights</button>
+      <button id="bWalls" aria-pressed="false">Walls</button>
       <button id="bPlay" aria-pressed="false">Run clock</button>
       <button id="bQ" aria-pressed="false">Performance</button>
     </div>
@@ -1071,58 +1072,100 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
 }
 
 
-/* ---- gallery: hang the owner's own paintings (paintings/list.json) on the walls; fall back to generated art ---- */
+/* ---- gallery: 15 frames for the owner's pictures + videos (paintings/list.json) and a wallpaper switcher (paintings/wallpapers.json) ---- */
 {
   const frameM = std(0x16110d, .5, 0, { envMapIntensity: .5 });
-  // wall: 'b' = back wall (faces -z), 'l' = left wall (faces +x); c = position along the wall, y = centre height, w/h = max picture box
+  // wall: b = back wall (faces -z), l = left wall (faces +x), r = right wall (faces -x); c = position along the wall, y = centre height, w/h = max picture box (m)
   const slots = [
     { wall: 'b', c: 3.4, y: 1.9, w: 1.6, h: 2.0, kind: 1, seed: 9 }, { wall: 'l', c: .9, y: 1.75, w: 2.5, h: 1.9, kind: 0, seed: 3 }, { wall: 'l', c: -2.2, y: 1.7, w: 1.1, h: 1.5, kind: 2, seed: 5 },
-    { wall: 'b', c: 6.4, y: 2.0, w: 1.0, h: 1.4, extra: 1 }, { wall: 'b', c: 8.0, y: 1.9, w: 1.0, h: 1.4, extra: 1 }, { wall: 'b', c: 1.5, y: 1.9, w: .8, h: 1.2, extra: 1 }
+    { wall: 'b', c: 6.4, y: 2.0, w: 1.0, h: 1.4 }, { wall: 'b', c: 8.0, y: 1.9, w: 1.0, h: 1.4 }, { wall: 'b', c: 1.5, y: 1.9, w: .8, h: 1.2 },
+    { wall: 'b', c: 5.05, y: 2.45, w: .8, h: .9 }, { wall: 'l', c: -.95, y: 1.7, w: .6, h: .9 }, { wall: 'l', c: 2.9, y: 1.7, w: .8, h: 1.1 }, { wall: 'l', c: -3.3, y: 2.45, w: .6, h: .8 },
+    { wall: 'r', c: -3.3, y: 1.7, w: 1.0, h: 1.4 }, { wall: 'r', c: -1.95, y: 1.7, w: 1.0, h: 1.4 }, { wall: 'r', c: 4.2, y: 1.8, w: .8, h: 1.1 }, { wall: 'r', c: 5.5, y: 1.8, w: .9, h: 1.3 }, { wall: 'r', c: 6.9, y: 1.8, w: 1.0, h: 1.4 }
   ];
   const place = (S, w, h) => {
-    const b = S.wall === 'b', x = b ? S.c : -8.93, z = b ? 7.79 : S.c, ry = b ? Math.PI : Math.PI / 2;
-    S.pic.position.set(x, S.y, z); S.pic.rotation.y = ry; S.pic.scale.set(w, h, 1);
-    S.back.position.set(b ? S.c : -8.97, S.y, b ? 7.83 : S.c); S.back.rotation.y = ry; S.back.scale.set(w + .08, h + .08, .03);
+    const k = S.wall, ry = k === 'b' ? Math.PI : k === 'l' ? Math.PI / 2 : -Math.PI / 2;
+    const px = k === 'b' ? S.c : k === 'l' ? -8.93 : 8.93, pz = k === 'b' ? 7.79 : S.c, bx = k === 'b' ? S.c : k === 'l' ? -8.97 : 8.97, bz = k === 'b' ? 7.83 : S.c;
+    S.pic.position.set(px, S.y, pz); S.pic.rotation.y = ry; S.pic.scale.set(w, h, 1);
+    S.back.position.set(bx, S.y, bz); S.back.rotation.y = ry; S.back.scale.set(w + .08, h + .08, .03);
     S.pic.updateMatrix(); S.back.updateMatrix();
   };
   for (const S of slots) {
-    const mat = S.extra ? std(0x20201f, .6) : new THREE.MeshStandardMaterial({ map: artTex(S.kind, S.seed), roughness: .6 });
+    const mat = S.kind !== undefined ? new THREE.MeshStandardMaterial({ map: artTex(S.kind, S.seed), roughness: .6 }) : std(0x20201f, .6);
     S.pic = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); S.back = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), frameM);
     S.pic.userData.anim = S.back.userData.anim = true; S.pic.userData.ns = 1; S.back.userData.ns = 1; interior.add(S.pic, S.back); place(S, S.w, S.h);
-    if (S.extra) S.pic.visible = S.back.visible = false;
+    if (S.kind === undefined) S.pic.visible = S.back.visible = false;
   }
-  fetch('paintings/list.json?' + Date.now(), { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).then(list => {
+  const vids = [];
+  const unlock = () => vids.forEach(v => { const p = v.play(); if (p && p.catch) p.catch(() => { }); if (v.userData_sound) v.muted = false; });
+  ['pointerdown', 'keydown', 'touchstart', 'click', 'selectstart'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
+  setInterval(() => vids.forEach(v => { if (v.paused && v.readyState > 1) { const p = v.play(); if (p && p.catch) p.catch(() => { }); } }), 2500);
+  const urlOf = n => /^https?:\/\//i.test(n) ? n : 'paintings/' + n;
+  const loadJSON = f => fetch(f + '?' + Date.now(), { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).catch(() => []);
+  loadJSON('paintings/list.json').then(list => {
     if (!Array.isArray(list)) return;
-    list.slice(0, slots.length).forEach((name, i) => {
-      const S = slots[i], isVid = /\.(mp4|webm|m4v|mov)(\?|$)/i.test(name), url = /^https?:\/\//i.test(name) ? name : 'paintings/' + name;
-      const apply = (tex, mat, w0, h0) => {
+    list.slice(0, slots.length).forEach((entry, i) => {
+      if (!entry) return;
+      const o = typeof entry === 'string' ? { src: entry } : entry, name = o.src; if (!name) return;
+      const S = slots[i], isVid = /\.(mp4|webm|m4v|mov)(\?|$)/i.test(name), url = urlOf(name), full = isVid && S.wall === 'b' && o.full !== false;
+      const apply = (mat, w0, h0) => {
         if (S.hidden) return;
         S.pic.material = mat; S.pic.userData.stdMat = mat;
-        if (isVid && S.wall === 'b') { S.w = 8; S.h = 3.1; S.y = 1.65; }               // video = full wall height, tucked against the right end of the slat wall
-        const ia = w0 / h0; let w = S.w, h = S.w / ia; if (h > S.h) { h = S.h; w = S.h * ia; }
-        if (isVid && S.wall === 'b') { S.c = 8.9 - w / 2; for (const O of slots) if (O !== S && O.wall === 'b' && Math.abs(O.c - S.c) < w / 2 + O.w / 2) { O.hidden = true; O.pic.visible = O.back.visible = false; } }
+        let bw = S.w, bh = S.h; if (full) { bw = 8; bh = 3.1; S.y = 1.65; }
+        const ia = w0 / h0; let w = bw, h = bw / ia; if (h > bh) { h = bh; w = bh * ia; }
+        if (full) { S.c = 8.9 - w / 2; for (const O of slots) if (O !== S && O.wall === 'b' && Math.abs(O.c - S.c) < w / 2 + O.w / 2) { O.hidden = true; O.pic.visible = O.back.visible = false; } }
         place(S, w, h); S.pic.visible = S.back.visible = true;
         if (typeof setLiteMats === 'function' && typeof lite !== 'undefined') setLiteMats(lite.mode);
       };
-      if (isVid) {   // a video "painting": muted, looping, plays as a lit screen in the frame
-        const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.preload = 'auto';
+      if (isVid) {
+        const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.preload = 'auto'; v.userData_sound = !!o.sound;
         if (/^https?:/i.test(url)) v.crossOrigin = 'anonymous';
-        const go = () => { const p = v.play(); if (p && p.catch) p.catch(() => { }); };
         v.addEventListener('loadeddata', () => {
           const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false;
-          apply(t, new THREE.MeshBasicMaterial({ map: t, toneMapped: false }), v.videoWidth || 16, v.videoHeight || 9); go();
+          apply(new THREE.MeshBasicMaterial({ map: t, toneMapped: false }), v.videoWidth || 16, v.videoHeight || 9); vids.push(v); const p = v.play(); if (p && p.catch) p.catch(() => { });
         });
-        ['pointerdown', 'keydown', 'touchstart', 'click'].forEach(ev => addEventListener(ev, go, { passive: true }));
-        setInterval(() => { if (v.paused && v.readyState > 1) go(); }, 2500);
         v.src = url; v.load(); return;
       }
       const img = new Image(); img.onload = () => {
         const t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true;
-        apply(t, new THREE.MeshStandardMaterial({ map: t, roughness: .55, envMapIntensity: .3 }), img.width, img.height);
+        apply(new THREE.MeshStandardMaterial({ map: t, roughness: .55, envMapIntensity: .3 }), img.width, img.height);
       };
       if (/^https?:/i.test(url)) img.crossOrigin = 'anonymous'; img.src = url;
     });
-  }).catch(() => { });
+  });
+
+  /* ---- wallpaper: built-in patterns + your own images (paintings/wallpapers.json), cycled with the Walls button / wrist menu ---- */
+  const pat = (name, tile, draw) => ({ name, tile, tex: canvasTex(512, 512, draw) });
+  const WP = { list: [], idx: -1, orig: [[M.plaster, M.plaster.color.getHex()], [M.plasterW, M.plasterW.color.getHex()]] };
+  WP.list.push(pat('Linen', 1.4, (g, w, h) => { g.fillStyle = '#d8ccb6'; g.fillRect(0, 0, w, h); for (let i = 0; i < w; i += 3) { g.fillStyle = 'rgba(120,100,70,' + (.05 + ((i * 7) % 5) * .012) + ')'; g.fillRect(i, 0, 1, h); g.fillRect(0, i, w, 1); } }));
+  WP.list.push(pat('Deco fans', 1.0, (g, w, h) => { g.fillStyle = '#16233a'; g.fillRect(0, 0, w, h); g.strokeStyle = '#c9a257'; g.lineWidth = 3; for (let y = 0; y <= h + 128; y += 64) for (let x = (y / 64 % 2) * 64; x <= w + 128; x += 128) for (let r = 56; r > 8; r -= 12) { g.beginPath(); g.arc(x, y, r, Math.PI, 0); g.stroke(); } }));
+  WP.list.push(pat('Botanical', 1.8, (g, w, h) => { g.fillStyle = '#b9c4a6'; g.fillRect(0, 0, w, h); const r = mulberry32(5); for (let i = 0; i < 26; i++) { const x = r() * w, y = r() * h, a = r() * 6.28, s = 40 + r() * 50; g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = r() > .5 ? '#5f7a4e' : '#7d9468'; g.beginPath(); g.ellipse(0, 0, s, s * .32, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(-s, 0); g.lineTo(s, 0); g.stroke(); g.restore(); } }));
+  WP.list.push(pat('Herringbone', 1.2, (g, w, h) => { g.fillStyle = '#7e8a92'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 32) for (let x = 0; x < w; x += 64) for (let k = 0; k < 2; k++) { g.fillStyle = (x / 64 + y / 32 + k) % 3 ? '#8c989f' : '#6f7b83'; g.save(); g.translate(x + 32, y + 16); g.rotate(k ? .6 : -.6); g.fillRect(-26, -7, 52, 14); g.restore(); } }));
+  WP.list.push(pat('Green velvet', 2.0, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#13342c'); gr.addColorStop(.5, '#1f4a3e'); gr.addColorStop(1, '#13342c'); g.fillStyle = gr; g.fillRect(0, 0, w, h); const r = mulberry32(8); for (let i = 0; i < 3000; i++) { g.fillStyle = 'rgba(255,255,255,' + r() * .04 + ')'; g.fillRect(r() * w, r() * h, 1, 3); } }));
+  WP.list.push(pat('Blush stripes', 1.0, (g, w, h) => { g.fillStyle = '#f1e6dc'; g.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 128) { g.fillStyle = '#e4c4bb'; g.fillRect(x, 0, 64, h); g.fillStyle = 'rgba(255,255,255,.4)'; g.fillRect(x + 60, 0, 4, h); } }));
+  const wallBtn = document.getElementById('bWalls');
+  function setWall(i) {
+    WP.idx = i; const it = i >= 0 ? WP.list[i] : null;
+    WP.orig.forEach(([m, hex], k) => {
+      const len = k ? 18.8 : 12.8;
+      if (it) { if (!it['t' + k]) { const t = it.tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(len / it.tile, 3.6 / it.tile); it['t' + k] = t; } m.map = it['t' + k]; m.color.set(0xffffff); }
+      else { m.map = null; m.color.setHex(hex); }
+      m.needsUpdate = true;
+      if (typeof lite !== 'undefined' && lite.cache) { const lm = lite.cache.get(m); if (lm) { lm.map = m.map; lm.color.copy(m.color); lm.needsUpdate = true; } }
+    });
+    if (wallBtn) { wallBtn.textContent = it ? 'Walls: ' + it.name : 'Walls'; wallBtn.setAttribute('aria-pressed', it ? 'true' : 'false'); }
+    try { localStorage.setItem('penthouseWall', String(i)); } catch (e) { }
+    if (typeof MENU !== 'undefined') MENU.dirty = true;
+  }
+  const cycleWall = () => setWall(WP.idx + 1 >= WP.list.length ? -1 : WP.idx + 1);
+  window.__cycleWall = cycleWall; window.__wallName = () => WP.idx >= 0 ? WP.list[WP.idx].name : 'Original';
+  if (wallBtn) wallBtn.addEventListener('click', cycleWall);
+  loadJSON('paintings/wallpapers.json').then(list => {
+    if (Array.isArray(list)) list.forEach((e, k) => {
+      const o = typeof e === 'string' ? { src: e } : e; if (!o || !o.src) return;
+      const img = new Image(); img.onload = () => { const t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; t.needsUpdate = true; WP.list.push({ name: o.name || 'Custom ' + (k + 1), tile: o.tile || 1.7, tex: t }); };
+      if (/^https?:/i.test(o.src)) img.crossOrigin = 'anonymous'; img.src = urlOf(o.src);
+    });
+  }).then(() => { try { const s = +localStorage.getItem('penthouseWall'); if (s >= 0 && s < WP.list.length) setWall(s); } catch (e) { } });
 }
 
 /* ---- castShadow / matrix freeze ---- */
@@ -1859,9 +1902,10 @@ function toggleSeat() { vr.seated = !vr.seated; vr.seatY = vr.seated ? .4 : 0; M
 MENU.items = [];
 PRESETS.forEach((p, i) => MENU.items.push({ x: 19 + (i % 3) * 162, y: 88 + Math.floor(i / 3) * 62, w: 150, h: 52, label: () => p[0], on: () => Math.abs(((state.h - p[1] + 36) % 24) - 12) < .5, act: () => gotoTime(p[1]) }));
 [['Lights', () => state.lights, toggleLights], ['Clock', () => state.play, toggleClock], ['Sound', () => audio.on, toggleSound], [null, () => vr.smoothTurn, toggleTurn]].forEach((b, i) => MENU.items.push({ x: 19 + i * 119, y: 222, w: 110, h: 52, label: () => b[0] || (vr.smoothTurn ? 'Smooth' : 'Snap'), on: b[1], act: b[2] }));
-MENU.items.push({ x: 19, y: 286, w: 214, h: 52, label: () => 'Quality: ' + VRQ[vr.q].label, on: () => false, act: cycleQuality });
-MENU.items.push({ x: 243, y: 286, w: 140, h: 52, label: () => vr.seated ? 'Seated' : 'Standing', on: () => vr.seated, act: toggleSeat });
-MENU.items.push({ x: 393, y: 286, w: 100, h: 52, label: () => 'Exit VR', on: () => false, act: () => { if (vr.session) vr.session.end(); } });
+MENU.items.push({ x: 19, y: 286, w: 150, h: 52, label: () => 'Quality: ' + VRQ[vr.q].label, on: () => false, act: cycleQuality });
+MENU.items.push({ x: 177, y: 286, w: 100, h: 52, label: () => vr.seated ? 'Seated' : 'Standing', on: () => vr.seated, act: toggleSeat });
+MENU.items.push({ x: 285, y: 286, w: 130, h: 52, label: () => 'Walls: ' + (window.__wallName ? window.__wallName().slice(0, 9) : '-'), on: () => window.__wallName && window.__wallName() !== 'Original', act: () => window.__cycleWall && window.__cycleWall() });
+MENU.items.push({ x: 423, y: 286, w: 72, h: 52, label: () => 'Exit', on: () => false, act: () => { if (vr.session) vr.session.end(); } });
 function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function drawMenu() {
   const g = MENU.g, W = MENU.W, H = MENU.H; g.clearRect(0, 0, W, H);

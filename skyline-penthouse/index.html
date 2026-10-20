@@ -287,7 +287,7 @@ varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;
 void main(){ vec4 wp = modelMatrix*instanceMatrix*vec4(position,1.); vWorld=wp.xyz; vLocal=position*aSize; vN=normal; vSize=aSize; vInfo=aInfo;
   gl_Position = projectionMatrix*viewMatrix*wp; }`,
   fragmentShader: `precision highp float;
-uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime;
+uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime,uLite;
 varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;` + GLSL_COMMON + `
 void main(){
   vec3 N = normalize(vN);
@@ -326,11 +326,15 @@ void main(){
     float lit = mix(step(wn,chance), clamp(chance,0.,1.), fade);
     vec3 warm = vec3(1.,.74,.42), cool = vec3(.72,.86,1.);
     vec3 lc = mix(cool, warm, clamp(warmBias + (h21(id.yx+seed)-.5)*1.1, 0., 1.)) * (1.1+wn*1.5);
-    vec3 R = reflect(-V, N);
-    vec3 skyR = mix(uSkyH, uSkyZ, pow(clamp(R.y+.1,0.,1.),.6));
     float fr = mix(.12, 1., pow(1.-max(dot(N,V),0.), 4.))*refl;
-    float spec = pow(max(dot(R,uLDir),0.), 40.)*refl;
-    vec3 gcol = glass*(amb*.9) + skyR*fr + uLCol*spec*.6;
+    vec3 gcol;
+    if (uLite>.5) { gcol = glass*(amb*.9) + mix(uSkyH, uSkyZ, .3)*fr; }
+    else {
+      vec3 R = reflect(-V, N);
+      vec3 skyR = mix(uSkyH, uSkyZ, pow(clamp(R.y+.1,0.,1.),.6));
+      float spec = pow(max(dot(R,uLDir),0.), 40.)*refl;
+      gcol = glass*(amb*.9) + skyR*fr + uLCol*spec*.6;
+    }
     vec3 wcol = wall*(amb + sunL);
     float groundGlow = (1.-smoothstep(0.,70.,v))*uNight;
     wcol += wall*vec3(.5,.3,.14)*groundGlow*.6;
@@ -354,7 +358,7 @@ const groundMat = new THREE.ShaderMaterial({
   uniforms: Object.assign({ tBlocks: { value: blockDataTex } }, U),
   vertexShader: `varying vec3 vWorld; void main(){ vec4 wp=modelMatrix*vec4(position,1.); vWorld=wp.xyz; gl_Position=projectionMatrix*viewMatrix*wp; }`,
   fragmentShader: `precision highp float;
-uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime; uniform sampler2D tBlocks;
+uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime,uLite; uniform sampler2D tBlocks;
 varying vec3 vWorld;` + GLSL_COMMON + `
 const float CX=120., CZ=90., OX=60., OZ=45.;
 float hwX(float i){ return mod(abs(i),4.)<.5 ? 12. : 7.; }
@@ -410,11 +414,11 @@ void main(){
     vec4 bd = texture2D(tBlocks, buv);
     float inB = step(0.,buv.x)*step(buv.x,1.)*step(0.,buv.y)*step(buv.y,1.);
     float park = bd.r*inB;
-    float nz = fbm(p*.07);
+    float nz = uLite>.5 ? .5 : fbm(p*.07);
     vec3 asphalt = vec3(.03,.032,.036)*(.8+.5*vnoise(p*.4));
     vec3 side = vec3(.13,.128,.12);
     vec3 yard = vec3(.075,.078,.07)*(.8+.4*nz);
-    vec3 grass = vec3(.022,.065,.02)*(.65+.8*fbm(p*.045));
+    vec3 grass = vec3(.022,.065,.02)*(.65+.8*(uLite>.5 ? .5 : fbm(p*.045)));
     vec3 scrub = vec3(.04,.05,.04)*(.7+.6*nz);
     vec3 land = mix(scrub, mix(yard, grass, park), inB);
     float wf = step(-2060.,p.y)*step(p.y,-1850.);
@@ -422,7 +426,7 @@ void main(){
     col = mix(land, side, walk*(1.-road)*inGrid);
     col = mix(col, asphalt, road);
     // islands
-    vec3 isle = mix(vec3(.02,.055,.02), vec3(.09,.08,.05), vnoise(p*.05))*(.7+.5*fbm(p*.1));
+    vec3 isle = mix(vec3(.02,.055,.02), vec3(.09,.08,.05), vnoise(p*.05))*(.7+.5*(uLite>.5 ? .5 : fbm(p*.1)));
     col = mix(col, isle, isl);
     // lane markings
     float markZ = roadX*(1.-roadZ), markX = roadZ*(1.-roadX);

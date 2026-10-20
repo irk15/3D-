@@ -92,7 +92,7 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);height:22px;bac
   <button id="bSound" aria-pressed="false">Sound</button>
 </div>
 <div class="vrnote" id="vrnote"></div>
-<div style="position:fixed;left:16px;bottom:8px;z-index:5;font:11px ui-monospace,monospace;color:#ffd27e;opacity:.8">build: city detail v4</div>
+<div style="position:fixed;left:16px;bottom:8px;z-index:5;font:11px ui-monospace,monospace;color:#ffd27e;opacity:.8">build: city detail v5</div>
 
 <script src="vendor/three.bundle.js"></script>
 <script>
@@ -274,6 +274,28 @@ function addInst(x, yBase, z, sx, sy, sz, seed, type, tint, crown) {
       }
     }
   }
+  // rooftop furniture: mechanical boxes, elevator cores, tanks and masts (type 6), own RNG so the city layout never shifts
+  const rr = mulberry32(4242), base = insts.length;
+  const tops = [];
+  for (let i = 0; i < base; i++) {
+    const b = insts[i];
+    if (b.crown || b.sy < 14 || b.sx < 9 || b.sz < 9) continue;
+    tops.push(b);
+  }
+  for (const b of tops) {
+    const ty = b.y + b.sy / 2, tall = b.sy > 120;
+    const nM = 1 + Math.floor(rr() * 3);
+    for (let k = 0; k < nM; k++) {
+      const mw = Math.min(b.sx * (.12 + rr() * .2), 9), md = Math.min(b.sz * (.12 + rr() * .2), 9), mh = 1.6 + rr() * 2.6;
+      const mx = b.x + (rr() - .5) * (b.sx - mw) * .8, mz = b.z + (rr() - .5) * (b.sz - md) * .8;
+      addInst(mx, ty, mz, mw, mh, md, rr() * 50, 6, rr(), 0);
+    }
+    if (b.sy > 40 && rr() < .75) { const ew = Math.min(b.sx * .3, 10), ed = Math.min(b.sz * .3, 10), eh = 3.5 + rr() * 3;
+      addInst(b.x + (rr() - .5) * b.sx * .3, ty, b.z + (rr() - .5) * b.sz * .3, ew, eh, ed, rr() * 50, 6, rr(), 0); }
+    if (rr() < (tall ? .85 : .3)) { const mh = tall ? 18 + rr() * 40 : 5 + rr() * 12;
+      addInst(b.x + (rr() - .5) * b.sx * .2, ty, b.z + (rr() - .5) * b.sz * .2, .5, mh, .5, rr() * 50, 6, rr(), 0); }
+    if (b.sy < 70 && rr() < .3) { const tw = 2.6 + rr() * 1.6; addInst(b.x + (rr() - .5) * b.sx * .5, ty + 1.4, b.z + (rr() - .5) * b.sz * .5, tw, 3.2, tw, rr() * 50, 6, .9, 0); }
+  }
   // the penthouse tower itself, with the terrace on its roof
   addInst(0, -GROUND, -1, 19.6, GROUND - 0.55, 20.4, 42.7, 0, .5, 0);
 })();
@@ -309,7 +331,7 @@ varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;` + GLSL_COMMON + `
 void main(){
   vec3 N = normalize(vN);
   vec3 toCam = cameraPosition - vWorld; float dist = length(toCam); vec3 V = toCam/dist;
-  float seed = vInfo.x, type = floor(vInfo.y+.5), tint = vInfo.z, crown = vInfo.w;
+  float seed = floor(vInfo.x*256.+.5)/256., type = floor(vInfo.y+.5), tint = vInfo.z, crown = vInfo.w;
   vec3 amb = mix(uAmbGround, uAmbSky, N.y*.5+.5);
   vec3 sunL = uLCol*max(dot(N,uLDir),0.);
   float v = vLocal.y + vSize.y*.5;
@@ -324,12 +346,19 @@ void main(){
     float faceId = N.x>.5?0.:N.x<-.5?1.:N.z>.5?2.:3.;
     float u = abs(N.x)>.5 ? vLocal.z : vLocal.x;
     vec2 cell; vec2 m; vec3 wall; vec3 glass; float refl; float litP; float warmBias=.5;
+    float gv = vWorld.y + ${GROUND.toFixed(2)};   // height above street
     if (type<.5)      { cell=vec2(2.4,3.9); m=vec2(.03,.2);  wall=vec3(.07,.1,.13); glass=vec3(.14,.24,.31); refl=.9;  litP=.45; }
     else if (type<1.5){ cell=vec2(3.4,3.1); m=vec2(.13,.2);  wall=vec3(.42,.4,.37); glass=vec3(.08,.1,.12);  refl=.5;  litP=.38; warmBias=.8; }
     else if (type<2.5){ cell=vec2(3.1,3.5); m=vec2(.22,.26); wall=vec3(.26,.11,.08); glass=vec3(.05,.06,.07); refl=.25; litP=.32; warmBias=.9; }
     else if (type<3.5){ cell=vec2(1.9,4.0); m=vec2(.13,.22); wall=vec3(.02,.02,.025);glass=vec3(.12,.085,.05); refl=.55; litP=.5; }
     else if (type<4.5){ cell=vec2(1.5,3.8); m=vec2(.3,.16);  wall=vec3(.62,.6,.55); glass=vec3(.04,.05,.06);  refl=.4;  litP=.5; }
     else              { cell=vec2(4.4,3.6); m=vec2(.3,.3);   wall=vec3(.18,.18,.19);glass=vec3(.05,.06,.07);  refl=.25; litP=.2; warmBias=.8; }
+    // per-building glass personality: blue, green, bronze, grey
+    float gt = fract(seed*3.7+tint*5.1);
+    if (type<.5 || (type>2.5&&type<3.5)) glass *= gt<.3 ? vec3(.7,1.15,1.3) : gt<.55 ? vec3(.75,1.2,.95) : gt<.75 ? vec3(1.3,1.05,.7) : vec3(1.,1.,1.05);
+    // ground floor: tall shopfront glazing
+    float shop = 1.-smoothstep(5.2,5.8,gv);
+    if (shop>.5) { cell=vec2(3.6,5.6); m=vec2(.09,.05); glass=vec3(.1,.11,.12); litP=.85; warmBias=.95; wall=vec3(.12,.12,.13); }
     vec2 g = vec2(u, v)/cell + vec2(seed*7.13, 0.);
     vec2 id = floor(g), f = fract(g);
     vec2 aa = fwidth(g)*.9;
@@ -337,6 +366,21 @@ void main(){
     float wy = smoothstep(m.y-aa.y, m.y+aa.y, f.y)*(1.-smoothstep(1.-m.y-aa.y, 1.-m.y+aa.y, f.y));
     float fade = clamp(max(aa.x,aa.y)*1.6-.2, 0., 1.);
     float wm = mix(wx*wy, (1.-2.*m.x)*(1.-2.*m.y), fade);
+    // corner piers, plinth, parapet, plant-room bands
+    float hwid = (abs(N.x)>.5 ? vSize.z : vSize.x)*.5;
+    float edgeD = hwid-abs(u), aw = fwidth(u)*.9+.001;
+    float pw = type<.5 ? .35 : .8;
+    wm *= smoothstep(pw-aw, pw+aw, edgeD);
+    wm *= smoothstep(.7-.05, .7+.05, gv) * (1.-smoothstep(vSize.y-.95, vSize.y-.85, v));
+    float mech = 0.;
+    if (vSize.y > 110. && (type<.5||type>2.5&&type<4.5)) {
+      float mb = abs(mod(v+seed*2.9, 62.)-31.);
+      mech = (1.-smoothstep(3.-.3,3.+.3,mb))*(1.-fade);
+      float louv = step(.5, fract(v*1.6));
+      wm = mix(wm, .28*louv, mech);
+    }
+    float blindR = h21(id+seed*3.7+9.1), blindF = .2+.6*h21(id.yx+seed+4.3);
+    float blindM = step(.72, blindR)*step(1.-blindF, f.y)*(1.-fade)*(1.-mech)*(1.-shop);
     float fl = h21(vec2(id.y, seed+faceId*7.7));
     float wn = h21(id + seed*57. + faceId*3.1);
     float chance = litP*mix(.3,1.8,fl);
@@ -352,11 +396,29 @@ void main(){
       float spec = pow(max(dot(R,uLDir),0.), 40.)*refl;
       gcol = glass*(amb*.9) + skyR*fr + uLCol*spec*.6;
     }
+    if (type>1.5 && type<2.5) {
+      vec2 bp = vec2(u/.45 + floor(v/.16)*.5, v/.16); vec2 bf = fract(bp);
+      float bl = max(step(bf.y,.14), step(bf.x,.07));
+      wall *= mix(1.-.4*bl, .86, clamp(max(fwidth(bp.x),fwidth(bp.y))*1.5,0.,1.));
+    }
+    float stk = h21(vec2(floor(u*1.7), seed*13.));
     vec3 wcol = wall*(amb + sunL);
+    wcol *= 1. - .3*step(.55,stk)*(1.-f.y*.6)*(1.-fade);
+    wcol *= .8 + .25*smoothstep(0.,6.,gv);
+    gcol = mix(gcol, vec3(.62,.58,.5)*(amb*1.1+sunL*.8), blindM*.75);
     float groundGlow = (1.-smoothstep(0.,70.,v))*uNight;
     wcol += wall*vec3(.5,.3,.14)*groundGlow*.6;
     col = mix(wcol, gcol, wm);
-    emis += lc*lit*wm*uNight*.85;
+    emis += lc*lit*wm*uNight*.85*(1.-shop*.5)*(1.-blindM*.9) + lc*lit*wm*blindM*uNight*.4;
+    if (shop>.5 && gv > 4.1 && gv < 5.4) {   // shop signs
+      float sg = h21(vec2(id.x, seed+31.)); 
+      vec3 sc = sg<.33 ? vec3(1.,.25,.2) : sg<.66 ? vec3(.25,.7,1.) : vec3(1.,.8,.3);
+      emis += sc*step(.4,h21(vec2(id.x,seed+8.)))*(1.-fade*.6)*uNight*1.1;
+    }
+    if (type>5.5) {   // rooftop plant: louvred grey metal, no windows
+      float lv = step(.5, fract(v*3.));
+      col = mix(vec3(.1,.1,.11), vec3(.19,.19,.2), lv)*(amb+sunL); emis = vec3(0.); wm = 0.;
+    }
     if (crown>.5 && v > vSize.y-5.) emis += mix(vec3(1.,.85,.6), vec3(.6,.8,1.), tint)*1.6*uNight*(.7+.3*sin(uTime*.7+seed));
     if (crown<.5 && type<.5 && v > vSize.y-1.2 && tint>.75) emis += vec3(.5,.7,1.)*.9*uNight;
     col *= mix(.55,1., smoothstep(0.,45.,v));
@@ -2089,7 +2151,7 @@ function drawMenu() {
   const hh = Math.floor(state.h), mm = Math.floor((state.h % 1) * 60);
   g.fillStyle = '#f4efe6'; g.font = '500 54px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 24, 66);
   g.fillStyle = '#b9b2a6'; g.font = '400 22px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'right'; g.fillText($('phase').textContent.toUpperCase(), W - 24, 52);
-  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76); g.textAlign = 'left'; g.fillStyle = '#ffd27e'; g.font = '400 15px ui-monospace, monospace'; g.fillText('BUILD city detail v4 · ' + (vr.smoothTurn ? 'SMOOTH' : 'SNAP') + ' · R stick ' + ((vr.in.r ? vr.in.r.x : 0).toFixed(2)) + ',' + ((vr.in.r ? vr.in.r.y : 0).toFixed(2)), 24, 92); g.textAlign = 'right';
+  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76); g.textAlign = 'left'; g.fillStyle = '#ffd27e'; g.font = '400 15px ui-monospace, monospace'; g.fillText('BUILD city detail v5 · ' + (vr.smoothTurn ? 'SMOOTH' : 'SNAP') + ' · R stick ' + ((vr.in.r ? vr.in.r.x : 0).toFixed(2)) + ',' + ((vr.in.r ? vr.in.r.y : 0).toFixed(2)), 24, 92); g.textAlign = 'right';
   g.textAlign = 'center'; g.font = '500 23px "IBM Plex Mono", ui-monospace, monospace';
   MENU.items.forEach((it, i) => {
     const on = it.on(), hov = MENU.hover === i;

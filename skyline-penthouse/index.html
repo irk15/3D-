@@ -783,7 +783,7 @@ void main(){ vec2 p=vUv; float x=p.x*uAsp;
   const e2 = chair.clone(); e2.position.set(-2.05, 0, 1); e2.rotation.y = Math.PI / 2; interior.add(e2);
   col(-6.8, -1.6, -.5, 2.5);
   // sculptural chandelier
-  const rods = new THREE.InstancedMesh(new THREE.CylinderGeometry(.004, .004, 1, 4), M.brass, 46), orbs = new THREE.InstancedMesh(new THREE.SphereGeometry(.055, 10, 8), G.orb, 46);
+  const rods = new THREE.InstancedMesh(new THREE.CylinderGeometry(.007, .007, 1, 5), M.brass, 46), orbs = new THREE.InstancedMesh(new THREE.SphereGeometry(.055, 10, 8), G.orb, 46);
   const m4 = new THREE.Matrix4(), rr = mulberry32(21);
   for (let i = 0; i < 46; i++) {
     const x = -4.2 + (rr() - .5) * 3.0, z = 1 + (rr() - .5) * .8, ln = .5 + rr() * 1.15, y = CEIL - .25 - ln;
@@ -936,7 +936,7 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
     t.repeat.set(rep[0], rep[1]); t.minFilter = THREE.LinearMipmapLinearFilter; return t;
   };
   for (const [m, seed, k, rep, bs, bl, cells] of [[M.plaster, 3, .5, [3, 1.5], .012, 120, 64], [M.plasterW, 4, .5, [3, 1.5], .012, 120, 64], [M.ceil, 5, .35, [3, 2], .01, 80, 64], [M.concrete, 6, .9, [6, 6], .08, 200, 64],
-    [M.boucle, 7, 1, [5, 5], .1, 100, 96], [M.camel, 8, .8, [5, 5], .06, 100, 96], [M.leather, 9, .7, [5, 5], .05, 100, 80], [M.sand, 10, .8, [5, 5], .06, 100, 96], [M.pine, 11, .8, [5, 5], .06, 100, 96]]) { m.bumpMap = noiseTex(seed, k, rep, bl, cells); m.bumpScale = bs; m.needsUpdate = true; }
+    [M.boucle, 7, 1, [4, 4], .05, 100, 48]]) { m.bumpMap = noiseTex(seed, k, rep, bl, cells); m.bumpScale = bs; m.needsUpdate = true; }
 
   // 2. bake helper: many small pieces merged into one mesh per material
   const MB = new Map(), _m4 = new THREE.Matrix4(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _q2 = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
@@ -1046,7 +1046,7 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
       const a = new THREE.Vector3(x, 3.2, GZ - .2), b = new THREE.Vector3(x + .5, 3.0, -10.0), pts = [];
       for (let i = 0; i <= 18; i++) { const t = i / 18; pts.push(new THREE.Vector3().lerpVectors(a, b, t).add(new THREE.Vector3(0, -.55 * 4 * t * (1 - t), 0))); }
       pts.forEach((p, i) => { if (i % 1 === 0 && i > 0 && i < 18) bulbs.push(p); });
-      mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, .006, 4), wire, 0, 0, 0).userData.ns = 1;
+      mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, .01, 5), wire, 0, 0, 0).userData.ns = 1;
       cyl(.025, .025, 3.1, 8, M.steel, x + .5, 1.55, -10.05);
     }
     const im = new THREE.InstancedMesh(new THREE.SphereGeometry(.035, 8, 6), G.orb, bulbs.length), m4 = new THREE.Matrix4();

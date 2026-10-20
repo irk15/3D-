@@ -768,7 +768,7 @@ void main(){ vec2 p=vUv; float x=p.x*uAsp;
   box(8.4, 3.1, .04, G.amber, 4.9, 1.65, 7.99);
   rb(3.6, .72, .5, .03, M.walnut, 3.4, .5, 7.62); for (const x of [2.5, 3.4, 4.3]) box(.7, .05, .02, M.brass, x, .74, 7.36);
   const a1 = box(1.6, 2, .04, new THREE.MeshStandardMaterial({ map: artTex(1, 9), roughness: .6 }), 3.4, 1.9, 7.84);
-  const fr = box(1.66, 2.06, .03, M.brass, 3.4, 1.9, 7.86);
+  const fr = box(1.66, 2.06, .03, M.brass, 3.4, 1.9, 7.86); a1.visible = fr.visible = false;
   const sc = mesh(new THREE.TorusKnotGeometry(.2, .055, 100, 12), M.brass, 5.9, .96, 7.6); sc.rotation.x = .4;
   cyl(.2, .22, .3, 24, M.marble, 5.9, .66, 7.6);
   col(2.6, 6.4, 7.2, 8);
@@ -777,6 +777,7 @@ void main(){ vec2 p=vUv; float x=p.x*uAsp;
 {
   const a2 = box(.04, 1.9, 2.5, new THREE.MeshStandardMaterial({ map: artTex(0, 3), roughness: .6 }), -8.97, 1.75, 0.9);
   const a3 = box(.04, 1.5, 1.1, new THREE.MeshStandardMaterial({ map: artTex(2, 5), roughness: .6 }), -8.97, 1.7, -2.2);
+  a2.visible = a3.visible = false;
   box(.5, .06, 3.2, M.walnut, -8.7, .62, .9).userData.ns = 0; rb(.4, .5, 3.2, .03, M.walnut, -8.72, .25, .9);
   // wine wall (glass niche with lit bottles)
   box(.5, 2.8, 3.4, M.black, -8.9, 1.4, 5.3); box(.04, 2.6, 3.2, G.amber, -8.66, 1.4, 5.3);
@@ -1079,9 +1080,9 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
     { wall: 'b', c: 6.4, y: 2.0, w: 1.0, h: 1.4, extra: 1 }, { wall: 'b', c: 8.0, y: 1.9, w: 1.0, h: 1.4, extra: 1 }, { wall: 'b', c: 1.5, y: 1.9, w: .8, h: 1.2, extra: 1 }
   ];
   const place = (S, w, h) => {
-    const b = S.wall === 'b', x = b ? S.c : -8.945, z = b ? 7.80 : S.c, ry = b ? Math.PI : Math.PI / 2;
+    const b = S.wall === 'b', x = b ? S.c : -8.93, z = b ? 7.79 : S.c, ry = b ? Math.PI : Math.PI / 2;
     S.pic.position.set(x, S.y, z); S.pic.rotation.y = ry; S.pic.scale.set(w, h, 1);
-    S.back.position.set(b ? S.c : -8.96, S.y, b ? 7.825 : S.c); S.back.rotation.y = ry; S.back.scale.set(w + .08, h + .08, .03);
+    S.back.position.set(b ? S.c : -8.97, S.y, b ? 7.83 : S.c); S.back.rotation.y = ry; S.back.scale.set(w + .08, h + .08, .03);
     S.pic.updateMatrix(); S.back.updateMatrix();
   };
   for (const S of slots) {
@@ -1093,13 +1094,30 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
   fetch('paintings/list.json?' + Date.now(), { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).then(list => {
     if (!Array.isArray(list)) return;
     list.slice(0, slots.length).forEach((name, i) => {
-      const img = new Image(); img.onload = () => {
-        const S = slots[i], t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true;
-        const m = new THREE.MeshStandardMaterial({ map: t, roughness: .55, envMapIntensity: .3 }); S.pic.material = m; S.pic.userData.stdMat = m;
-        const ia = img.width / img.height; let w = S.w, h = S.w / ia; if (h > S.h) { h = S.h; w = S.h * ia; }
+      const S = slots[i], isVid = /\.(mp4|webm|m4v|mov)(\?|$)/i.test(name), url = /^https?:\/\//i.test(name) ? name : 'paintings/' + name;
+      const apply = (tex, mat, w0, h0) => {
+        S.pic.material = mat; S.pic.userData.stdMat = mat;
+        const ia = w0 / h0; let w = S.w, h = S.w / ia; if (h > S.h) { h = S.h; w = S.h * ia; }
         place(S, w, h); S.pic.visible = S.back.visible = true;
         if (typeof setLiteMats === 'function' && typeof lite !== 'undefined') setLiteMats(lite.mode);
-      }; if (/^https?:\/\//i.test(name)) { img.crossOrigin = 'anonymous'; img.src = name; } else img.src = 'paintings/' + name;
+      };
+      if (isVid) {   // a video "painting": muted, looping, plays as a lit screen in the frame
+        const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.preload = 'auto';
+        if (/^https?:/i.test(url)) v.crossOrigin = 'anonymous';
+        const go = () => { const p = v.play(); if (p && p.catch) p.catch(() => { }); };
+        v.addEventListener('loadeddata', () => {
+          const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false;
+          apply(t, new THREE.MeshBasicMaterial({ map: t, toneMapped: false }), v.videoWidth || 16, v.videoHeight || 9); go();
+        });
+        ['pointerdown', 'keydown', 'touchstart', 'click'].forEach(ev => addEventListener(ev, go, { passive: true }));
+        setInterval(() => { if (v.paused && v.readyState > 1) go(); }, 2500);
+        v.src = url; v.load(); return;
+      }
+      const img = new Image(); img.onload = () => {
+        const t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true;
+        apply(t, new THREE.MeshStandardMaterial({ map: t, roughness: .55, envMapIntensity: .3 }), img.width, img.height);
+      };
+      if (/^https?:/i.test(url)) img.crossOrigin = 'anonymous'; img.src = url;
     });
   }).catch(() => { });
 }

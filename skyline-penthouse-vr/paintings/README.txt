@@ -1,3 +1,2 @@
-Drop images in this folder and list them in list.json, OR put full direct image links (https://...jpg/png) in list.json:
-["one.jpg","https://example.com/my-painting.jpg"]
-Links must be direct image files whose host allows cross-origin loading (GitHub raw, Imgur, Cloudinary work; Google Drive/Instagram links do not).
+Pictures: .jpg/.png. Videos: .mp4 (H.264) or .webm, ideally under 20 MB and 720p - they play muted on a loop inside the frame.
+List file names or direct links in list.json, in the order you want them hung (6 frames).

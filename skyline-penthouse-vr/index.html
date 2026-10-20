@@ -203,7 +203,7 @@ void main(){
 ` + GLSL_END + `}`
 });
 const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 48, 28), skyMat);
-sky.frustumCulled = false; sky.renderOrder = -10;
+sky.frustumCulled = false; sky.renderOrder = VR_BUILD ? 50 : -10;
 scene.add(sky);
 
 /* ============== CITY GRID ============== */
@@ -298,6 +298,7 @@ bMesh.material = new THREE.ShaderMaterial({
   uniforms: U,
   vertexShader: `attribute vec3 aSize; attribute vec4 aInfo;
 varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;
+invariant gl_Position;
 void main(){ vec4 wp = modelMatrix*instanceMatrix*vec4(position,1.); vWorld=wp.xyz; vLocal=position*aSize; vN=normal; vSize=aSize; vInfo=aInfo;
   gl_Position = projectionMatrix*viewMatrix*wp; }`,
   fragmentShader: `precision highp float;
@@ -366,6 +367,15 @@ void main(){
 });
 bMesh.frustumCulled = false;
 scene.add(bMesh);
+if (VR_BUILD) {
+  // Draw order tuned for mobile GPUs: interior first (nearest, hides what is behind it), then a depth-only pass for the city so the
+  // expensive building shader runs once per visible pixel, and the sky last so its clouds are only shaded where nothing covers it.
+  const dMat = new THREE.ShaderMaterial({ colorWrite: false, depthWrite: true,
+    vertexShader: `invariant gl_Position; void main(){ vec4 wp = modelMatrix*instanceMatrix*vec4(position,1.); gl_Position = projectionMatrix*viewMatrix*wp; }`,
+    fragmentShader: `void main(){ gl_FragColor = vec4(0.); }` });
+  const bDepth = new THREE.InstancedMesh(bGeo, dMat, bCount); bDepth.instanceMatrix = bMesh.instanceMatrix; bDepth.frustumCulled = false; bDepth.renderOrder = -2; scene.add(bDepth);
+  bMesh.renderOrder = -1; bMesh.material.depthWrite = false;
+}
 
 /* ============== GROUND, STREETS, LAKE, ISLANDS ============== */
 const groundMat = new THREE.ShaderMaterial({
@@ -517,7 +527,7 @@ const rcLights = new THREE.MeshBasicMaterial({ color: 0xffe6b8 });
 })();
 
 /* ================= PENTHOUSE INTERIOR ================= */
-const interior = new THREE.Group(); scene.add(interior);
+const interior = new THREE.Group(); scene.add(interior); if (VR_BUILD) interior.renderOrder = -5;
 const colliders = [];
 const glowList = [];            // emissive materials that follow the lights toggle / time of day
 const flameMats = [];
@@ -1527,20 +1537,20 @@ const audio = (() => {
 const VRQ = {
   // scale = starting render resolution (an automatic governor moves it between min and max to hold the headset's frame rate)
   // phong: 'all' / 'most' swaps the PBR interior for cheaper per-pixel lighting; slots: how many point lights are live at once (0 = all seven)
-  fast:     { label: 'Fast',     scale: .62, min: .45, max: .70, fov: 1.0, cars: 300,  shadow: 0,    lite: 1, phong: 'all',  slots: 2 },
-  balanced: { label: 'Balanced', scale: .78, min: .55, max: .92, fov: .85, cars: 700,  shadow: 0,    lite: 1, phong: 'most', slots: 3 },
-  sharp:    { label: 'Sharp',    scale: 1.0, min: .80, max: 1.0, fov: .50, cars: 1500, shadow: 2048, lite: 0, phong: 'none', slots: 0 }
+  fast:     { label: 'Fast',     scale: .60, min: .40, max: .70, fov: 1.0, cars: 300,  shadow: 0,    lite: 1, phong: 'all',  slots: 2, msaa: false },
+  balanced: { label: 'Balanced', scale: .70, min: .50, max: .88, fov: .85, cars: 700,  shadow: 0,    lite: 1, phong: 'most', slots: 3, msaa: true },
+  sharp:    { label: 'Sharp',    scale: 1.0, min: .80, max: 1.0, fov: .50, cars: 1500, shadow: 2048, lite: 0, phong: 'none', slots: 0, msaa: true }
 };
-const vr = { q: 'balanced', session: null, supported: false, seated: false, seatY: 0, vel: new THREE.Vector3(), snapReady: true, aiming: false, aimCtrl: null,
+const vr = { q: 'fast', session: null, supported: false, seated: false, seatY: 0, vel: new THREE.Vector3(), snapReady: true, aiming: false, aimCtrl: null,
   vig: 0, blink: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
-try { const sq = localStorage.getItem('penthouseVRQ'); if (VRQ[sq]) vr.q = sq; } catch (e) { }
+try { const sq = localStorage.getItem('penthouseVRQ2'); if (VRQ[sq]) vr.q = sq; } catch (e) { }
 const ACCENT = 0xffb866;
 
 /* ---------- pre-session page UI ---------- */
 const bVR = $('bVR'), vrNote = $('vrnote');
 function refreshQButtons() { document.querySelectorAll('#vrq button').forEach(b => b.setAttribute('aria-pressed', b.dataset.q === vr.q ? 'true' : 'false')); }
 refreshQButtons();
-$('vrq').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; vr.q = b.dataset.q; try { localStorage.setItem('penthouseVRQ', vr.q); } catch (er) { } refreshQButtons(); });
+$('vrq').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; vr.q = b.dataset.q; try { localStorage.setItem('penthouseVRQ2', vr.q); } catch (er) { } refreshQButtons(); });
 $('bSound').addEventListener('click', () => { audio.start(); const on = audio.toggle(); $('bSound').setAttribute('aria-pressed', on ? 'true' : 'false'); });
 (async function checkVR() {
   if (!navigator.xr || !navigator.xr.isSessionSupported) { bVR.textContent = 'VR unavailable here'; bVR.disabled = true; vrNote.textContent = 'To enter VR, open this page in the Meta Quest Browser (or any WebXR headset browser). On a desktop it still works as a walkable preview.'; return; }
@@ -1669,7 +1679,8 @@ function drawMenu() {
   g.textBaseline = 'alphabetic';
   const hh = Math.floor(state.h), mm = Math.floor((state.h % 1) * 60);
   g.fillStyle = '#f4efe6'; g.font = '500 54px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 24, 66);
-  g.fillStyle = '#b9b2a6'; g.font = '400 22px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'right'; g.fillText($('phase').textContent.toUpperCase(), W - 24, 60);
+  g.fillStyle = '#b9b2a6'; g.font = '400 22px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'right'; g.fillText($('phase').textContent.toUpperCase(), W - 24, 52);
+  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76);
   g.textAlign = 'center'; g.font = '500 23px "IBM Plex Mono", ui-monospace, monospace';
   MENU.items.forEach((it, i) => {
     const on = it.on(), hov = MENU.hover === i;
@@ -1709,6 +1720,7 @@ function updateMenu(frame) {
     }
   }
   if (hover !== MENU.hover) { MENU.hover = hover; MENU.dirty = true; }
+  const st = gov.ema ? Math.round(1000 / gov.ema) + ' fps · ' + Math.round(gov.scale * 100) + '% res' : ''; if (st !== MENU.stat && (T - (MENU.statT || 0) > 1)) { MENU.stat = st; MENU.statT = T; MENU.dirty = true; }
   const mk = Math.floor(state.h * 60), txt = $('phase').textContent;
   if (mk !== MENU.lastMin || txt !== MENU.lastTxt) { MENU.lastMin = mk; MENU.lastTxt = txt; MENU.dirty = true; }
   if (MENU.dirty && vis) drawMenu();
@@ -1864,20 +1876,20 @@ function setLayerScale(sc) {   // r128 reads session.renderState.baseLayer every
   const sess = vr.session; if (!sess) return false;
   try {
     const gl = renderer.getContext(), at = gl.getContextAttributes() || {};
-    const layer = new XRWebGLLayer(sess, gl, { antialias: !!at.antialias, alpha: !!at.alpha, depth: !!at.depth, stencil: !!at.stencil, framebufferScaleFactor: sc });
+    const layer = new XRWebGLLayer(sess, gl, { antialias: !!at.antialias && VRQ[vr.q].msaa, alpha: !!at.alpha, depth: !!at.depth, stencil: !!at.stencil, framebufferScaleFactor: sc });
     if ('fixedFoveation' in layer) layer.fixedFoveation = VRQ[vr.q].fov;
     sess.updateRenderState({ baseLayer: layer }); gov.scale = sc; return true;
   } catch (e) { gov.off = true; console.warn('dynamic resolution unavailable', e); return false; }
 }
 function resetGov(T0) { const Q = VRQ[vr.q]; Object.assign(gov, { ema: 0, prev: 0, t0: T0, last: T0, lastUp: -99, lastDown: -99, scale: Q.scale, cap: Q.max, off: false }); }
 function govUpdate(T) {
-  const now = performance.now(), raw = gov.prev ? now - gov.prev : 0; gov.prev = now; if (raw <= 0 || raw > 250) return;
-  gov.ema = gov.ema ? gov.ema + (raw - gov.ema) * .06 : raw;
-  if (gov.off || T - gov.t0 < 4 || T - gov.last < 1.8) return;
+  const now = performance.now(), raw = gov.prev ? now - gov.prev : 0; gov.prev = now; if (raw <= 0 || raw > 1500) return;
+  gov.ema = gov.ema ? gov.ema + (Math.min(raw, 250) - gov.ema) * .08 : Math.min(raw, 250);
+  if (gov.off || T - gov.t0 < 2.5 || T - gov.last < 1.2) return;
   const budget = 1000 / (vr.hz || 72), Q = VRQ[vr.q];
-  if (gov.ema > budget * 1.12 && gov.scale > Q.min + .01) {
+  if (gov.ema > budget * 1.10 && gov.scale > Q.min + .01) {
     if (T - gov.lastUp < 30) gov.cap = Math.max(Q.min, gov.scale - .02);       // went back up and failed: stop climbing past here
-    if (setLayerScale(Math.max(Q.min, +(gov.scale - .08).toFixed(2)))) { gov.last = gov.lastDown = T; gov.ema = budget; }
+    if (setLayerScale(Math.max(Q.min, +(gov.scale - .1).toFixed(2)))) { gov.last = gov.lastDown = T; gov.ema = budget; }
   } else if (gov.ema < budget * 1.06 && T - gov.lastDown > 20 && T - gov.last > 6 && gov.scale < Math.min(Q.max, gov.cap) - .01) {
     if (setLayerScale(Math.min(Q.max, gov.cap, +(gov.scale + .04).toFixed(2)))) { gov.last = gov.lastUp = T; }
   }
@@ -1890,7 +1902,7 @@ function requestFrameRate() {
   }
 }
 function applyVRQuality(q) {
-  const Q = VRQ[q]; vr.q = q; try { localStorage.setItem('penthouseVRQ', q); } catch (e) { }
+  const Q = VRQ[q]; vr.q = q; try { localStorage.setItem('penthouseVRQ2', q); } catch (e) { }
   carMesh.count = Q.cars; cPts.geo.setDrawRange(0, Q.cars * 2);
   lite.K = Q.slots; const real = !Q.slots;
   for (const nm of VN) rig[nm].l.visible = real;                               // the seven fixed lights, or...
@@ -1915,7 +1927,7 @@ renderer.xr.addEventListener('sessionstart', () => {
   head.lx = 0; head.lz = 0; headWorld();
   vr.seatY = vr.seated ? .4 : 0; vr.aiming = false; vr.blink = 1; MENU.dirty = true; attachMenu();
   applyVRQuality(vr.q);
-  resetGov(T); requestFrameRate();
+  resetGov(T); requestFrameRate(); setLayerScale(VRQ[vr.q].scale);
   state.envAt = T;                             // do not rebuild reflections straight away
   vr.px = 900;
 });

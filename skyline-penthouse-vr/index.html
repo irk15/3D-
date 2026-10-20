@@ -1106,7 +1106,7 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
     list.slice(0, slots.length).forEach((entry, i) => {
       if (!entry) return;
       const o = typeof entry === 'string' ? { src: entry } : entry, name = o.src; if (!name) return;
-      const S = slots[i], isVid = /\.(mp4|webm|m4v|mov)(\?|$)/i.test(name), url = urlOf(name), full = isVid && S.wall === 'b' && o.full !== false;
+      const S = slots[i], isVid = /\.(mp4|webm|m4v|mov)(\?|$)/i.test(name), url = urlOf(name), full = isVid && S.wall === 'b' && o.full === true;
       const apply = (mat, w0, h0) => {
         if (S.hidden) return;
         S.pic.material = mat; S.pic.userData.stdMat = mat;

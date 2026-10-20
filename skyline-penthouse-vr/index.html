@@ -91,7 +91,7 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);height:22px;bac
   <button id="bSound" aria-pressed="false">Sound</button>
 </div>
 <div class="vrnote" id="vrnote"></div>
-<div style="position:fixed;left:16px;bottom:8px;z-index:5;font:11px ui-monospace,monospace;color:#ffd27e;opacity:.8">build: smooth-turn v3 + detail pass</div>
+<div style="position:fixed;left:16px;bottom:8px;z-index:5;font:11px ui-monospace,monospace;color:#ffd27e;opacity:.8">build: smooth-turn v3</div>
 
 <script src="vendor/three.bundle.js"></script>
 <script>
@@ -1069,6 +1069,41 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
   }
 }
 
+
+/* ---- gallery: hang the owner's own paintings (paintings/list.json) on the walls; fall back to generated art ---- */
+{
+  const frameM = std(0x16110d, .5, 0, { envMapIntensity: .5 });
+  // wall: 'b' = back wall (faces -z), 'l' = left wall (faces +x); c = position along the wall, y = centre height, w/h = max picture box
+  const slots = [
+    { wall: 'b', c: 3.4, y: 1.9, w: 1.6, h: 2.0, kind: 1, seed: 9 }, { wall: 'l', c: .9, y: 1.75, w: 2.5, h: 1.9, kind: 0, seed: 3 }, { wall: 'l', c: -2.2, y: 1.7, w: 1.1, h: 1.5, kind: 2, seed: 5 },
+    { wall: 'b', c: 6.4, y: 2.0, w: 1.0, h: 1.4, extra: 1 }, { wall: 'b', c: 8.0, y: 1.9, w: 1.0, h: 1.4, extra: 1 }, { wall: 'b', c: 1.5, y: 1.9, w: .8, h: 1.2, extra: 1 }
+  ];
+  const place = (S, w, h) => {
+    const b = S.wall === 'b', x = b ? S.c : -8.945, z = b ? 7.80 : S.c, ry = b ? Math.PI : Math.PI / 2;
+    S.pic.position.set(x, S.y, z); S.pic.rotation.y = ry; S.pic.scale.set(w, h, 1);
+    S.back.position.set(b ? S.c : -8.96, S.y, b ? 7.825 : S.c); S.back.rotation.y = ry; S.back.scale.set(w + .08, h + .08, .03);
+    S.pic.updateMatrix(); S.back.updateMatrix();
+  };
+  for (const S of slots) {
+    const mat = S.extra ? std(0x20201f, .6) : new THREE.MeshStandardMaterial({ map: artTex(S.kind, S.seed), roughness: .6 });
+    S.pic = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); S.back = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), frameM);
+    S.pic.userData.anim = S.back.userData.anim = true; S.pic.userData.ns = 1; S.back.userData.ns = 1; interior.add(S.pic, S.back); place(S, S.w, S.h);
+    if (S.extra) S.pic.visible = S.back.visible = false;
+  }
+  fetch('paintings/list.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).then(list => {
+    if (!Array.isArray(list)) return;
+    list.slice(0, slots.length).forEach((name, i) => {
+      const img = new Image(); img.onload = () => {
+        const S = slots[i], t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true;
+        const m = new THREE.MeshStandardMaterial({ map: t, roughness: .55, envMapIntensity: .3 }); S.pic.material = m; S.pic.userData.stdMat = m;
+        const ia = img.width / img.height; let w = S.w, h = S.w / ia; if (h > S.h) { h = S.h; w = S.h * ia; }
+        place(S, w, h); S.pic.visible = S.back.visible = true;
+        if (typeof setLiteMats === 'function' && typeof lite !== 'undefined') setLiteMats(lite.mode);
+      }; img.src = 'paintings/' + name;
+    });
+  }).catch(() => { });
+}
+
 /* ---- castShadow / matrix freeze ---- */
 interior.traverse(o => {
   if (o.isMesh && !o.userData.ns && !(o.material && (o.material.transparent || o.material.type === 'MeshBasicMaterial'))) { o.castShadow = true; o.receiveShadow = true; }
@@ -1674,7 +1709,7 @@ const VRQ = {
   sharp:    { label: 'Sharp',    scale: 1.0, min: .80, max: 1.0, fov: .50, cars: 1500, shadow: 2048, lite: 0, phong: 'none', slots: 0, msaa: true }
 };
 const vr = { q: 'fast', session: null, supported: false, seated: false, seatY: 0, vel: new THREE.Vector3(), snapReady: true, aiming: false, aimCtrl: null,
-  vig: 0, blink: 0, smoothTurn: true, turnRate: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
+  vig: 0, blink: 0, smoothTurn: true, teleport: false, turnRate: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
 try { if (localStorage.getItem('penthouseVRturn3') === 'n') vr.smoothTurn = false; } catch (e) { }
 try { const sq = localStorage.getItem('penthouseVRQ2'); if (VRQ[sq]) vr.q = sq; } catch (e) { }
 const ACCENT = 0xffb866;
@@ -1690,7 +1725,7 @@ $('bSound').addEventListener('click', () => { audio.start(); const on = audio.to
   try { vr.supported = await navigator.xr.isSessionSupported('immersive-vr'); } catch (e) { vr.supported = false; }
   bVR.disabled = !vr.supported;
   bVR.textContent = vr.supported ? 'Enter VR' : 'VR not supported';
-  vrNote.textContent = vr.supported ? 'Quest: left stick walks, right stick snap-turns, push right stick forward to teleport. Your left wrist holds the menu.' : 'This browser has no immersive VR. Open it in the Meta Quest Browser to enter VR; the page still works as a walkable preview.';
+  vrNote.textContent = vr.supported ? 'Quest: left stick walks smoothly, right stick turns smoothly (up/down also walks). Your left wrist holds the menu.' : 'This browser has no immersive VR. Open it in the Meta Quest Browser to enter VR; the page still works as a walkable preview.';
 })();
 bVR.addEventListener('click', async () => {
   if (vr.session || !vr.supported) return;
@@ -1814,7 +1849,7 @@ function drawMenu() {
   const hh = Math.floor(state.h), mm = Math.floor((state.h % 1) * 60);
   g.fillStyle = '#f4efe6'; g.font = '500 54px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 24, 66);
   g.fillStyle = '#b9b2a6'; g.font = '400 22px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'right'; g.fillText($('phase').textContent.toUpperCase(), W - 24, 52);
-  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76); g.textAlign = 'left'; g.fillStyle = '#ffd27e'; g.font = '400 15px ui-monospace, monospace'; g.fillText('BUILD smooth-turn v3 + detail pass · ' + (vr.smoothTurn ? 'SMOOTH' : 'SNAP') + ' · R stick ' + ((vr.in.r ? vr.in.r.x : 0).toFixed(2)) + ',' + ((vr.in.r ? vr.in.r.y : 0).toFixed(2)), 24, 92); g.textAlign = 'right';
+  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76); g.textAlign = 'left'; g.fillStyle = '#ffd27e'; g.font = '400 15px ui-monospace, monospace'; g.fillText('BUILD smooth-turn v3 · ' + (vr.smoothTurn ? 'SMOOTH' : 'SNAP') + ' · R stick ' + ((vr.in.r ? vr.in.r.x : 0).toFixed(2)) + ',' + ((vr.in.r ? vr.in.r.y : 0).toFixed(2)), 24, 92); g.textAlign = 'right';
   g.textAlign = 'center'; g.font = '500 23px "IBM Plex Mono", ui-monospace, monospace';
   MENU.items.forEach((it, i) => {
     const on = it.on(), hov = MENU.hover === i;
@@ -1823,7 +1858,7 @@ function drawMenu() {
     g.fillStyle = on ? '#1a1208' : '#f4efe6'; g.fillText(it.label(), it.x + it.w / 2, it.y + it.h / 2 + 8);
   });
   g.fillStyle = '#8f897f'; g.font = '400 17px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'center';
-  g.fillText('L stick walk  ·  R stick turn  ·  R stick forward = teleport', W / 2, 366); g.fillText('A next time  ·  B lights  ·  X clock  ·  Y sound', W / 2, 388);
+  g.fillText('L stick walk  ·  R stick turn  ·  R stick up/down also walks', W / 2, 366); g.fillText('A next time  ·  B lights  ·  X clock  ·  Y sound', W / 2, 388);
   MENU.tex.needsUpdate = true; MENU.dirty = false;
 }
 let menuParent = null;
@@ -1902,14 +1937,14 @@ function vrUpdate(dt, frame, T) {
   if (edge('l', 5)) toggleSound();
   // --- smooth locomotion (left stick), relative to where the head faces
   let mx = 0, mz = 0, moving = 0;
-  if (L && !vr.aiming) {
-    const dead = .2, mag = Math.hypot(L.x, L.y);
+  if (!vr.aiming && (L || R)) {                            // both sticks walk smoothly: left = move any way, right stick up/down = forward/back too
+    const lx = L ? L.x : 0, ly = (L ? L.y : 0) + (R && !vr.teleport ? R.y : 0), cy = Math.max(-1, Math.min(1, ly)), dead = .15, mag = Math.hypot(lx, cy);
     if (mag > dead) {
-      const k = (mag - dead) / (1 - dead) / mag, sp = (L.b[3] ? 4.0 : 2.1), yaw = rig3.rotation.y + head.lyaw, f = -L.y * k, sx = L.x * k;
+      const k = (mag - dead) / (1 - dead) / mag, sp = ((L && L.b[3]) || (R && R.b[3]) ? 4.2 : 2.4), yaw = rig3.rotation.y + head.lyaw, f = -cy * k, sx = lx * k;
       mx = (-Math.sin(yaw) * f + Math.cos(yaw) * sx) * sp; mz = (-Math.cos(yaw) * f - Math.sin(yaw) * sx) * sp; moving = Math.min(1, mag);
     }
   }
-  const kk = 1 - Math.exp(-12 * dt); vr.vel.x += (mx - vr.vel.x) * kk; vr.vel.z += (mz - vr.vel.z) * kk;
+  const kk = 1 - Math.exp(-9 * dt); vr.vel.x += (mx - vr.vel.x) * kk; vr.vel.z += (mz - vr.vel.z) * kk;
   const dx = vr.vel.x * dt, dz = vr.vel.z * dt;
   if (Math.abs(dx) + Math.abs(dz) > 1e-6) {
     if (!blocked(head.wx + dx, head.wz)) rig3.position.x += dx; else vr.vel.x = 0;
@@ -1920,7 +1955,7 @@ function vrUpdate(dt, frame, T) {
   vr.speed = Math.hypot(vr.vel.x, vr.vel.z);
   // --- snap turn + teleport aim (right stick)
   if (R) {
-    if (!vr.aiming && R.y < -.7 && Math.abs(R.x) < .6) { vr.aiming = true; vr.aimCtrl = ctrl[side[1] != null ? side[1] : 1]; }
+    if (vr.teleport && !vr.aiming && R.y < -.7 && Math.abs(R.x) < .6) { vr.aiming = true; vr.aimCtrl = ctrl[side[1] != null ? side[1] : 1]; }
     else if (vr.aiming && vr.aimCtrl && !vr.aimCtrl.userData.hand && R.y > -.3) endAim();
     vr.turnRate = 0;
     if (!vr.aiming) {

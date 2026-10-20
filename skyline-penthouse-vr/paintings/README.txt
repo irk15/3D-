@@ -1,2 +1,3 @@
-Drop your painting images (.jpg/.png) in this folder and list their file names in list.json, e.g. ["one.jpg","two.jpg"].
-They hang on the walls in order (6 spots; the first 3 replace the generated art).
+Drop images in this folder and list them in list.json, OR put full direct image links (https://...jpg/png) in list.json:
+["one.jpg","https://example.com/my-painting.jpg"]
+Links must be direct image files whose host allows cross-origin loading (GitHub raw, Imgur, Cloudinary work; Google Drive/Instagram links do not).

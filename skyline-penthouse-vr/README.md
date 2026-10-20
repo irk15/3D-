@@ -7,7 +7,7 @@ The same penthouse and skyline as `../skyline-penthouse/`, with an immersive Web
 | --- | --- |
 | Left stick | Walk (click the stick to sprint), relative to where you look |
 | Right stick left / right | Smooth turning (speed follows the stick). Switch to 30 degree snap turn with the Smooth/Snap button on the wrist menu |
-| Right stick up/down | Walk forward/back smoothly (right stick left/right turns) |
+| Right stick forward, release | Aim and teleport (blue arc = valid, red = blocked) |
 | Left wrist (raise it toward your face) | Menu: time of day, lights, run clock, sound, quality, seated/standing, exit |
 | Right trigger | Click the menu with the laser |
 | A / B | Next time of day / lights |

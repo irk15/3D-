@@ -1075,7 +1075,7 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
     S.pic.userData.anim = S.back.userData.anim = true; S.pic.userData.ns = 1; S.back.userData.ns = 1; interior.add(S.pic, S.back); place(S, S.w, S.h);
     if (S.extra) S.pic.visible = S.back.visible = false;
   }
-  fetch('paintings/list.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).then(list => {
+  fetch('paintings/list.json?' + Date.now(), { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).then(list => {
     if (!Array.isArray(list)) return;
     list.slice(0, slots.length).forEach((name, i) => {
       const img = new Image(); img.onload = () => {
@@ -1084,7 +1084,7 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
         const ia = img.width / img.height; let w = S.w, h = S.w / ia; if (h > S.h) { h = S.h; w = S.h * ia; }
         place(S, w, h); S.pic.visible = S.back.visible = true;
         if (typeof setLiteMats === 'function' && typeof lite !== 'undefined') setLiteMats(lite.mode);
-      }; img.src = 'paintings/' + name;
+      }; if (/^https?:\/\//i.test(name)) { img.crossOrigin = 'anonymous'; img.src = name; } else img.src = 'paintings/' + name;
     });
   }).catch(() => { });
 }

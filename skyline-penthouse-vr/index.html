@@ -1542,7 +1542,8 @@ const VRQ = {
   sharp:    { label: 'Sharp',    scale: 1.0, min: .80, max: 1.0, fov: .50, cars: 1500, shadow: 2048, lite: 0, phong: 'none', slots: 0, msaa: true }
 };
 const vr = { q: 'fast', session: null, supported: false, seated: false, seatY: 0, vel: new THREE.Vector3(), snapReady: true, aiming: false, aimCtrl: null,
-  vig: 0, blink: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
+  vig: 0, blink: 0, smoothTurn: true, turnRate: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
+try { if (localStorage.getItem('penthouseVRturn') === 'n') vr.smoothTurn = false; } catch (e) { }
 try { const sq = localStorage.getItem('penthouseVRQ2'); if (VRQ[sq]) vr.q = sq; } catch (e) { }
 const ACCENT = 0xffb866;
 
@@ -1665,10 +1666,11 @@ function toggleLights() { state.lights = !state.lights; applyTime(state.h); MENU
 function toggleClock() { state.play = !state.play; MENU.dirty = true; }
 function toggleSound() { audio.start(); audio.toggle(); MENU.dirty = true; }
 function cycleQuality() { const ks = Object.keys(VRQ); vr.q = ks[(ks.indexOf(vr.q) + 1) % ks.length]; applyVRQuality(vr.q); resetGov(T); setLayerScale(VRQ[vr.q].scale); MENU.dirty = true; }
+function toggleTurn() { vr.smoothTurn = !vr.smoothTurn; try { localStorage.setItem('penthouseVRturn', vr.smoothTurn ? 's' : 'n'); } catch (e) { } MENU.dirty = true; }
 function toggleSeat() { vr.seated = !vr.seated; vr.seatY = vr.seated ? .4 : 0; MENU.dirty = true; }
 MENU.items = [];
 PRESETS.forEach((p, i) => MENU.items.push({ x: 19 + (i % 3) * 162, y: 88 + Math.floor(i / 3) * 62, w: 150, h: 52, label: () => p[0], on: () => Math.abs(((state.h - p[1] + 36) % 24) - 12) < .5, act: () => gotoTime(p[1]) }));
-[['Lights', () => state.lights, toggleLights], ['Clock', () => state.play, toggleClock], ['Sound', () => audio.on, toggleSound]].forEach((b, i) => MENU.items.push({ x: 19 + i * 162, y: 222, w: 150, h: 52, label: () => b[0], on: b[1], act: b[2] }));
+[['Lights', () => state.lights, toggleLights], ['Clock', () => state.play, toggleClock], ['Sound', () => audio.on, toggleSound], [null, () => vr.smoothTurn, toggleTurn]].forEach((b, i) => MENU.items.push({ x: 19 + i * 119, y: 222, w: 110, h: 52, label: () => b[0] || (vr.smoothTurn ? 'Smooth' : 'Snap'), on: b[1], act: b[2] }));
 MENU.items.push({ x: 19, y: 286, w: 214, h: 52, label: () => 'Quality: ' + VRQ[vr.q].label, on: () => false, act: cycleQuality });
 MENU.items.push({ x: 243, y: 286, w: 140, h: 52, label: () => vr.seated ? 'Seated' : 'Standing', on: () => vr.seated, act: toggleSeat });
 MENU.items.push({ x: 393, y: 286, w: 100, h: 52, label: () => 'Exit VR', on: () => false, act: () => { if (vr.session) vr.session.end(); } });
@@ -1689,7 +1691,7 @@ function drawMenu() {
     g.fillStyle = on ? '#1a1208' : '#f4efe6'; g.fillText(it.label(), it.x + it.w / 2, it.y + it.h / 2 + 8);
   });
   g.fillStyle = '#8f897f'; g.font = '400 17px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'center';
-  g.fillText('L stick walk  ·  R stick turn  ·  push R stick forward = teleport', W / 2, 366); g.fillText('A next time  ·  B lights  ·  X clock  ·  Y sound', W / 2, 388);
+  g.fillText('L stick walk  ·  R stick turn  ·  R stick forward = teleport', W / 2, 366); g.fillText('A next time  ·  B lights  ·  X clock  ·  Y sound', W / 2, 388);
   MENU.tex.needsUpdate = true; MENU.dirty = false;
 }
 let menuParent = null;
@@ -1785,9 +1787,15 @@ function vrUpdate(dt, frame, T) {
   if (R) {
     if (!vr.aiming && R.y < -.7 && Math.abs(R.x) < .6) { vr.aiming = true; vr.aimCtrl = ctrl[side[1] != null ? side[1] : 1]; }
     else if (vr.aiming && vr.aimCtrl && !vr.aimCtrl.userData.hand && R.y > -.3) endAim();
+    vr.turnRate = 0;
     if (!vr.aiming) {
-      if (Math.abs(R.x) > .7 && vr.snapReady) { turnAboutHead(-Math.sign(R.x) * 30 * DEG); vr.snapReady = false; vr.blink = Math.max(vr.blink, .35); }
-      if (Math.abs(R.x) < .3) vr.snapReady = true;
+      if (vr.smoothTurn) {                                   // continuous turning: speed follows how far the stick is pushed
+        const ax = Math.abs(R.x);
+        if (ax > .15) { const k = (ax - .15) / .85, rate = Math.sign(R.x) * k * k * 110 * DEG * 1 + Math.sign(R.x) * k * 25 * DEG; turnAboutHead(-rate * dt); vr.turnRate = Math.abs(rate) / DEG; }
+      } else {
+        if (Math.abs(R.x) > .7 && vr.snapReady) { turnAboutHead(-Math.sign(R.x) * 30 * DEG); vr.snapReady = false; vr.blink = Math.max(vr.blink, .35); }
+        if (Math.abs(R.x) < .3) vr.snapReady = true;
+      }
     }
   }
   // --- seated height + keep the rig at floor level (local-floor reference space)
@@ -1799,7 +1807,7 @@ function vrUpdate(dt, frame, T) {
   updateHandMeshes();
   updateHemi(); updateSlots(dt, head.wx, rig3.position.y + head.ly, head.wz); govUpdate(T);
   // --- comfort vignette follows speed; blink fades out
-  const tv = Math.min(1, vr.speed / 1.8) * .8; vr.vig += (tv - vr.vig) * (1 - Math.exp(-7 * dt)); vr.blink = Math.max(0, vr.blink - dt * 5);
+  const tv = Math.max(Math.min(1, vr.speed / 1.8), Math.min(1, vr.turnRate / 120)) * .7; vr.vig += (tv - vr.vig) * (1 - Math.exp(-7 * dt)); vr.blink = Math.max(0, vr.blink - dt * 5);
   vigMat.uniforms.uAmt.value = vr.vig; vigMat.uniforms.uBlink.value = vr.blink; vigMesh.visible = vr.vig > .01 || vr.blink > .01;
   // --- keep the player state in sync (so leaving VR drops you where you were) + sky/audio/glow scale
   player.pos.set(head.wx, 1.65, head.wz); player.yaw = rig3.rotation.y + head.lyaw; player.pitch = 0;

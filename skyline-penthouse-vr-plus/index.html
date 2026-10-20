@@ -92,7 +92,7 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);height:22px;bac
   <button id="bSound" aria-pressed="false">Sound</button>
 </div>
 <div class="vrnote" id="vrnote"></div>
-<div style="position:fixed;left:16px;bottom:8px;z-index:5;font:11px ui-monospace,monospace;color:#ffd27e;opacity:.8">build: vault v6</div>
+<div style="position:fixed;left:16px;bottom:8px;z-index:5;font:11px ui-monospace,monospace;color:#ffd27e;opacity:.8">build: vault v7</div>
 
 <script src="vendor/three.bundle.js"></script>
 <script>
@@ -2153,7 +2153,7 @@ function drawMenu() {
   const hh = Math.floor(state.h), mm = Math.floor((state.h % 1) * 60);
   g.fillStyle = '#f4efe6'; g.font = '500 54px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'left'; g.fillText(String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), 24, 66);
   g.fillStyle = '#b9b2a6'; g.font = '400 22px "IBM Plex Mono", ui-monospace, monospace'; g.textAlign = 'right'; g.fillText($('phase').textContent.toUpperCase(), W - 24, 52);
-  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76); g.textAlign = 'left'; g.fillStyle = '#ffd27e'; g.font = '400 15px ui-monospace, monospace'; g.fillText('BUILD vault v6 · ' + (vr.smoothTurn ? 'SMOOTH' : 'SNAP') + ' · R stick ' + ((vr.in.r ? vr.in.r.x : 0).toFixed(2)) + ',' + ((vr.in.r ? vr.in.r.y : 0).toFixed(2)), 24, 92); g.textAlign = 'right';
+  g.fillStyle = '#7ee7ff'; g.font = '400 16px "IBM Plex Mono", ui-monospace, monospace'; g.fillText(MENU.stat || '', W - 24, 76); g.textAlign = 'left'; g.fillStyle = '#ffd27e'; g.font = '400 15px ui-monospace, monospace'; g.fillText('BUILD vault v7 · ' + (vr.smoothTurn ? 'SMOOTH' : 'SNAP') + ' · R stick ' + ((vr.in.r ? vr.in.r.x : 0).toFixed(2)) + ',' + ((vr.in.r ? vr.in.r.y : 0).toFixed(2)), 24, 92); g.textAlign = 'right';
   g.textAlign = 'center'; g.font = '500 23px "IBM Plex Mono", ui-monospace, monospace';
   MENU.items.forEach((it, i) => {
     const on = it.on(), hov = MENU.hover === i;
@@ -3010,6 +3010,131 @@ window.__roomTick = (dt, T) => {
 };
 window.__roomHide = [vault, outG, reticle];
 window.__vault = { pick, ctrlRay, ray, IA, S, unlock: () => unlock('debug'), heard: t => heard(t, true), tapWord, setMode, toggleMusic, setGenre, vault, outG, posters, LV, startVoice, command, sealDoor, film };
+})();
+
+/* ================= RESIDENT: an animated robot butler that lives in the penthouse =================
+   Loads characters/robot.glb (CC0), then wanders between points of interest using grid pathfinding around the furniture:
+   sits on the sofa, cooks at the island, looks over the skyline, visits the vault, dances when the music is up. */
+(function () {
+if (typeof THREE.GLTFLoader !== 'function') return;
+const V = window.__vault; if (!V) return;
+const GX0 = -9.1, GZ0 = -9.8, CS = .25, NX = 74, NZ = 131, HEIGHT = 1.5;
+const R = { root: null, mixer: null, act: {}, cur: null, state: 'idle', path: [], pi: 0, poi: null, wait: 3, t: 0, yaw: 0, x: 3.2, z: 4.6, nextGreet: 25, walkT: 0, last: null, seat: null, sitT: 0 };
+let walk = null, walkOpen = -1;
+const _pp = () => vrHook.active ? { x: head.wx, z: head.wz } : { x: player.pos.x, z: player.pos.z };
+const POIS = [
+  { n: 'sofa', x: 6.35, z: 1.0, yaw: 0, sit: { x: 6.0, z: 2.75, yaw: Math.PI }, w: 2, time: [18, 30] },
+  { n: 'window', x: -2.8, z: -3.2, yaw: Math.PI, act: 'Idle', w: 2, time: [8, 14] },
+  { n: 'island', x: -4.5, z: 3.05, yaw: 0, act: 'Idle', gest: ['Yes', 'ThumbsUp'], w: 1.5, time: [8, 14] },
+  { n: 'kitchen', x: -4.6, z: 6.5, yaw: 0, act: 'Idle', gest: ['ThumbsUp'], w: 1, time: [7, 12] },
+  { n: 'dining', x: -4.2, z: -1.15, yaw: 0, act: 'Idle', w: 1, time: [6, 10] },
+  { n: 'piano', x: -5.5, z: -1.0, yaw: -Math.PI / 2, act: 'Idle', gest: ['ThumbsUp'], w: 1, time: [8, 12] },
+  { n: 'fire', x: 7.6, z: 0.4, yaw: Math.PI / 2, act: 'Idle', w: 1, time: [8, 14] },
+  { n: 'terrace', x: 0, z: -5.6, yaw: Math.PI, act: 'Idle', gest: ['Wave'], w: 1.5, time: [10, 16] },
+  { n: 'holo', x: 0, z: 9.9, yaw: 0, act: 'Idle', gest: ['Yes'], w: 1.5, time: [8, 12], vault: true },
+  { n: 'console', x: 6.1, z: 11.5, yaw: Math.PI, act: 'Idle', gest: ['ThumbsUp'], w: 1, time: [6, 10], vault: true },
+  { n: 'posters', x: -7.5, z: 12.4, yaw: -Math.PI / 2, act: 'Idle', gest: ['Yes'], w: 1, time: [8, 12], vault: true },
+  { n: 'dance', x: 0, z: 14.4, yaw: Math.PI, act: 'Dance', w: 2.5, time: [14, 22], vault: true, dance: true }
+];
+function buildGrid() {
+  walk = new Uint8Array(NX * NZ);
+  for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) { const x = GX0 + i * CS, z = GZ0 + j * CS; walk[j * NX + i] = (!blocked(x, z) && !blocked(x + .22, z) && !blocked(x - .22, z) && !blocked(x, z + .22) && !blocked(x, z - .22)) ? 1 : 0; }
+  walkOpen = V.S.open > .7 ? 1 : 0;
+}
+const cell = (x, z) => [Math.round((x - GX0) / CS), Math.round((z - GZ0) / CS)];
+function snap(x, z) { const [ci, cj] = cell(x, z); let best = null, bd = 1e9; for (let r = 0; r < 9; r++) { for (let j = cj - r; j <= cj + r; j++) for (let i = ci - r; i <= ci + r; i++) { if (i < 0 || j < 0 || i >= NX || j >= NZ || !walk[j * NX + i]) continue; const d = (i - ci) ** 2 + (j - cj) ** 2; if (d < bd) { bd = d; best = [i, j]; } } if (best) break; } return best; }
+let AV = null;
+function astar(a, b) {
+  const N = NX * NZ, g = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N), heap = [];
+  const push = (n, f) => { heap.push([f, n]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break;[heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (; ;) { let l = i * 2 + 1, r = l + 1, m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break;[heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const s = a[1] * NX + a[0], e = b[1] * NX + b[0]; g[s] = 0; push(s, 0);
+  while (heap.length) {
+    const n = pop()[1]; if (closed[n]) continue; closed[n] = 1; if (n === e) break; const ni = n % NX, nj = (n / NX) | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue; const i = ni + di, j = nj + dj; if (i < 0 || j < 0 || i >= NX || j >= NZ) continue; const m = j * NX + i; if (!walk[m] || closed[m]) continue; if (AV && Math.hypot(GX0 + i * CS - AV.x, GZ0 + j * CS - AV.z) < .85 && m !== e) continue;
+      if (di && dj && (!walk[nj * NX + i] || !walk[j * NX + ni])) continue;
+      const c = g[n] + (di && dj ? 1.414 : 1); if (c < g[m]) { g[m] = c; from[m] = n; push(m, c + Math.hypot(i - b[0], j - b[1])); }
+    }
+  }
+  if (from[e] < 0 && s !== e) return null; const out = []; for (let n = e; n >= 0; n = from[n]) { out.push([GX0 + (n % NX) * CS, GZ0 + ((n / NX) | 0) * CS]); if (n === s) break; } return out.reverse();
+}
+function play(name, once) {
+  const a = R.act[name]; if (!a) return false; if (R.cur === a && !once) return true;
+  a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); a.clampWhenFinished = !!once; a.enabled = true; a.setEffectiveWeight(1); a.setEffectiveTimeScale(name === 'Walking' ? .95 : 1);
+  if (R.cur && R.cur !== a) R.cur.crossFadeTo(a, .35, false); a.play(); R.cur = a; return true;
+}
+const rnd = (a, b) => a + Math.random() * (b - a);
+const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+function choose() {
+  const open = V.S.open > .9, partyOn = V.S.playing && V.S.mode === 'party';
+  const list = POIS.filter(p => (!p.vault || open) && p !== R.poi && (!p.dance || partyOn || Math.random() < .25));
+  let tot = 0; list.forEach(p => tot += p.w); let r = Math.random() * tot, pick = list[0]; for (const p of list) { r -= p.w; if (r <= 0) { pick = p; break; } }
+  const from = snap(R.x, R.z), to = snap(pick.x, pick.z); if (!from || !to) { R.wait = 3; return; }
+  const path = astar(from, to); if (!path || path.length < 1) { R.wait = 2; return; }
+  R.poi = pick; R.path = path; R.pi = 1; R.state = 'walk'; R.walkT = 0; play('Walking');
+}
+function arrive() {
+  const p = R.poi; R.state = 'wait'; R.wait = rnd(p.time[0], p.time[1]); R.t = 0; R.gestAt = rnd(3, 6);
+  if (p.sit) { R.state = 'sitIn'; R.sitT = 0; R.sitFrom = { x: R.x, z: R.z, yaw: R.yaw }; play('Idle'); } else play(p.act || 'Idle');
+}
+let tmpPos = null;
+function tick(dt, T) {
+  if (!R.root) return; R.mixer.update(dt);
+  const open = V.S.open > .7 ? 1 : 0; if (walkOpen !== open || !walk) { buildGrid(); if (!open && R.z > 8.2) { R.x = 7.85; R.z = 6.6; R.state = 'wait'; R.wait = 1; } }
+  const pp = _pp(), dxp = pp.x - R.x, dzp = pp.z - R.z, dp = Math.hypot(dxp, dzp);
+  if (R.state === 'walk') {
+    R.walkT += dt; const tgt = R.path[R.pi];
+    if (!tgt || R.walkT > 60) { R.state = 'wait'; R.wait = 1; play('Idle'); }
+    else {
+      const blockedByPlayer = dp < .95 && Math.abs(angDiff(R.yaw, Math.atan2(dxp, dzp))) < 1.1;
+      if (blockedByPlayer && T > (R.ignoreUntil || 0)) { if (R.cur !== R.act.Idle) play('Idle'); R.blockT = (R.blockT || 0) + dt; if (R.blockT > 2.2) { R.blockT = 0; R.ignoreUntil = T + 6; } }
+      else {
+        if (R.cur !== R.act.Walking) play('Walking');
+        const dx = tgt[0] - R.x, dz = tgt[1] - R.z, d = Math.hypot(dx, dz), sp = 1.05;
+        R.yaw += angDiff(R.yaw, Math.atan2(dx, dz)) * Math.min(1, dt * 7);
+        if (dp < .75 && T < (R.ignoreUntil || 0)) { R.x -= dxp / (dp || 1) * .7 * dt; R.z -= dzp / (dp || 1) * .7 * dt; }
+        const st = Math.min(d, sp * dt); R.x += dx / (d || 1) * st; R.z += dz / (d || 1) * st;
+        if (d < .12) { R.pi++; if (R.pi >= R.path.length) arrive(); }
+      }
+    }
+  } else if (R.state === 'sitIn') {
+    R.sitT += dt; const k = Math.min(1, R.sitT / 1.6), s = R.poi.sit; R.x = R.sitFrom.x + (s.x - R.sitFrom.x) * k; R.z = R.sitFrom.z + (s.z - R.sitFrom.z) * k; R.yaw += angDiff(R.yaw, s.yaw) * Math.min(1, dt * 5);
+    if (k >= 1) { R.state = 'sit'; R.t = 0; play('Sitting', true); }
+  } else if (R.state === 'sit') {
+    R.t += dt; R.yaw += angDiff(R.yaw, R.poi.sit.yaw) * Math.min(1, dt * 5); if (R.t > R.wait) { R.state = 'sitOut'; R.sitT = 0; play('Standing', true); R.sitFrom = { x: R.x, z: R.z }; }
+  } else if (R.state === 'sitOut') {
+    R.sitT += dt; if (R.sitT > 1.2) { const k = Math.min(1, (R.sitT - 1.2) / 1.3); R.x = R.sitFrom.x + (R.poi.x - R.sitFrom.x) * k; R.z = R.sitFrom.z + (R.poi.z - R.sitFrom.z) * k; if (k >= 1) { R.state = 'wait'; R.wait = 1; R.t = 0; play('Idle'); R.poi = Object.assign({}, R.poi, { sit: null }); } }
+  } else if (R.state === 'wait' || R.state === 'idle') {
+    R.t += dt; const p = R.poi;
+    if (p && R.state === 'wait') R.yaw += angDiff(R.yaw, p.yaw) * Math.min(1, dt * 3);
+    if (dp < 3.2 && T > R.nextGreet && !(p && p.dance && R.cur === R.act.Dance)) { R.nextGreet = T + 50; R.yawLock = T + 2.6; if (R.act.Wave) { play('Wave', true); R.after = T + 2.8; } }
+    if (R.yawLock > T) R.yaw += angDiff(R.yaw, Math.atan2(dxp, dzp)) * Math.min(1, dt * 4);
+    if (R.after && T > R.after) { R.after = 0; play(p && p.act || 'Idle'); }
+    if (p && p.gest && R.t > R.gestAt && !R.after) { R.gestAt = R.t + rnd(7, 12); const g = p.gest[(Math.random() * p.gest.length) | 0]; if (R.act[g]) { play(g, true); R.after = T + 2.4; } }
+    if (p && p.dance && R.cur !== R.act.Dance && !R.after) play('Dance'); if (p && p.dance && !(V.S.playing)) { /* music stopped: stop dancing */ if (R.cur === R.act.Dance) play('Idle'); }
+    if (R.t > R.wait) choose();
+  }
+  R.root.position.set(R.x, R.state === 'sit' || R.state === 'sitIn' ? .02 : 0, R.z); R.root.rotation.y = R.yaw;
+  // light it from inside the vault, where there are no real lights
+  const inV = R.z > 8.45 ? .55 : 0; if (R.mats) for (const m of R.mats) { const mm = R.meshes.map(o => o.material); void mm; }
+  for (const o of R.meshes) { const m = o.material; if (m && 'emissive' in m) { const base = o.userData.baseColor || (o.userData.baseColor = m.color.clone()); m.emissive.copy(base); m.emissiveIntensity = inV; } }
+}
+new THREE.GLTFLoader().load('characters/robot.glb', gl => {
+  const root = new THREE.Group(), model = gl.scene; root.add(model);
+  model.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(model), h = bb.max.y - bb.min.y, s = HEIGHT / h; model.scale.setScalar(s); model.position.y = -bb.min.y * s;
+  R.meshes = []; model.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = false; R.meshes.push(o); } });
+  R.mixer = new THREE.AnimationMixer(model); gl.animations.forEach(c => R.act[c.name] = R.mixer.clipAction(c));
+  R.mixer.addEventListener('finished', () => { if (R.state === 'wait' && !R.after) play('Idle'); });
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(.36, .36, HEIGHT, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = HEIGHT / 2; root.add(hit);
+  V.IA.push({ mesh: hit, click: () => { if (R.act.Wave) { R.yawLock = performance.now() / 1000 + 99; R.state === 'walk' ? 0 : (play('Wave', true), R.after = (R.lastT || 0) + 2.8); } } });
+  scene.add(root); R.root = root; if (VR_BUILD) root.renderOrder = -5;
+  play('Idle'); R.state = 'wait'; R.poi = null; R.wait = 2; R.t = 0;
+  if (typeof setLiteMats === 'function' && typeof lite !== 'undefined') setLiteMats(lite.mode);
+  const prev = window.__roomTick; window.__roomTick = (dt, T) => { R.lastT = T; if (prev) prev(dt, T); tick(dt, T); };
+  R.force = n => { const p = POIS.find(q => q.n === n); if (!p) return; const c = snap(p.x, p.z); R.x = GX0 + c[0] * CS; R.z = GZ0 + c[1] * CS; R.yaw = p.yaw; R.poi = p; arrive(); }; R.play = play; R.blocked = blocked; R.tick = tick;
+  window.__robot = R; window.__robotPOIS = POIS;
+}, undefined, e => { console.warn('robot.glb not found', e); });
 })();
 
 })();

@@ -923,6 +923,137 @@ void main(){
 // terrace tower mass below the deck so the facade reads when looking down
 box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
 
+/* ---- realism pass: surface micro-detail, merged props, contact shadows, drapes, string lights ---- */
+{
+  // 1. micro bump on the big soft surfaces (desktop / PBR path; the VR Phong path skips it for speed)
+  const noiseTex = (seed, k, rep, blot, cells) => {
+    const r = mulberry32(seed), t = canvasTex(256, 256, (g, w, h) => {
+      const sm = document.createElement('canvas'); sm.width = sm.height = cells; const sg = sm.getContext('2d'), im = sg.createImageData(cells, cells);
+      for (let i = 0; i < cells * cells; i++) { const v = 128 + (r() - .5) * k * 255; im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; }
+      sg.putImageData(im, 0, 0); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(sm, 0, 0, w, h);
+      for (let i = 0; i < blot; i++) { g.fillStyle = 'rgba(' + (r() > .5 ? '255,255,255' : '0,0,0') + ',' + (.03 + r() * .05) + ')'; g.beginPath(); g.arc(r() * w, r() * h, 3 + r() * 10, 0, 7); g.fill(); }
+    }, false);
+    t.repeat.set(rep[0], rep[1]); t.minFilter = THREE.LinearMipmapLinearFilter; return t;
+  };
+  for (const [m, seed, k, rep, bs, bl, cells] of [[M.plaster, 3, .5, [3, 1.5], .012, 120, 64], [M.plasterW, 4, .5, [3, 1.5], .012, 120, 64], [M.ceil, 5, .35, [3, 2], .01, 80, 64], [M.concrete, 6, .9, [6, 6], .08, 200, 64],
+    [M.boucle, 7, 1, [5, 5], .1, 100, 96], [M.camel, 8, .8, [5, 5], .06, 100, 96], [M.leather, 9, .7, [5, 5], .05, 100, 80], [M.sand, 10, .8, [5, 5], .06, 100, 96], [M.pine, 11, .8, [5, 5], .06, 100, 96]]) { m.bumpMap = noiseTex(seed, k, rep, bl, cells); m.bumpScale = bs; m.needsUpdate = true; }
+
+  // 2. bake helper: many small pieces merged into one mesh per material
+  const MB = new Map(), _m4 = new THREE.Matrix4(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _q2 = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
+  function bake(geo, mat, x, y, z, rx, ry, rz, sx, sy, sz) {
+    const g = geo.index ? geo.toNonIndexed() : geo.clone();
+    _e.set(rx || 0, ry || 0, rz || 0, 'YXZ'); _q2.setFromEuler(_e); _p.set(x, y, z); _s.set(sx || 1, sy || 1, sz || 1);
+    g.applyMatrix4(_m4.compose(_p, _q2, _s)); geo.dispose();
+    if (!MB.has(mat)) MB.set(mat, []); MB.get(mat).push(g);
+  }
+  const bxx = (w, h, d, mat, x, y, z, ry, rx, rz) => bake(new THREE.BoxGeometry(w, h, d), mat, x, y, z, rx, ry, rz);
+  const cyy = (rt, rb_, h, seg, mat, x, y, z, rx, rz) => bake(new THREE.CylinderGeometry(rt, rb_, h, seg), mat, x, y, z, rx, 0, rz);
+  const spp = (r, mat, x, y, z, sy, sx) => bake(new THREE.SphereGeometry(r, 10, 7), mat, x, y, z, 0, 0, 0, sx || 1, sy || 1, sx || 1);
+  function flush() {
+    for (const [mat, arr] of MB) {
+      let n = 0; for (const g of arr) n += g.attributes.position.count;
+      const P = new Float32Array(n * 3), N = new Float32Array(n * 3), UV = new Float32Array(n * 2); let o = 0;
+      for (const g of arr) { P.set(g.attributes.position.array, o * 3); N.set(g.attributes.normal.array, o * 3); UV.set(g.attributes.uv.array, o * 2); o += g.attributes.position.count; g.dispose(); }
+      const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(P, 3)); bg.setAttribute('normal', new THREE.BufferAttribute(N, 3)); bg.setAttribute('uv', new THREE.BufferAttribute(UV, 2));
+      const m = new THREE.Mesh(bg, mat); if (mat.type === 'MeshBasicMaterial') m.userData.ns = 1; interior.add(m);
+    }
+    MB.clear();
+  }
+
+  // 3. materials
+  const cer = std(0xf1ece3, .28), cerD = std(0x2a2a2d, .35), terra = std(0xb4663f, .7), glassM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .03, transparent: true, opacity: .22, envMapIntensity: 1.2, depthWrite: false });
+  const cand = std(0xf3e9d2, .8), grass = std(0xd9c79c, .9), twig = std(0x6b4a2c, .9), fruitR = std(0xb3261e, .4), fruitG = std(0x8fb339, .45), lemon = std(0xe7c93a, .5), steelB = std(0xb9bbc0, .25, 1, { envMapIntensity: 1.2 });
+  const hobM = std(0x050507, .1), sinkIn = std(0x1b1c20, .3, .6), bread = std(0xb98a52, .8), wineGl = std(0x3a0d14, .2), logM = std(0x3a2a1c, .95), paper = std(0xf4f0e6, .9);
+  const books = [0x2f3b4c, 0x8a3b2e, 0xd9cfba, 0x20332f, 0xb08a4e, 0x4b4b50, 0x9b7e6b, 0x6d7f68].map(c => std(c, .7));
+  const mirrorM = std(0xffffff, .04, 1, { envMapIntensity: 1.5 });
+
+  // 4. prop builders
+  const bk = (r) => books[(r() * books.length) | 0];
+  function bookStack(x, y, z, n, ry, seed) { const r = mulberry32(seed); let h = y; for (let i = 0; i < n; i++) { const w = .2 + r() * .08, d = .27 + r() * .06, t = .022 + r() * .025; bxx(w, t, d, bk(r), x + (r() - .5) * .02, h + t / 2, z + (r() - .5) * .02, ry + (r() - .5) * .3); h += t; } return h; }
+  function bookRow(x, y, z, n, seed, lean) { const r = mulberry32(seed); for (let i = 0; i < n; i++) { const w = .025 + r() * .03, hh = .2 + r() * .1; bxx(w, hh, .18, bk(r), x + w / 2, y + hh / 2, z, 0, 0, i === n - 1 && lean ? -.25 : 0); x += w + .002; } }
+  function candle(x, y, z, h) { cyy(.02, .02, h, 10, cand, x, y + h / 2, z); bake(new THREE.SphereGeometry(.009, 6, 5), G.orb, x, y + h + .014, z, 0, 0, 0, 1, 2, 1); }
+  function stems(x, y, z, n, L, seed) {
+    const r = mulberry32(seed);
+    for (let i = 0; i < n; i++) {
+      const a = (r() - .5) * .9, b = (r() - .5) * .9, l = L * (.7 + r() * .5), dx = -Math.sin(a), dy = Math.cos(a) * Math.cos(b), dz = Math.cos(a) * Math.sin(b);
+      cyy(.003, .003, l, 4, twig, x + dx * l / 2, y + dy * l / 2, z + dz * l / 2, b, a);
+      bake(new THREE.SphereGeometry(.028, 7, 5), grass, x + dx * l, y + dy * l, z + dz * l, b, 0, a, 1, 2.8, 1);
+    }
+  }
+  function vase(x, y, z, s, mat, nst, L, seed) { cyy(.03 * s, .075 * s, .06 * s, 14, mat, x, y + .03 * s, z); cyy(.075 * s, .06 * s, .2 * s, 14, mat, x, y + .16 * s, z); cyy(.03 * s, .075 * s, .1 * s, 14, mat, x, y + .31 * s, z); if (nst) stems(x, y + .36 * s, z, nst, L, seed); }
+  function bowl(x, y, z, r, mat) { cyy(r, r * .55, r * .5, 20, mat, x, y + r * .25, z); }
+  function plate(x, y, z) { cyy(.13, .1, .014, 20, cer, x, y + .007, z); cyy(.075, .075, .016, 16, cerD, x, y + .008, z); }
+  function wineGlass(x, y, z) { cyy(.03, .03, .002, 12, glassM, x, y + .001, z); cyy(.003, .003, .1, 5, glassM, x, y + .05, z); cyy(.034, .014, .09, 12, glassM, x, y + .145, z); cyy(.03, .014, .03, 10, wineGl, x, y + .12, z); }
+  function setting(x, y, z, face) { plate(x, y, z); bxx(.11, .008, .17, paper, x - .2, y + .004, z + face * .02); bxx(.008, .006, .19, steelB, x - .15, y + .003, z + face * .02); bxx(.01, .006, .2, steelB, x + .15, y + .003, z + face * .02); wineGlass(x + .16, y, z - face * .12); }
+
+  // coffee + side tables
+  bookStack(4.58, .32, .5, 3, .4, 21); bowl(4.0, .32, 1.28, .09, cer); candle(4.0, .345, 1.28, .09);
+  bookStack(3.45, .52, .1, 2, .2, 22); candle(3.62, .52, .22, .1); vase(3.3, .52, -.08, .5, cerD, 4, .4, 23);
+  // credenza (top y .86) + console (top y .65)
+  bookStack(1.95, .86, 7.62, 5, .15, 24); bookRow(2.45, .86, 7.62, 5, 25, true); vase(4.7, .86, 7.6, 1.35, terra, 12, .75, 26); bowl(3.85, .86, 7.6, .13, cer); spp(.04, lemon, 3.82, .93, 7.6); spp(.04, fruitG, 3.88, .935, 7.64);
+  bookStack(-8.72, .65, -.2, 4, 1.57, 27); vase(-8.7, .65, .85, 1.1, cer, 9, .6, 28); candle(-8.7, .65, 1.45, .12); candle(-8.66, .65, 1.55, .08); bowl(-8.7, .65, 2.05, .12, terra);
+  // dining table (top .795): plates, glasses, candles, bread board, rug
+  for (const x of [-5.5, -4.65, -3.8, -2.95]) { setting(x, .795, .62, 1); setting(x, .795, 1.38, -1); }
+  setting(-5.95, .795, 1.0, 1); setting(-2.45, .795, 1.0, -1);
+  candle(-3.05, .795, 1.0, .16); candle(-5.35, .795, 1.0, .12); candle(-4.0, .795, .98, .09);
+  bowl(-4.75, .795, 1.0, .15, cer); for (let i = 0; i < 5; i++) spp(.038, i % 2 ? fruitR : fruitG, -4.75 + (i - 2) * .045, .86 + (i % 2) * .02, 1 + ((i * 7) % 3 - 1) * .035);
+  // kitchen island (top .99): sink, faucet, hob, board
+  bxx(.62, .012, .4, steelB, -5.5, .996, 4.85); bxx(.54, .014, .32, sinkIn, -5.5, .997, 4.85);
+  cyy(.012, .012, .3, 8, M.brass, -5.5, 1.14, 5.32); cyy(.011, .011, .17, 8, M.brass, -5.5, 1.29, 5.24, Math.PI / 2); cyy(.01, .01, .06, 8, M.brass, -5.5, 1.26, 5.16);
+  bxx(.64, .01, .5, hobM, -3.85, .995, 4.8); for (const sx of [-1, 1]) for (const sz of [-1, 1]) { cyy(.085, .085, .003, 24, steelB, -3.85 + sx * .16, 1.0, 4.8 + sz * .12); cyy(.06, .06, .004, 20, hobM, -3.85 + sx * .16, 1.0, 4.8 + sz * .12); }
+  bxx(.42, .028, .28, M.oak, -4.6, 1.004, 5.3, .15); spp(.035, lemon, -4.68, 1.04, 5.3, .7, 1.2); spp(.035, lemon, -4.58, 1.04, 5.27, .7, 1.2); bxx(.2, .005, .02, steelB, -4.45, 1.02, 5.33, .15);
+  cyy(.05, .06, .13, 14, cerD, -6.1, 1.06, 5.35);
+  // back counter (top .97): espresso, kettle, crock, bread, shelf
+  bxx(.36, .34, .36, steelB, -1.7, 1.14, 7.62); bxx(.34, .04, .34, M.black, -1.7, .99, 7.55); bxx(.2, .02, .06, M.brass, -1.7, 1.2, 7.43); cyy(.03, .025, .05, 10, cer, -1.7, 1.015, 7.45);
+  cyy(.1, .12, .2, 18, steelB, -2.55, 1.07, 7.6); cyy(.012, .02, .12, 6, steelB, -2.42, 1.12, 7.6, 0, -.9); cyy(.1, .1, .01, 18, M.black, -2.55, 1.17, 7.6);
+  cyy(.07, .065, .17, 14, cer, -6.2, 1.055, 7.7); for (let i = 0; i < 6; i++) stems(-6.2 + (i - 2.5) * .012, 1.14, 7.7, 1, .16, 40 + i);
+  bxx(.5, .025, .3, M.oak, -3.3, .985, 7.6, .1); bake(new THREE.SphereGeometry(.12, 10, 7), bread, -3.3, 1.04, 7.6, 0, .1, 0, 1.6, .55, .8);
+  bookRow(-7.35, 1.625, 7.8, 8, 29, true); bowl(-6.1, 1.625, 7.82, .11, cer); vase(-5.65, 1.625, 7.8, .7, cerD, 3, .3, 30);
+  // fireplace: mirror, logs
+  mesh(new THREE.CylinderGeometry(.74, .74, .03, 48), mirrorM, 8.68, 2.2, 1.1).rotation.z = Math.PI / 2;
+  mesh(new THREE.TorusGeometry(.75, .022, 8, 56), M.brass, 8.66, 2.2, 1.1).rotation.y = Math.PI / 2;
+  for (const [z, y] of [[-1.9, .07], [-2.04, .07], [-1.76, .07], [-1.97, .2], [-1.83, .2]]) cyy(.065, .065, .56, 8, logM, 8.5, y, z, Math.PI / 2, 0);
+  flush();
+
+  // 5. contact shadows + wall-base occlusion (soft decals, one merged mesh each)
+  const shTex = canvasTex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(.55, 'rgba(0,0,0,.32)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, false);
+  const aoTex = canvasTex(8, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.5)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, false);
+  aoTex.wrapS = aoTex.wrapT = THREE.ClampToEdgeWrapping; shTex.wrapS = shTex.wrapT = THREE.ClampToEdgeWrapping;
+  const dm = t => new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, toneMapped: false });
+  const shM = dm(shTex), aoM = dm(aoTex);
+  const onRug = (x, z) => x > 2.3 && x < 8.1 && z > -1.2 && z < 3.0;
+  const decal = (x, z, w, d, rot, op) => { const y = onRug(x, z) ? .037 : .006; for (let i = 0; i < (op || 1); i++) bake(new THREE.PlaneGeometry(w, d), shM, x, y + i * .0004, z, -Math.PI / 2, rot || 0, 0); };
+  decal(5.2, 3.4, 5.4, 2.2, 0, 2); decal(6.85, 2.2, 1.6, 1.9); decal(4.4, .9, 2.2, 2.2, 0, 2); decal(3.45, .1, 1.3, 1.3); decal(2.1, .7, 1.5, 1.5); decal(4.7, -1.5, 1.5, 1.5);
+  decal(-4.2, 1, 4.6, 2.2, 0, 2); for (const x of [-5.5, -4.65, -3.8, -2.95]) { decal(x, -.2, .8, .8); decal(x, 2.2, .8, .8); } decal(-6.35, 1, .8, .8); decal(-2.05, 1, .8, .8);
+  decal(-4.5, 5, 5.2, 2.0, 0, 2); for (const x of [-5.7, -4.6, -3.5]) decal(x, 3.95, .55, .55);
+  decal(-7.2, -1.4, 2.0, 2.7, 0, 2); decal(-7.2, .35, 1.1, .7); decal(3.4, 7.6, 4.2, 1.1); decal(-5, 7.65, 8.8, 1.1); decal(-8.7, .9, .9, 3.6); decal(8.6, 1.1, 1.2, 5.2);
+  const wallAO = (x, z, w, d, rot) => bake(new THREE.PlaneGeometry(w, d), aoM, x, .007, z, -Math.PI / 2, rot, 0);
+  wallAO(0, 7.55, 18, .9, 0); wallAO(-8.55, 2, 12, .9, -Math.PI / 2); wallAO(8.55, 2, 12, .9, Math.PI / 2); wallAO(0, -3.55, 18, .9, Math.PI);
+  flush();
+
+  // 6. sheer drapes either side of the glass wall
+  const sheer = std(0xf2ece0, 1, 0, { transparent: true, opacity: .5, side: THREE.DoubleSide, depthWrite: false });
+  for (const [cx, w] of [[-8.2, 1.6], [8.2, 1.6]]) {
+    const g = new THREE.PlaneGeometry(w, CEIL - .15, 90, 1), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin(p.getX(i) * 22) * .05 + Math.sin(p.getX(i) * 9 + 1) * .03);
+    g.computeVertexNormals(); mesh(g, sheer, cx, (CEIL - .15) / 2 + .02, GZ + .35);
+    box(w + .1, .04, .05, M.steel, cx, CEIL - .12, GZ + .35);
+  }
+
+  // 7. bistro string lights over the terrace
+  { const bulbs = []; const wire = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    for (const x of [-7, -3, 2, 6.5]) {
+      const a = new THREE.Vector3(x, 3.2, GZ - .2), b = new THREE.Vector3(x + .5, 3.0, -10.0), pts = [];
+      for (let i = 0; i <= 18; i++) { const t = i / 18; pts.push(new THREE.Vector3().lerpVectors(a, b, t).add(new THREE.Vector3(0, -.55 * 4 * t * (1 - t), 0))); }
+      pts.forEach((p, i) => { if (i % 1 === 0 && i > 0 && i < 18) bulbs.push(p); });
+      mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, .006, 4), wire, 0, 0, 0).userData.ns = 1;
+      cyl(.025, .025, 3.1, 8, M.steel, x + .5, 1.55, -10.05);
+    }
+    const im = new THREE.InstancedMesh(new THREE.SphereGeometry(.035, 8, 6), G.orb, bulbs.length), m4 = new THREE.Matrix4();
+    bulbs.forEach((p, i) => { m4.setPosition(p.x, p.y - .03, p.z); im.setMatrixAt(i, m4); }); im.userData.ns = 1; interior.add(im);
+  }
+}
+
 /* ---- castShadow / matrix freeze ---- */
 interior.traverse(o => {
   if (o.isMesh && !o.userData.ns && !(o.material && (o.material.transparent || o.material.type === 'MeshBasicMaterial'))) { o.castShadow = true; o.receiveShadow = true; }

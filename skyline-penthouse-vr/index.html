@@ -301,7 +301,7 @@ varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;
 void main(){ vec4 wp = modelMatrix*instanceMatrix*vec4(position,1.); vWorld=wp.xyz; vLocal=position*aSize; vN=normal; vSize=aSize; vInfo=aInfo;
   gl_Position = projectionMatrix*viewMatrix*wp; }`,
   fragmentShader: `precision highp float;
-uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime;
+uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime,uLite;
 varying vec3 vLocal, vN, vWorld, vSize; varying vec4 vInfo;` + GLSL_COMMON + `
 void main(){
   vec3 N = normalize(vN);
@@ -340,11 +340,15 @@ void main(){
     float lit = mix(step(wn,chance), clamp(chance,0.,1.), fade);
     vec3 warm = vec3(1.,.74,.42), cool = vec3(.72,.86,1.);
     vec3 lc = mix(cool, warm, clamp(warmBias + (h21(id.yx+seed)-.5)*1.1, 0., 1.)) * (1.1+wn*1.5);
-    vec3 R = reflect(-V, N);
-    vec3 skyR = mix(uSkyH, uSkyZ, pow(clamp(R.y+.1,0.,1.),.6));
     float fr = mix(.12, 1., pow(1.-max(dot(N,V),0.), 4.))*refl;
-    float spec = pow(max(dot(R,uLDir),0.), 40.)*refl;
-    vec3 gcol = glass*(amb*.9) + skyR*fr + uLCol*spec*.6;
+    vec3 gcol;
+    if (uLite>.5) { gcol = glass*(amb*.9) + mix(uSkyH, uSkyZ, .3)*fr; }
+    else {
+      vec3 R = reflect(-V, N);
+      vec3 skyR = mix(uSkyH, uSkyZ, pow(clamp(R.y+.1,0.,1.),.6));
+      float spec = pow(max(dot(R,uLDir),0.), 40.)*refl;
+      gcol = glass*(amb*.9) + skyR*fr + uLCol*spec*.6;
+    }
     vec3 wcol = wall*(amb + sunL);
     float groundGlow = (1.-smoothstep(0.,70.,v))*uNight;
     wcol += wall*vec3(.5,.3,.14)*groundGlow*.6;
@@ -368,7 +372,7 @@ const groundMat = new THREE.ShaderMaterial({
   uniforms: Object.assign({ tBlocks: { value: blockDataTex } }, U),
   vertexShader: `varying vec3 vWorld; void main(){ vec4 wp=modelMatrix*vec4(position,1.); vWorld=wp.xyz; gl_Position=projectionMatrix*viewMatrix*wp; }`,
   fragmentShader: `precision highp float;
-uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime; uniform sampler2D tBlocks;
+uniform vec3 uLDir,uLCol,uAmbSky,uAmbGround,uSkyH,uSkyZ,uFogCol; uniform float uNight,uFogDens,uTime,uLite; uniform sampler2D tBlocks;
 varying vec3 vWorld;` + GLSL_COMMON + `
 const float CX=120., CZ=90., OX=60., OZ=45.;
 float hwX(float i){ return mod(abs(i),4.)<.5 ? 12. : 7.; }
@@ -424,11 +428,11 @@ void main(){
     vec4 bd = texture2D(tBlocks, buv);
     float inB = step(0.,buv.x)*step(buv.x,1.)*step(0.,buv.y)*step(buv.y,1.);
     float park = bd.r*inB;
-    float nz = fbm(p*.07);
+    float nz = uLite>.5 ? .5 : fbm(p*.07);
     vec3 asphalt = vec3(.03,.032,.036)*(.8+.5*vnoise(p*.4));
     vec3 side = vec3(.13,.128,.12);
     vec3 yard = vec3(.075,.078,.07)*(.8+.4*nz);
-    vec3 grass = vec3(.022,.065,.02)*(.65+.8*fbm(p*.045));
+    vec3 grass = vec3(.022,.065,.02)*(.65+.8*(uLite>.5 ? .5 : fbm(p*.045)));
     vec3 scrub = vec3(.04,.05,.04)*(.7+.6*nz);
     vec3 land = mix(scrub, mix(yard, grass, park), inB);
     float wf = step(-2060.,p.y)*step(p.y,-1850.);
@@ -436,7 +440,7 @@ void main(){
     col = mix(land, side, walk*(1.-road)*inGrid);
     col = mix(col, asphalt, road);
     // islands
-    vec3 isle = mix(vec3(.02,.055,.02), vec3(.09,.08,.05), vnoise(p*.05))*(.7+.5*fbm(p*.1));
+    vec3 isle = mix(vec3(.02,.055,.02), vec3(.09,.08,.05), vnoise(p*.05))*(.7+.5*(uLite>.5 ? .5 : fbm(p*.1)));
     col = mix(col, isle, isl);
     // lane markings
     float markZ = roadX*(1.-roadZ), markX = roadZ*(1.-roadX);
@@ -1521,9 +1525,11 @@ const audio = (() => {
 // arc teleport, hand-tracking pinch teleport, a wrist menu you click with the right controller, comfort vignette,
 // spatial audio and three quality presets tuned for the Quest's mobile GPU.
 const VRQ = {
-  fast:     { label: 'Fast',     scale: .70, fov: 1.0, cars: 450,  shadow: 0,    lite: 1, lights: ['living', 'fire', 'pool'] },
-  balanced: { label: 'Balanced', scale: .85, fov: .80, cars: 900,  shadow: 1024, lite: 1, lights: ['living', 'dining', 'fire', 'pool', 'pit'] },
-  sharp:    { label: 'Sharp',    scale: 1.0, fov: .45, cars: 1500, shadow: 2048, lite: 0, lights: ['living', 'dining', 'kitchen', 'piano', 'fire', 'pool', 'pit'] }
+  // scale = starting render resolution (an automatic governor moves it between min and max to hold the headset's frame rate)
+  // phong: 'all' / 'most' swaps the PBR interior for cheaper per-pixel lighting; slots: how many point lights are live at once (0 = all seven)
+  fast:     { label: 'Fast',     scale: .62, min: .45, max: .70, fov: 1.0, cars: 300,  shadow: 0,    lite: 1, phong: 'all',  slots: 2 },
+  balanced: { label: 'Balanced', scale: .78, min: .55, max: .92, fov: .85, cars: 700,  shadow: 0,    lite: 1, phong: 'most', slots: 3 },
+  sharp:    { label: 'Sharp',    scale: 1.0, min: .80, max: 1.0, fov: .50, cars: 1500, shadow: 2048, lite: 0, phong: 'none', slots: 0 }
 };
 const vr = { q: 'balanced', session: null, supported: false, seated: false, seatY: 0, vel: new THREE.Vector3(), snapReady: true, aiming: false, aimCtrl: null,
   vig: 0, blink: 0, hit: { ok: false, x: 0, z: 0 }, prev: { l: [], r: [] }, in: { l: null, r: null }, speed: 0, fbH: 2000 };
@@ -1648,7 +1654,7 @@ function gotoTime(to) { const from = state.h; let d = to - from; if (d > 12) d -
 function toggleLights() { state.lights = !state.lights; applyTime(state.h); MENU.dirty = true; }
 function toggleClock() { state.play = !state.play; MENU.dirty = true; }
 function toggleSound() { audio.start(); audio.toggle(); MENU.dirty = true; }
-function cycleQuality() { const ks = Object.keys(VRQ); vr.q = ks[(ks.indexOf(vr.q) + 1) % ks.length]; applyVRQuality(vr.q); MENU.dirty = true; }
+function cycleQuality() { const ks = Object.keys(VRQ); vr.q = ks[(ks.indexOf(vr.q) + 1) % ks.length]; applyVRQuality(vr.q); resetGov(T); setLayerScale(VRQ[vr.q].scale); MENU.dirty = true; }
 function toggleSeat() { vr.seated = !vr.seated; vr.seatY = vr.seated ? .4 : 0; MENU.dirty = true; }
 MENU.items = [];
 PRESETS.forEach((p, i) => MENU.items.push({ x: 19 + (i % 3) * 162, y: 88 + Math.floor(i / 3) * 62, w: 150, h: 52, label: () => p[0], on: () => Math.abs(((state.h - p[1] + 36) % 24) - 12) < .5, act: () => gotoTime(p[1]) }));
@@ -1779,6 +1785,7 @@ function vrUpdate(dt, frame, T) {
   const hover = updateMenu(frame);
   if (hover >= 0 && edge('r', 0)) MENU.items[hover].act();
   updateHandMeshes();
+  updateHemi(); updateSlots(dt, head.wx, rig3.position.y + head.ly, head.wz); govUpdate(T);
   // --- comfort vignette follows speed; blink fades out
   const tv = Math.min(1, vr.speed / 1.8) * .8; vr.vig += (tv - vr.vig) * (1 - Math.exp(-7 * dt)); vr.blink = Math.max(0, vr.blink - dt * 5);
   vigMat.uniforms.uAmt.value = vr.vig; vigMat.uniforms.uBlink.value = vr.blink; vigMesh.visible = vr.vig > .01 || vr.blink > .01;
@@ -1801,16 +1808,95 @@ vrHook.hideForEnv = function () {
   list.forEach(o => o.visible = false); return [() => list.forEach((o, i) => o.visible = was[i])];
 };
 
-/* ---------- quality presets ---------- */
+/* ---------- lighter lighting for the headset ---------- */
+// The PBR interior (environment reflections, shadows, seven lights) is most of the GPU cost. In Fast/Balanced the rough materials
+// become Blinn-Phong with a hemisphere light standing in for the sky ambient, and only the nearest few point lights are live.
+const lite = { cache: new Map(), mode: 'none', K: 0, slots: [], hemiK: 1.5, hemi: new THREE.HemisphereLight(0xffffff, 0x151515, 0) };
+lite.hemi.visible = false; scene.add(lite.hemi);
+for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xffffff, 0, 10, 1.6); l.visible = false; scene.add(l); lite.slots.push({ l, name: 'living', target: 'living', fade: 1 }); }
+const VN = ['living', 'dining', 'kitchen', 'piano', 'fire', 'pool', 'pit'];
+function makeLite(m) {
+  if (m.transparent && m.opacity < .2) return new THREE.MeshBasicMaterial({ color: m.color, transparent: true, opacity: Math.max(.05, m.opacity), depthWrite: false, side: m.side });
+  const spec = new THREE.Color(1, 1, 1).multiplyScalar(.04 + (1 - m.roughness) * .12).lerp(m.color, m.metalness * .9);
+  return new THREE.MeshPhongMaterial({ color: m.color, map: m.map, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, side: m.side, transparent: m.transparent, opacity: m.opacity, alphaTest: m.alphaTest, shininess: 6 + Math.pow(1 - m.roughness, 2) * 80, specular: spec });
+}
+const keepStd = m => m.isMeshPhysicalMaterial || (m.roughness < .3 && (m.map || m.metalness > .5));   // big glossy surfaces keep their reflections in 'most'
+function setLiteMats(mode) {
+  lite.mode = mode;
+  scene.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material)) return;
+    const m0 = o.userData.stdMat || o.material; if (!m0 || !m0.isMeshStandardMaterial) return;
+    o.userData.stdMat = m0; let nm = m0;
+    if (mode === 'all' || (mode === 'most' && !keepStd(m0))) { nm = lite.cache.get(m0); if (!nm) { nm = makeLite(m0); lite.cache.set(m0, nm); } }
+    o.material = nm;
+  });
+  lite.hemi.visible = mode !== 'none';
+}
+function updateHemi() {
+  if (lite.mode === 'none') return;
+  lite.hemi.color.copy(U.uAmbSky.value); lite.hemi.groundColor.copy(U.uAmbGround.value).multiplyScalar(1.4); lite.hemi.intensity = lite.hemiK;
+}
+function pickLights(hx, hy, hz) {
+  return VN.map(nm => { const l = rig[nm].l, p = l.position, d2 = (p.x - hx) ** 2 + ((p.y - hy) * .5) ** 2 + (p.z - hz) ** 2; return [nm, l.intensity > 1e-3 ? 1 / (d2 + 6) : 0]; })
+    .sort((a, b) => b[1] - a[1]).slice(0, lite.K).map(a => a[0]);
+}
+function placeSlot(s, nm) { const v = rig[nm].l; s.name = s.target = nm; s.l.color.copy(v.color); s.l.distance = v.distance; s.l.decay = v.decay; s.l.position.copy(v.position); }
+function initSlots(hx, hy, hz) { const want = pickLights(hx, hy, hz); lite.slots.forEach((s, i) => { if (i < lite.K) { placeSlot(s, want[i] || 'living'); s.fade = 1; } }); }
+function updateSlots(dt, hx, hy, hz) {
+  if (!lite.K) return;
+  const want = pickLights(hx, hy, hz), shown = lite.slots.slice(0, lite.K), missing = want.filter(n => !shown.some(s => s.target === n));
+  shown.forEach(s => { if (!want.includes(s.target) && missing.length) s.target = missing.shift(); });
+  shown.forEach(s => {
+    if (s.name !== s.target) { s.fade = Math.max(0, s.fade - dt * 5); if (s.fade === 0) placeSlot(s, s.target); }
+    else s.fade = Math.min(1, s.fade + dt * 5);
+    const v = rig[s.name].l; s.l.position.copy(v.position); s.l.intensity = v.intensity * s.fade;
+  });
+}
+
+/* ---------- quality presets + frame-rate governor ---------- */
 function setFoveation(f) {   // r128 has no renderer.xr.setFoveation; the layer attribute is what the Quest browser honours
   if (typeof renderer.xr.setFoveation === 'function') { renderer.xr.setFoveation(f); return; }
   const bl = vr.session && vr.session.renderState && vr.session.renderState.baseLayer; if (bl && 'fixedFoveation' in bl) bl.fixedFoveation = f;
 }
 function allMats(fn) { scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(fn); }); }
+const gov = { ema: 0, prev: 0, t0: 0, last: -99, lastUp: -99, lastDown: -99, scale: 1, cap: 1, off: false };
+function setLayerScale(sc) {   // r128 reads session.renderState.baseLayer every frame, so a new layer = a new resolution
+  const sess = vr.session; if (!sess) return false;
+  try {
+    const gl = renderer.getContext(), at = gl.getContextAttributes() || {};
+    const layer = new XRWebGLLayer(sess, gl, { antialias: !!at.antialias, alpha: !!at.alpha, depth: !!at.depth, stencil: !!at.stencil, framebufferScaleFactor: sc });
+    if ('fixedFoveation' in layer) layer.fixedFoveation = VRQ[vr.q].fov;
+    sess.updateRenderState({ baseLayer: layer }); gov.scale = sc; return true;
+  } catch (e) { gov.off = true; console.warn('dynamic resolution unavailable', e); return false; }
+}
+function resetGov(T0) { const Q = VRQ[vr.q]; Object.assign(gov, { ema: 0, prev: 0, t0: T0, last: T0, lastUp: -99, lastDown: -99, scale: Q.scale, cap: Q.max, off: false }); }
+function govUpdate(T) {
+  const now = performance.now(), raw = gov.prev ? now - gov.prev : 0; gov.prev = now; if (raw <= 0 || raw > 250) return;
+  gov.ema = gov.ema ? gov.ema + (raw - gov.ema) * .06 : raw;
+  if (gov.off || T - gov.t0 < 4 || T - gov.last < 1.8) return;
+  const budget = 1000 / (vr.hz || 72), Q = VRQ[vr.q];
+  if (gov.ema > budget * 1.12 && gov.scale > Q.min + .01) {
+    if (T - gov.lastUp < 30) gov.cap = Math.max(Q.min, gov.scale - .02);       // went back up and failed: stop climbing past here
+    if (setLayerScale(Math.max(Q.min, +(gov.scale - .08).toFixed(2)))) { gov.last = gov.lastDown = T; gov.ema = budget; }
+  } else if (gov.ema < budget * 1.06 && T - gov.lastDown > 20 && T - gov.last > 6 && gov.scale < Math.min(Q.max, gov.cap) - .01) {
+    if (setLayerScale(Math.min(Q.max, gov.cap, +(gov.scale + .04).toFixed(2)))) { gov.last = gov.lastUp = T; }
+  }
+}
+function requestFrameRate() {
+  const s = vr.session; vr.hz = (s && s.frameRate) || 72;
+  if (s && s.updateTargetFrameRate && s.supportedFrameRates) {
+    const rates = Array.from(s.supportedFrameRates).sort((a, b) => a - b), pick = rates.includes(72) ? 72 : (rates.find(r => r >= 72) || rates[0]);
+    if (pick) s.updateTargetFrameRate(pick).then(() => { vr.hz = s.frameRate || pick; }).catch(() => { });
+  }
+}
 function applyVRQuality(q) {
   const Q = VRQ[q]; vr.q = q; try { localStorage.setItem('penthouseVRQ', q); } catch (e) { }
   carMesh.count = Q.cars; cPts.geo.setDrawRange(0, Q.cars * 2);
-  for (const nm of Object.keys(rig)) rig[nm].l.visible = Q.lights.includes(nm);
+  lite.K = Q.slots; const real = !Q.slots;
+  for (const nm of VN) rig[nm].l.visible = real;                               // the seven fixed lights, or...
+  lite.slots.forEach((s, i) => s.l.visible = !real && i < Q.slots);           // ...the few that follow you
+  if (!real) initSlots(head.wx, rig3.position.y + head.ly, head.wz);
+  setLiteMats(Q.phong);
   renderer.shadowMap.enabled = !!Q.shadow; state.perf = !Q.shadow;
   if (Q.shadow && sunLight.shadow.mapSize.x !== Q.shadow) { sunLight.shadow.mapSize.set(Q.shadow, Q.shadow); if (sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; } }
   U.uLite.value = Q.lite;
@@ -1826,8 +1912,10 @@ renderer.xr.addEventListener('sessionstart', () => {
   renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping;
   stopTour(); state.play = false; setPressed('bPlay', false);
   rig3.position.set(player.pos.x, 0, player.pos.z); rig3.rotation.set(0, player.yaw, 0); vr.vel.set(0, 0, 0);
+  head.lx = 0; head.lz = 0; headWorld();
   vr.seatY = vr.seated ? .4 : 0; vr.aiming = false; vr.blink = 1; MENU.dirty = true; attachMenu();
   applyVRQuality(vr.q);
+  resetGov(T); requestFrameRate();
   state.envAt = T;                             // do not rebuild reflections straight away
   vr.px = 900;
 });
@@ -1835,7 +1923,8 @@ renderer.xr.addEventListener('sessionend', () => {
   vr.session = null; vrHook.active = false;
   renderer.outputEncoding = hdrOK ? THREE.LinearEncoding : THREE.sRGBEncoding; renderer.toneMapping = hdrOK ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   carMesh.count = NCARS; cPts.geo.setDrawRange(0, NCARS * 2);
-  for (const nm of Object.keys(rig)) rig[nm].l.visible = true;
+  lite.K = 0; lite.slots.forEach(s => s.l.visible = false); setLiteMats('none');
+  for (const nm of VN) rig[nm].l.visible = true;
   renderer.shadowMap.enabled = true; state.perf = false; U.uLite.value = 0;
   if (sunLight.shadow.mapSize.x !== 2048) { sunLight.shadow.mapSize.set(2048, 2048); if (sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; } }
   rig3.position.set(0, 0, 0); rig3.rotation.set(0, 0, 0); vigMesh.visible = false; arcLine.visible = ring.visible = laser.visible = false; MENU.mesh.visible = false;
@@ -1844,7 +1933,7 @@ renderer.xr.addEventListener('sessionend', () => {
   applyTime(state.h); resize();
 });
 
-window.__dbg = Object.assign(window.__dbg || {}, { vr, rig: rig3, head, MENU, ctrl, hands, applyVRQuality, teleportTo, vigMat });
+window.__dbg = Object.assign(window.__dbg || {}, { vr, rig: rig3, head, MENU, ctrl, hands, applyVRQuality, teleportTo, vigMat, lite, gov, setLiteMats, updateHemi, setLayerScale });
 
 })();
 </script>

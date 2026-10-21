@@ -2690,14 +2690,14 @@ function itemTex(it) {
   if (it.kind !== undefined) { it.tex = ctex(artCanvas(it.kind, it.seed, it.hue)); return it.tex; }
   const ph = new THREE.CanvasTexture(cv(8, 8, g => { g.fillStyle = '#10141c'; g.fillRect(0, 0, 8, 8); })); it.tex = ph;
   const ld = new THREE.TextureLoader(); ld.setCrossOrigin('anonymous');
-  ld.load(it.src, t => { t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy()); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; const ia = t.image.width / t.image.height, ta = 1 / 1.5; if (ia > ta) { t.repeat.set(ta / ia, 1); t.offset.set((1 - ta / ia) / 2, 0); } else { t.repeat.set(1, ia / ta); t.offset.set(0, (1 - ia / ta) / 2); } it.tex = t; it.ready = true; posters.forEach(p => { if (p.item === it) p.a.material.map = t; }); }, undefined, () => { it.failed = true; it.tex = failTex('Image blocked', 'host refuses other sites'); posters.forEach(p => { if (p.item === it) { p.a.material.map = it.tex; p.a.material.needsUpdate = true; posterPlaque(p); } }); });
+  ld.load(it.src, t => { t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy()); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; const ia = t.image.width / t.image.height, ta = 1 / 1.5; if (ia > ta) { t.repeat.set(ta / ia, 1); t.offset.set((1 - ta / ia) / 2, 0); } else { t.repeat.set(1, ia / ta); t.offset.set(0, (1 - ia / ta) / 2); } it.tex = t; it.ready = true; posters.forEach(p => { if (p.item === it) p.a.material.map = t; }); }, undefined, () => { it.failed = true; { const n = S.posterList.indexOf(it); it.tex = ctex(artCanvas((n < 0 ? 0 : n) % 6, 50 + n, (n * 137.5 + 60) % 360)); } posters.forEach(p => { if (p.item === it) { p.a.material.map = it.tex; p.a.material.needsUpdate = true; posterPlaque(p); } }); });
   return ph;
 }
 const posters = [];
 const IA = [];
 const hue2 = (h, s, l) => new THREE.Color().setHSL(((h % 1) + 1) % 1, s, l);
 function posterPlaque(p) {
-  const c = cv(384, 96, (g, w, h) => { g.fillStyle = 'rgba(8,12,18,.88)'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2e6d0'; g.font = '600 30px system-ui,Segoe UI,sans-serif'; g.fillText((p.item.title || 'Untitled').slice(0, 20), 16, 40); g.fillStyle = '#7fe0ff'; g.font = '24px ui-monospace,monospace'; g.fillText(p.item.failed ? 'failed to load' : (p.item.price || 'tap to swap'), 16, 76); });
+  const c = cv(384, 96, (g, w, h) => { g.fillStyle = 'rgba(8,12,18,.88)'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2e6d0'; g.font = '600 30px system-ui,Segoe UI,sans-serif'; g.fillText((p.item.title || 'Untitled').slice(0, 20), 16, 40); g.fillStyle = '#7fe0ff'; g.font = '24px ui-monospace,monospace'; g.fillText(p.item.failed ? 'link blocked · art stand-in' : (p.item.price || 'tap to swap'), 16, 76); });
   const t = ctex(c); if (p.plaque.material.map) p.plaque.material.map.dispose(); p.plaque.material.map = t; p.plaque.material.needsUpdate = true;
 }
 function makePoster(x, z, ry, i) {

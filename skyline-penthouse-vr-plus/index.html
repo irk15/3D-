@@ -2690,7 +2690,7 @@ function itemTex(it) {
   if (it.kind !== undefined) { it.tex = ctex(artCanvas(it.kind, it.seed, it.hue)); return it.tex; }
   const ph = new THREE.CanvasTexture(cv(8, 8, g => { g.fillStyle = '#10141c'; g.fillRect(0, 0, 8, 8); })); it.tex = ph;
   const ld = new THREE.TextureLoader(); ld.setCrossOrigin('anonymous');
-  ld.load(it.src, t => { t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy()); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; const ia = t.image.width / t.image.height, ta = 1 / 1.5; if (ia > ta) { t.repeat.set(ta / ia, 1); t.offset.set((1 - ta / ia) / 2, 0); } else { t.repeat.set(1, ia / ta); t.offset.set(0, (1 - ia / ta) / 2); } it.tex = t; it.ready = true; posters.forEach(p => { if (p.item === it) { p.a.material.map = t; p.a.material.needsUpdate = true; } }); }, undefined, () => { it.failed = true; it.tex = failTex('Image blocked', 'host refuses other sites'); posters.forEach(p => { if (p.item === it) { p.a.material.map = it.tex; p.a.material.needsUpdate = true; posterPlaque(p); } }); });
+  ld.load(it.src, t => { t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy()); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; const ia = t.image.width / t.image.height, ta = 1 / 1.5; if (ia > ta) { t.repeat.set(ta / ia, 1); t.offset.set((1 - ta / ia) / 2, 0); } else { t.repeat.set(1, ia / ta); t.offset.set(0, (1 - ia / ta) / 2); } it.tex = t; it.ready = true; posters.forEach(p => { if (p.item === it) p.a.material.map = t; }); }, undefined, () => { it.failed = true; it.tex = failTex('Image blocked', 'host refuses other sites'); posters.forEach(p => { if (p.item === it) { p.a.material.map = it.tex; p.a.material.needsUpdate = true; posterPlaque(p); } }); });
   return ph;
 }
 const posters = [];
@@ -2719,7 +2719,8 @@ function freeIdx(p, start, dir) {
 function setPoster(p, idx, instant) {
   const L = S.posterList.length ? S.posterList : BUILTIN; p.idx = (idx % L.length + L.length) % L.length; p.item = L[p.idx];
   const t = itemTex(p.item);
-  if (instant) { p.a.material.map = t; p.a.material.needsUpdate = true; p.b.material.opacity = 0; } else { p.b.material.map = t; p.b.material.opacity = 0; p.b.material.needsUpdate = true; p.b.visible = true; p.fade = 0; }
+  p.a.material.map = t; p.fade = 1; p.b.visible = false; p.b.material.opacity = 0;
+  if (!p.mapSet) { p.a.material.needsUpdate = true; p.mapSet = true; }
   posterPlaque(p);
 }
 [9.7, 11.5, 13.3, 15.1].forEach((z, i) => makePoster(X0 + .04, z, Math.PI / 2, i)); [11.5, 13.3, 15.1, 16.9].forEach((z, i) => makePoster(X1 - .04, z, -Math.PI / 2, i + 4));
@@ -2728,8 +2729,11 @@ function setPoster(p, idx, instant) {
 const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360; const scrG = scrC.getContext('2d');
 const scrT = new THREE.CanvasTexture(scrC); scrT.encoding = THREE.sRGBEncoding; scrT.minFilter = THREE.LinearFilter; scrT.generateMipmaps = false;
 const screen = plane(6, 3.375, basic({ map: scrT }, true), 0, 2.35, Z1 - .045, Math.PI);
-const scrGlow = plane(9.2, 5.6, addMat(0xffffff, 0, glowTex), 0, 2.35, Z1 - .09, Math.PI);
+const scrBack = plane(6, 3.375, basic({ color: 0x000000 }, true), 0, 2.35, Z1 - .035, Math.PI);
+function fitScreen(ar) { const r = 16 / 9; if (!ar || !isFinite(ar)) ar = r; screen.scale.set(Math.min(1, ar / r), Math.min(1, r / ar), 1); }
+const scrGlow = plane(9.2, 5.6, addMat(0xffffff, 0, glowTex), 0, 2.35, Z1 - .025, Math.PI);
 const beam = (() => { const g = new THREE.CylinderGeometry(.04, 1.0, 5.4, 4, 1, true); g.rotateY(Math.PI / 4); g.rotateX(-Math.PI / 2); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.position.set(0, 3.1, 20.2); m.rotation.x = .28; m.scale.set(3.2, 1.7, 1); vault.add(m); return m; })();
+beam.visible = false;
 const film = { vid: null, tex: null, cv: cv(16, 9, () => { }), ok: true, t: 0, avg: new THREE.Color(.1, .1, .15), l: new THREE.Color(), r: new THREE.Color(), lum: .2 };
 film.g = film.cv.getContext('2d', { willReadFrequently: true });
 S.lights = 1; S.rate = 1; S.fvol = 1; S.fmuted = false; S.loopFilm = false; S.uiT = 0;
@@ -2752,7 +2756,7 @@ function startFilm(i) {
   if (!S.filmList.length) return false;
   film.err = ''; stopFilm(true); S.film = (i + S.filmList.length) % S.filmList.length; const it = S.filmList[S.film];
   const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.loop = false; v.preload = 'auto'; v.src = it.src; applyMedia(v);
-  v.onended = () => startFilm(S.film + 1); v.onerror = () => { const bad = it.title || 'film', code = v.error ? v.error.code : 0; stopFilm(); probeFilm(it, bad, code); };
+  v.onloadedmetadata = () => fitScreen(v.videoWidth / v.videoHeight); v.onended = () => startFilm(S.film + 1); v.onerror = () => { const bad = it.title || 'film', code = v.error ? v.error.code : 0; stopFilm(); probeFilm(it, bad, code); };
   const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = THREE.LinearFilter; film.vid = v; film.tex = t; film.ok = true;
   screen.material.map = t; screen.material.needsUpdate = true; S.filmPlay = true; S.cinemaMuted = true; S.track = it.title;
   if (uAudio) uAudio.pause(); const p = v.play(); if (p && p.catch) p.catch(() => toast('Tap again to start the film')); S.dirty = true; return true;
@@ -2792,7 +2796,7 @@ function stopFilm(keep) {
   if (ovl) { ovl.v.pause(); ovl.v.removeAttribute('src'); ovl.v.load(); ovl.d.remove(); ovl = null; film.dom = false; if (film.vid && film.vid.parentNode === null) { } }
   if (film.vid) { film.vid.pause(); film.vid.removeAttribute('src'); film.vid.load(); film.vid = null; }
   if (film.tex) { film.tex.dispose(); film.tex = null; }
-  screen.material.map = scrT; screen.material.needsUpdate = true; S.filmPlay = false; S.cinemaMuted = false;
+  screen.material.map = scrT; screen.material.needsUpdate = true; fitScreen(16 / 9); S.filmPlay = false; S.cinemaMuted = false;
   if (!keep) { if (S.userOn && S.playing && uAudio) uAudio.play().catch(() => { }); S.dirty = true; }
 }
 function sampleFilm(dt) {

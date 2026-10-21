@@ -2557,7 +2557,7 @@ const holo = (() => {
 })();
 
 /* ---------- audio: procedural music engine + analyser ---------- */
-const RA = { ctx: null }, GENRES = ['Chill', 'Synthwave', 'House', 'Ambient'];
+const RA = { ctx: null }, GENRES = ['Chill', 'Synthwave', 'House', 'Ambient', 'EDM Festival', 'Hardstyle', 'Drum & Bass', 'Trap Drop'], UG = 8;
 const mtof = n => 440 * Math.pow(2, (n - 69) / 12);
 function actx() {
   if (RA.ctx) { if (RA.ctx.state === 'suspended') RA.ctx.resume(); return RA.ctx; }
@@ -2597,8 +2597,55 @@ const PROG = [
   { bpm: 76, ch: [[53, 57, 60, 64, 67], [52, 55, 59, 62], [50, 53, 57, 60, 64], [48, 52, 55, 59]], root: [41, 40, 38, 36] },
   { bpm: 104, ch: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], root: [33, 29, 36, 31] },
   { bpm: 122, ch: [[62, 65, 69, 72], [58, 62, 65, 69], [55, 58, 62, 65], [57, 61, 64, 67]], root: [38, 34, 31, 33] },
-  { bpm: 56, ch: [[50, 57, 64, 69], [48, 55, 62, 67], [45, 52, 59, 64], [47, 54, 61, 66]], root: [38, 36, 33, 35] }
+  { bpm: 56, ch: [[50, 57, 64, 69], [48, 55, 62, 67], [45, 52, 59, 64], [47, 54, 61, 66]], root: [38, 36, 33, 35] },
+  { bpm: 128, ch: [[57, 60, 64, 69], [53, 57, 60, 65], [48, 52, 55, 60], [55, 59, 62, 67]], root: [33, 29, 36, 31] },   // EDM festival (Am F C G)
+  { bpm: 150, ch: [[57, 60, 64], [55, 59, 62], [53, 57, 60], [52, 56, 59]], root: [33, 31, 29, 28] },                   // hardstyle
+  { bpm: 174, ch: [[57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65], [52, 55, 59, 62]], root: [33, 29, 31, 28] },  // drum & bass
+  { bpm: 140, ch: [[57, 60, 64], [56, 59, 63], [53, 56, 60], [55, 58, 62]], root: [33, 32, 29, 31] }                    // trap drop
 ];
+const stab = (t, notes, d, vol, lp) => notes.forEach((n, i) => osc('sawtooth', mtof(n), t, d, vol, { a: .004, det: (i % 3 - 1) * 9, lp: lp || 3400, lpTo: 600, rev: .25 }));
+function roll(t, st, sec, sd) {   // snare build: gets denser and louder each bar
+  const k = sec - 8, every = [4, 2, 1, 1][k] || 1, up = .12 + k * .09 + st / 16 * .08;
+  if (st % every === 0) { snare(t, up); if (k === 3) nz(t, sd, .05, 'highpass', 4000 + st * 250); }
+  if (st === 0) nz(t, sd * 16, .1 + k * .03, 'highpass', 1800 + k * 900, 1.4);
+}
+function edm(gi, st, bar, t, ch, root, sd) {
+  const sec = bar % 16, build = sec >= 8 && sec < 12, drop = sec >= 12, groove = sec >= 4 && sec < 8; S.drop = drop;
+  if (gi === 4) {                                                   // EDM festival: four-on-the-floor, off-beat sidechain bass, supersaw stabs, build + drop
+    if (!(sec === 11 && st >= 12) && !(build && sec === 11 && st > 11) && (st % 4 === 0)) kick(t, drop ? 1 : .85);
+    if (sec < 8) { if (st === 0) chord(t, ch, sd * 15, 'sawtooth', .03, 1400); if (st % 4 === 2) hat(t, true, .07); if (st % 2 === 1) hat(t, false, .03); if (groove && st % 4 === 2) bass(t, mtof(root), sd * 2.6, 'sawtooth', 480); if (sec % 4 === 3 && st === 15) clap(t, .18); if (st === 4 || st === 12) if (sec >= 2) clap(t, .16); }
+    else if (build) { roll(t, st, sec, sd); if (st === 0) osc('sawtooth', mtof(ch[0] + 12), t, sd * 16, .035, { a: sd * 12, lp: 1800 + (sec - 8) * 1400, lpTo: 6000, rev: .4 }); }
+    else {
+      if (st === 4 || st === 12) clap(t, .3); if (st % 4 === 2) { hat(t, true, .09); bass(t, mtof(root), sd * 2.6, 'sawtooth', 700); osc('sine', mtof(root), t, sd * 2.6, .3); } if (st % 2 === 1) hat(t, false, .04);
+      if ([0, 3, 6, 10, 13].includes(st)) stab(t, ch.map(n => n + 12), sd * 1.5, .026);
+      osc('sawtooth', mtof(ch[st % ch.length] + 24), t, sd * .8, .02, { lp: 2600, lpTo: 900, a: .002 });
+      if (st === 0 && sec === 12) { nz(t, sd * 6, .22, 'highpass', 900, .5); }
+    }
+  } else if (gi === 5) {                                            // hardstyle: distorted kick, rolling reverse bass, screech stabs
+    const kk = drop || groove;
+    if (!(sec === 11 && st >= 8) && (st % 4 === 0 || (drop && st === 14))) { kick(t, 1); osc('square', 130, t, .2, .3, { sweep: 45, sw: .16, lp: 700 }); }
+    if (st === 4 || st === 12) clap(t, drop ? .28 : .18); if (st % 2 === 1) hat(t, false, .045); if (st % 4 === 2) hat(t, true, .06);
+    if (kk && st % 4 !== 0) bass(t, mtof(root + (st % 4 === 3 ? 12 : 0)), sd * .9, 'sawtooth', 520 + (st % 4) * 200);
+    if (sec < 4 && st === 0) chord(t, ch, sd * 15, 'sawtooth', .03, 1500);
+    if (build) { roll(t, st, sec, sd); }
+    if (drop && [0, 3, 6, 8, 11, 14].includes(st)) stab(t, [ch[0] + 12, ch[1] + 12, ch[2] + 24], sd * 1.3, .03, 4200);
+  } else if (gi === 6) {                                            // drum & bass: break pattern, reese sub, pads / stabs on the drop
+    if (st === 0 || st === 10 || (drop && st === 2)) kick(t, .95); if (st === 4 || st === 12) snare(t, .32); if ((st === 7 || st === 15) || (drop && st === 9)) snare(t, .1);
+    hat(t, st === 14, st % 2 === 0 ? .06 : .03);
+    if (st === 0 || st === 8) { const f = mtof(root); osc('sawtooth', f, t, sd * 7, .26, { lp: 360 + (drop ? 260 : 0), lpTo: 160, a: .01 }); osc('sawtooth', f * 1.01, t, sd * 7, .22, { lp: 360, lpTo: 160, a: .01 }); osc('sine', f, t, sd * 7, .26); }
+    if (st === 0 && sec % 2 === 0) chord(t, ch, sd * 31, 'triangle', .045, 1700);
+    if (build) { if (st % 2 === 0) snare(t, .08 + (sec - 8) * .05); }
+    if (drop && (st === 3 || st === 6 || st === 11 || st === 14)) stab(t, ch.map(n => n + 12), sd * 1.2, .022, 3000);
+    if (!drop && Math.random() < .3 && st % 4 === 3) pluck(t, ch[Math.floor(Math.random() * ch.length)] + 24, .06);
+  } else {                                                          // trap drop: half-time clap, sliding 808, hi-hat rolls
+    if (st === 0 || st === 7 || st === 10 || (drop && st === 13)) kick(t, .9); if (st === 8) { clap(t, .3); snare(t, .2); }
+    hat(t, false, .055 + (st % 4 === 0 ? .02 : 0)); if (bar % 2 === 1 && st >= 12 || (drop && st % 4 === 3)) hat(t + sd / 2, false, .05);
+    if (st === 0 || st === 10) { const f = mtof(root); osc('sine', f * 1.2, t, sd * 9, .55, { sweep: f, sw: .09, a: .004 }); osc('sawtooth', f, t, sd * 9, .08, { lp: 220 }); }
+    if (st % 2 === 0 && (bar % 2 === 0 || drop) && Math.random() < (drop ? .85 : .55)) pluck(t, ch[(st / 2 | 0) % ch.length] + 24, .075);
+    if (build) { if (st % 2 === 0) snare(t, .08 + (sec - 8) * .06); }
+    if (drop && (st === 0 || st === 8)) stab(t, ch.map(n => n + 12), sd * 3, .02, 2400);
+  }
+}
 function playStep(gi, st, bar, t) {
   const P = PROG[gi], ch = P.ch[bar % 4], root = P.root[bar % 4], sd = 60 / P.bpm / 4;
   if (gi === 0) {
@@ -2616,6 +2663,7 @@ function playStep(gi, st, bar, t) {
     if (st % 4 === 0) kick(t, 1); if (st === 4 || st === 12) clap(t, .22); if (st % 4 === 2) hat(t, true, .07); if (st % 2 === 1) hat(t, false, .035);
     if (st % 4 === 2) bass(t, mtof(root), sd * 2.4, 'sawtooth', 380);
     if (st === 3 || st === 6 || st === 10 || st === 11) chord(t, ch, sd * 1.6, 'sawtooth', .03, 2200);
+  } else if (gi >= 4) { edm(gi, st, bar, t, ch, root, sd);
   } else {
     if (st === 0 && bar % 2 === 0) { chord(t, ch, sd * 31, 'sawtooth', .04, 700); osc('sine', mtof(root), t, sd * 30, .22, { a: 1.2 }); }
     if ((st === 0 || st === 5 || st === 9 || st === 13) && Math.random() < .6) pluck(t, [62, 64, 67, 69, 71, 74, 76][Math.floor(Math.random() * 7)], .08);
@@ -2624,7 +2672,8 @@ function playStep(gi, st, bar, t) {
 function sched() {
   if (!RA.ctx || RA.ctx.state !== 'running') return;
   const c = RA.ctx;
-  if (!S.playing || S.userOn || S.cinemaMuted) { RA.nextT = Math.max(RA.nextT, c.currentTime + .05); return; }
+  if (!S.playing || S.userOn) { RA.nextT = Math.max(RA.nextT, c.currentTime + .05); return; }
+  if (S.genre >= PROG.length) return;
   const P = PROG[S.genre], sd = 60 / P.bpm / 4;
   while (RA.nextT < c.currentTime + .2) { playStep(S.genre, RA.step, RA.bar, RA.nextT); S.beatT = RA.nextT; RA.nextT += sd; RA.step++; if (RA.step >= 16) { RA.step = 0; RA.bar++; } }
 }
@@ -2651,7 +2700,7 @@ function sfxBad() { const c = actx(); if (!c) return; const t = c.currentTime;[0
 /* analysis -> bass / mid / treble / beat, 30 bands */
 const LV = { bass: 0, mid: 0, hi: 0, beat: 0, avg: .2, bands: new Float32Array(32), t: 0, fake: 0 };
 function analyse(dt, T) {
-  const on = RA.ctx && S.playing && !S.cinemaMuted;
+  const on = RA.ctx && S.playing;
   let b = 0, m = 0, h = 0;
   if (on && RA.an) {
     RA.an.getByteFrequencyData(RA.buf); const B = RA.buf; let tot = 0;
@@ -2765,8 +2814,8 @@ function startFilm(i) {
   const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.loop = false; v.preload = 'auto'; v.src = it.src; applyMedia(v);
   v.onloadedmetadata = () => fitScreen(v.videoWidth / v.videoHeight); v.onended = () => startFilm(S.film + 1); v.onerror = () => { const bad = it.title || 'film', code = v.error ? v.error.code : 0; stopFilm(); probeFilm(it, bad, code); };
   const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = THREE.LinearFilter; film.vid = v; film.tex = t; film.ok = true;
-  screen.material.map = t; screen.material.needsUpdate = true; S.filmPlay = true; S.cinemaMuted = true; S.track = it.title;
-  if (uAudio) uAudio.pause(); const p = v.play(); if (p && p.catch) p.catch(() => toast('Tap again to start the film')); S.dirty = true; return true;
+  screen.material.map = t; screen.material.needsUpdate = true; S.filmPlay = true; S.cinemaMuted = false; S.filmTitle = it.title;
+  const p = v.play(); if (p && p.catch) p.catch(() => toast('Tap again to start the film')); S.dirty = true; return true;
 }
 function probeFilm(it, bad, code) {
   if (isXR()) { film.err = 'Host blocks 3D playback (no CORS) or link failed. Upload an .mp4 into room/ for VR.'; film.errT = 14; toast('Film could not load'); return; }
@@ -2790,7 +2839,7 @@ function filmOverlay(it) {
   const rg = document.createElement('input'); rg.type = 'range'; rg.min = 0; rg.max = 1000; rg.value = 0; rg.style.cssText = 'flex:1;height:30px;cursor:pointer'; rg.oninput = () => seekFrac(rg.value / 1000); bar.appendChild(rg);
   const tm = document.createElement('span'); tm.style.cssText = 'font:30px ui-monospace,monospace;min-width:230px;text-align:center'; bar.appendChild(tm);
   mk('\ud83d\udd09\u2212', () => filmVol(-.15)); mk('\ud83d\udd0a+', () => filmVol(.15)); const sp = mk(S.rate + '\u00d7', b => { cycleRate(); b.textContent = S.rate + '\u00d7'; }); mk('\ud83d\udca1\u2212', () => setLights(S.lights - .25)); mk('\ud83d\udca1+', () => setLights(S.lights + .25)); mk('\u2715', () => setMode('lounge'));
-  d.appendChild(bar); document.body.appendChild(d); ovl = { d, v, it, pp, rg, tm }; film.vid = v; S.filmPlay = true; S.cinemaMuted = true;
+  d.appendChild(bar); document.body.appendChild(d); ovl = { d, v, it, pp, rg, tm }; film.vid = v; S.filmPlay = true; S.cinemaMuted = false; S.filmTitle = it.title;
   v.play().catch(() => toast('Tap Film to start')); film.dom = true;
 }
 function overlayTick() {
@@ -2850,7 +2899,7 @@ function fmt(t) { if (!isFinite(t)) return '--:--'; t = Math.max(0, t | 0); cons
 function drawTransport(g, w, h, P) {
   g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(6,10,18,.74)'; g.beginPath(); g.roundRect ? g.roundRect(0, 0, w, h, 40) : g.rect(0, 0, w, h); g.fill(); g.strokeStyle = 'rgba(140,200,255,.5)'; g.lineWidth = 4; g.stroke();
   const v = fv(), cur = v ? v.currentTime : 0, dur = v && isFinite(v.duration) ? v.duration : 0;
-  g.fillStyle = '#f4ecde'; g.font = '600 34px system-ui,sans-serif'; g.textAlign = 'left'; g.fillText((S.track || 'Cinema').slice(0, 44), 40, 42); g.textAlign = 'right'; g.fillStyle = '#7fe0ff'; g.font = '30px ui-monospace,monospace'; g.fillText(fmt(cur) + ' / ' + fmt(dur), w - 40, 42); g.textAlign = 'left';
+  g.fillStyle = '#f4ecde'; g.font = '600 34px system-ui,sans-serif'; g.textAlign = 'left'; g.fillText((S.filmTitle || 'Cinema').slice(0, 44), 40, 42); g.textAlign = 'right'; g.fillStyle = '#7fe0ff'; g.font = '30px ui-monospace,monospace'; g.fillText(fmt(cur) + ' / ' + fmt(dur), w - 40, 42); g.textAlign = 'left';
   const bx = 40, bwid = w - 80, by = 62; g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(bx, by, bwid, 22); const fr = dur ? cl(cur / dur, 0, 1) : 0; g.fillStyle = '#7fe0ff'; g.fillRect(bx, by, bwid * fr, 22); g.beginPath(); g.arc(bx + bwid * fr, by + 11, 18, 0, 7); g.fillStyle = '#fff'; g.fill();
   P.btn.push({ x: bx, y: 50, w: bwid, h: 56, act: (x, y, b) => seekFrac((x - b.x) / b.w) });
   const n1 = 8, gp = 14, w1 = (w - 80 - gp * (n1 - 1)) / n1, y1 = 122, h1 = 100, paused = !v || v.paused;
@@ -2868,24 +2917,24 @@ transport.mesh.visible = false; transport.mesh.renderOrder = 5; transport.mesh.m
 function drawPlayer(g, w, h, P) {
   g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(6,10,16,.93)'; g.beginPath(); g.roundRect ? g.roundRect(0, 0, w, h, 34) : g.rect(0, 0, w, h); g.fill(); g.strokeStyle = 'rgba(255,120,200,.55)'; g.lineWidth = 4; g.stroke();
   g.fillStyle = '#ff9ad8'; g.font = '700 36px system-ui,sans-serif'; g.fillText('\u266a  MUSIC PLAYER', 36, 58);
-  if (S.cinemaMuted) { g.textAlign = 'right'; g.fillStyle = '#ffd68a'; g.font = '24px system-ui,sans-serif'; g.fillText('film is playing \u2014 music muted', w - 36, 56); g.textAlign = 'left'; }
-  const name = S.userOn && S.track ? S.track : (gens()[S.genre] || 'Chill') + ' mix', up = S.genre === 4 && uAudio && isFinite(uAudio.duration);
+  if (film.vid && !film.vid.paused) { g.textAlign = 'right'; g.fillStyle = '#ffd68a'; g.font = '24px system-ui,sans-serif'; g.fillText('film playing \u2014 music in the background', w - 36, 56); g.textAlign = 'left'; }
+  const name = S.userOn && S.track ? S.track : (gens()[S.genre] || 'Chill') + ' mix', up = S.genre === UG && uAudio && isFinite(uAudio.duration);
   g.fillStyle = '#f4ecde'; g.font = '600 40px system-ui,sans-serif'; g.fillText((S.playing ? '\u25b6  ' : '\u275a\u275a  ') + name.slice(0, 28), 36, 118);
   for (let i = 0; i < 32; i++) { const v = S.playing ? LV.bands[i] : .05; g.fillStyle = 'hsl(' + (310 - i * 5) + ',90%,' + (50 + v * 20) + '%)'; g.fillRect(36 + i * 29.7, 190 - v * 62, 22, v * 62 + 4); }
   const px = 36, pw = w - 72, py = 214, fr = up ? cl(uAudio.currentTime / uAudio.duration, 0, 1) : (S.playing ? (LV.t * .5 % 1) : 0);
   g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(px, py, pw, 22); g.fillStyle = up ? '#ff9ad8' : 'rgba(255,154,216,.35)'; g.fillRect(px, py, up ? pw * fr : pw * (S.playing ? .06 + LV.bass * .5 : 0), 22);
   if (up) { g.beginPath(); g.arc(px + pw * fr, py + 11, 16, 0, 7); g.fillStyle = '#fff'; g.fill(); P.btn.push({ x: px, y: py - 14, w: pw, h: 50, act: (x, y, b) => seekMusic((x - b.x) / b.w) }); }
-  g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '22px ui-monospace,monospace'; g.fillText(up ? fmt(uAudio.currentTime) + ' / ' + fmt(uAudio.duration) : (S.genre === 4 ? '' : 'live generated music'), px, 268);
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '22px ui-monospace,monospace'; g.fillText(up ? fmt(uAudio.currentTime) + ' / ' + fmt(uAudio.duration) : (S.genre === UG ? '' : 'live generated music'), px, 268);
   const x0 = 36, avail = w - 72, gp = 28, y1 = 290, h1 = 128;
   btn(P, g, '\u23ee', x0, y1, 260, h1, prevTrack); btn(P, g, S.playing ? '\u275a\u275a  Pause' : '\u25b6  Play', x0 + 260 + gp, y1, avail - 520 - gp * 2, h1, toggleMusic, S.playing, 'rgba(255,120,200,.4)'); btn(P, g, '\u23ed', x0 + avail - 260, y1, 260, h1, nextTrack);
   const y2 = y1 + h1 + 20, h2 = 100, vb = x0 + 200 + 24, vw = avail - 400 - 48;
   btn(P, g, 'Vol \u2212', x0, y2, 200, h2, () => musicVol(S.vol - .1)); btn(P, g, 'Vol +', x0 + avail - 200, y2, 200, h2, () => musicVol(S.vol + .1));
   g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(vb, y2 + 30, vw, 40); g.fillStyle = '#7fe0ff'; g.fillRect(vb, y2 + 30, vw * S.vol, 40); g.fillStyle = '#fff'; g.font = '600 26px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText(Math.round(S.vol * 100) + '%', vb + vw / 2, y2 + 60); g.textAlign = 'left';
   P.btn.push({ x: vb, y: y2, w: vw, h: h2, act: (x, y, b) => musicVol((x - b.x) / b.w) });
-  const y3 = y2 + h2 + 20, G = gens(), cw = (avail - 12 * (G.length - 1)) / G.length;
-  G.forEach((n, i) => btn(P, g, n, x0 + i * (cw + 12), y3, cw, 88, () => setGenre(i), S.playing && S.genre === i, 'rgba(255,120,200,.4)'));
+  const y3 = y2 + h2 + 20, G = gens(), per = 5, rows = Math.ceil(G.length / per), cw = (avail - 12 * (per - 1)) / per;
+  G.forEach((n, i) => btn(P, g, n, x0 + (i % per) * (cw + 12), y3 + Math.floor(i / per) * 84, cw, 72, () => setGenre(i), S.playing && S.genre === i, i >= 4 && i < UG ? 'rgba(255,60,90,.45)' : 'rgba(255,120,200,.4)'));
 }
-const mpA = makePanel(2.8, 1.887, 1024, 690, drawPlayer, 6.95, 1.8, Z1 - .07, Math.PI, 0), mpB = makePanel(2.8, 1.887, 1024, 690, drawPlayer, -6.95, 1.8, Z1 - .07, Math.PI, 0);
+const mpA = makePanel(2.8, 2.05, 1024, 750, drawPlayer, 6.95, 1.85, Z1 - .07, Math.PI, 0), mpB = makePanel(2.8, 2.05, 1024, 750, drawPlayer, -6.95, 1.85, Z1 - .07, Math.PI, 0);
 for (const m of [mpA, mpB]) { m.mesh.renderOrder = 4; m.mesh.material.polygonOffset = true; m.mesh.material.polygonOffsetFactor = m.mesh.material.polygonOffsetUnits = -3; }
 
 /* ---------- door terminal (outside, in the penthouse) ---------- */
@@ -2936,7 +2985,7 @@ function command(n) {
   if (has('lights off', 'light off', 'lights out', 'darker', 'turn off the light')) setLights(0); else if (has('lights on', 'light on', 'brighter', 'lights up', 'turn on the light')) setLights(1); else if (has('dim')) setLights(.3); else if (has('fast forward', 'skip ahead', 'forward')) seekBy(10); else if (has('rewind', 'go back')) seekBy(-10); else if (has('close the door', 'seal', 'lock the')) sealDoor(); else if (has('cinema', 'movie', 'theater', 'theatre')) setMode('cinema'); else if (has('party', 'dance')) setMode('party'); else if (has('lounge', 'chill mode', 'relax')) setMode('lounge');
   else if (has('next film', 'next movie')) startFilm(S.film + 1); else if (has('next', 'skip')) nextTrack(); else if (has('stop', 'pause', 'mute', 'silence')) { if (S.filmPlay) toggleFilm(); else if (S.playing) toggleMusic(); } else if (has('play', 'music', 'start')) { if (S.mode === 'cinema' && S.filmList.length && !S.filmPlay) toggleFilm(); else if (!S.playing) toggleMusic(); }
   else if (has('poster', 'shuffle', 'swap')) shufflePosters(); else if (has('volume up', 'louder')) vol(.15); else if (has('volume down', 'quieter', 'softer')) vol(-.15);
-  else if (has('house')) setGenre(2); else if (has('synth')) setGenre(1); else if (has('ambient')) setGenre(3); else if (has('lo-fi', 'lofi', 'low fi')) setGenre(0);
+  else if (has('edm', 'festival')) setGenre(4); else if (has('hardstyle', 'hard style')) setGenre(5); else if (has('drum and bass', 'drum & bass', 'dnb', 'jungle')) setGenre(6); else if (has('trap')) setGenre(7); else if (has('house')) setGenre(2); else if (has('synth')) setGenre(1); else if (has('ambient')) setGenre(3); else if (has('lo-fi', 'lofi', 'low fi')) setGenre(0);
 }
 /* ---------- actions ---------- */
 function tapWord(w) {
@@ -2952,15 +3001,15 @@ function unlock(how) {
 function sealDoor() { const p = pxz(); if (p.z > 8.2) { toast('Step outside to seal the door'); return; } S.target = 0; S.state = 'locked'; S.seq = []; S.tiles = []; sfxDoor(false); terminal.redraw(); }
 function toggleMusic() {
   const c = actx(); if (!c) return; S.playing = !S.playing;
-  if (S.playing) { if (S.genre === 4) playUser(uIdx); } else if (uAudio) uAudio.pause();
+  if (S.playing) { if (S.genre === UG) playUser(uIdx); } else if (uAudio) uAudio.pause();
   if (S.playing && S.userOn && uAudio) uAudio.play().catch(() => { }); S.dirty = true;
 }
-function setGenre(i) { actx(); S.genre = i; RA.step = 0; RA.bar = 0; if (i === 4) { S.playing = true; playUser(uIdx); } else { stopUser(); S.playing = true; } S.dirty = true; }
+function setGenre(i) { actx(); S.genre = i; RA.step = 0; RA.bar = 0; if (i === UG) { S.playing = true; playUser(uIdx); } else { stopUser(); S.playing = true; } S.dirty = true; }
 function cycleGenre() { setGenre((S.genre + 1) % gens().length); }
-function prevTrack() { actx(); if (S.genre === 4) playUser(uIdx - 1); else setGenre((S.genre + gens().length - 1) % gens().length); }
-function musicVol(f) { S.vol = cl(f, .05, 1); if (RA.master) RA.master.gain.value = S.vol; S.dirty = true; }
+function prevTrack() { actx(); if (S.genre === UG) playUser(uIdx - 1); else setGenre((S.genre + gens().length - 1) % gens().length); }
+function musicVol(f) { S.vol = cl(f, .05, 1); S.dirty = true; }
 function seekMusic(f) { if (uAudio && isFinite(uAudio.duration)) uAudio.currentTime = cl(f, 0, 1) * uAudio.duration; }
-function nextTrack() { actx(); if (S.genre === 4) playUser(uIdx + 1); else cycleGenre(); }
+function nextTrack() { actx(); if (S.genre === UG) playUser(uIdx + 1); else cycleGenre(); }
 function setMode(m) { actx(); const pm = S.mode; S.mode = m; if (m === 'cinema' && pm !== 'cinema') { S.autoDark = true; S.lights = Math.min(S.lights, .08); } else if (m !== 'cinema' && S.autoDark) { S.autoDark = false; S.lights = 1; } if (m === 'cinema') { if (S.filmList.length && !S.filmPlay) startFilm(S.film < 0 ? 0 : S.film); } else if (S.filmPlay) stopFilm(); S.dirty = true; }
 function toggleFilm() { if (!S.filmList.length) { toast('Add films in room/cinema.json'); return; } if (S.filmPlay && film.vid) { if (film.vid.paused) film.vid.play(); else film.vid.pause(); } else startFilm(S.film < 0 ? 0 : S.film); S.mode = 'cinema'; S.dirty = true; }
 function applyMedia(v) { v.playbackRate = S.rate; v.loop = S.loopFilm; v.volume = S.fvol; v.muted = S.fmuted; }
@@ -2972,7 +3021,7 @@ function toggleMute() { S.fmuted = !S.fmuted; if (fv()) fv().muted = S.fmuted; S
 function filmVol(d) { S.fvol = cl(S.fvol + d, 0, 1); S.fmuted = false; if (fv()) { fv().volume = S.fvol; fv().muted = false; } S.uiT = 4; toast('Film volume ' + Math.round(S.fvol * 100) + '%'); }
 function setLights(x) { S.lights = cl(x, 0, 1); S.autoDark = false; S.dirty = true; S.uiT = 4; toast('Lights ' + Math.round(S.lights * 100) + '%'); }
 function shufflePosters() { const L = S.posterList.length ? S.posterList : BUILTIN, ix = L.map((_, i) => i); for (let i = ix.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ix[i], ix[j]] = [ix[j], ix[i]]; } posters.forEach((p, i) => setPoster(p, ix[i % ix.length])); S.dirty = true; }
-function vol(d) { if (film.vid) { filmVol(d); return; } S.vol = cl(S.vol + d, .1, 1); if (RA.master) RA.master.gain.value = S.vol; toast('Volume ' + Math.round(S.vol * 100) + '%'); }
+function vol(d) { if (film.vid) { filmVol(d); return; } S.vol = cl(S.vol + d, .1, 1); toast('Volume ' + Math.round(S.vol * 100) + '%'); }
 function pxz() { return vrHook.active ? { x: head.wx, z: head.wz } : { x: player.pos.x, z: player.pos.z }; }
 
 /* ---------- toast + desktop HUD ---------- */
@@ -3070,7 +3119,8 @@ window.__roomTick = (dt, T) => {
   analyse(dt, T);
   const cinema = S.mode === 'cinema', party = S.mode === 'party';
   Av += (S.lights - Av) * Math.min(1, dt * 3); const A = .05 + .95 * Av; if (Math.abs(A - lastA) > .003) { lastA = A; for (const m of DIM) m.color.copy(m.userData.c0).multiplyScalar(A); }
-  const dimT = cinema ? .06 + .5 * Av : (party ? 1.25 : .62) * (.12 + .88 * Av); dimV += (dimT - dimV) * Math.min(1, dt * 2.2);
+  const dimT = (cinema ? .06 + .5 * Av : (party ? 1.25 : .62) * (.12 + .88 * Av)) * (S.drop && S.playing && !S.userOn ? 1.4 : 1); dimV += (dimT - dimV) * Math.min(1, dt * 2.2);
+  if (RA.master && RA.ctx) { const duck = (film.vid && !film.vid.paused) ? .32 : 1; RA.master.gain.setTargetAtTime(S.vol * duck, RA.ctx.currentTime, .35); }
   if (cinema && film.vid) sampleFilm(dt);
   const filmOn = cinema && film.vid, filmL = filmOn ? (film.ok ? film.lum : .25 + .1 * Math.sin(T * 2)) : .25 + LV.bass * .5;
   const baseHue = party ? (T * .07 + S.beats * .015) % 1 : cinema ? .62 : .07 + .03 * Math.sin(T * .1), spread = party ? .45 : cinema ? .02 : .1, sat = party ? .95 : .85;
@@ -3122,7 +3172,7 @@ window.__roomTick = (dt, T) => {
   } else reticle.visible = false;
 };
 window.__roomHide = [vault, outG, reticle];
-window.__vault = { transport, film, seekBy, pick, ctrlRay, ray, IA, S, unlock: () => unlock('debug'), heard: t => heard(t, true), tapWord, setMode, toggleMusic, setGenre, vault, outG, posters, LV, startVoice, command, sealDoor, film };
+window.__vault = { playStep, actx, RA, transport, film, seekBy, pick, ctrlRay, ray, IA, S, unlock: () => unlock('debug'), heard: t => heard(t, true), tapWord, setMode, toggleMusic, setGenre, vault, outG, posters, LV, startVoice, command, sealDoor, film };
 })();
 
 /* ================= RESIDENT: an animated robot butler that lives in the penthouse =================

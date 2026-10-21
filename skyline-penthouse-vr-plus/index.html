@@ -2683,7 +2683,6 @@ function artCanvas(kind, seed, hue0) {
   });
 }
 const BUILTIN = ['Aurora I', 'Colour Study', 'Contour 04', 'Last Light', 'Neon Horizon', 'Orbit', 'Aurora II', 'Colour Study II', 'Contour 09', 'Last Light II', 'Neon Horizon II', 'Orbit II', 'Aurora III', 'Colour Study III', 'Contour 12', 'Last Light III', 'Neon Horizon III', 'Orbit III', 'Aurora IV', 'Colour Study IV', 'Contour 15', 'Last Light IV', 'Neon Horizon IV', 'Orbit IV'].map((t, i) => ({ title: t, price: '$' + (60 + i * 15), kind: i % 6, seed: i + 1, hue: (i * 137.5 + 20) % 360 }));
-try { const mr = document.createElement('meta'); mr.name = 'referrer'; mr.content = 'no-referrer'; document.head.appendChild(mr); } catch (e) { }
 function failTex(t1, t2) { return new THREE.CanvasTexture(cv(256, 384, (g, w, h) => { g.fillStyle = '#1a0f12'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff6b6b'; g.lineWidth = 4; g.strokeRect(10, 10, w - 20, h - 20); g.fillStyle = '#ff8a8a'; g.textAlign = 'center'; g.font = '700 26px system-ui,sans-serif'; g.fillText('\u26a0 ' + t1, w / 2, h / 2 - 8); g.font = '16px system-ui,sans-serif'; g.fillStyle = '#e8c9c9'; g.fillText(t2, w / 2, h / 2 + 22); g.fillText('Upload the file to room/ instead', w / 2, h / 2 + 46); })); }
 function itemTex(it) {
   if (it.tex) return it.tex;

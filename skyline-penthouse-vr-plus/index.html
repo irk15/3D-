@@ -2682,7 +2682,7 @@ function artCanvas(kind, seed, hue0) {
     const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,.25)'); v.addColorStop(.5, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
   });
 }
-const BUILTIN = ['Aurora I', 'Colour Study', 'Contour 04', 'Last Light', 'Neon Horizon', 'Orbit', 'Aurora II', 'Colour Study II', 'Contour 09', 'Last Light II', 'Neon Horizon II', 'Orbit II', 'Aurora III', 'Colour Study III', 'Contour 12', 'Last Light III'].map((t, i) => ({ title: t, price: '$' + (60 + i * 15), kind: i % 6, seed: i + 1, hue: (i * 137.5 + 20) % 360 }));
+const BUILTIN = ['Aurora I', 'Colour Study', 'Contour 04', 'Last Light', 'Neon Horizon', 'Orbit', 'Aurora II', 'Colour Study II', 'Contour 09', 'Last Light II', 'Neon Horizon II', 'Orbit II', 'Aurora III', 'Colour Study III', 'Contour 12', 'Last Light III', 'Neon Horizon III', 'Orbit III', 'Aurora IV', 'Colour Study IV', 'Contour 15', 'Last Light IV', 'Neon Horizon IV', 'Orbit IV'].map((t, i) => ({ title: t, price: '$' + (60 + i * 15), kind: i % 6, seed: i + 1, hue: (i * 137.5 + 20) % 360 }));
 try { const mr = document.createElement('meta'); mr.name = 'referrer'; mr.content = 'no-referrer'; document.head.appendChild(mr); } catch (e) { }
 function failTex(t1, t2) { return new THREE.CanvasTexture(cv(256, 384, (g, w, h) => { g.fillStyle = '#1a0f12'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff6b6b'; g.lineWidth = 4; g.strokeRect(10, 10, w - 20, h - 20); g.fillStyle = '#ff8a8a'; g.textAlign = 'center'; g.font = '700 26px system-ui,sans-serif'; g.fillText('\u26a0 ' + t1, w / 2, h / 2 - 8); g.font = '16px system-ui,sans-serif'; g.fillStyle = '#e8c9c9'; g.fillText(t2, w / 2, h / 2 + 22); g.fillText('Upload the file to room/ instead', w / 2, h / 2 + 46); })); }
 function itemTex(it) {
@@ -2706,7 +2706,7 @@ function makePoster(x, z, ry, i) {
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 1.95), addMat(0xffffff, .15, glowTex)); glow.position.z = -.03; grp.add(glow);
   const po = (f) => ({ polygonOffset: true, polygonOffsetFactor: -f, polygonOffsetUnits: -f }); const a = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.5), basic(Object.assign({ map: null }, po(2)), true)), b = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.5), basic(Object.assign({ map: null, transparent: true, opacity: 0, depthWrite: false }, po(4)), true)); a.position.z = .014; b.position.z = .028; b.visible = false; b.renderOrder = 3; glow.renderOrder = 1; grp.add(a, b);
   const plaque = new THREE.Mesh(new THREE.PlaneGeometry(.62, .155), basic(Object.assign({ map: null }, po(3)), true)); plaque.position.set(0, -1.02, .02); grp.add(plaque);
-  const p = { grp, a, b, glow, plaque, idx: i, item: null, fade: 1, hover: 0, bx: x, nx: Math.sin(ry) };
+  const p = { grp, a, b, glow, plaque, idx: i, item: null, fade: 1, hover: 0, bx: x, bz: z, nx: Math.sin(ry), nz: Math.cos(ry) };
   posters.push(p); setPoster(p, i, true);
   IA.push({ mesh: a, hover: v => p.hover = v ? 1 : 0, click: () => { setPoster(p, freeIdx(p, p.idx + 1)); } });
   return p;
@@ -2723,7 +2723,8 @@ function setPoster(p, idx, instant) {
   if (!p.mapSet) { p.a.material.needsUpdate = true; p.mapSet = true; }
   posterPlaque(p);
 }
-[9.7, 11.5, 13.3, 15.1].forEach((z, i) => makePoster(X0 + .04, z, Math.PI / 2, i)); [11.5, 13.3, 15.1, 16.9].forEach((z, i) => makePoster(X1 - .04, z, -Math.PI / 2, i + 4));
+[9.7, 11.5, 13.3, 15.1, 16.9, 18.7, 20.5].forEach((z, i) => makePoster(X0 + .04, z, Math.PI / 2, i)); [9.7, 11.5, 13.3, 15.1, 16.9, 18.7, 20.5].forEach((z, i) => makePoster(X1 - .04, z, -Math.PI / 2, i + 7));
+[-7.5, -5.3, -3.1, -.9, 1.3, 3.5, 5.5].forEach((x, i) => makePoster(x, Z0 + .06, 0, i + 14));
 
 /* ---------- cinema screen: visualiser by default, your films from room/cinema.json ---------- */
 const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360; const scrG = scrC.getContext('2d');
@@ -3071,7 +3072,7 @@ window.__roomTick = (dt, T) => {
   // posters
   for (const q of posters) {
     if (q.fade < 1) { q.fade = Math.min(1, q.fade + dt * 1.4); q.b.material.opacity = q.fade; if (q.fade >= 1) { q.a.material.map = q.b.material.map; q.a.material.needsUpdate = true; q.b.material.opacity = 0; q.b.visible = false; } }
-    q.hover += ((hov && hov.mesh === q.a ? 1 : 0) - q.hover) * .2; q.grp.position.x = q.bx + q.nx * q.hover * .16; q.glow.material.opacity = (.1 + q.hover * .5 + LV.bass * .25) * rv; cc.setHSL((baseHue + posters.indexOf(q) * .04) % 1, .8, .55); q.glow.material.color.copy(cc);
+    q.hover += ((hov && hov.mesh === q.a ? 1 : 0) - q.hover) * .2; q.grp.position.x = q.bx + q.nx * q.hover * .16; q.grp.position.z = q.bz + q.nz * q.hover * .16; q.glow.material.opacity = (.1 + q.hover * .5 + LV.bass * .25) * rv; cc.setHSL((baseHue + posters.indexOf(q) * .04) % 1, .8, .55); q.glow.material.color.copy(cc);
     q.grp.scale.setScalar((1.3 + q.hover * .5) * (.2 + .8 * sm(0, 1, rv * 1.8 - posters.indexOf(q) * .08)));
   }
   if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; { const q = posters[Math.floor(rnd() * posters.length)]; setPoster(q, freeIdx(q, Math.floor(rnd() * 100))); } }

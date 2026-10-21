@@ -2681,6 +2681,7 @@ function artCanvas(kind, seed) {
   });
 }
 const BUILTIN = ['Aurora I', 'Colour Study', 'Contour 04', 'Last Light', 'Neon Horizon', 'Orbit', 'Aurora II', 'Colour Study II', 'Contour 09', 'Last Light II'].map((t, i) => ({ title: t, price: '$' + (60 + i * 15), kind: i % 6, seed: i + 1 }));
+try { const mr = document.createElement('meta'); mr.name = 'referrer'; mr.content = 'no-referrer'; document.head.appendChild(mr); } catch (e) { }
 function failTex(t1, t2) { return new THREE.CanvasTexture(cv(256, 384, (g, w, h) => { g.fillStyle = '#1a0f12'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff6b6b'; g.lineWidth = 4; g.strokeRect(10, 10, w - 20, h - 20); g.fillStyle = '#ff8a8a'; g.textAlign = 'center'; g.font = '700 26px system-ui,sans-serif'; g.fillText('\u26a0 ' + t1, w / 2, h / 2 - 8); g.font = '16px system-ui,sans-serif'; g.fillStyle = '#e8c9c9'; g.fillText(t2, w / 2, h / 2 + 22); g.fillText('Upload the file to room/ instead', w / 2, h / 2 + 46); })); }
 function itemTex(it) {
   if (it.tex) return it.tex;
@@ -2741,10 +2742,25 @@ function startFilm(i) {
   if (!S.filmList.length) return false;
   film.err = ''; stopFilm(true); S.film = (i + S.filmList.length) % S.filmList.length; const it = S.filmList[S.film];
   const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.loop = false; v.preload = 'auto'; v.src = it.src; v.volume = 1;
-  v.onended = () => startFilm(S.film + 1); v.onerror = () => { const bad = it.title || 'film'; stopFilm(); film.err = 'Could not play "' + bad + '" \u2014 host blocks it or link expired. Upload an .mp4 into room/'; film.errT = 12; toast('Could not play that film'); };
+  v.onended = () => startFilm(S.film + 1); v.onerror = () => { const bad = it.title || 'film', code = v.error ? v.error.code : 0; stopFilm(); probeFilm(it, bad, code); };
   const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = THREE.LinearFilter; film.vid = v; film.tex = t; film.ok = true;
   screen.material.map = t; screen.material.needsUpdate = true; S.filmPlay = true; S.cinemaMuted = true; S.track = it.title;
   if (uAudio) uAudio.pause(); const p = v.play(); if (p && p.catch) p.catch(() => toast('Tap again to start the film')); S.dirty = true; return true;
+}
+function probeFilm(it, bad, code) {
+  const pv = document.createElement('video'); pv.preload = 'metadata'; pv.muted = true; let done = false;
+  const fin = (ok) => { if (done) return; done = true; pv.removeAttribute('src'); pv.load();
+    if (ok) { film.err = 'Host plays this film but blocks the 3D screen (no CORS). Showing it in a window instead.'; film.errT = 14; if (!isXR()) filmOverlay(it); else film.err = 'Host blocks 3D playback (no CORS). Upload an .mp4 into room/ for VR.'; }
+    else { film.err = 'Film link failed (code ' + code + '): expired, blocked or not a direct video file.'; film.errT = 14; }
+    toast('Film could not load on the screen'); };
+  pv.onloadedmetadata = () => fin(true); pv.onerror = () => fin(false); setTimeout(() => fin(false), 9000); pv.src = it.src;
+}
+function isXR() { try { return !!(renderer && renderer.xr && renderer.xr.isPresenting); } catch (e) { return false; } }
+let ovl = null;
+function filmOverlay(it) {
+  if (ovl) ovl.remove(); ovl = document.createElement('div'); ovl.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:50;width:min(560px,60vw);background:#000;border:1px solid #444;border-radius:8px;overflow:hidden;box-shadow:0 8px 30px #000a';
+  const v = document.createElement('video'); v.src = it.src; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;display:block'; const x = document.createElement('button'); x.textContent = '\u2715'; x.style.cssText = 'position:absolute;top:4px;right:4px;z-index:2;background:#000a;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer';
+  x.onclick = () => { v.pause(); ovl.remove(); ovl = null; }; ovl.append(v, x); document.body.appendChild(ovl); v.play().catch(() => { });
 }
 function stopFilm(keep) {
   if (film.vid) { film.vid.pause(); film.vid.removeAttribute('src'); film.vid.load(); film.vid = null; }

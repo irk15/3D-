@@ -3023,8 +3023,8 @@ window.__roomTick = (dt, T) => {
   // posters
   for (const q of posters) {
     if (q.fade < 1) { q.fade = Math.min(1, q.fade + dt * 1.4); q.b.material.opacity = q.fade; if (q.fade >= 1) { q.a.material.map = q.b.material.map; q.a.material.needsUpdate = true; q.b.material.opacity = 0; } }
-    q.hover += ((hov && hov.mesh === q.a ? 1 : 0) - q.hover) * .2; q.grp.scale.setScalar(1.3 + q.hover * .5); q.grp.position.x = q.bx + q.nx * q.hover * .16; q.glow.material.opacity = (.1 + q.hover * .5 + LV.bass * .25) * rv; cc.setHSL((baseHue + posters.indexOf(q) * .04) % 1, .8, .55); q.glow.material.color.copy(cc);
-    q.grp.scale.setScalar(.2 + .8 * sm(0, 1, rv * 1.8 - posters.indexOf(q) * .08));
+    q.hover += ((hov && hov.mesh === q.a ? 1 : 0) - q.hover) * .2; q.grp.position.x = q.bx + q.nx * q.hover * .16; q.glow.material.opacity = (.1 + q.hover * .5 + LV.bass * .25) * rv; cc.setHSL((baseHue + posters.indexOf(q) * .04) % 1, .8, .55); q.glow.material.color.copy(cc);
+    q.grp.scale.setScalar((1.3 + q.hover * .5) * (.2 + .8 * sm(0, 1, rv * 1.8 - posters.indexOf(q) * .08)));
   }
   if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; setPoster(posters[Math.floor(rnd() * posters.length)], Math.floor(rnd() * 100)); }
   // screen visualiser

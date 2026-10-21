@@ -2707,13 +2707,18 @@ function makePoster(x, z, ry, i) {
   const plaque = new THREE.Mesh(new THREE.PlaneGeometry(.62, .155), basic(Object.assign({ map: null }, po(3)), true)); plaque.position.set(0, -1.02, .02); grp.add(plaque);
   const p = { grp, a, b, glow, plaque, idx: i, item: null, fade: 1, hover: 0, bx: x, bz: z, nx: Math.sin(ry), nz: Math.cos(ry) };
   posters.push(p); setPoster(p, i, true);
-  IA.push({ mesh: a, hover: v => p.hover = v ? 1 : 0, click: () => { setPoster(p, freeIdx(p, p.idx + 1)); } });
+  IA.push({ mesh: a, hover: v => p.hover = v ? 1 : 0, click: () => nextPoster(p) });
   return p;
 }
 function freeIdx(p, start, dir) {
   const L = S.posterList.length ? S.posterList : BUILTIN, n = L.length; dir = dir || 1;
-  for (let k = 0; k < n; k++) { const i = (((start + k * dir) % n) + n) % n; if (!posters.some(q => q !== p && q.idx === i)) return i; }
-  return ((start % n) + n) % n;
+  for (let k = 0; k < n; k++) { const i = (((start + k * dir) % n) + n) % n; if (i !== p.idx && !posters.some(q => q !== p && q.idx === i)) return i; }
+  return -1;
+}
+function nextPoster(p) {   // new picture on tap: an unused one if there is one, else trade places with the poster showing the next picture
+  const L = S.posterList.length ? S.posterList : BUILTIN, n = L.length; if (n < 2) return;
+  const f = freeIdx(p, p.idx + 1); if (f >= 0) { setPoster(p, f); return; }
+  const nx = (p.idx + 1) % n, q = posters.find(o => o !== p && o.idx === nx), old = p.idx; setPoster(p, nx); if (q) setPoster(q, old);
 }
 function setPoster(p, idx, instant) {
   const L = S.posterList.length ? S.posterList : BUILTIN; p.idx = (idx % L.length + L.length) % L.length; p.item = L[p.idx];
@@ -3074,7 +3079,7 @@ window.__roomTick = (dt, T) => {
     q.hover += ((hov && hov.mesh === q.a ? 1 : 0) - q.hover) * .2; q.grp.position.x = q.bx + q.nx * q.hover * .16; q.grp.position.z = q.bz + q.nz * q.hover * .16; q.glow.material.opacity = (.1 + q.hover * .5 + LV.bass * .25) * rv; cc.setHSL((baseHue + posters.indexOf(q) * .04) % 1, .8, .55); q.glow.material.color.copy(cc);
     q.grp.scale.setScalar((1.3 + q.hover * .5) * (.2 + .8 * sm(0, 1, rv * 1.8 - posters.indexOf(q) * .08)));
   }
-  if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; { const q = posters[Math.floor(rnd() * posters.length)]; setPoster(q, freeIdx(q, Math.floor(rnd() * 100))); } }
+  if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; { const q = posters[Math.floor(rnd() * posters.length)], f = freeIdx(q, Math.floor(rnd() * 100)); if (f >= 0) setPoster(q, f); } }
   { S.uiT = Math.max(0, S.uiT - dt); S.hideUI = Math.max(0, (S.hideUI || 0) - dt); const show = !!film.vid && !film.dom && !(S.hideUI > 0) && (S.uiT > 0 || film.vid.paused) && vault.visible; if (transport.mesh.visible !== show) { transport.mesh.visible = show; if (show) transport.redraw(); } if (show && T - lastTr > .25) { lastTr = T; transport.redraw(); } }
   // screen visualiser
   if (frameN % 2 === 0 && !film.vid && Math.hypot(pp.x, pp.z - 19) < 16) drawViz(T);

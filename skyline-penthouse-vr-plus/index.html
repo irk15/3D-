@@ -1813,8 +1813,9 @@ function updatePlayer(dt, t) {
   const tvx = (-sy * fx + cy * sx) * sp, tvz = (-cy * fx - sy * sx) * sp, k = 1 - Math.exp(-10 * dt);
   player.vel.x += (tvx - player.vel.x) * k; player.vel.z += (tvz - player.vel.z) * k;
   const nx = player.pos.x + player.vel.x * dt, nz = player.pos.z + player.vel.z * dt;
-  if (!blocked(nx, player.pos.z)) player.pos.x = nx; else player.vel.x = 0;
-  if (!blocked(player.pos.x, nz)) player.pos.z = nz; else player.vel.z = 0;
+  const inside = blocked(player.pos.x, player.pos.z);   // already stuck inside something: let the player walk back out
+  if (inside || !blocked(nx, player.pos.z)) player.pos.x = nx; else player.vel.x = 0;
+  if (inside || !blocked(player.pos.x, nz)) player.pos.z = nz; else player.vel.z = 0;
   player.pos.y = 1.65 + Math.sin(t * 8.5) * .011 * Math.min(1, Math.hypot(player.vel.x, player.vel.z) / 2);
   if (keys.KeyZ) player.fovT = 30; else if (player.fovT === 30 && !keys.KeyZ) player.fovT = 68;
 }
@@ -2251,9 +2252,10 @@ function vrUpdate(dt, frame, T) {
   const kk = 1 - Math.exp(-9 * dt); vr.vel.x += (mx - vr.vel.x) * kk; vr.vel.z += (mz - vr.vel.z) * kk;
   const dx = vr.vel.x * dt, dz = vr.vel.z * dt;
   if (Math.abs(dx) + Math.abs(dz) > 1e-6) {
-    if (!blocked(head.wx + dx, head.wz)) rig3.position.x += dx; else vr.vel.x = 0;
+    const inside = blocked(head.wx, head.wz);
+    if (inside || !blocked(head.wx + dx, head.wz)) rig3.position.x += dx; else vr.vel.x = 0;
     headWorld();
-    if (!blocked(head.wx, head.wz + dz)) rig3.position.z += dz; else vr.vel.z = 0;
+    if (inside || !blocked(head.wx, head.wz + dz)) rig3.position.z += dz; else vr.vel.z = 0;
     headWorld();
   }
   vr.speed = Math.hypot(vr.vel.x, vr.vel.z);
@@ -2482,10 +2484,7 @@ function seat(x, z, y0) {
   kb(.74, .12, .46, x, y0 + .28, z - .52, 0x1a1210); kb(.1, .2, .1, x, y0 + .1, z, 0x0a0a0c);
   kb(.5, .02, .02, x, y0 + .48, z - .42, 0x55ccff);
 }
-for (const x of [-1.9, -.65, .65, 1.9]) seat(x, 16.7, 0);
-kb(9.4, .42, 3.6, 0, .21, 20.3, 0x0c1016); kb(9.4, .06, .08, 0, .45, 18.5, 0x2a7aa8);
-for (const x of [-1.9, -.65, .65, 1.9]) seat(x, 19.4, .42);
-rcol(-2.45, 2.45, 16.2, 17.2); rcol(-4.7, 4.7, 18.5, 22.1);
+// (theatre seats and raised platform removed: open floor)
 for (const sx of [-4.4, 4.4]) { kb(.7, 3.3, .6, sx, 1.65, Z1 - .5, 0x0a0c10); kb(.5, .5, .06, sx, 2.6, Z1 - .83, 0x1a2230); kb(.5, .5, .06, sx, 1.5, Z1 - .83, 0x1a2230); kb(.3, .3, .06, sx, .6, Z1 - .83, 0x1a2230); }
 rcol(-4.75, -4.05, Z1 - .85, Z1); rcol(4.05, 4.75, Z1 - .85, Z1);
 kb(6.7, .12, .12, 0, 4.2, Z1 - .08, 0x05060a); kb(6.7, .1, .12, 0, .5, Z1 - .08, 0x05060a); kb(.1, 3.8, .12, -3.35, 2.35, Z1 - .08, 0x05060a); kb(.1, 3.8, .12, 3.35, 2.35, Z1 - .08, 0x05060a);
@@ -2493,7 +2492,7 @@ kb(1.4, .3, .5, 0, H - .3, 17.5, 0x07090d); kc(.07, .09, .12, 0, H - .5, 17.5, 0
 kc(.05, .05, 1.0, -2.6, 3.4, 10.6, 0x050609, 8);
 for (const [x, z] of [[-2.6, 10.6], [2.6, 10.6], [-2.6, 13.0], [2.6, 13.0], [-3.3, 15.2], [3.3, 15.2]]) kc(.012, .012, H - 3.1, x, (H + 3.1) / 2, z, 0x1b1b20, 5);
 kc(1.05, 1.15, .95, 0, .47, 11.4, 0x07090d, 32); kc(1.15, 1.15, .06, 0, .94, 11.4, 0x0f2230, 40);
-rcol(-1.2, 1.2, 10.2, 12.6);
+rcol(-.98, .98, 10.42, 12.38);
 kb(.8, 1.0, .5, 6.1, .5, 10.2, 0x0b0e14, 0); kb(.8, 1.0, .5, -6.1, .5, 15.6, 0x0b0e14, 0);
 rcol(5.65, 6.55, 9.9, 10.5); rcol(-6.55, -5.65, 15.3, 15.9);
 if (kit.length) {
@@ -2668,11 +2667,11 @@ function analyse(dt, T) {
 }
 
 /* ---------- posters: swappable digital art (room/posters.json) ---------- */
-function artCanvas(kind, seed) {
+function artCanvas(kind, seed, hue0) {
   const r = mulberry32(seed * 977 + kind * 31);
   return cv(1024, 1536, (g, W, H) => {
     g.scale(2, 2); const w = 512, h = 768;
-    const hue = r() * 360, pal = i => 'hsl(' + ((hue + i * (30 + r() * 40)) % 360) + ',' + (60 + r() * 30) + '%,' + (35 + r() * 30) + '%)';
+    const hue = hue0 != null ? (r(), hue0) : r() * 360, pal = i => 'hsl(' + ((hue + i * (30 + r() * 40)) % 360) + ',' + (60 + r() * 30) + '%,' + (35 + r() * 30) + '%)';
     const bg = g.createLinearGradient(0, 0, w * .3, h); bg.addColorStop(0, pal(0)); bg.addColorStop(1, '#0a0a14'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
     if (kind === 0) { for (let k = 0; k < 7; k++) { g.beginPath(); g.moveTo(0, h * (.3 + k * .08)); for (let x = 0; x <= w; x += 16) g.lineTo(x, h * (.3 + k * .08) + Math.sin(x * .014 + k + seed) * 60 + Math.sin(x * .03 + k * 2) * 18); g.lineTo(w, h); g.lineTo(0, h); g.fillStyle = 'hsla(' + ((hue + k * 22) % 360) + ',80%,' + (40 + k * 4) + '%,.35)'; g.fill(); } }
     else if (kind === 1) { for (let k = 0; k < 9; k++) { g.fillStyle = pal(k); g.globalAlpha = .75; const s = 60 + r() * 220; if (r() > .5) { g.beginPath(); g.arc(r() * w, r() * h, s / 2, 0, 7); g.fill(); } else g.fillRect(r() * w, r() * h, s, s * (.3 + r())); } g.globalAlpha = 1; }
@@ -2683,12 +2682,12 @@ function artCanvas(kind, seed) {
     const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,.25)'); v.addColorStop(.5, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
   });
 }
-const BUILTIN = ['Aurora I', 'Colour Study', 'Contour 04', 'Last Light', 'Neon Horizon', 'Orbit', 'Aurora II', 'Colour Study II', 'Contour 09', 'Last Light II'].map((t, i) => ({ title: t, price: '$' + (60 + i * 15), kind: i % 6, seed: i + 1 }));
+const BUILTIN = ['Aurora I', 'Colour Study', 'Contour 04', 'Last Light', 'Neon Horizon', 'Orbit', 'Aurora II', 'Colour Study II', 'Contour 09', 'Last Light II', 'Neon Horizon II', 'Orbit II', 'Aurora III', 'Colour Study III', 'Contour 12', 'Last Light III'].map((t, i) => ({ title: t, price: '$' + (60 + i * 15), kind: i % 6, seed: i + 1, hue: (i * 137.5 + 20) % 360 }));
 try { const mr = document.createElement('meta'); mr.name = 'referrer'; mr.content = 'no-referrer'; document.head.appendChild(mr); } catch (e) { }
 function failTex(t1, t2) { return new THREE.CanvasTexture(cv(256, 384, (g, w, h) => { g.fillStyle = '#1a0f12'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff6b6b'; g.lineWidth = 4; g.strokeRect(10, 10, w - 20, h - 20); g.fillStyle = '#ff8a8a'; g.textAlign = 'center'; g.font = '700 26px system-ui,sans-serif'; g.fillText('\u26a0 ' + t1, w / 2, h / 2 - 8); g.font = '16px system-ui,sans-serif'; g.fillStyle = '#e8c9c9'; g.fillText(t2, w / 2, h / 2 + 22); g.fillText('Upload the file to room/ instead', w / 2, h / 2 + 46); })); }
 function itemTex(it) {
   if (it.tex) return it.tex;
-  if (it.kind !== undefined) { it.tex = ctex(artCanvas(it.kind, it.seed)); return it.tex; }
+  if (it.kind !== undefined) { it.tex = ctex(artCanvas(it.kind, it.seed, it.hue)); return it.tex; }
   const ph = new THREE.CanvasTexture(cv(8, 8, g => { g.fillStyle = '#10141c'; g.fillRect(0, 0, 8, 8); })); it.tex = ph;
   const ld = new THREE.TextureLoader(); ld.setCrossOrigin('anonymous');
   ld.load(it.src, t => { t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy()); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; const ia = t.image.width / t.image.height, ta = 1 / 1.5; if (ia > ta) { t.repeat.set(ta / ia, 1); t.offset.set((1 - ta / ia) / 2, 0); } else { t.repeat.set(1, ia / ta); t.offset.set(0, (1 - ia / ta) / 2); } it.tex = t; it.ready = true; posters.forEach(p => { if (p.item === it) { p.a.material.map = t; p.a.material.needsUpdate = true; } }); }, undefined, () => { it.failed = true; it.tex = failTex('Image blocked', 'host refuses other sites'); posters.forEach(p => { if (p.item === it) { p.a.material.map = it.tex; p.a.material.needsUpdate = true; posterPlaque(p); } }); });
@@ -2709,8 +2708,13 @@ function makePoster(x, z, ry, i) {
   const plaque = new THREE.Mesh(new THREE.PlaneGeometry(.62, .155), basic(Object.assign({ map: null }, po(3)), true)); plaque.position.set(0, -1.02, .02); grp.add(plaque);
   const p = { grp, a, b, glow, plaque, idx: i, item: null, fade: 1, hover: 0, bx: x, nx: Math.sin(ry) };
   posters.push(p); setPoster(p, i, true);
-  IA.push({ mesh: a, hover: v => p.hover = v ? 1 : 0, click: () => { setPoster(p, p.idx + 1); } });
+  IA.push({ mesh: a, hover: v => p.hover = v ? 1 : 0, click: () => { setPoster(p, freeIdx(p, p.idx + 1)); } });
   return p;
+}
+function freeIdx(p, start, dir) {
+  const L = S.posterList.length ? S.posterList : BUILTIN, n = L.length; dir = dir || 1;
+  for (let k = 0; k < n; k++) { const i = (((start + k * dir) % n) + n) % n; if (!posters.some(q => q !== p && q.idx === i)) return i; }
+  return ((start % n) + n) % n;
 }
 function setPoster(p, idx, instant) {
   const L = S.posterList.length ? S.posterList : BUILTIN; p.idx = (idx % L.length + L.length) % L.length; p.item = L[p.idx];
@@ -2929,7 +2933,7 @@ function toggleLoop() { S.loopFilm = !S.loopFilm; if (fv()) fv().loop = S.loopFi
 function toggleMute() { S.fmuted = !S.fmuted; if (fv()) fv().muted = S.fmuted; S.uiT = 4; }
 function filmVol(d) { S.fvol = cl(S.fvol + d, 0, 1); S.fmuted = false; if (fv()) { fv().volume = S.fvol; fv().muted = false; } S.uiT = 4; toast('Film volume ' + Math.round(S.fvol * 100) + '%'); }
 function setLights(x) { S.lights = cl(x, 0, 1); S.autoDark = false; S.dirty = true; S.uiT = 4; toast('Lights ' + Math.round(S.lights * 100) + '%'); }
-function shufflePosters() { posters.forEach(p => setPoster(p, Math.floor(rnd() * 100))); S.dirty = true; }
+function shufflePosters() { const L = S.posterList.length ? S.posterList : BUILTIN, ix = L.map((_, i) => i); for (let i = ix.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ix[i], ix[j]] = [ix[j], ix[i]]; } posters.forEach((p, i) => setPoster(p, ix[i % ix.length])); S.dirty = true; }
 function vol(d) { if (film.vid) { filmVol(d); return; } S.vol = cl(S.vol + d, .1, 1); if (RA.master) RA.master.gain.value = S.vol; toast('Volume ' + Math.round(S.vol * 100) + '%'); }
 function pxz() { return vrHook.active ? { x: head.wx, z: head.wz } : { x: player.pos.x, z: player.pos.z }; }
 
@@ -3066,7 +3070,7 @@ window.__roomTick = (dt, T) => {
     q.hover += ((hov && hov.mesh === q.a ? 1 : 0) - q.hover) * .2; q.grp.position.x = q.bx + q.nx * q.hover * .16; q.glow.material.opacity = (.1 + q.hover * .5 + LV.bass * .25) * rv; cc.setHSL((baseHue + posters.indexOf(q) * .04) % 1, .8, .55); q.glow.material.color.copy(cc);
     q.grp.scale.setScalar((1.3 + q.hover * .5) * (.2 + .8 * sm(0, 1, rv * 1.8 - posters.indexOf(q) * .08)));
   }
-  if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; setPoster(posters[Math.floor(rnd() * posters.length)], Math.floor(rnd() * 100)); }
+  if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; { const q = posters[Math.floor(rnd() * posters.length)]; setPoster(q, freeIdx(q, Math.floor(rnd() * 100))); } }
   { S.uiT = Math.max(0, S.uiT - dt); S.hideUI = Math.max(0, (S.hideUI || 0) - dt); const show = !!film.vid && !film.dom && !(S.hideUI > 0) && (S.uiT > 0 || film.vid.paused) && vault.visible; if (transport.mesh.visible !== show) { transport.mesh.visible = show; if (show) transport.redraw(); } if (show && T - lastTr > .25) { lastTr = T; transport.redraw(); } }
   // screen visualiser
   if (frameN % 2 === 0 && !film.vid && Math.hypot(pp.x, pp.z - 19) < 16) drawViz(T);

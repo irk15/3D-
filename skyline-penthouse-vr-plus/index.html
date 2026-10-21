@@ -2243,7 +2243,9 @@ function vrUpdate(dt, frame, T) {
   // --- smooth locomotion (left stick), relative to where the head faces
   let mx = 0, mz = 0, moving = 0;
   if (!vr.aiming && (L || R)) {                            // both sticks walk smoothly: left = move any way, right stick up/down = forward/back too
-    const lx = L ? L.x : 0, ly = (L ? L.y : 0) + (R && !vr.teleport ? R.y : 0), cy = Math.max(-1, Math.min(1, ly)), dead = .15, mag = Math.hypot(lx, cy);
+    const trig = !!((L && L.b[0]) || (R && R.b[0])), rsx = (trig && R) ? R.x : 0;   // trigger held + right stick = sidestep
+    if (trig && Math.abs(rsx) > .25) vr.strafeT = performance.now();
+    const lx = Math.max(-1, Math.min(1, (L ? L.x : 0) + rsx)), ly = (L ? L.y : 0) + (R && !vr.teleport ? R.y : 0), cy = Math.max(-1, Math.min(1, ly)), dead = .15, mag = Math.hypot(lx, cy);
     if (mag > dead) {
       const k = (mag - dead) / (1 - dead) / mag, sp = ((L && L.b[3]) || (R && R.b[3]) ? 4.2 : 2.4), yaw = rig3.rotation.y + head.lyaw, f = -cy * k, sx = lx * k;
       mx = (-Math.sin(yaw) * f + Math.cos(yaw) * sx) * sp; mz = (-Math.cos(yaw) * f - Math.sin(yaw) * sx) * sp; moving = Math.min(1, mag);
@@ -2264,7 +2266,7 @@ function vrUpdate(dt, frame, T) {
     if (vr.teleport && !vr.aiming && R.y < -.7 && Math.abs(R.x) < .6) { vr.aiming = true; vr.aimCtrl = ctrl[side[1] != null ? side[1] : 1]; }
     else if (vr.aiming && vr.aimCtrl && !vr.aimCtrl.userData.hand && R.y > -.3) endAim();
     vr.turnRate = 0;
-    if (!vr.aiming) {
+    if (!vr.aiming && !(R.b[0] || (L && L.b[0]))) {          // holding a trigger: the right stick strafes instead of turning
       if (vr.smoothTurn) {                                   // continuous turning: speed follows how far the stick is pushed
         const ax = Math.abs(R.x);
         if (ax > .12) { const k = Math.min(1, (ax - .12) / .7), rate = Math.sign(R.x) * (k * k * 100 + k * 40) * DEG; turnAboutHead(-rate * dt); vr.turnRate = Math.abs(rate) / DEG; }
@@ -2862,6 +2864,30 @@ const transport = makePanel(5.4, 1.1, 1620, 330, drawTransport, 0, 1.5, Z1 - .12
 transport.mesh.visible = false; transport.mesh.renderOrder = 5; transport.mesh.material.polygonOffset = true; transport.mesh.material.polygonOffsetFactor = -3; transport.mesh.material.polygonOffsetUnits = -3;
 { const e = IA[IA.length - 1], oh = e.hover; e.hover = (v, uv) => { if (v) S.uiT = 4; oh(v, uv); }; }
 
+/* ---------- wall music player beside the screen (flat on the wall, nothing to bump into) ---------- */
+function drawPlayer(g, w, h, P) {
+  g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(6,10,16,.93)'; g.beginPath(); g.roundRect ? g.roundRect(0, 0, w, h, 34) : g.rect(0, 0, w, h); g.fill(); g.strokeStyle = 'rgba(255,120,200,.55)'; g.lineWidth = 4; g.stroke();
+  g.fillStyle = '#ff9ad8'; g.font = '700 36px system-ui,sans-serif'; g.fillText('\u266a  MUSIC PLAYER', 36, 58);
+  if (S.cinemaMuted) { g.textAlign = 'right'; g.fillStyle = '#ffd68a'; g.font = '24px system-ui,sans-serif'; g.fillText('film is playing \u2014 music muted', w - 36, 56); g.textAlign = 'left'; }
+  const name = S.userOn && S.track ? S.track : (gens()[S.genre] || 'Chill') + ' mix', up = S.genre === 4 && uAudio && isFinite(uAudio.duration);
+  g.fillStyle = '#f4ecde'; g.font = '600 40px system-ui,sans-serif'; g.fillText((S.playing ? '\u25b6  ' : '\u275a\u275a  ') + name.slice(0, 28), 36, 118);
+  for (let i = 0; i < 32; i++) { const v = S.playing ? LV.bands[i] : .05; g.fillStyle = 'hsl(' + (310 - i * 5) + ',90%,' + (50 + v * 20) + '%)'; g.fillRect(36 + i * 29.7, 190 - v * 62, 22, v * 62 + 4); }
+  const px = 36, pw = w - 72, py = 214, fr = up ? cl(uAudio.currentTime / uAudio.duration, 0, 1) : (S.playing ? (LV.t * .5 % 1) : 0);
+  g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(px, py, pw, 22); g.fillStyle = up ? '#ff9ad8' : 'rgba(255,154,216,.35)'; g.fillRect(px, py, up ? pw * fr : pw * (S.playing ? .06 + LV.bass * .5 : 0), 22);
+  if (up) { g.beginPath(); g.arc(px + pw * fr, py + 11, 16, 0, 7); g.fillStyle = '#fff'; g.fill(); P.btn.push({ x: px, y: py - 14, w: pw, h: 50, act: (x, y, b) => seekMusic((x - b.x) / b.w) }); }
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '22px ui-monospace,monospace'; g.fillText(up ? fmt(uAudio.currentTime) + ' / ' + fmt(uAudio.duration) : (S.genre === 4 ? '' : 'live generated music'), px, 268);
+  const x0 = 36, avail = w - 72, gp = 28, y1 = 290, h1 = 128;
+  btn(P, g, '\u23ee', x0, y1, 260, h1, prevTrack); btn(P, g, S.playing ? '\u275a\u275a  Pause' : '\u25b6  Play', x0 + 260 + gp, y1, avail - 520 - gp * 2, h1, toggleMusic, S.playing, 'rgba(255,120,200,.4)'); btn(P, g, '\u23ed', x0 + avail - 260, y1, 260, h1, nextTrack);
+  const y2 = y1 + h1 + 20, h2 = 100, vb = x0 + 200 + 24, vw = avail - 400 - 48;
+  btn(P, g, 'Vol \u2212', x0, y2, 200, h2, () => musicVol(S.vol - .1)); btn(P, g, 'Vol +', x0 + avail - 200, y2, 200, h2, () => musicVol(S.vol + .1));
+  g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(vb, y2 + 30, vw, 40); g.fillStyle = '#7fe0ff'; g.fillRect(vb, y2 + 30, vw * S.vol, 40); g.fillStyle = '#fff'; g.font = '600 26px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText(Math.round(S.vol * 100) + '%', vb + vw / 2, y2 + 60); g.textAlign = 'left';
+  P.btn.push({ x: vb, y: y2, w: vw, h: h2, act: (x, y, b) => musicVol((x - b.x) / b.w) });
+  const y3 = y2 + h2 + 20, G = gens(), cw = (avail - 12 * (G.length - 1)) / G.length;
+  G.forEach((n, i) => btn(P, g, n, x0 + i * (cw + 12), y3, cw, 88, () => setGenre(i), S.playing && S.genre === i, 'rgba(255,120,200,.4)'));
+}
+const mpA = makePanel(2.8, 1.887, 1024, 690, drawPlayer, 6.95, 1.8, Z1 - .07, Math.PI, 0), mpB = makePanel(2.8, 1.887, 1024, 690, drawPlayer, -6.95, 1.8, Z1 - .07, Math.PI, 0);
+for (const m of [mpA, mpB]) { m.mesh.renderOrder = 4; m.mesh.material.polygonOffset = true; m.mesh.material.polygonOffsetFactor = m.mesh.material.polygonOffsetUnits = -3; }
+
 /* ---------- door terminal (outside, in the penthouse) ---------- */
 const WORDS = ['THE', 'KING', 'IS', 'HERE', 'QUEEN', 'KNIGHT', 'A', 'BISHOP', 'ROOK', 'PAWN', 'WAS', 'THERE']; for (let i = WORDS.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1));[WORDS[i], WORDS[j]] = [WORDS[j], WORDS[i]]; }
 let listening = false, voiceOK = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -2931,6 +2957,9 @@ function toggleMusic() {
 }
 function setGenre(i) { actx(); S.genre = i; RA.step = 0; RA.bar = 0; if (i === 4) { S.playing = true; playUser(uIdx); } else { stopUser(); S.playing = true; } S.dirty = true; }
 function cycleGenre() { setGenre((S.genre + 1) % gens().length); }
+function prevTrack() { actx(); if (S.genre === 4) playUser(uIdx - 1); else setGenre((S.genre + gens().length - 1) % gens().length); }
+function musicVol(f) { S.vol = cl(f, .05, 1); if (RA.master) RA.master.gain.value = S.vol; S.dirty = true; }
+function seekMusic(f) { if (uAudio && isFinite(uAudio.duration)) uAudio.currentTime = cl(f, 0, 1) * uAudio.duration; }
 function nextTrack() { actx(); if (S.genre === 4) playUser(uIdx + 1); else cycleGenre(); }
 function setMode(m) { actx(); const pm = S.mode; S.mode = m; if (m === 'cinema' && pm !== 'cinema') { S.autoDark = true; S.lights = Math.min(S.lights, .08); } else if (m !== 'cinema' && S.autoDark) { S.autoDark = false; S.lights = 1; } if (m === 'cinema') { if (S.filmList.length && !S.filmPlay) startFilm(S.film < 0 ? 0 : S.film); } else if (S.filmPlay) stopFilm(); S.dirty = true; }
 function toggleFilm() { if (!S.filmList.length) { toast('Add films in room/cinema.json'); return; } if (S.filmPlay && film.vid) { if (film.vid.paused) film.vid.play(); else film.vid.pause(); } else startFilm(S.film < 0 ? 0 : S.film); S.mode = 'cinema'; S.dirty = true; }
@@ -2990,7 +3019,7 @@ function setHover(p) {
   if (a && a.hover) a.hover(true, p.h.uv); hov = a;
 }
 function ctrlRay(c) { c.updateMatrixWorld(true); _o.setFromMatrixPosition(c.matrixWorld); _d.set(0, 0, -1).transformDirection(c.matrixWorld); }
-for (let i = 0; i < 2; i++) ctrl[i].addEventListener('selectstart', () => { if (!vault.visible && !outG.visible) return; ctrlRay(ctrl[i]); const p = pick(_o, _d); if (p) { actx(); p.a.click(p.h); } });
+for (let i = 0; i < 2; i++) ctrl[i].addEventListener('select', () => { if (!vault.visible && !outG.visible) return; { const V = window.__dbg && window.__dbg.vr; if (V && V.strafeT && performance.now() - V.strafeT < 500) return; } ctrlRay(ctrl[i]); const p = pick(_o, _d); if (p) { actx(); p.a.click(p.h); } });
 
 /* ---------- loading the owner's content ---------- */
 const loadJSON = f => fetch(f + '?' + Date.now(), { cache: 'no-cache' }).then(r => r.ok ? r.json() : []).catch(() => []);
@@ -3011,7 +3040,7 @@ window.__roomBlocked = (x, z) => {
 
 /* ---------- per-frame ---------- */
 const slatIM = () => window.__slatIM, _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), cc = new THREE.Color(), c2 = new THREE.Color();
-let Av = 1, lastA = -1, lastTr = 0, dimV = .6, lastS = -1, redrawT = 0, vizT = 0, frameN = 0, shufAt = 0, wasIn = false;
+let Av = 1, lastA = -1, lastTr = 0, lastMp = 0, dimV = .6, lastS = -1, redrawT = 0, vizT = 0, frameN = 0, shufAt = 0, wasIn = false;
 function animateSlats(p) {
   const im = slatIM(); if (!im) return;
   for (let i = 58; i <= 70; i++) {
@@ -3081,10 +3110,11 @@ window.__roomTick = (dt, T) => {
   }
   if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; { const q = posters[Math.floor(rnd() * posters.length)], f = freeIdx(q, Math.floor(rnd() * 100)); if (f >= 0) setPoster(q, f); } }
   { S.uiT = Math.max(0, S.uiT - dt); S.hideUI = Math.max(0, (S.hideUI || 0) - dt); const show = !!film.vid && !film.dom && !(S.hideUI > 0) && (S.uiT > 0 || film.vid.paused) && vault.visible; if (transport.mesh.visible !== show) { transport.mesh.visible = show; if (show) transport.redraw(); } if (show && T - lastTr > .25) { lastTr = T; transport.redraw(); } }
+  if (T - lastMp > .12 && vault.visible) { lastMp = T; const near = Math.abs(pp.x - 6.95) < Math.abs(pp.x + 6.95) ? mpA : mpB; if (Math.hypot(pp.x - near.mesh.position.x, pp.z - 23) < 16) near.redraw(); }
   // screen visualiser
   if (frameN % 2 === 0 && !film.vid && Math.hypot(pp.x, pp.z - 19) < 16) drawViz(T);
   // console redraw
-  redrawT -= dt; if (S.dirty || redrawT < 0) { if (consoleA.mesh.visible && (hd < 16)) { consoleA.redraw(); consoleB.redraw(); } S.dirty = false; redrawT = .35; }
+  redrawT -= dt; if (S.dirty || redrawT < 0) { if (consoleA.mesh.visible && (hd < 16)) { consoleA.redraw(); consoleB.redraw(); mpA.redraw(); mpB.redraw(); } S.dirty = false; redrawT = .35; }
   // reticle + hover in VR
   if (vrHook.active) {
     let best = null; for (let i = 0; i < 2; i++) { if (!ctrl[i].visible) continue; ctrlRay(ctrl[i]); const q = pick(_o, _d); if (q && (!best || q.h.distance < best.h.distance)) best = q; }

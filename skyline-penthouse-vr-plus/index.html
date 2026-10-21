@@ -2681,19 +2681,20 @@ function artCanvas(kind, seed) {
   });
 }
 const BUILTIN = ['Aurora I', 'Colour Study', 'Contour 04', 'Last Light', 'Neon Horizon', 'Orbit', 'Aurora II', 'Colour Study II', 'Contour 09', 'Last Light II'].map((t, i) => ({ title: t, price: '$' + (60 + i * 15), kind: i % 6, seed: i + 1 }));
+function failTex(t1, t2) { return new THREE.CanvasTexture(cv(256, 384, (g, w, h) => { g.fillStyle = '#1a0f12'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff6b6b'; g.lineWidth = 4; g.strokeRect(10, 10, w - 20, h - 20); g.fillStyle = '#ff8a8a'; g.textAlign = 'center'; g.font = '700 26px system-ui,sans-serif'; g.fillText('\u26a0 ' + t1, w / 2, h / 2 - 8); g.font = '16px system-ui,sans-serif'; g.fillStyle = '#e8c9c9'; g.fillText(t2, w / 2, h / 2 + 22); g.fillText('Upload the file to room/ instead', w / 2, h / 2 + 46); })); }
 function itemTex(it) {
   if (it.tex) return it.tex;
   if (it.kind !== undefined) { it.tex = ctex(artCanvas(it.kind, it.seed)); return it.tex; }
   const ph = new THREE.CanvasTexture(cv(8, 8, g => { g.fillStyle = '#10141c'; g.fillRect(0, 0, 8, 8); })); it.tex = ph;
   const ld = new THREE.TextureLoader(); ld.setCrossOrigin('anonymous');
-  ld.load(it.src, t => { t.encoding = THREE.sRGBEncoding; const ia = t.image.width / t.image.height, ta = 1 / 1.5; if (ia > ta) { t.repeat.set(ta / ia, 1); t.offset.set((1 - ta / ia) / 2, 0); } else { t.repeat.set(1, ia / ta); t.offset.set(0, (1 - ia / ta) / 2); } it.tex = t; it.ready = true; posters.forEach(p => { if (p.item === it) { p.a.material.map = t; p.a.material.needsUpdate = true; } }); }, undefined, () => { });
+  ld.load(it.src, t => { t.encoding = THREE.sRGBEncoding; const ia = t.image.width / t.image.height, ta = 1 / 1.5; if (ia > ta) { t.repeat.set(ta / ia, 1); t.offset.set((1 - ta / ia) / 2, 0); } else { t.repeat.set(1, ia / ta); t.offset.set(0, (1 - ia / ta) / 2); } it.tex = t; it.ready = true; posters.forEach(p => { if (p.item === it) { p.a.material.map = t; p.a.material.needsUpdate = true; } }); }, undefined, () => { it.failed = true; it.tex = failTex('Image blocked', 'host refuses other sites'); posters.forEach(p => { if (p.item === it) { p.a.material.map = it.tex; p.a.material.needsUpdate = true; posterPlaque(p); } }); });
   return ph;
 }
 const posters = [];
 const IA = [];
 const hue2 = (h, s, l) => new THREE.Color().setHSL(((h % 1) + 1) % 1, s, l);
 function posterPlaque(p) {
-  const c = cv(384, 96, (g, w, h) => { g.fillStyle = 'rgba(8,12,18,.88)'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2e6d0'; g.font = '600 30px system-ui,Segoe UI,sans-serif'; g.fillText((p.item.title || 'Untitled').slice(0, 20), 16, 40); g.fillStyle = '#7fe0ff'; g.font = '24px ui-monospace,monospace'; g.fillText(p.item.price || 'tap to swap', 16, 76); });
+  const c = cv(384, 96, (g, w, h) => { g.fillStyle = 'rgba(8,12,18,.88)'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2e6d0'; g.font = '600 30px system-ui,Segoe UI,sans-serif'; g.fillText((p.item.title || 'Untitled').slice(0, 20), 16, 40); g.fillStyle = '#7fe0ff'; g.font = '24px ui-monospace,monospace'; g.fillText(p.item.failed ? 'failed to load' : (p.item.price || 'tap to swap'), 16, 76); });
   const t = ctex(c); if (p.plaque.material.map) p.plaque.material.map.dispose(); p.plaque.material.map = t; p.plaque.material.needsUpdate = true;
 }
 function makePoster(x, z, ry, i) {
@@ -2732,14 +2733,15 @@ function drawViz(T) {
   for (let i = 0; i < 24; i++) { const x = (i * 29.3 + T * (14 + i % 5 * 6)) % w, y = h - ((T * (22 + i * 4) + i * 53) % h); g.fillStyle = 'hsla(' + ((hu + i * 14) % 360) + ',80%,70%,.55)'; g.fillRect(x, y, 3, 3); }
   const bw = w / 64; for (let i = 0; i < 64; i++) { const v = LV.bands[Math.floor(i / 2)] * (.6 + .4 * Math.sin(i * .7 + T * 3)); g.fillStyle = 'hsla(' + ((hu + i * 3) % 360) + ',85%,55%,.7)'; g.fillRect(i * bw + 1, h - 8 - v * 70, bw - 2, v * 70 + 8); }
   g.fillStyle = 'rgba(255,255,255,.85)'; g.font = '600 20px system-ui,sans-serif'; g.textAlign = 'center';
+  if (film.err && film.errT > 0) { film.errT -= .016; g.fillStyle = 'rgba(60,10,14,.85)'; g.fillRect(30, h / 2 - 40, w - 60, 80); g.fillStyle = '#ffb0b0'; g.font = '600 17px system-ui,sans-serif'; const words = film.err.split(' '); let ln = '', y = h / 2 - 14; words.forEach(wd => { if (g.measureText(ln + wd).width > w - 90) { g.fillText(ln, cx, y); y += 24; ln = ''; } ln += wd + ' '; }); g.fillText(ln, cx, y); g.fillStyle = 'rgba(255,255,255,.85)'; g.font = '600 20px system-ui,sans-serif'; }
   g.fillText(S.playing ? (S.userOn && S.track ? S.track : 'Now playing · ' + GENRES[S.genre]) : 'THE VAULT · tap the console to play', cx, 34); g.textAlign = 'left';
   scrT.needsUpdate = true;
 }
 function startFilm(i) {
   if (!S.filmList.length) return false;
-  stopFilm(true); S.film = (i + S.filmList.length) % S.filmList.length; const it = S.filmList[S.film];
+  film.err = ''; stopFilm(true); S.film = (i + S.filmList.length) % S.filmList.length; const it = S.filmList[S.film];
   const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.loop = false; v.preload = 'auto'; v.src = it.src; v.volume = 1;
-  v.onended = () => startFilm(S.film + 1); v.onerror = () => { stopFilm(); toast('Could not play that film'); };
+  v.onended = () => startFilm(S.film + 1); v.onerror = () => { const bad = it.title || 'film'; stopFilm(); film.err = 'Could not play "' + bad + '" \u2014 host blocks it or link expired. Upload an .mp4 into room/'; film.errT = 12; toast('Could not play that film'); };
   const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = THREE.LinearFilter; film.vid = v; film.tex = t; film.ok = true;
   screen.material.map = t; screen.material.needsUpdate = true; S.filmPlay = true; S.cinemaMuted = true; S.track = it.title;
   if (uAudio) uAudio.pause(); const p = v.play(); if (p && p.catch) p.catch(() => toast('Tap again to start the film')); S.dirty = true; return true;

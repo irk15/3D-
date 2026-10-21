@@ -1147,13 +1147,13 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
   ];
   const place = (S, w, h) => {
     const k = S.wall, ry = k === 'b' ? Math.PI : k === 'l' ? Math.PI / 2 : -Math.PI / 2;
-    const px = k === 'b' ? S.c : k === 'l' ? -8.93 : 8.93, pz = k === 'b' ? 7.79 : S.c, bx = k === 'b' ? S.c : k === 'l' ? -8.97 : 8.97, bz = k === 'b' ? 7.83 : S.c;
+    const px = k === 'b' ? S.c : k === 'l' ? -8.90 : 8.90, pz = k === 'b' ? 7.76 : S.c, bx = k === 'b' ? S.c : k === 'l' ? -8.97 : 8.97, bz = k === 'b' ? 7.83 : S.c;
     S.pic.position.set(px, S.y, pz); S.pic.rotation.y = ry; S.pic.scale.set(w, h, 1);
     S.back.position.set(bx, S.y, bz); S.back.rotation.y = ry; S.back.scale.set(w + .08, h + .08, .03);
     S.pic.updateMatrix(); S.back.updateMatrix();
   };
   for (const S of slots) {
-    const mat = S.kind !== undefined ? new THREE.MeshStandardMaterial({ map: artTex(S.kind, S.seed), roughness: .6 }) : std(0x20201f, .6);
+    const mat = S.kind !== undefined ? new THREE.MeshStandardMaterial({ map: artTex(S.kind, S.seed), roughness: .6 }) : std(0x20201f, .6); mat.polygonOffset = true; mat.polygonOffsetFactor = mat.polygonOffsetUnits = -2;
     S.pic = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); S.back = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), frameM);
     S.pic.userData.anim = S.back.userData.anim = true; S.pic.userData.ns = 1; S.back.userData.ns = 1; interior.add(S.pic, S.back); place(S, S.w, S.h);
     if (S.kind === undefined) S.pic.visible = S.back.visible = false;
@@ -1184,13 +1184,13 @@ box(19.4, .5, 20.4, M.concrete, 0, -.55, -1);
         if (/^https?:/i.test(url)) v.crossOrigin = 'anonymous';
         v.addEventListener('loadeddata', () => {
           const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false;
-          apply(new THREE.MeshBasicMaterial({ map: t, toneMapped: false }), v.videoWidth || 16, v.videoHeight || 9); vids.push(v); const p = v.play(); if (p && p.catch) p.catch(() => { });
+          apply(new THREE.MeshBasicMaterial({ map: t, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), v.videoWidth || 16, v.videoHeight || 9); vids.push(v); const p = v.play(); if (p && p.catch) p.catch(() => { });
         });
         v.src = url; v.load(); return;
       }
       const img = new Image(); img.onload = () => {
         const t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true;
-        apply(new THREE.MeshStandardMaterial({ map: t, roughness: .55, envMapIntensity: .3 }), img.width, img.height);
+        apply(new THREE.MeshStandardMaterial({ map: t, roughness: .55, envMapIntensity: .3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), img.width, img.height);
       };
       if (/^https?:/i.test(url)) img.crossOrigin = 'anonymous'; img.src = url;
     });
@@ -2321,7 +2321,7 @@ function setLiteMats(mode) {
     if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material)) return;
     const m0 = o.userData.stdMat || o.material; if (!m0 || !m0.isMeshStandardMaterial) return;
     o.userData.stdMat = m0; let nm = m0;
-    if (mode === 'all' || (mode === 'most' && !keepStd(m0))) { nm = lite.cache.get(m0); if (!nm) { nm = makeLite(m0); lite.cache.set(m0, nm); } }
+    if (mode === 'all' || (mode === 'most' && !keepStd(m0))) { nm = lite.cache.get(m0); if (!nm) { nm = makeLite(m0); if (m0.polygonOffset) { nm.polygonOffset = true; nm.polygonOffsetFactor = m0.polygonOffsetFactor; nm.polygonOffsetUnits = m0.polygonOffsetUnits; } lite.cache.set(m0, nm); } }
     o.material = nm;
   });
   lite.hemi.visible = mode !== 'none';
@@ -2401,6 +2401,7 @@ function applyVRQuality(q) {
 
 /* ---------- session start / end ---------- */
 renderer.xr.addEventListener('sessionstart', () => {
+  camera.near = .2; camera.updateProjectionMatrix();
   vr.session = renderer.xr.getSession();
   vrHook.active = true; vrHook.exposure = 1.3;
   renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -2414,6 +2415,7 @@ renderer.xr.addEventListener('sessionstart', () => {
   vr.px = 900;
 });
 renderer.xr.addEventListener('sessionend', () => {
+  camera.near = .1; camera.updateProjectionMatrix();
   vr.session = null; vrHook.active = false;
   renderer.outputEncoding = hdrOK ? THREE.LinearEncoding : THREE.sRGBEncoding; renderer.toneMapping = hdrOK ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   carMesh.count = NCARS; cPts.geo.setDrawRange(0, NCARS * 2);
@@ -2440,7 +2442,7 @@ const vault = new THREE.Group(); vault.name = 'vault'; vault.visible = false; if
 const outG = new THREE.Group(); outG.name = 'vaultDoor'; if (VR_BUILD) outG.renderOrder = -5; scene.add(outG);
 const S = { open: 0, target: 0, state: 'locked', mode: 'lounge', playing: false, genre: 0, vol: .8, tPlayed: 0, reveal: 0, heard: '', tiles: [], flash: 0, flashBad: 0, shuffle: false, film: -1, filmPlay: false, dirty: true, beats: 0, userMusic: [], filmList: [], posterList: [] };
 const cl = (x, a, b) => Math.min(b, Math.max(a, x)), sm = (a, b, x) => { const t = cl((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const rnd = mulberry32(2026), basic = o => new THREE.MeshBasicMaterial(o);
+const rnd = mulberry32(2026), DIM = [], basic = (o, nodim) => { const m = new THREE.MeshBasicMaterial(o); if (!nodim && !o.transparent) { m.userData.c0 = m.color.clone(); DIM.push(m); } return m; };
 const addBM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
 const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.25, 'rgba(255,255,255,.45)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
 const addMat = (hex, op, map) => new THREE.MeshBasicMaterial({ color: hex, map: map || null, transparent: true, opacity: op == null ? 1 : op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: true });
@@ -2701,10 +2703,10 @@ function posterPlaque(p) {
 }
 function makePoster(x, z, ry, i) {
   const grp = new THREE.Group(); grp.position.set(x, 1.95, z); grp.rotation.y = ry; grp.scale.setScalar(1.3); vault.add(grp);
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.6, .05), basic({ color: 0x07090c })); frame.position.z = -.02; grp.add(frame);
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 1.95), addMat(0xffffff, .15, glowTex)); glow.position.z = -.005; grp.add(glow);
-  const a = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.5), basic({ map: null, transparent: true })), b = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.5), basic({ map: null, transparent: true, opacity: 0 })); a.position.z = .006; b.position.z = .012; grp.add(a, b);
-  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(.62, .155), basic({ map: null })); plaque.position.set(0, -1.02, .01); grp.add(plaque);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.6, .04), basic({ color: 0x07090c })); frame.position.z = -.02; grp.add(frame);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 1.95), addMat(0xffffff, .15, glowTex)); glow.position.z = -.03; grp.add(glow);
+  const po = (f) => ({ polygonOffset: true, polygonOffsetFactor: -f, polygonOffsetUnits: -f }); const a = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.5), basic(Object.assign({ map: null }, po(2)), true)), b = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.5), basic(Object.assign({ map: null, transparent: true, opacity: 0, depthWrite: false }, po(4)), true)); a.position.z = .014; b.position.z = .028; b.visible = false; b.renderOrder = 3; glow.renderOrder = 1; grp.add(a, b);
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(.62, .155), basic(Object.assign({ map: null }, po(3)), true)); plaque.position.set(0, -1.02, .02); grp.add(plaque);
   const p = { grp, a, b, glow, plaque, idx: i, item: null, fade: 1, hover: 0, bx: x, nx: Math.sin(ry) };
   posters.push(p); setPoster(p, i, true);
   IA.push({ mesh: a, hover: v => p.hover = v ? 1 : 0, click: () => { setPoster(p, p.idx + 1); } });
@@ -2713,7 +2715,7 @@ function makePoster(x, z, ry, i) {
 function setPoster(p, idx, instant) {
   const L = S.posterList.length ? S.posterList : BUILTIN; p.idx = (idx % L.length + L.length) % L.length; p.item = L[p.idx];
   const t = itemTex(p.item);
-  if (instant) { p.a.material.map = t; p.a.material.needsUpdate = true; p.b.material.opacity = 0; } else { p.b.material.map = t; p.b.material.opacity = 0; p.b.material.needsUpdate = true; p.fade = 0; }
+  if (instant) { p.a.material.map = t; p.a.material.needsUpdate = true; p.b.material.opacity = 0; } else { p.b.material.map = t; p.b.material.opacity = 0; p.b.material.needsUpdate = true; p.b.visible = true; p.fade = 0; }
   posterPlaque(p);
 }
 [9.7, 11.5, 13.3, 15.1].forEach((z, i) => makePoster(X0 + .04, z, Math.PI / 2, i)); [11.5, 13.3, 15.1, 16.9].forEach((z, i) => makePoster(X1 - .04, z, -Math.PI / 2, i + 4));
@@ -2721,11 +2723,14 @@ function setPoster(p, idx, instant) {
 /* ---------- cinema screen: visualiser by default, your films from room/cinema.json ---------- */
 const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360; const scrG = scrC.getContext('2d');
 const scrT = new THREE.CanvasTexture(scrC); scrT.encoding = THREE.sRGBEncoding; scrT.minFilter = THREE.LinearFilter; scrT.generateMipmaps = false;
-const screen = plane(6, 3.375, basic({ map: scrT }), 0, 2.35, Z1 - .045, Math.PI);
+const screen = plane(6, 3.375, basic({ map: scrT }, true), 0, 2.35, Z1 - .045, Math.PI);
 const scrGlow = plane(9.2, 5.6, addMat(0xffffff, 0, glowTex), 0, 2.35, Z1 - .09, Math.PI);
 const beam = (() => { const g = new THREE.CylinderGeometry(.04, 1.0, 5.4, 4, 1, true); g.rotateY(Math.PI / 4); g.rotateX(-Math.PI / 2); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.position.set(0, 3.1, 20.2); m.rotation.x = .28; m.scale.set(3.2, 1.7, 1); vault.add(m); return m; })();
 const film = { vid: null, tex: null, cv: cv(16, 9, () => { }), ok: true, t: 0, avg: new THREE.Color(.1, .1, .15), l: new THREE.Color(), r: new THREE.Color(), lum: .2 };
 film.g = film.cv.getContext('2d', { willReadFrequently: true });
+S.lights = 1; S.rate = 1; S.fvol = 1; S.fmuted = false; S.loopFilm = false; S.uiT = 0;
+const fv = () => film.vid;
+
 function drawViz(T) {
   const g = scrG, w = 640, h = 360, hu = (T * 14 + LV.bass * 40) % 360;
   g.fillStyle = 'rgba(4,6,12,' + (.35 + .25 * (1 - LV.bass)) + ')'; g.fillRect(0, 0, w, h);
@@ -2742,7 +2747,7 @@ function drawViz(T) {
 function startFilm(i) {
   if (!S.filmList.length) return false;
   film.err = ''; stopFilm(true); S.film = (i + S.filmList.length) % S.filmList.length; const it = S.filmList[S.film];
-  const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.loop = false; v.preload = 'auto'; v.src = it.src; v.volume = 1;
+  const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.loop = false; v.preload = 'auto'; v.src = it.src; applyMedia(v);
   v.onended = () => startFilm(S.film + 1); v.onerror = () => { const bad = it.title || 'film', code = v.error ? v.error.code : 0; stopFilm(); probeFilm(it, bad, code); };
   const t = new THREE.VideoTexture(v); t.encoding = THREE.sRGBEncoding; t.minFilter = THREE.LinearFilter; film.vid = v; film.tex = t; film.ok = true;
   screen.material.map = t; screen.material.needsUpdate = true; S.filmPlay = true; S.cinemaMuted = true; S.track = it.title;
@@ -2762,11 +2767,19 @@ function homog(src, dst) { // 4 point homography -> css matrix3d
 const _sc = [[-3, 1.6875], [3, 1.6875], [3, -1.6875], [-3, -1.6875]].map(([x, y]) => new THREE.Vector3(x, y, 0));
 function filmOverlay(it) {
   if (ovl) ovl.v.pause(), ovl.d.remove(); const d = document.createElement('div'); d.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;z-index:5;pointer-events:none;background:#000;visibility:hidden;overflow:hidden';
-  const v = document.createElement('video'); v.src = it.src; v.playsInline = true; v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; v.onended = () => { startFilm(S.film + 1); }; v.onerror = () => { stopFilm(); film.err = 'Film link failed: expired, blocked or not a direct video file.'; film.errT = 14; toast('Film link failed'); }; d.appendChild(v); document.body.appendChild(d); ovl = { d, v, it }; film.vid = v; S.filmPlay = true; S.cinemaMuted = true;
+  const v = document.createElement('video'); v.src = it.src; applyMedia(v); v.playsInline = true; v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; v.onended = () => { startFilm(S.film + 1); }; v.onerror = () => { stopFilm(); film.err = 'Film link failed: expired, blocked or not a direct video file.'; film.errT = 14; toast('Film link failed'); }; d.appendChild(v);
+  const bar = document.createElement('div'); bar.style.cssText = 'position:absolute;left:0;right:0;bottom:0;height:120px;display:flex;align-items:center;gap:14px;padding:0 24px;background:linear-gradient(transparent,rgba(0,0,0,.82));pointer-events:auto;font:600 40px system-ui,sans-serif;color:#fff;opacity:.55;transition:opacity .2s';
+  bar.onmouseenter = () => bar.style.opacity = 1; bar.onmouseleave = () => bar.style.opacity = .55;
+  const mk = (t, f) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.3);color:#fff;border-radius:14px;font:inherit;padding:6px 18px;cursor:pointer;white-space:nowrap'; b.onclick = e => { e.stopPropagation(); f(b); }; bar.appendChild(b); return b; };
+  mk('\u23ee', () => startFilm(S.film - 1)); mk('\u23ea10', () => seekBy(-10)); const pp = mk('\u275a\u275a', () => { v.paused ? v.play() : v.pause(); }); mk('10\u23e9', () => seekBy(10)); mk('\u23ed', () => startFilm(S.film + 1));
+  const rg = document.createElement('input'); rg.type = 'range'; rg.min = 0; rg.max = 1000; rg.value = 0; rg.style.cssText = 'flex:1;height:30px;cursor:pointer'; rg.oninput = () => seekFrac(rg.value / 1000); bar.appendChild(rg);
+  const tm = document.createElement('span'); tm.style.cssText = 'font:30px ui-monospace,monospace;min-width:230px;text-align:center'; bar.appendChild(tm);
+  mk('\ud83d\udd09\u2212', () => filmVol(-.15)); mk('\ud83d\udd0a+', () => filmVol(.15)); const sp = mk(S.rate + '\u00d7', b => { cycleRate(); b.textContent = S.rate + '\u00d7'; }); mk('\ud83d\udca1\u2212', () => setLights(S.lights - .25)); mk('\ud83d\udca1+', () => setLights(S.lights + .25)); mk('\u2715', () => setMode('lounge'));
+  d.appendChild(bar); document.body.appendChild(d); ovl = { d, v, it, pp, rg, tm }; film.vid = v; S.filmPlay = true; S.cinemaMuted = true;
   v.play().catch(() => toast('Tap Film to start')); film.dom = true;
 }
 function overlayTick() {
-  if (!ovl) return; const W = innerWidth, H = innerHeight, p = pxz(); let ok = !isXR() && p.z > 8.2 && S.open > .6;
+  if (!ovl) return; const ov = ovl.v; if (ovl.pp) { ovl.pp.textContent = ov.paused ? '\u25b6' : '\u275a\u275a'; if (document.activeElement !== ovl.rg && isFinite(ov.duration)) ovl.rg.value = Math.round(ov.currentTime / ov.duration * 1000); ovl.tm.textContent = fmt(ov.currentTime) + ' / ' + fmt(ov.duration); } const W = innerWidth, H = innerHeight, p = pxz(); let ok = !isXR() && p.z > 8.2 && S.open > .6;
   const pts = []; if (ok) { screen.updateMatrixWorld(true); camera.updateMatrixWorld(true); for (const c of _sc) { const w = c.clone().applyMatrix4(screen.matrixWorld); const q = w.clone().project(camera); const cd = w.clone().applyMatrix4(camera.matrixWorldInverse); if (cd.z > -.1) { ok = false; break; } pts.push([(q.x + 1) / 2 * W, (1 - q.y) / 2 * H]); } }
   if (!ok) { ovl.d.style.visibility = 'hidden'; return; }
   ovl.d.style.transform = homog([[0, 0], [1280, 0], [1280, 720], [0, 720]], pts); ovl.d.style.visibility = 'visible';
@@ -2791,7 +2804,7 @@ function makePanel(w, h, px, py, draw, x, y, z, ry, rx, parent) {
   const c = cv(px, py, () => { }), g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), basic({ map: t, transparent: true })); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, 0); (parent || vault).add(m);
   const P = { mesh: m, c, g, t, btn: [], px, py, hover: -1, redraw() { this.btn = []; draw(g, px, py, this); t.needsUpdate = true; } };
-  P.redraw(); IA.push({ mesh: m, panel: P, hover: (v, uv) => { const i = v && uv ? P.btn.findIndex(b => uv.x * px >= b.x && uv.x * px <= b.x + b.w && (1 - uv.y) * py >= b.y && (1 - uv.y) * py <= b.y + b.h) : -1; if (i !== P.hover) { P.hover = i; P.redraw(); } }, click: (h) => { const x = h.uv.x * px, y = (1 - h.uv.y) * py, b = P.btn.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h); if (b) b.act(); } });
+  P.redraw(); IA.push({ mesh: m, panel: P, hover: (v, uv) => { const i = v && uv ? P.btn.findIndex(b => uv.x * px >= b.x && uv.x * px <= b.x + b.w && (1 - uv.y) * py >= b.y && (1 - uv.y) * py <= b.y + b.h) : -1; if (i !== P.hover) { P.hover = i; P.redraw(); } }, click: (h) => { const x = h.uv.x * px, y = (1 - h.uv.y) * py, b = P.btn.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h); if (b) b.act(x, y, b); } });
   return P;
 }
 function btn(P, g, label, x, y, w, h, act, on, tint) {
@@ -2806,17 +2819,35 @@ function drawConsole(g, w, h, P) {
   g.fillStyle = '#7fe0ff'; g.font = '700 38px system-ui,sans-serif'; g.fillText('THE VAULT', 36, 62);
   g.fillStyle = 'rgba(255,255,255,.7)'; g.font = '26px ui-monospace,monospace'; g.fillText(S.filmPlay ? '▶ ' + (S.track || 'film') : S.playing ? '♪ ' + (S.userOn && S.track ? S.track : gens()[S.genre]) : 'music off  ·  ' + S.mode, 36, 102);
   for (let i = 0; i < 16; i++) { const v = LV.bands[i * 2]; g.fillStyle = 'hsl(' + (190 + i * 6) + ',90%,60%)'; g.fillRect(w - 380 + i * 22, 100 - v * 60 - 4, 14, v * 60 + 4); }
-  const bw = (w - 36 * 2 - 24 * 2) / 3, bh = 112, y0 = 134, gap = 18, X = i => 36 + i * (bw + 24), Y = j => y0 + j * (bh + gap);
+  const bw = (w - 36 * 2 - 24 * 2) / 3, bh = 100, y0 = 128, gap = 14, X = i => 36 + i * (bw + 24), Y = j => y0 + j * (bh + gap);
   btn(P, g, S.playing ? '❚❚ Music' : '▶ Music', X(0), Y(0), bw, bh, toggleMusic, S.playing);
   btn(P, g, 'Next ⏭', X(1), Y(0), bw, bh, nextTrack);
   btn(P, g, gens()[S.genre] || 'Genre', X(2), Y(0), bw, bh, cycleGenre);
   btn(P, g, 'Lounge', X(0), Y(1), bw, bh, () => setMode('lounge'), S.mode === 'lounge', 'rgba(255,170,90,.4)'); btn(P, g, 'Party', X(1), Y(1), bw, bh, () => setMode('party'), S.mode === 'party', 'rgba(255,90,200,.4)'); btn(P, g, 'Cinema', X(2), Y(1), bw, bh, () => setMode('cinema'), S.mode === 'cinema', 'rgba(120,120,255,.4)');
   btn(P, g, 'Swap posters', X(0), Y(2), bw, bh, shufflePosters); btn(P, g, 'Vol −', X(1), Y(2), bw / 2 - 6, bh, () => vol(-.12)); btn(P, g, 'Vol +', X(1) + bw / 2 + 6, Y(2), bw / 2 - 6, bh, () => vol(.12)); btn(P, g, 'Auto swap', X(2), Y(2), bw, bh, () => { S.shuffle = !S.shuffle; S.dirty = true; }, S.shuffle);
   btn(P, g, S.filmPlay ? '❚❚ Film' : '▶ Film', X(0), Y(3), bw, bh, toggleFilm, S.filmPlay); btn(P, g, 'Next film', X(1), Y(3), bw, bh, () => { if (!startFilm(S.film + 1)) toast('Add films in room/cinema.json'); }); btn(P, g, 'Seal door', X(2), Y(3), bw, bh, sealDoor);
+  btn(P, g, '💡 −', X(0), Y(4), bw / 2 - 6, bh, () => setLights(S.lights - .25)); btn(P, g, '💡 +', X(0) + bw / 2 + 6, Y(4), bw / 2 - 6, bh, () => setLights(S.lights + .25)); btn(P, g, S.lights < .05 ? 'Lights ON' : 'Lights OFF', X(1), Y(4), bw, bh, () => setLights(S.lights < .05 ? 1 : 0), S.lights < .05, 'rgba(255,220,120,.4)'); btn(P, g, Math.round(S.lights * 100) + '% light', X(2), Y(4), bw, bh, () => setLights(S.lights > .6 ? .3 : 1));
 }
-const consoleA = makePanel(.86, .54, 1024, 640, drawConsole, 6.1, 1.34, 10.27, 0, -.5);
-const consoleB = makePanel(.86, .54, 1024, 640, drawConsole, -6.1, 1.34, 15.67, 0, -.5);
-IA.push({ mesh: screen, click: () => { if (S.mode !== 'cinema') setMode('cinema'); else toggleFilm(); } });
+const consoleA = makePanel(.86, .605, 1024, 720, drawConsole, 6.1, 1.36, 10.27, 0, -.5);
+const consoleB = makePanel(.86, .605, 1024, 720, drawConsole, -6.1, 1.36, 15.67, 0, -.5);
+IA.push({ mesh: screen, hover: v => { if (v) S.uiT = 4; }, click: () => { if (S.mode !== 'cinema') setMode('cinema'); else toggleFilm(); } });
+function fmt(t) { if (!isFinite(t)) return '--:--'; t = Math.max(0, t | 0); const h = t / 3600 | 0, m = (t % 3600) / 60 | 0, sc = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sc).padStart(2, '0'); }
+function drawTransport(g, w, h, P) {
+  g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(6,10,18,.74)'; g.beginPath(); g.roundRect ? g.roundRect(0, 0, w, h, 40) : g.rect(0, 0, w, h); g.fill(); g.strokeStyle = 'rgba(140,200,255,.5)'; g.lineWidth = 4; g.stroke();
+  const v = fv(), cur = v ? v.currentTime : 0, dur = v && isFinite(v.duration) ? v.duration : 0;
+  g.fillStyle = '#f4ecde'; g.font = '600 34px system-ui,sans-serif'; g.textAlign = 'left'; g.fillText((S.track || 'Cinema').slice(0, 44), 40, 42); g.textAlign = 'right'; g.fillStyle = '#7fe0ff'; g.font = '30px ui-monospace,monospace'; g.fillText(fmt(cur) + ' / ' + fmt(dur), w - 40, 42); g.textAlign = 'left';
+  const bx = 40, bwid = w - 80, by = 62; g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(bx, by, bwid, 22); const fr = dur ? cl(cur / dur, 0, 1) : 0; g.fillStyle = '#7fe0ff'; g.fillRect(bx, by, bwid * fr, 22); g.beginPath(); g.arc(bx + bwid * fr, by + 11, 18, 0, 7); g.fillStyle = '#fff'; g.fill();
+  P.btn.push({ x: bx, y: 50, w: bwid, h: 56, act: (x, y, b) => seekFrac((x - b.x) / b.w) });
+  const n1 = 8, gp = 14, w1 = (w - 80 - gp * (n1 - 1)) / n1, y1 = 122, h1 = 100, paused = !v || v.paused;
+  const R1 = [['⏮', () => startFilm(S.film - 1)], ['⏪ 10', () => seekBy(-10)], [paused ? '▶' : '❚❚', toggleFilm], ['10 ⏩', () => seekBy(10)], ['⏭', () => startFilm(S.film + 1)], ['Vol −', () => vol(-.12)], ['Vol +', () => vol(.12)], [S.fmuted ? 'Muted' : 'Mute', toggleMute, S.fmuted]];
+  R1.forEach((r, i) => btn(P, g, r[0], 40 + i * (w1 + gp), y1, w1, h1, r[1], r[2] || (i === 2 && !paused)));
+  const n2 = 7, w2 = (w - 80 - gp * (n2 - 1)) / n2, y2 = 236, h2 = 78;
+  const R2 = [['Speed ' + S.rate + '×', cycleRate], ['Loop', toggleLoop, S.loopFilm], ['💡 −', () => setLights(S.lights - .25)], ['💡 +', () => setLights(S.lights + .25)], [S.lights < .05 ? 'Lights ON' : 'Lights OFF', () => setLights(S.lights < .05 ? 1 : 0), S.lights < .05], ['Stop', () => { setMode('lounge'); }], ['Hide', () => { S.uiT = 0; S.hideUI = 3; }]];
+  R2.forEach((r, i) => btn(P, g, r[0], 40 + i * (w2 + gp), y2, w2, h2, r[1], r[2]));
+}
+const transport = makePanel(5.4, 1.1, 1620, 330, drawTransport, 0, 1.5, Z1 - .12, Math.PI, 0);
+transport.mesh.visible = false; transport.mesh.renderOrder = 5; transport.mesh.material.polygonOffset = true; transport.mesh.material.polygonOffsetFactor = -3; transport.mesh.material.polygonOffsetUnits = -3;
+{ const e = IA[IA.length - 1], oh = e.hover; e.hover = (v, uv) => { if (v) S.uiT = 4; oh(v, uv); }; }
 
 /* ---------- door terminal (outside, in the penthouse) ---------- */
 const WORDS = ['THE', 'KING', 'IS', 'HERE', 'QUEEN', 'KNIGHT', 'A', 'BISHOP', 'ROOK', 'PAWN', 'WAS', 'THERE']; for (let i = WORDS.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1));[WORDS[i], WORDS[j]] = [WORDS[j], WORDS[i]]; }
@@ -2863,7 +2894,7 @@ function startVoice() {
 function stopVoice() { recWant = false; if (rec) try { rec.stop(); } catch (e) { } listening = false; terminal.redraw(); }
 function command(n) {
   const has = (...w) => w.some(x => n.includes(x));
-  if (has('close the door', 'seal', 'lock the')) sealDoor(); else if (has('cinema', 'movie', 'theater', 'theatre')) setMode('cinema'); else if (has('party', 'dance')) setMode('party'); else if (has('lounge', 'chill mode', 'relax')) setMode('lounge');
+  if (has('lights off', 'light off', 'lights out', 'darker', 'turn off the light')) setLights(0); else if (has('lights on', 'light on', 'brighter', 'lights up', 'turn on the light')) setLights(1); else if (has('dim')) setLights(.3); else if (has('fast forward', 'skip ahead', 'forward')) seekBy(10); else if (has('rewind', 'go back')) seekBy(-10); else if (has('close the door', 'seal', 'lock the')) sealDoor(); else if (has('cinema', 'movie', 'theater', 'theatre')) setMode('cinema'); else if (has('party', 'dance')) setMode('party'); else if (has('lounge', 'chill mode', 'relax')) setMode('lounge');
   else if (has('next film', 'next movie')) startFilm(S.film + 1); else if (has('next', 'skip')) nextTrack(); else if (has('stop', 'pause', 'mute', 'silence')) { if (S.filmPlay) toggleFilm(); else if (S.playing) toggleMusic(); } else if (has('play', 'music', 'start')) { if (S.mode === 'cinema' && S.filmList.length && !S.filmPlay) toggleFilm(); else if (!S.playing) toggleMusic(); }
   else if (has('poster', 'shuffle', 'swap')) shufflePosters(); else if (has('volume up', 'louder')) vol(.15); else if (has('volume down', 'quieter', 'softer')) vol(-.15);
   else if (has('house')) setGenre(2); else if (has('synth')) setGenre(1); else if (has('ambient')) setGenre(3); else if (has('lo-fi', 'lofi', 'low fi')) setGenre(0);
@@ -2888,10 +2919,18 @@ function toggleMusic() {
 function setGenre(i) { actx(); S.genre = i; RA.step = 0; RA.bar = 0; if (i === 4) { S.playing = true; playUser(uIdx); } else { stopUser(); S.playing = true; } S.dirty = true; }
 function cycleGenre() { setGenre((S.genre + 1) % gens().length); }
 function nextTrack() { actx(); if (S.genre === 4) playUser(uIdx + 1); else cycleGenre(); }
-function setMode(m) { actx(); S.mode = m; if (m === 'cinema') { if (S.filmList.length && !S.filmPlay) startFilm(S.film < 0 ? 0 : S.film); } else if (S.filmPlay) stopFilm(); S.dirty = true; }
+function setMode(m) { actx(); const pm = S.mode; S.mode = m; if (m === 'cinema' && pm !== 'cinema') { S.autoDark = true; S.lights = Math.min(S.lights, .08); } else if (m !== 'cinema' && S.autoDark) { S.autoDark = false; S.lights = 1; } if (m === 'cinema') { if (S.filmList.length && !S.filmPlay) startFilm(S.film < 0 ? 0 : S.film); } else if (S.filmPlay) stopFilm(); S.dirty = true; }
 function toggleFilm() { if (!S.filmList.length) { toast('Add films in room/cinema.json'); return; } if (S.filmPlay && film.vid) { if (film.vid.paused) film.vid.play(); else film.vid.pause(); } else startFilm(S.film < 0 ? 0 : S.film); S.mode = 'cinema'; S.dirty = true; }
+function applyMedia(v) { v.playbackRate = S.rate; v.loop = S.loopFilm; v.volume = S.fvol; v.muted = S.fmuted; }
+function seekBy(d) { const v = fv(); if (!v) return; try { v.currentTime = cl(v.currentTime + d, 0, isFinite(v.duration) ? Math.max(0, v.duration - .3) : 1e9); } catch (e) { } S.uiT = 4; }
+function seekFrac(f) { const v = fv(); if (!v || !isFinite(v.duration)) return; try { v.currentTime = cl(f, 0, 1) * v.duration; } catch (e) { } S.uiT = 4; }
+function cycleRate() { const R = [.75, 1, 1.25, 1.5, 2]; S.rate = R[(R.indexOf(S.rate) + 1) % R.length]; if (fv()) fv().playbackRate = S.rate; S.uiT = 4; }
+function toggleLoop() { S.loopFilm = !S.loopFilm; if (fv()) fv().loop = S.loopFilm; S.uiT = 4; }
+function toggleMute() { S.fmuted = !S.fmuted; if (fv()) fv().muted = S.fmuted; S.uiT = 4; }
+function filmVol(d) { S.fvol = cl(S.fvol + d, 0, 1); S.fmuted = false; if (fv()) { fv().volume = S.fvol; fv().muted = false; } S.uiT = 4; toast('Film volume ' + Math.round(S.fvol * 100) + '%'); }
+function setLights(x) { S.lights = cl(x, 0, 1); S.autoDark = false; S.dirty = true; S.uiT = 4; toast('Lights ' + Math.round(S.lights * 100) + '%'); }
 function shufflePosters() { posters.forEach(p => setPoster(p, Math.floor(rnd() * 100))); S.dirty = true; }
-function vol(d) { S.vol = cl(S.vol + d, .1, 1); if (RA.master) RA.master.gain.value = S.vol; toast('Volume ' + Math.round(S.vol * 100) + '%'); }
+function vol(d) { if (film.vid) { filmVol(d); return; } S.vol = cl(S.vol + d, .1, 1); if (RA.master) RA.master.gain.value = S.vol; toast('Volume ' + Math.round(S.vol * 100) + '%'); }
 function pxz() { return vrHook.active ? { x: head.wx, z: head.wz } : { x: player.pos.x, z: player.pos.z }; }
 
 /* ---------- toast + desktop HUD ---------- */
@@ -2959,7 +2998,7 @@ window.__roomBlocked = (x, z) => {
 
 /* ---------- per-frame ---------- */
 const slatIM = () => window.__slatIM, _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), cc = new THREE.Color(), c2 = new THREE.Color();
-let dimV = .6, lastS = -1, redrawT = 0, vizT = 0, frameN = 0, shufAt = 0, wasIn = false;
+let Av = 1, lastA = -1, lastTr = 0, dimV = .6, lastS = -1, redrawT = 0, vizT = 0, frameN = 0, shufAt = 0, wasIn = false;
 function animateSlats(p) {
   const im = slatIM(); if (!im) return;
   for (let i = 58; i <= 70; i++) {
@@ -2988,7 +3027,8 @@ window.__roomTick = (dt, T) => {
   if (!vault.visible) { if (frameN % 40 === 0 && terminal.mesh.visible) { terminal.redraw(); } return; }
   analyse(dt, T);
   const cinema = S.mode === 'cinema', party = S.mode === 'party';
-  const dimT = cinema ? .1 : party ? 1.25 : .62; dimV += (dimT - dimV) * Math.min(1, dt * 2.2);
+  Av += (S.lights - Av) * Math.min(1, dt * 3); const A = .05 + .95 * Av; if (Math.abs(A - lastA) > .003) { lastA = A; for (const m of DIM) m.color.copy(m.userData.c0).multiplyScalar(A); }
+  const dimT = cinema ? .06 + .5 * Av : (party ? 1.25 : .62) * (.12 + .88 * Av); dimV += (dimT - dimV) * Math.min(1, dt * 2.2);
   if (cinema && film.vid) sampleFilm(dt);
   const filmOn = cinema && film.vid, filmL = filmOn ? (film.ok ? film.lum : .25 + .1 * Math.sin(T * 2)) : .25 + LV.bass * .5;
   const baseHue = party ? (T * .07 + S.beats * .015) % 1 : cinema ? .62 : .07 + .03 * Math.sin(T * .1), spread = party ? .45 : cinema ? .02 : .1, sat = party ? .95 : .85;
@@ -3010,7 +3050,7 @@ window.__roomTick = (dt, T) => {
   if (cinema) { washL.material.color.copy(filmOn ? film.l : c2.setHSL(.62, .8, .5)); washR.material.color.copy(filmOn ? film.r : c2.setHSL(.7, .8, .5)); const o = cl(.1 + filmL * .9, 0, .75); washL.material.opacity += (o - washL.material.opacity) * .2; washR.material.opacity += (o - washR.material.opacity) * .2; scrGlow.material.color.copy(filmOn ? film.avg : c2.setHSL(.66, .7, .5)); scrGlow.material.opacity += (cl(.15 + filmL * .85, 0, .8) - scrGlow.material.opacity) * .2; beam.material.color.copy(filmOn ? film.avg : c2.setHSL(.62, .6, .6)); beam.material.opacity += (.06 + filmL * .1 - beam.material.opacity) * .1; floorGlow.material.opacity += (0 - floorGlow.material.opacity) * .2; }
   else { cc.setHSL(baseHue, sat, .5); washL.material.color.copy(cc); washR.material.color.copy(cc); const o = cl((.04 + LV.bass * .3 + LV.beat * .2) * dimV, 0, .5) * rv; washL.material.opacity += (o - washL.material.opacity) * .3; washR.material.opacity += (o - washR.material.opacity) * .3; scrGlow.material.opacity += (cl(.06 + LV.bass * .3, 0, .4) * rv - scrGlow.material.opacity) * .2; scrGlow.material.color.copy(cc); beam.material.opacity += (0 - beam.material.opacity) * .1; floorGlow.material.color.copy(cc); floorGlow.material.opacity += (cl(.1 + LV.bass * .3 + LV.beat * .15, 0, .5) * dimV * rv - floorGlow.material.opacity) * .2; }
   // stars
-  if (frameN % 2 === 0) { const sc = (cinema ? 1 : .5) * rv; for (let i = 0; i < stars.n; i++) { const tw = .35 + .65 * (.5 + .5 * Math.sin(T * (.5 + (stars.ph[i] % 1.7)) + stars.ph[i])); stars.col[i * 3] = tw * sc * .9; stars.col[i * 3 + 1] = tw * sc * .95; stars.col[i * 3 + 2] = tw * sc; } stars.p.geometry.attributes.color.needsUpdate = true; }
+  if (frameN % 2 === 0) { const sc = (cinema ? 1 : .5) * rv * (.3 + .7 * Av); for (let i = 0; i < stars.n; i++) { const tw = .35 + .65 * (.5 + .5 * Math.sin(T * (.5 + (stars.ph[i] % 1.7)) + stars.ph[i])); stars.col[i * 3] = tw * sc * .9; stars.col[i * 3 + 1] = tw * sc * .95; stars.col[i * 3 + 2] = tw * sc; } stars.p.geometry.attributes.color.needsUpdate = true; }
   // hologram city (only when someone is near it)
   const hd = Math.hypot(pp.x - 0, pp.z - 11.4);
   if (hd < 14) {
@@ -3022,11 +3062,12 @@ window.__roomTick = (dt, T) => {
   const sy = (T * .3 % 1) * 1.4; holo.scan.position.y = sy; holo.scan.scale.setScalar(1 + sy * .6); holo.scan.material.opacity = (1 - sy / 1.4) * .7 * rv; holo.pen.scale.y = 1 + .08 * Math.sin(T * 3); holo.disc.material.opacity = (.14 + LV.bass * .3) * rv;
   // posters
   for (const q of posters) {
-    if (q.fade < 1) { q.fade = Math.min(1, q.fade + dt * 1.4); q.b.material.opacity = q.fade; if (q.fade >= 1) { q.a.material.map = q.b.material.map; q.a.material.needsUpdate = true; q.b.material.opacity = 0; } }
+    if (q.fade < 1) { q.fade = Math.min(1, q.fade + dt * 1.4); q.b.material.opacity = q.fade; if (q.fade >= 1) { q.a.material.map = q.b.material.map; q.a.material.needsUpdate = true; q.b.material.opacity = 0; q.b.visible = false; } }
     q.hover += ((hov && hov.mesh === q.a ? 1 : 0) - q.hover) * .2; q.grp.position.x = q.bx + q.nx * q.hover * .16; q.glow.material.opacity = (.1 + q.hover * .5 + LV.bass * .25) * rv; cc.setHSL((baseHue + posters.indexOf(q) * .04) % 1, .8, .55); q.glow.material.color.copy(cc);
     q.grp.scale.setScalar((1.3 + q.hover * .5) * (.2 + .8 * sm(0, 1, rv * 1.8 - posters.indexOf(q) * .08)));
   }
   if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; setPoster(posters[Math.floor(rnd() * posters.length)], Math.floor(rnd() * 100)); }
+  { S.uiT = Math.max(0, S.uiT - dt); S.hideUI = Math.max(0, (S.hideUI || 0) - dt); const show = !!film.vid && !film.dom && !(S.hideUI > 0) && (S.uiT > 0 || film.vid.paused) && vault.visible; if (transport.mesh.visible !== show) { transport.mesh.visible = show; if (show) transport.redraw(); } if (show && T - lastTr > .25) { lastTr = T; transport.redraw(); } }
   // screen visualiser
   if (frameN % 2 === 0 && !film.vid && Math.hypot(pp.x, pp.z - 19) < 16) drawViz(T);
   // console redraw
@@ -3038,7 +3079,7 @@ window.__roomTick = (dt, T) => {
   } else reticle.visible = false;
 };
 window.__roomHide = [vault, outG, reticle];
-window.__vault = { pick, ctrlRay, ray, IA, S, unlock: () => unlock('debug'), heard: t => heard(t, true), tapWord, setMode, toggleMusic, setGenre, vault, outG, posters, LV, startVoice, command, sealDoor, film };
+window.__vault = { transport, film, seekBy, pick, ctrlRay, ray, IA, S, unlock: () => unlock('debug'), heard: t => heard(t, true), tapWord, setMode, toggleMusic, setGenre, vault, outG, posters, LV, startVoice, command, sealDoor, film };
 })();
 
 /* ================= RESIDENT: an animated robot butler that lives in the penthouse =================

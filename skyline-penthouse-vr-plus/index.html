@@ -2748,21 +2748,30 @@ function startFilm(i) {
   if (uAudio) uAudio.pause(); const p = v.play(); if (p && p.catch) p.catch(() => toast('Tap again to start the film')); S.dirty = true; return true;
 }
 function probeFilm(it, bad, code) {
-  const pv = document.createElement('video'); pv.preload = 'metadata'; pv.muted = true; let done = false;
-  const fin = (ok) => { if (done) return; done = true; pv.removeAttribute('src'); pv.load();
-    if (ok) { film.err = 'Host plays this film but blocks the 3D screen (no CORS). Showing it in a window instead.'; film.errT = 14; if (!isXR()) filmOverlay(it); else film.err = 'Host blocks 3D playback (no CORS). Upload an .mp4 into room/ for VR.'; }
-    else { film.err = 'Film link failed (code ' + code + '): expired, blocked or not a direct video file.'; film.errT = 14; }
-    toast('Film could not load on the screen'); };
-  pv.onloadedmetadata = () => fin(true); pv.onerror = () => fin(false); setTimeout(() => fin(false), 9000); pv.src = it.src;
+  if (isXR()) { film.err = 'Host blocks 3D playback (no CORS) or link failed. Upload an .mp4 into room/ for VR.'; film.errT = 14; toast('Film could not load'); return; }
+  film.err = 'Host blocks 3D texture (no CORS) \u2014 trying flat mode on the screen\u2026'; film.errT = 6; filmOverlay(it);
 }
 function isXR() { try { return !!(renderer && renderer.xr && renderer.xr.isPresenting); } catch (e) { return false; } }
 let ovl = null;
+function homog(src, dst) { // 4 point homography -> css matrix3d
+  const A = [], B = []; for (let k = 0; k < 4; k++) { const [x, y] = src[k], [u, v] = dst[k]; A.push([x, y, 1, 0, 0, 0, -x * u, -y * u]); B.push(u); A.push([0, 0, 0, x, y, 1, -x * v, -y * v]); B.push(v); }
+  for (let c = 0; c < 8; c++) { let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; [A[c], A[p]] = [A[p], A[c]]; [B[c], B[p]] = [B[p], B[c]]; for (let r = 0; r < 8; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k]; B[r] -= f * B[c]; } }
+  const h = B.map((b, k) => b / A[k][k]); return 'matrix3d(' + [h[0], h[3], 0, h[6], h[1], h[4], 0, h[7], 0, 0, 1, 0, h[2], h[5], 0, 1].join(',') + ')';
+}
+const _sc = [[-3, 1.6875], [3, 1.6875], [3, -1.6875], [-3, -1.6875]].map(([x, y]) => new THREE.Vector3(x, y, 0));
 function filmOverlay(it) {
-  if (ovl) ovl.remove(); ovl = document.createElement('div'); ovl.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:50;width:min(560px,60vw);background:#000;border:1px solid #444;border-radius:8px;overflow:hidden;box-shadow:0 8px 30px #000a';
-  const v = document.createElement('video'); v.src = it.src; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;display:block'; const x = document.createElement('button'); x.textContent = '\u2715'; x.style.cssText = 'position:absolute;top:4px;right:4px;z-index:2;background:#000a;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer';
-  x.onclick = () => { v.pause(); ovl.remove(); ovl = null; }; ovl.append(v, x); document.body.appendChild(ovl); v.play().catch(() => { });
+  if (ovl) ovl.v.pause(), ovl.d.remove(); const d = document.createElement('div'); d.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;z-index:5;pointer-events:none;background:#000;visibility:hidden;overflow:hidden';
+  const v = document.createElement('video'); v.src = it.src; v.playsInline = true; v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; v.onended = () => { startFilm(S.film + 1); }; v.onerror = () => { stopFilm(); film.err = 'Film link failed: expired, blocked or not a direct video file.'; film.errT = 14; toast('Film link failed'); }; d.appendChild(v); document.body.appendChild(d); ovl = { d, v, it }; film.vid = v; S.filmPlay = true; S.cinemaMuted = true;
+  v.play().catch(() => toast('Tap Film to start')); film.dom = true;
+}
+function overlayTick() {
+  if (!ovl) return; const W = innerWidth, H = innerHeight, p = pxz(); let ok = !isXR() && p.z > 8.2 && S.open > .6;
+  const pts = []; if (ok) { screen.updateMatrixWorld(true); camera.updateMatrixWorld(true); for (const c of _sc) { const w = c.clone().applyMatrix4(screen.matrixWorld); const q = w.clone().project(camera); const cd = w.clone().applyMatrix4(camera.matrixWorldInverse); if (cd.z > -.1) { ok = false; break; } pts.push([(q.x + 1) / 2 * W, (1 - q.y) / 2 * H]); } }
+  if (!ok) { ovl.d.style.visibility = 'hidden'; return; }
+  ovl.d.style.transform = homog([[0, 0], [1280, 0], [1280, 720], [0, 720]], pts); ovl.d.style.visibility = 'visible';
 }
 function stopFilm(keep) {
+  if (ovl) { ovl.v.pause(); ovl.v.removeAttribute('src'); ovl.v.load(); ovl.d.remove(); ovl = null; film.dom = false; if (film.vid && film.vid.parentNode === null) { } }
   if (film.vid) { film.vid.pause(); film.vid.removeAttribute('src'); film.vid.load(); film.vid = null; }
   if (film.tex) { film.tex.dispose(); film.tex = null; }
   screen.material.map = scrT; screen.material.needsUpdate = true; S.filmPlay = false; S.cinemaMuted = false;
@@ -2959,6 +2968,7 @@ function animateSlats(p) {
   im.instanceMatrix.needsUpdate = true;
 }
 window.__roomTick = (dt, T) => {
+  overlayTick();
   frameN++;
   const prev = S.open; S.open += cl(S.target - S.open, -dt / 2.6, dt / 2.6);
   if (S.open !== prev || lastS < 0) { animateSlats(S.open); lastS = S.open; }

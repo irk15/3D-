@@ -2440,7 +2440,7 @@ window.__dbg = Object.assign(window.__dbg || {}, { vr, rig: rig3, head, MENU, ct
    Inside: a music engine with reacting lights, a home cinema with ambilight, swappable digital posters,
    a live holographic Toronto, and voice commands. Everything is unlit/emissive so it costs almost nothing on Quest. */
 (function () {
-const X0 = -8.7, X1 = 8.7, Z0 = 8.45, Z1 = 23.0, H = 4.4, DX0 = 7.1, DX1 = 8.6, DH = 2.6, DOORX = (DX0 + DX1) / 2;
+const X0 = -8.7, X1 = 8.7, Z0 = 8.45, Z1 = 23.0, H = 8.8, CH = 4.4, SW = 13, SH = SW * 9 / 16, SBOT = .85, SY = SBOT + SH / 2, DX0 = 7.1, DX1 = 8.6, DH = 2.6, DOORX = (DX0 + DX1) / 2;
 const PASS = 'the king is here';
 const vault = new THREE.Group(); vault.name = 'vault'; vault.visible = false; if (VR_BUILD) vault.renderOrder = -5; scene.add(vault); window.__roomG = vault;
 const outG = new THREE.Group(); outG.name = 'vaultDoor'; if (VR_BUILD) outG.renderOrder = -5; scene.add(outG);
@@ -2487,9 +2487,8 @@ function seat(x, z, y0) {
   kb(.5, .02, .02, x, y0 + .48, z - .42, 0x55ccff);
 }
 // (theatre seats and raised platform removed: open floor)
-for (const sx of [-4.4, 4.4]) { kb(.7, 3.3, .6, sx, 1.65, Z1 - .5, 0x0a0c10); kb(.5, .5, .06, sx, 2.6, Z1 - .83, 0x1a2230); kb(.5, .5, .06, sx, 1.5, Z1 - .83, 0x1a2230); kb(.3, .3, .06, sx, .6, Z1 - .83, 0x1a2230); }
-rcol(-4.75, -4.05, Z1 - .85, Z1); rcol(4.05, 4.75, Z1 - .85, Z1);
-kb(6.7, .12, .12, 0, 4.2, Z1 - .08, 0x05060a); kb(6.7, .1, .12, 0, .5, Z1 - .08, 0x05060a); kb(.1, 3.8, .12, -3.35, 2.35, Z1 - .08, 0x05060a); kb(.1, 3.8, .12, 3.35, 2.35, Z1 - .08, 0x05060a);
+// (wall speaker towers removed: the IMAX-size screen takes the whole wall)
+kb(SW + .3, .14, .12, 0, SBOT + SH + .07, Z1 - .08, 0x05060a); kb(SW + .3, .12, .12, 0, SBOT - .06, Z1 - .08, 0x05060a); kb(.14, SH + .3, .12, -SW / 2 - .07, SY, Z1 - .08, 0x05060a); kb(.14, SH + .3, .12, SW / 2 + .07, SY, Z1 - .08, 0x05060a);
 kb(1.4, .3, .5, 0, H - .3, 17.5, 0x07090d); kc(.07, .09, .12, 0, H - .5, 17.5, 0x15181f, 12);   // projector
 kc(.05, .05, 1.0, -2.6, 3.4, 10.6, 0x050609, 8);
 for (const [x, z] of [[-2.6, 10.6], [2.6, 10.6], [-2.6, 13.0], [2.6, 13.0], [-3.3, 15.2], [3.3, 15.2]]) kc(.012, .012, H - 3.1, x, (H + 3.1) / 2, z, 0x1b1b20, 5);
@@ -2509,8 +2508,8 @@ const coveGeo = new THREE.BoxGeometry(1, 1, 1);
 (function () {
   const segs = [];
   const run = (n, f) => { for (let i = 0; i < n; i++) segs.push(f(i / (n - 1 || 1))); };
-  run(34, t => [X0 + .14, H - .1, Z0 + .3 + t * (Z1 - Z0 - .6), .42, 0]); run(34, t => [X1 - .14, H - .1, Z0 + .3 + t * (Z1 - Z0 - .6), .42, 0]);
-  run(26, t => [X0 + .8 + t * (X1 - X0 - 1.6), H - .1, Z1 - .14, .42, 1]); run(26, t => [X0 + .8 + t * (X1 - X0 - 1.6), H - .1, Z0 + .14, .42, 1]);
+  run(34, t => [X0 + .14, CH - .1, Z0 + .3 + t * (Z1 - Z0 - .6), .42, 0]); run(34, t => [X1 - .14, CH - .1, Z0 + .3 + t * (Z1 - Z0 - .6), .42, 0]);
+   run(26, t => [X0 + .8 + t * (X1 - X0 - 1.6), CH - .1, Z0 + .14, .42, 1]);
   const im = new THREE.InstancedMesh(coveGeo, basic({ color: 0xffffff }), segs.length); im.frustumCulled = false;
   segs.forEach((s, i) => { cove.push({ x: s[0], y: s[1], z: s[2], ax: s[4], t: i / segs.length }); coveE.set(0, 0, 0); coveM.compose(_v1.set(s[0], s[1], s[2]), coveQ.identity(), _v2.set(s[4] ? .5 : .1, .06, s[4] ? .1 : .5)); im.setMatrixAt(i, coveM); im.setColorAt(i, new THREE.Color(0, 0, 0)); });
   vault.add(im); cove.im = im;
@@ -2784,10 +2783,10 @@ function setPoster(p, idx, instant) {
 /* ---------- cinema screen: visualiser by default, your films from room/cinema.json ---------- */
 const scrC = document.createElement('canvas'); scrC.width = 640; scrC.height = 360; const scrG = scrC.getContext('2d');
 const scrT = new THREE.CanvasTexture(scrC); scrT.encoding = THREE.sRGBEncoding; scrT.minFilter = THREE.LinearFilter; scrT.generateMipmaps = false;
-const screen = plane(6, 3.375, basic({ map: scrT }, true), 0, 2.35, Z1 - .045, Math.PI);
-const scrBack = plane(6, 3.375, basic({ color: 0x000000 }, true), 0, 2.35, Z1 - .035, Math.PI);
+const screen = plane(SW, SH, basic({ map: scrT }, true), 0, SY, Z1 - .045, Math.PI);
+const scrBack = plane(SW, SH, basic({ color: 0x000000 }, true), 0, SY, Z1 - .035, Math.PI);
 function fitScreen(ar) { const r = 16 / 9; if (!ar || !isFinite(ar)) ar = r; screen.scale.set(Math.min(1, ar / r), Math.min(1, r / ar), 1); }
-const scrGlow = plane(9.2, 5.6, addMat(0xffffff, 0, glowTex), 0, 2.35, Z1 - .025, Math.PI);
+const scrGlow = plane(SW * 1.36, SH * 1.3, addMat(0xffffff, 0, glowTex), 0, SY, Z1 - .025, Math.PI);
 const beam = (() => { const g = new THREE.CylinderGeometry(.04, 1.0, 5.4, 4, 1, true); g.rotateY(Math.PI / 4); g.rotateX(-Math.PI / 2); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.position.set(0, 3.1, 20.2); m.rotation.x = .28; m.scale.set(3.2, 1.7, 1); vault.add(m); return m; })();
 beam.visible = false;
 const film = { vid: null, tex: null, cv: cv(16, 9, () => { }), ok: true, t: 0, avg: new THREE.Color(.1, .1, .15), l: new THREE.Color(), r: new THREE.Color(), lum: .2 };
@@ -2828,7 +2827,7 @@ function homog(src, dst) { // 4 point homography -> css matrix3d
   for (let c = 0; c < 8; c++) { let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; [A[c], A[p]] = [A[p], A[c]]; [B[c], B[p]] = [B[p], B[c]]; for (let r = 0; r < 8; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k]; B[r] -= f * B[c]; } }
   const h = B.map((b, k) => b / A[k][k]); return 'matrix3d(' + [h[0], h[3], 0, h[6], h[1], h[4], 0, h[7], 0, 0, 1, 0, h[2], h[5], 0, 1].join(',') + ')';
 }
-const _sc = [[-3, 1.6875], [3, 1.6875], [3, -1.6875], [-3, -1.6875]].map(([x, y]) => new THREE.Vector3(x, y, 0));
+const _sc = [[-SW / 2, SH / 2], [SW / 2, SH / 2], [SW / 2, -SH / 2], [-SW / 2, -SH / 2]].map(([x, y]) => new THREE.Vector3(x, y, 0));
 function filmOverlay(it) {
   if (ovl) ovl.v.pause(), ovl.d.remove(); const d = document.createElement('div'); d.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;z-index:5;pointer-events:none;background:#000;visibility:hidden;overflow:hidden';
   const v = document.createElement('video'); v.src = it.src; applyMedia(v); v.playsInline = true; v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; v.onended = () => { startFilm(S.film + 1); }; v.onerror = () => { stopFilm(); film.err = 'Film link failed: expired, blocked or not a direct video file.'; film.errT = 14; toast('Film link failed'); }; d.appendChild(v);
@@ -2909,7 +2908,7 @@ function drawTransport(g, w, h, P) {
   const R2 = [['Speed ' + S.rate + '×', cycleRate], ['Loop', toggleLoop, S.loopFilm], ['💡 −', () => setLights(S.lights - .25)], ['💡 +', () => setLights(S.lights + .25)], [S.lights < .05 ? 'Lights ON' : 'Lights OFF', () => setLights(S.lights < .05 ? 1 : 0), S.lights < .05], ['Stop', () => { setMode('lounge'); }], ['Hide', () => { S.uiT = 0; S.hideUI = 3; }]];
   R2.forEach((r, i) => btn(P, g, r[0], 40 + i * (w2 + gp), y2, w2, h2, r[1], r[2]));
 }
-const transport = makePanel(5.4, 1.1, 1620, 330, drawTransport, 0, 1.5, Z1 - .12, Math.PI, 0);
+const transport = makePanel(6.6, 1.344, 1620, 330, drawTransport, 0, 1.75, Z1 - .12, Math.PI, 0);
 transport.mesh.visible = false; transport.mesh.renderOrder = 5; transport.mesh.material.polygonOffset = true; transport.mesh.material.polygonOffsetFactor = -3; transport.mesh.material.polygonOffsetUnits = -3;
 { const e = IA[IA.length - 1], oh = e.hover; e.hover = (v, uv) => { if (v) S.uiT = 4; oh(v, uv); }; }
 
@@ -2934,7 +2933,7 @@ function drawPlayer(g, w, h, P) {
   const y3 = y2 + h2 + 20, G = gens(), per = 5, rows = Math.ceil(G.length / per), cw = (avail - 12 * (per - 1)) / per;
   G.forEach((n, i) => btn(P, g, n, x0 + (i % per) * (cw + 12), y3 + Math.floor(i / per) * 84, cw, 72, () => setGenre(i), S.playing && S.genre === i, i >= 4 && i < UG ? 'rgba(255,60,90,.45)' : 'rgba(255,120,200,.4)'));
 }
-const mpA = makePanel(2.8, 2.05, 1024, 750, drawPlayer, 6.95, 1.85, Z1 - .07, Math.PI, 0), mpB = makePanel(2.8, 2.05, 1024, 750, drawPlayer, -6.95, 1.85, Z1 - .07, Math.PI, 0);
+const mpA = makePanel(2.1, 1.54, 1024, 750, drawPlayer, 7.6, 1.85, Z1 - .07, Math.PI, 0), mpB = makePanel(2.1, 1.54, 1024, 750, drawPlayer, -7.6, 1.85, Z1 - .07, Math.PI, 0);
 for (const m of [mpA, mpB]) { m.mesh.renderOrder = 4; m.mesh.material.polygonOffset = true; m.mesh.material.polygonOffsetFactor = m.mesh.material.polygonOffsetUnits = -3; }
 
 /* ---------- door terminal (outside, in the penthouse) ---------- */
@@ -3160,7 +3159,7 @@ window.__roomTick = (dt, T) => {
   }
   if ((party && S.playing && S.beats - shufAt >= 12) || (S.shuffle && S.beats - shufAt >= 24) || (S.shuffle && !S.playing && T % 20 < dt)) { shufAt = S.beats; { const q = posters[Math.floor(rnd() * posters.length)], f = freeIdx(q, Math.floor(rnd() * 100)); if (f >= 0) setPoster(q, f); } }
   { S.uiT = Math.max(0, S.uiT - dt); S.hideUI = Math.max(0, (S.hideUI || 0) - dt); const show = !!film.vid && !film.dom && !(S.hideUI > 0) && (S.uiT > 0 || film.vid.paused) && vault.visible; if (transport.mesh.visible !== show) { transport.mesh.visible = show; if (show) transport.redraw(); } if (show && T - lastTr > .25) { lastTr = T; transport.redraw(); } }
-  if (T - lastMp > .12 && vault.visible) { lastMp = T; const near = Math.abs(pp.x - 6.95) < Math.abs(pp.x + 6.95) ? mpA : mpB; if (Math.hypot(pp.x - near.mesh.position.x, pp.z - 23) < 16) near.redraw(); }
+  if (T - lastMp > .12 && vault.visible) { lastMp = T; const near = pp.x > 0 ? mpA : mpB; if (Math.hypot(pp.x - near.mesh.position.x, pp.z - 23) < 16) near.redraw(); }
   // screen visualiser
   if (frameN % 2 === 0 && !film.vid && Math.hypot(pp.x, pp.z - 19) < 16) drawViz(T);
   // console redraw

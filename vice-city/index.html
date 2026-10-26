@@ -740,10 +740,10 @@ function storeBase(cx, cz, w, d, tint, neonC) {
    ===================================================================== */
 const SEEDS = [{id: 'O', x: 132, z: 6}, {id: 'D', x: -10, z: -112}, {id: 'S', x: 108, z: 150}, {id: 'H', x: -30, z: 14}, {id: 'F', x: -132, z: 48}, {id: 'P', x: -142, z: -48}];
 function gameDistrict(x, z) { let best = null, bd = 1e9; for (const s of SEEDS) { const d = Math.hypot(x - s.x, z - s.z); if (d < bd) { bd = d; best = s; } } return bd < 128 ? best.id : null; }
-const AP_X0 = -17 * P, AP_X1 = -8 * P, AP_Z0 = -1 * P, AP_Z1 = 4 * P;
+const AP_X0 = -17 * P, AP_X1 = -8 * P, AP_Z0 = -1 * P, AP_Z1 = 5 * P;
 const inAirport = (x, z, m = 0) => x > AP_X0 - m && x < AP_X1 + m && z > AP_Z0 - m && z < AP_Z1 + m;
 function blockKind(i, j) {
-  if (i >= -17 && i <= -9 && j >= -1 && j <= 3) return 'airport';
+  if (i >= -17 && i <= -9 && j >= -1 && j <= 4) return 'airport';
   const cx = bx(i), cz = bz(j), w = wsd(cx, cz); if (w > -12) return 'water'; if (w > -40) return 'beach';
   const gd = gameDistrict(cx, cz), h = hash2(i + 91, j - 17); let k = gd;
   if (!k) { const n = fbm2(cx * .004 + 3, cz * .004 - 2); k = w > -115 ? 'O' : (Math.hypot(cx - BAY.x, cz - BAY.z) - 70 < 105 ? 'P' : (n > .6 ? 'D' : n > .47 ? 'H' : n < .3 ? 'S' : 'F')); }
@@ -1032,7 +1032,7 @@ scene.add(terrMesh);
    ===================================================================== */
 rnd = mulberry(7731);
 const APC = {x: (AP_X0 + AP_X1) / 2, z: (AP_Z0 + AP_Z1) / 2}, APW = AP_X1 - AP_X0, APD = AP_Z1 - AP_Z0, Y0 = .24;
-const GATES = [-60, -20, 20, 60], CONN = [-112, -64, 28, 121], RWZ = 55, TWZ = 26;
+const GATES = [-66, -22, 22, 66], CONN = [-112, -64, 28, 121], RWZ = 82, TWZ = 40, TWE = TWZ + 4, SHN = RWZ - 12;
 const apW = (lx, lz) => [APC.x + lx, APC.z + lz];
 
 /* ---------- ground texture: grass, apron, runway, taxiways, car park ---------- */
@@ -1052,24 +1052,24 @@ function apGroundTex() {
   for (let x = -76; x < 76; x += 10) R(x, -62.1, x + 5, -61.9, 'rgba(255,255,255,.8)');
   R(-90, -58, 90, -56.4, '#b9b5c6'); R(-90, -68.4, 90, -67.8, Y);
   /* terminal footprint + apron */
-  R(-82, -62, 82, -38, '#9b98aa'); R(-153, -62, 70, 22, '#a19eb0'); R(70, -36, 153, 26, '#9d9aad'); R(96, -62, 153, -36, '#77738a');
+  R(-82, -62, 82, -38, '#9b98aa'); R(-153, -62, 96, TWZ - 4, '#a19eb0'); R(96, -36, 153, 26, '#9d9aad'); R(96, -62, 153, -36, '#77738a');
   g.strokeStyle = 'rgba(60,56,80,.28)'; g.lineWidth = 1;
   for (let x = -150; x <= 150; x += 11) { g.beginPath(); g.moveTo(X(x), Z(-42)); g.lineTo(X(x), Z(24)); g.stroke(); }
   for (let z = -40; z <= 24; z += 11) { g.beginPath(); g.moveTo(X(-153), Z(z)); g.lineTo(X(153), Z(z)); g.stroke(); }
   for (let n = 0; n < 260; n++) { g.fillStyle = `rgba(30,24,50,${rr(.03, .09)})`; g.beginPath(); g.ellipse(X(rr(-150, 150)), Z(rr(-40, 22)), rr(4, 30), rr(2, 10), rr(0, 3), 0, 7); g.fill(); }
   /* taxiway + connectors */
   const AS = '#3d3c4a';
-  R(-125, 22, 125, 30, AS);
+  R(-125, TWZ - 4, 125, TWE, AS);
   for (const cx of CONN) {
-    R(cx - 4.5, 30, cx + 4.5, 47, AS);
-    for (const [a, b, sgn, zz, dz] of [[cx - 4.5, cx - 10, -1, 30, 6], [cx + 4.5, cx + 10, 1, 30, 6], [cx - 4.5, cx - 10, -1, 47, -6], [cx + 4.5, cx + 10, 1, 47, -6]]) { g.fillStyle = AS; g.beginPath(); g.moveTo(X(a), Z(zz)); g.lineTo(X(b), Z(zz)); g.quadraticCurveTo(X(a), Z(zz), X(a), Z(zz + dz)); g.closePath(); g.fill(); }
+    R(cx - 4.5, TWE, cx + 4.5, SHN, AS);
+    for (const [a, b, sgn, zz, dz] of [[cx - 4.5, cx - 10, -1, TWE, 6], [cx + 4.5, cx + 10, 1, TWE, 6], [cx - 4.5, cx - 10, -1, SHN, -6], [cx + 4.5, cx + 10, 1, SHN, -6]]) { g.fillStyle = AS; g.beginPath(); g.moveTo(X(a), Z(zz)); g.lineTo(X(b), Z(zz)); g.quadraticCurveTo(X(a), Z(zz), X(a), Z(zz + dz)); g.closePath(); g.fill(); }
   }
   /* runway */
-  R(-148, 43, 148, 67, '#363544'); R(-146, 46, 146, 64, '#2b2a36');
-  for (const cx of CONN) R(cx - 4.5, 43, cx + 4.5, 47, '#363544');
-  for (let n = 0; n < 400; n++) { g.fillStyle = `rgba(0,0,0,${rr(.04, .12)})`; g.fillRect(X(rr(-140, 140)), Z(rr(47, 63)), rr(4, 14) * sx, rr(.2, .6) * sy); }
-  for (const sg of [-1, 1]) for (let n = 0; n < 40; n++) { g.fillStyle = 'rgba(8,6,12,.22)'; g.fillRect(X(sg * (146 - rr(24, 70))), Z(rr(48, 62)), rr(3, 9) * sx, rr(.3, .9) * sy); }
-  R(-143, 46.8, 143, 47.4, W); R(-143, 62.6, 143, 63.2, W);
+  R(-148, SHN, 148, RWZ + 12, '#363544'); R(-146, RWZ - 9, 146, RWZ + 9, '#2b2a36');
+  for (const cx of CONN) R(cx - 4.5, SHN - 2, cx + 4.5, RWZ - 8, '#363544');
+  for (let n = 0; n < 400; n++) { g.fillStyle = `rgba(0,0,0,${rr(.04, .12)})`; g.fillRect(X(rr(-140, 140)), Z(rr(RWZ - 8, RWZ + 8)), rr(4, 14) * sx, rr(.2, .6) * sy); }
+  for (const sg of [-1, 1]) for (let n = 0; n < 40; n++) { g.fillStyle = 'rgba(8,6,12,.22)'; g.fillRect(X(sg * (146 - rr(24, 70))), Z(rr(RWZ - 7, RWZ + 7)), rr(3, 9) * sx, rr(.3, .9) * sy); }
+  R(-143, RWZ - 8.2, 143, RWZ - 7.6, W); R(-143, RWZ + 7.6, 143, RWZ + 8.2, W);
   for (let x = -128; x < 128; x += 50) R(x, RWZ - .45, x + 30, RWZ + .45, W);
   for (const sg of [-1, 1]) {
     const x0 = sg < 0 ? -143 : 133;
@@ -1080,20 +1080,18 @@ function apGroundTex() {
   }
   /* taxi markings */
   R(-120, TWZ - .17, 120, TWZ + .17, Y);
-  for (const cx of CONN) { R(cx - .17, 30, cx + .17, 46, Y); R(cx - 4.5, 44.4, cx + 4.5, 44.7, Y); R(cx - 4.5, 45.1, cx + 4.5, 45.4, Y); for (let x = cx - 4.5; x < cx + 4.5; x += 1.8) R(x, 44.7, x + .9, 45.1, Y); }
-  for (let x = -125; x < 125; x += 6) R(x, 29.7, x + 3, 30, 'rgba(242,194,48,.9)');
-  R(-125, 21.85, 70, 22.15, Y);
+  for (const cx of CONN) { R(cx - .17, TWE, cx + .17, SHN, Y); R(cx - 4.5, SHN - 2.6, cx + 4.5, SHN - 2.3, Y); R(cx - 4.5, SHN - 1.9, cx + 4.5, SHN - 1.6, Y); for (let x = cx - 4.5; x < cx + 4.5; x += 1.8) R(x, SHN - 2.3, x + .9, SHN - 1.9, Y); }
+  for (let x = -125; x < 125; x += 6) R(x, TWE - .3, x + 3, TWE, 'rgba(242,194,48,.9)');
   /* apron stands */
   GATES.forEach((gx, i) => {
-    R(gx - .2, -28, gx + .2, 20, Y); R(gx - 3.4, -27.4, gx + 3.4, -27, Y);
+    R(gx - .2, -28, gx + .2, 26, Y); R(gx - 3.4, -27.4, gx + 3.4, -27, Y);
     g.save(); g.translate(X(gx), Z(-31)); g.fillStyle = Y; g.font = `700 ${4 * sx}px "Chakra Petch", Arial`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('G' + (i + 1), 0, 0); g.restore();
-    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.4; g.strokeRect(X(gx - 17), Z(-27), 34 * sx, 44 * sy);
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.4; g.strokeRect(X(gx - 17), Z(-27), 34 * sx, 42 * sy);
   });
-  for (let x = -148; x < 66; x += 6) R(x, 17.9, x + 3, 18.1, 'rgba(255,255,255,.7)');
-  R(70, 24, 153, 26, '#9d9aad');
+  for (let x = -148; x < 96; x += 6) R(x, 27.9, x + 3, 28.1, 'rgba(255,255,255,.7)');
   /* helipad */
-  g.fillStyle = '#403e4e'; g.beginPath(); g.arc(X(130), Z(-8), 9.5 * sx, 0, 7); g.fill(); g.strokeStyle = '#ff4fa3'; g.lineWidth = 1.1 * sx; g.beginPath(); g.arc(X(130), Z(-8), 8 * sx, 0, 7); g.stroke();
-  g.fillStyle = '#fff'; g.font = `700 ${9 * sx}px "Chakra Petch", Arial`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', X(130), Z(-8));
+  g.fillStyle = '#403e4e'; g.beginPath(); g.arc(X(138), Z(-12), 9.5 * sx, 0, 7); g.fill(); g.strokeStyle = '#ff4fa3'; g.lineWidth = 1.1 * sx; g.beginPath(); g.arc(X(138), Z(-12), 8 * sx, 0, 7); g.stroke();
+  g.fillStyle = '#fff'; g.font = `700 ${9 * sx}px "Chakra Petch", Arial`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', X(138), Z(-12));
   /* hangar apron paint */
   R(-112, -62, -106, 22, 'rgba(80,70,110,.18)');
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t;
@@ -1243,20 +1241,20 @@ function fuelFarm() {
   for (let k = 0; k < 6; k++) AB(30, .4, .4, 122, .5 + (k % 2) * .6, -37 + k * .2, 0x8f8aa3);
 }
 function cargo() {
-  const cx = 100, cz = -12;
+  const cx = 108, cz = -12;
   AB(36, 9, 24, cx, 0, cz, 0xc7b3f0); prism(37, 25, 3, APC.x + cx, 9 + Y0, APC.z + cz, 0xddd6ea, false);
   for (let k = 0; k < 6; k++) { AB(4, 4.8, .3, cx - 15 + k * 6, 0, cz + 12.1, 0x3a3850); AB(4.2, .4, .4, cx - 15 + k * 6, 4.8, cz + 12.2, 0xffd34a); AN('amber', 3.6, .2, .1, cx - 15 + k * 6, 5.3, cz + 12.3); }
   AB(36.6, .5, 24.6, cx, 8.8, cz, 0xe6e0f2); AN('pink', 36.8, .2, .2, cx, 9.0, cz + 12.3);
   for (const k of [0, 2, 3]) veh(cx - 15 + k * 6, cz + 17, Math.PI / 2, [[8, 2.6, 2.5, 0, 1.9, 0, 0xf6f1fa], [2, 2.2, 2.5, 5, 1.7, 0, 0x25d9e8], [8.4, .5, 2.3, 0, .7, 0, 0x333344]]);
-  for (let k = 0; k < 8; k++) { AB(6, 2.6, 2.4, 82 + (k % 4) * 6.4, 0, 14 + Math.floor(k / 4) * 3, [0xff7a8a, 0x25d9e8, 0xffd34a, 0x9b6cff][k % 4]); }
+  for (let k = 0; k < 8; k++) { AB(6, 2.6, 2.4, 124 + (k % 3) * 6.4, 0, 22 + Math.floor(k / 3) * 3, [0xff7a8a, 0x25d9e8, 0xffd34a, 0x9b6cff][k % 4]); }
 }
 function fireStation() {
-  AB(22, 6.4, 12, 127, 0, 14, 0xff7f86); AB(22.6, .5, 12.6, 127, 6.4, 14, 0xf6f1fa);
-  for (let k = 0; k < 3; k++) AB(5, 4.8, .3, 120 + k * 7, 0, 8, 0xf6f1fa);
-  AN('red', 22.6, .18, .18, 127, 6.7, 7.8); veh(123, 3.6, Math.PI / 2, [[8, 2.6, 2.7, 0, 1.9, 0, 0xe83a4a], [2.4, 2.2, 2.7, 4.6, 1.7, 0, 0xe83a4a], [8, .35, 2.9, 0, 1.0, 0, 0xf6f1fa]]); vwheels(123, 3.6, Math.PI / 2, [[-2.8, 1.35], [-2.8, -1.35], [3.2, 1.35], [3.2, -1.35]], .62);
-  veh(137, 3.6, Math.PI / 2, [[8, 2.6, 2.7, 0, 1.9, 0, 0xe83a4a], [2.4, 2.2, 2.7, 4.6, 1.7, 0, 0xe83a4a], [8, .35, 2.9, 0, 1.0, 0, 0xf6f1fa]]); vwheels(137, 3.6, Math.PI / 2, [[-2.8, 1.35], [-2.8, -1.35], [3.2, 1.35], [3.2, -1.35]], .62);
+  AB(22, 6.4, 12, 112, 0, 14, 0xff7f86); AB(22.6, .5, 12.6, 112, 6.4, 14, 0xf6f1fa);
+  for (let k = 0; k < 3; k++) AB(5, 4.8, .3, 105 + k * 7, 0, 8, 0xf6f1fa);
+  AN('red', 22.6, .18, .18, 112, 6.7, 7.8); veh(108, 3.6, Math.PI / 2, [[8, 2.6, 2.7, 0, 1.9, 0, 0xe83a4a], [2.4, 2.2, 2.7, 4.6, 1.7, 0, 0xe83a4a], [8, .35, 2.9, 0, 1.0, 0, 0xf6f1fa]]); vwheels(108, 3.6, Math.PI / 2, [[-2.8, 1.35], [-2.8, -1.35], [3.2, 1.35], [3.2, -1.35]], .62);
+  veh(122, 3.6, Math.PI / 2, [[8, 2.6, 2.7, 0, 1.9, 0, 0xe83a4a], [2.4, 2.2, 2.7, 4.6, 1.7, 0, 0xe83a4a], [8, .35, 2.9, 0, 1.0, 0, 0xf6f1fa]]); vwheels(122, 3.6, Math.PI / 2, [[-2.8, 1.35], [-2.8, -1.35], [3.2, 1.35], [3.2, -1.35]], .62);
 }
-const MASTS = [[-110, -56], [-84, 19.5], [-44, 19.5], [-4, 19.5], [36, 19.5], [66, 19.5], [-100, -30], [-70, -30], [-46, -30], [-6, -30], [34, -30], [74, -30], [88, 12], [120, 24], [-148, 24], [0, -60], [-60, -60], [60, -60], [-30, 38], [90, 38]];
+const MASTS = [[-110, -56], [-88, 19.5], [-44, 19.5], [0, 19.5], [44, 19.5], [88, 19.5], [-92, -30], [-46, -30], [-2, -30], [42, -30], [86, -30], [0, -60], [-60, -60], [60, -60], [-140, 30], [140, 30], [-140, 101], [140, 101]];
 function mast(x, z) {
   AC(.26, .42, 20, x, 0, z, 0x4a4560, 8); AB(5.2, .6, 1.4, x, 19.8, z, 0x3b3850); AN('white', 4.8, .25, .5, x, 19.6, z + .3);
   for (const o of [-1.8, 0, 1.8]) lp(x + o, 19.6, z, 0xfff0d0);
@@ -1278,19 +1276,19 @@ function gse() {
   const rot = Math.PI / 2;
   GATES.forEach((gx, i) => {
     // baggage tractor + 2 carts on the west side
-    const tz0 = -14 + i * 3, tx = gx - 11;
+    const tz0 = -16 + i * 2, tx = gx - 11;
     veh(tx, tz0, 0, [[1.9, 1.0, 1.3, 0, .7, 0, 0xff7a4a], [1, 1, 1.2, -.4, 1.5, 0, 0x1b1c28]]); vwheels(tx, tz0, 0, [[-.6, .7], [-.6, -.7], [.6, .7], [.6, -.7]], .36);
     for (let k = 1; k <= 2; k++) { veh(tx - 2.6 * k - .6, tz0, 0, [[2.5, .22, 1.6, 0, .5, 0, 0x8b88a0], [2.3, 1.1, 1.5, 0, 1.15, 0, [0xc7c3d6, 0xffd9a0][k - 1]]]); vwheels(tx - 2.6 * k - .6, tz0, 0, [[-.9, .75], [.9, .75], [-.9, -.75], [.9, -.75]], .26); }
     // fuel truck on the east side of the stand
-    if (i !== 2) { const fz = -6 + i * 2, fx = gx + 9; veh(fx, fz, rot, [[5.6, 2.1, 2.3, 0, 1.6, 0, 0xf6f1fa], [5.7, .6, 2.35, 0, 1.2, 0, 0xff6fb0], [1.9, 1.9, 2.3, 3.5, 1.4, 0, 0xff5fa8], [6.5, .4, 2.0, 0, .55, 0, 0x2a2838]]); vwheels(fx, fz, rot, [[-2.0, 1.1], [-2.0, -1.1], [2.8, 1.1], [2.8, -1.1]], .48); }
+    if (i !== 2) { const fz = -13 - (i % 2) * 2, fx = gx + 9; veh(fx, fz, rot, [[5.6, 2.1, 2.3, 0, 1.6, 0, 0xf6f1fa], [5.7, .6, 2.35, 0, 1.2, 0, 0xff6fb0], [1.9, 1.9, 2.3, 3.5, 1.4, 0, 0xff5fa8], [6.5, .4, 2.0, 0, .55, 0, 0x2a2838]]); vwheels(fx, fz, rot, [[-2.0, 1.1], [-2.0, -1.1], [2.8, 1.1], [2.8, -1.1]], .48); }
   });
   // empty gate 3: stairs + pushback tug
-  veh(20 + 6, -20, rot, [[5.2, 1.6, 2.2, 0, 1.2, 0, 0xf6f1fa], [3, .5, 1.6, -3, 2.6, 0, 0xcfc8dc], [1.8, 1.8, 2.2, 2.4, 2.1, 0, 0x25d9e8]]); vwheels(26, -20, rot, [[-1.8, 1.0], [-1.8, -1.0], [1.9, 1.0], [1.9, -1.0]], .4);
-  veh(14, -12, 0, [[3.4, .9, 1.8, 0, .8, 0, 0xffd34a], [1.2, 1.0, 1.6, .6, 1.6, 0, 0x1b1c28]]); vwheels(14, -12, 0, [[-1, .85], [-1, -.85], [1, .85], [1, -.85]], .4);
+  veh(GATES[2] + 6, -20, rot, [[5.2, 1.6, 2.2, 0, 1.2, 0, 0xf6f1fa], [3, .5, 1.6, -3, 2.6, 0, 0xcfc8dc], [1.8, 1.8, 2.2, 2.4, 2.1, 0, 0x25d9e8]]); vwheels(GATES[2] + 6, -20, rot, [[-1.8, 1.0], [-1.8, -1.0], [1.9, 1.0], [1.9, -1.0]], .4);
+  veh(10, -12, 0, [[3.4, .9, 1.8, 0, .8, 0, 0xffd34a], [1.2, 1.0, 1.6, .6, 1.6, 0, 0x1b1c28]]); vwheels(10, -12, 0, [[-1, .85], [-1, -.85], [1, .85], [1, -.85]], .4);
   // shuttle buses on the service lane
-  [[-84, 6], [-30, 11], [30, 11]].forEach(([x, z], k) => { const c = [0x25d9e8, 0xff6fb0, 0xffd34a][k]; veh(x, z, 0, [[9.6, 2.6, 2.7, 0, 1.7, 0, c], [9.7, .9, 2.75, 0, 2.2, 0, 0x14223a], [9.6, .3, 2.8, 0, .6, 0, 0x2a2838]]); vwheels(x, z, 0, [[-3, 1.2], [-3, -1.2], [3, 1.2], [3, -1.2]], .5); });
+  [[-66, 22], [-22, 22], [46, 22]].forEach(([x, z], k) => { const c = [0x25d9e8, 0xff6fb0, 0xffd34a][k]; veh(x, z, 0, [[9.6, 2.6, 2.7, 0, 1.7, 0, c], [9.7, .9, 2.75, 0, 2.2, 0, 0x14223a], [9.6, .3, 2.8, 0, .6, 0, 0x2a2838]]); vwheels(x, z, 0, [[-3, 1.2], [-3, -1.2], [3, 1.2], [3, -1.2]], .5); });
   // follow-me and ops cars
-  veh(-30, 17.5, 0, [[4.3, .8, 1.8, 0, .8, 0, 0xffd34a], [2.1, .7, 1.6, -.3, 1.5, 0, 0x14223a], [1.2, .2, 1.2, -.3, 1.95, 0, 0xffd34a]]);
+  veh(-44, 24, 0, [[4.3, .8, 1.8, 0, .8, 0, 0xffd34a], [2.1, .7, 1.6, -.3, 1.5, 0, 0x14223a], [1.2, .2, 1.2, -.3, 1.95, 0, 0xffd34a]]);
 }
 function carPark() {
   for (let row = 0; row < 2; row++) for (let k = 0; k < 46; k++) if (rnd() < .6) { const x = -76.3 + k * 3.4 + 0, z = row ? -71.6 : -81.9; parkedCar(APC.x + x, APC.z + z, Math.PI / 2 + (rnd() < .5 ? 0 : Math.PI), pick(CARCOL)); }
@@ -1299,22 +1297,21 @@ function carPark() {
   for (let x = -76; x <= 76; x += 8) if (Math.abs(x) > 6) palm(APC.x + x + rr(-.5, .5), APC.z - 68.8, 1.15);
   for (const sx of [-1, 1]) for (let z = -84; z < -56; z += 7) palm(APC.x + sx * 80 + rr(-.6, .6), APC.z + z, 1.2);
   for (let x = -86; x <= 86; x += 12) palm(APC.x + x, APC.z - 57.4, .95);
-  for (const x of [-79, 79]) for (let z = -37; z < 18; z += 11) palm(APC.x + x, APC.z + z, 1.0);
   for (let x = -78; x <= 62; x += 20) bush(APC.x + x, APC.z - 56.6, 1.4);
 }
 
 /* ---------- build it ---------- */
-terminal(); tower(); hangar(-132, -42, 34, 26, 0xf6a5c0); hangar(-132, -8, 34, 26, 0x9fe8d4); fuelFarm(); cargo(); fireStation(); MASTS.forEach(([x, z]) => mast(x, z)); fences(); windsock(-30, 78); windsock(112, 72); gse(); carPark();
+terminal(); tower(); hangar(-132, -42, 34, 26, 0xf6a5c0); hangar(-132, -8, 34, 26, 0x9fe8d4); fuelFarm(); cargo(); fireStation(); MASTS.forEach(([x, z]) => mast(x, z)); fences(); windsock(-30, 100); windsock(112, 101); gse(); carPark();
 // runway + taxiway lights
-for (let x = -145; x <= 145; x += 9) for (const z of [45.9, 64.1]) lp(x, 0, z, Math.abs(x) > 108 ? 0xffc050 : 0xfff2dd);
+for (let x = -145; x <= 145; x += 9) for (const z of [RWZ - 9.1, RWZ + 9.1]) lp(x, 0, z, Math.abs(x) > 108 ? 0xffc050 : 0xfff2dd);
 for (let x = -142; x <= 142; x += 7) lp(x, 0, RWZ, Math.abs(x) > 80 ? (x < 0 ? 0xff6a3a : 0xffb060) : 0xfff4e8);
-for (let z = 46.5; z <= 63.6; z += 1.5) { lp(-146.2, 0, z, 0x28ff80); lp(146.2, 0, z, 0x28ff80); lp(-147.6, 0, z, 0xff3030); lp(147.6, 0, z, 0xff3030); }
-for (let x = -122; x <= 122; x += 7) { lp(x, 0, 30.4, 0x3a7bff); lp(x, 0, TWZ, 0x39ff8a); }
-for (const cx of CONN) for (let z = 31; z <= 45; z += 4.7) { lp(cx - 4.6, 0, z, 0x3a7bff); lp(cx + 4.6, 0, z, 0x3a7bff); lp(cx, 0, z, 0x39ff8a); }
-for (let i = 0; i < 4; i++) lp(95, 0, 68 + i * 1.5, i < 2 ? 0xff3a3a : 0xfff4e8);
+for (let z = RWZ - 8.5; z <= RWZ + 8.6; z += 1.5) { lp(-146.2, 0, z, 0x28ff80); lp(146.2, 0, z, 0x28ff80); lp(-147.6, 0, z, 0xff3030); lp(147.6, 0, z, 0xff3030); }
+for (let x = -122; x <= 122; x += 7) { lp(x, 0, TWE + .4, 0x3a7bff); lp(x, 0, TWZ - 4.4, 0x3a7bff); lp(x, 0, TWZ, 0x39ff8a); }
+for (const cx of CONN) for (let z = TWE + 1; z <= SHN - 1; z += 4.7) { lp(cx - 4.6, 0, z, 0x3a7bff); lp(cx + 4.6, 0, z, 0x3a7bff); lp(cx, 0, z, 0x39ff8a); }
+for (let i = 0; i < 4; i++) lp(95, 0, RWZ + 13 + i * 1.5, i < 2 ? 0xff3a3a : 0xfff4e8);
 for (let k = 1; k <= 18; k++) { lp(-146 - k * 1.4, 0, RWZ, 0xfff4e8); if (k % 3 === 0) for (const o of [-3, -1.5, 1.5, 3]) lp(-146 - k * 1.4, 0, RWZ + o * 1.4, 0xfff4e8); }
 for (let x = -80; x <= 80; x += 8) lp(x, 0, -60.5, 0xffc27a);
-GATES.forEach(gx => { for (let z = -26; z <= 16; z += 6) lp(gx, 0, z, 0xffd34a); });
+GATES.forEach(gx => { for (let z = -26; z <= 24; z += 6) lp(gx, 0, z, 0xffd34a); });
 { const a = new THREE.BufferGeometry(); a.setAttribute('position', new THREE.Float32BufferAttribute(LP.pos, 3)); a.setAttribute('color', new THREE.Float32BufferAttribute(LP.col, 3));
   var aptPtsMat = new THREE.PointsMaterial({size: 1.6, map: radial, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false, opacity: .3});
   aptPtsMat.onBeforeCompile = s => { s.vertexShader = s.vertexShader.replace('#include <fog_vertex>', 'gl_PointSize = clamp(gl_PointSize, 2.2, 44.0);\n#include <fog_vertex>'); };
@@ -1414,7 +1411,7 @@ const planes = [];
 {
   const place = (li, sc, lx, lz, ry) => { const g = makeAirliner(li, sc); g.position.set(APC.x + lx, Y0 + 3.4 * sc, APC.z + lz); g.rotation.y = ry; scene.add(g); planeNav(g, false); return g; };
   place(0, 1, GATES[0], -5, Math.PI / 2); place(1, 1, GATES[1], -5, Math.PI / 2); place(3, 1, GATES[3], -5, Math.PI / 2);
-  place(2, .42, -99, -42, 0); place(3, .42, -99, -8, 0.0); place(1, .42, -80, 8, .5);
+  place(2, .42, -99, -42, 0); place(3, .42, -99, -8, 0.0); place(1, .42, -100, 20, 0);
 }
 /* ---------- moving aircraft: landing / taxi / take-off loop ---------- */
 const AP_Y = 3.4, wp = (x, y, z) => new V3(APC.x + x, Y0 + AP_Y + y, APC.z + z);
@@ -1424,7 +1421,7 @@ function kin(curve, spd) {
   return {L, T: tT[n], at(t) { if (t <= 0) return 0; if (t >= tT[n]) return L; let lo = 0, hi = n; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (tT[m] <= t) lo = m; else hi = m; } return (lo + (t - tT[lo]) / (tT[hi] - tT[lo])) * L / n; }, v(s) { return V(s); }, tAtFrac(f) { const s = f * L; let k = Math.min(n, Math.max(0, Math.round(s / L * n))); return tT[k]; }};
 }
 const frac = (pts, i) => { let c = 0, tot = 0; const ds = []; for (let k = 1; k < pts.length; k++) { tot += pts[k].distanceTo(pts[k - 1]); ds.push(tot); } return i === 0 ? 0 : ds[i - 1] / tot; };
-const P1 = [wp(620, 60, RWZ), wp(480, 44.5, RWZ), wp(330, 27.5, RWZ), wp(180, 10.5, RWZ), wp(120, 2.8, RWZ), wp(95, .1, RWZ), wp(60, 0, RWZ), wp(0, 0, RWZ), wp(-45, 0, RWZ), wp(-56, 0, 53.4), wp(-63.5, 0, 47.6), wp(-65, 0, 40), wp(-62, 0, 32.5), wp(-54, 0, 27.6), wp(-44, 0, TWZ), wp(-20, 0, TWZ), wp(40, 0, TWZ), wp(100, 0, TWZ), wp(113, 0, TWZ + 2), wp(119.5, 0, TWZ + 9), wp(121, 0, 38), wp(119.5, 0, 47), wp(114, 0, 53), wp(105, 0, RWZ)];
+const P1 = [wp(620, 60, RWZ), wp(480, 44.5, RWZ), wp(330, 27.5, RWZ), wp(180, 10.5, RWZ), wp(120, 2.8, RWZ), wp(95, .1, RWZ), wp(60, 0, RWZ), wp(0, 0, RWZ), wp(-45, 0, RWZ), wp(-56, 0, RWZ - 1.8), wp(-63, 0, RWZ - 7), wp(-65, 0, RWZ - 16), wp(-65, 0, TWE + 8), wp(-62, 0, TWZ + 6), wp(-53, 0, TWZ + 1.6), wp(-44, 0, TWZ), wp(-20, 0, TWZ), wp(40, 0, TWZ), wp(100, 0, TWZ), wp(113, 0, TWZ + 2), wp(119.5, 0, TWZ + 8), wp(121, 0, TWZ + 16), wp(121, 0, RWZ - 16), wp(119.5, 0, RWZ - 8), wp(114, 0, RWZ - 2.4), wp(105, 0, RWZ)];
 const P2 = [wp(105, 0, RWZ), wp(60, 0, RWZ), wp(0, 0, RWZ), wp(-50, .5, RWZ), wp(-90, 5.5, RWZ), wp(-140, 17, RWZ), wp(-220, 35, RWZ), wp(-340, 63, RWZ), wp(-520, 105, RWZ)];
 const C1 = new THREE.CatmullRomCurve3(P1, false, 'centripetal'), C2 = new THREE.CatmullRomCurve3(P2, false, 'centripetal'); C1.arcLengthDivisions = C2.arcLengthDivisions = 800;
 const K1 = kin(C1, [[0, 30], [frac(P1, 5), 27], [frac(P1, 8), 8], [1, 7]]), K2 = kin(C2, [[0, 2], [frac(P2, 3), 30], [1, 36]]);
@@ -1700,7 +1697,7 @@ const PRESETS = {
   beach: {p: [coastX(-90) - 24, 3.4, -90], t: [coastX(20) - 28, 9, 100]},
   harbour: {p: [BAY.x - 30, 8, BAY.z - 8], t: [BAY.x + 8, 15, BAY.z + 78]},
   canyon: {p: [-34, 3.6, -34], t: [-34, 78, -170]},
-  airport: {p: [APC.x - 96, 30, APC.z + 82], t: [APC.x + 4, 7, APC.z - 26]}
+  airport: {p: [APC.x - 100, 36, APC.z + 100], t: [APC.x + 4, 6, APC.z - 6]}
 };
 const CAM_ORDER = ['command', 'boulevard', 'skyline', 'overhead', 'beach', 'harbour', 'canyon', 'airport', 'chase'];
 const chase = {on: false, i: 0}; let tween = null, idle = 0;
@@ -1834,6 +1831,7 @@ try {
   const Q = new URLSearchParams(location.search);
   if (Q.has('h')) { state.hour = +Q.get('h'); todEl.value = state.hour; playing = false; $('#play').classList.remove('on'); }
   if (Q.has('cam') && PRESETS[Q.get('cam')]) { const pp = PRESETS[Q.get('cam')]; camera.position.set(...pp.p); controls.target.set(...pp.t); setCamChip(Q.get('cam')); }
+  if (Q.has('t0')) simT = +Q.get('t0');
   if (Q.has('cp')) { const c = Q.get('cp').split(',').map(Number); camera.position.set(c[0], c[1], c[2]); controls.target.set(c[3], c[4], c[5]); setCamChip(''); }
   DIS.forEach(d => { const v = incomeOf(d); d.hist = d.hist.map(() => v * (1 + (Math.random() - .5) * .05)); });
   applyTime(state.hour); updateEnv(); selectDistrict('O', false); refreshAll(); setTick(); onResize();

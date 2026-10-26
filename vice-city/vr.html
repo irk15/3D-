@@ -184,7 +184,7 @@ body.invr #vrbar,body.invr #hud,body.invr #labels{display:none}
   <footer id="tick" class="panel"><b>NEON FM 104.2</b><span id="tickt"></span><button class="chip" id="radio">Radio</button></footer>
 </div>
 <div id="toast" role="status"></div>
-<div id="vrbar"><button id="vrEnter" disabled>Enter VR</button><div id="vrQ"><button data-q="p">Performance</button><button data-q="b" class="on">Balanced</button><button data-q="u">Ultra</button></div><div id="vrNote">Checking for a headset...</div></div>
+<div id="vrbar"><button id="vrEnter" disabled>Enter VR</button><div id="vrQ"><button data-q="p">Performance</button><button data-q="b" class="on">Balanced</button><button data-q="u">Ultra</button></div><div id="vrNote">Checking for a headset...</div><div style="font:400 10px var(--mono);color:var(--dim)">People and birds: three.js example models (Mixamo, mirada)</div></div>
 <div id="boot"><span class="logo">Vice City</span><p>BUILDING THE SKYLINE…</p></div>
 <div id="err"></div>
 
@@ -200,6 +200,8 @@ import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
 import {XRControllerModelFactory} from 'three/addons/webxr/XRControllerModelFactory.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 window.__vc = 'loading';
@@ -1505,15 +1507,16 @@ const pedShirtM = new THREE.InstancedMesh(pedShirt, pedMatC, NP), pedHeadM = new
   const shirts = [0xff4fa3, 0x19d8e6, 0xffd34a, 0xffffff, 0x9b6cff, 0xff7a4a, 0x39e08a, 0xff3f6a, 0x2f8bff], skins = [0xf0c9a6, 0xd9a47c, 0x8d5a3b, 0xf6d9c0, 0x6b412a];
   for (let i = 0; i < NP; i++) { const p = {ax: rnd() < .5 ? 'x' : 'z', k0: Math.floor(rnd() * NR), side: rnd() < .5 ? -1 : 1, dir: rnd() < .5 ? -1 : 1, sp: rr(1.1, 2.0), s0: rnd() * PWIN, ph: rnd() * 6.28}; peds.push(p); pedShirtM.setColorAt(i, tmpC.setHex(pick(shirts))); pedHeadM.setColorAt(i, tmpC.setHex(pick(skins))); }
 }
-const pedPos = new Float32Array(NP * 3);
+const pedPos = new Float32Array(NP * 3), pedYaw = new Float32Array(NP), pedHide = new Uint8Array(NP);
 function updatePeds(t, tx, tz) {
   for (let i = 0; i < NP; i++) {
     const p = peds[i], ax = p.ax === 'x', camP = (ax ? tz : tx) / P, camA = ax ? tx : tz;
     const road = (p.k0 + NR * Math.round((camP - p.k0) / NR)) * P, raw = p.s0 + p.dir * p.sp * t, a = camA + (((raw - camA + PWIN / 2) % PWIN) + PWIN) % PWIN - PWIN / 2;
     const X = ax ? a : road + p.side * 6.2, Z = ax ? road + p.side * 6.2 : a;
     const off = !trafficOn.v || Math.hypot(X - tx, Z - tz) > 200 || wsd(X, Z) > -36 || inAirport(X, Z, 3);
+    pedPos[i * 3] = X; pedPos[i * 3 + 1] = Z; pedPos[i * 3 + 2] = off ? 0 : 1; pedYaw[i] = ax ? (p.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (p.dir > 0 ? 0 : Math.PI);
     const bob = Math.abs(Math.sin(t * p.sp * 3.4 + p.ph)) * .06;
-    dummy.position.set(X, bob + .02, Z); dummy.rotation.set(0, ax ? (p.dir > 0 ? 0 : Math.PI) : (p.dir > 0 ? -Math.PI / 2 : Math.PI / 2), Math.sin(t * p.sp * 3.4 + p.ph) * .04); dummy.scale.setScalar(off ? 1e-4 : 1 + (i % 7) * .015); dummy.updateMatrix();
+    dummy.position.set(X, bob + .02, Z); dummy.rotation.set(0, ax ? (p.dir > 0 ? 0 : Math.PI) : (p.dir > 0 ? -Math.PI / 2 : Math.PI / 2), Math.sin(t * p.sp * 3.4 + p.ph) * .04); dummy.scale.setScalar(off || pedHide[i] ? 1e-4 : 1 + (i % 7) * .015); dummy.updateMatrix();
     pedShirtM.setMatrixAt(i, dummy.matrix); pedHeadM.setMatrixAt(i, dummy.matrix); pedLegM.setMatrixAt(i, dummy.matrix);
   }
   pedShirtM.instanceMatrix.needsUpdate = pedHeadM.instanceMatrix.needsUpdate = pedLegM.instanceMatrix.needsUpdate = true;
@@ -2133,6 +2136,136 @@ function vrFx(dt) {
 }
 
 /* =====================================================================
+   WORLD: volumetric-style clouds, flamingo/stork flocks, neon blimp, hot-air balloons, fireworks, animated people
+   ===================================================================== */
+const cloudRng = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const cloudTex = Array.from({length: 6}, (_, k) => {
+  const c = cvs(512, 256), g = c.getContext('2d'); g.clearRect(0, 0, 512, 256);
+  const n = 46 + k * 4, base = 178 + (k % 3) * 6;
+  for (let i = 0; i < n; i++) {
+    const u = cloudRng(), x = 70 + u * 372, rr = 26 + cloudRng() * 54 * (1 - Math.abs(u - .5) * .9), y = base - rr * (.25 + cloudRng() * 1.05) - (1 - Math.abs(u - .5) * 2) * 46 * cloudRng();
+    const gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(.55, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, 6.3); g.fill();
+  }
+  g.globalCompositeOperation = 'source-atop';
+  const sh = g.createLinearGradient(0, 70, 0, 205); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(.6, 'rgba(140,150,185,.35)'); sh.addColorStop(1, 'rgba(70,78,125,.8)'); g.fillStyle = sh; g.fillRect(0, 0, 512, 256);
+  const hl = g.createLinearGradient(0, 40, 0, 120); hl.addColorStop(0, 'rgba(255,255,255,.35)'); hl.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = hl; g.fillRect(0, 0, 512, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+});
+const CLW = 5200, clouds = [];
+for (let i = 0; i < 64; i++) {
+  const lowLayer = i < 22, w = lowLayer ? 380 + cloudRng() * 420 : 700 + cloudRng() * 1100;
+  const m = new THREE.SpriteMaterial({map: cloudTex[i % 6], transparent: true, depthWrite: false, fog: false, opacity: 0, color: 0xffffff});
+  const sp = new THREE.Sprite(m); sp.scale.set(w, w * .45, 1); sp.renderOrder = -5; sp.frustumCulled = false; scene.add(sp);
+  clouds.push({sp, m, bx: (cloudRng() - .5) * CLW, bz: (cloudRng() - .5) * CLW, y: lowLayer ? 190 + cloudRng() * 160 : 380 + cloudRng() * 380, v: 2 + cloudRng() * 4, w});
+}
+const cC = new Col(), cDay = new Col(), cWarm = new Col(), cNight = new Col(.23, .2, .42), cGlow = new Col(.55, .22, .5);
+function updateClouds(t, hx, hy, hz) {
+  const e = sunDir.y, day = sstep(-.06, .22, e), warm = (1 - sstep(.04, .5, e)) * day;
+  cDay.setRGB(1.12, 1.1, 1.14); cWarm.setRGB(1.35, .68, .5); cC.copy(cDay).lerp(cWarm, warm).lerp(cNight, 1 - day);
+  { const gk = ENV.nf * .22; cC.r += cGlow.r * gk; cC.g += cGlow.g * gk; cC.b += cGlow.b * gk; }
+  const W = CLW;
+  for (const c of clouds) {
+    const x = hx + (((c.bx + t * c.v - hx) % W) + W * 1.5) % W - W / 2, z = hz + (((c.bz + t * c.v * .3 - hz) % W) + W * 1.5) % W - W / 2;
+    c.sp.position.set(x, c.y, z); const d = Math.hypot(x - hx, z - hz, c.y - hy);
+    c.m.color.copy(cC); c.m.opacity = clamp((d - c.w * .12) / (c.w * .5), 0, 1) * (1 - sstep(2000, 2550, d)) * (.5 + .45 * day + .25 * ENV.nf);
+  }
+}
+
+/* ---------- wildlife (CC-licensed models from the three.js examples) ---------- */
+const gltfLoader = new GLTFLoader(), MU = new URL('models/', location.href).href, flocks = [];
+function loadGLB(n) { return new Promise((res, rej) => gltfLoader.load(MU + n, res, undefined, rej)); }
+function birdFlock(name, n, len, tint, rMin, rMax, aMin, aMax, spd) {
+  loadGLB(name).then(gl => {
+    const src = gl.scene.children[0] || gl.scene; src.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(gl.scene), L = Math.max(bb.max.z - bb.min.z, bb.max.x - bb.min.x), sc = len / L;
+    for (let i = 0; i < n; i++) {
+      const o = SkeletonUtils.clone(gl.scene), w = new THREE.Group(); o.scale.setScalar(sc); o.rotation.y = Math.PI; w.add(o); o.traverse(m => { if (m.isMesh) { m.material = m.material.clone(); if (tint) m.material.color.lerp(new Col(tint), .35); m.castShadow = true; m.frustumCulled = false; } });
+      const mx = new THREE.AnimationMixer(o); if (gl.animations[0]) { const a = mx.clipAction(gl.animations[0]); a.play(); a.time = Math.random() * 3; }
+      scene.add(w); flocks.push({w, mx, r: rMin + Math.random() * (rMax - rMin), a: Math.random() * 6.28, alt: aMin + Math.random() * (aMax - aMin), v: spd * (.85 + Math.random() * .3), cx: coastX(0) - 30 + (Math.random() - .5) * 200, cz: -30 + (Math.random() - .5) * 360, dir: i % 3 ? 1 : -1, ph: Math.random() * 6, rate: .9 + Math.random() * .5});
+    }
+  }).catch(e => console.warn('bird model', name, e));
+}
+birdFlock('Flamingo.glb', 12, 2.6, 0xff5fb0, 70, 190, 38, 110, 13);
+birdFlock('Stork.glb', 9, 2.4, 0xffffff, 120, 260, 55, 130, 15);
+function updateBirds(dt, hx, hz) {
+  for (const f of flocks) {
+    f.a += f.dir * f.v / f.r * dt; const x = f.cx + Math.cos(f.a) * f.r, z = f.cz + Math.sin(f.a) * f.r, y = f.alt + Math.sin(simT * .5 + f.ph) * 4;
+    f.w.position.set(x, y, z); f.w.rotation.set(0, Math.atan2(-Math.sin(f.a) * f.dir, Math.cos(f.a) * f.dir) , Math.sin(simT * .5 + f.ph) * .2 * f.dir);
+    f.w.visible = Math.hypot(x - hx, z - hz) < 520; if (f.w.visible) f.mx.update(dt * f.rate);
+  }
+}
+
+/* ---------- neon blimp ---------- */
+const blimp = new THREE.Group(), blimpMat = (() => {
+  const c = cvs(2048, 512), g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, '#f6f0ff'); gr.addColorStop(.5, '#cfc6e8'); gr.addColorStop(1, '#7d70a8'); g.fillStyle = gr; g.fillRect(0, 0, 2048, 512);
+  for (const [cx, flip] of [[512, 1], [1536, -1]]) { g.save(); g.translate(cx, 256); g.scale(flip, 1); g.fillStyle = '#17082e'; g.fillRect(-440, -120, 880, 240); g.strokeStyle = '#ff4fa8'; g.lineWidth = 8; g.strokeRect(-440, -120, 880, 240); g.shadowColor = '#ff3fa4'; g.shadowBlur = 30; g.fillStyle = '#ffe4f6'; g.font = '120px Yellowtail, cursive'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Vice City', 0, -22); g.shadowColor = '#2ff3ff'; g.fillStyle = '#2ff3ff'; g.font = '600 46px "Chakra Petch", sans-serif'; g.fillText('NEON FM  104.2', 0, 70); g.restore(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return new THREE.MeshStandardMaterial({map: t, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: .15, roughness: .55, metalness: .15});
+})();
+{
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 24), blimpMat); body.scale.set(46, 13, 13); body.rotation.y = -Math.PI / 2 + Math.PI / 2; blimp.add(body);
+  const fm = new THREE.MeshStandardMaterial({color: 0xcfc6e8, roughness: .6});
+  for (const [ry, rz] of [[0, 0], [Math.PI / 2, 0], [Math.PI, 0], [-Math.PI / 2, 0]]) { const f = new THREE.Mesh(new THREE.BoxGeometry(11, 10, .5), fm); const g = new THREE.Group(); f.position.set(0, 7, 0); g.add(f); g.rotation.x = ry; g.position.x = -40; blimp.add(g); }
+  const gon = new THREE.Mesh(new THREE.BoxGeometry(12, 3.4, 4.6), fm); gon.position.y = -13.4; blimp.add(gon);
+  lightSprite(0xff2020, 4, blimp, -45, 0, 0); lightSprite(0x20ff60, 4, blimp, 2, -12, 3); lightSprite(0xffffff, 6, blimp, 0, 13.4, 0); blimp.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(blimp);
+}
+function updateBlimp(t, hx, hz) { const a = t * .016, cx = coastX(0) - 160, cz = 20, r = 640; blimp.position.set(cx + Math.cos(a) * r, 230 + Math.sin(t * .2) * 5, cz + Math.sin(a) * r); blimp.rotation.y = -a - Math.PI; blimpMat.emissiveIntensity = .12 + ENV.nf * .95; }
+
+/* ---------- hot-air balloons ---------- */
+const balloons = [];
+{
+  const stripe = (cols) => { const c = cvs(256, 128), g = c.getContext('2d'); for (let i = 0; i < 12; i++) { g.fillStyle = cols[i % cols.length]; g.fillRect(i * 256 / 12, 0, 256 / 12 + 1, 128); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t; };
+  const sets = [['#ff3fa4', '#fff4ff'], ['#2ff3ff', '#102a6b', '#fff'], ['#ffb347', '#ff3f6a'], ['#9b5cff', '#ffe27a']];
+  sets.forEach((cols, i) => {
+    const g = new THREE.Group(), env = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 20), new THREE.MeshStandardMaterial({map: stripe(cols), roughness: .65, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0})); env.scale.set(9, 11, 9); env.position.y = 20; g.add(env);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(4.6, 8, 20, 1, true).rotateX(Math.PI), env.material); cone.position.y = 8.3; g.add(cone);
+    const bask = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 2.4), new THREE.MeshStandardMaterial({color: 0x7a5233, roughness: .9})); bask.position.y = 0; g.add(bask);
+    for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, 9, 4), new THREE.MeshBasicMaterial({color: 0x222222})); r.position.set(x * 1.0, 4.6, z * 1.0); r.rotation.set(z * .1, 0, -x * .1); g.add(r); }
+    const burner = lightSprite(0xffa040, 7, g, 0, 4.2, 0); g.userData.burner = burner; g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); balloons.push({g, a: i * 1.6, r: 260 + i * 70, alt: 70 + i * 26, ph: i});
+  });
+}
+function updateBalloons(t) { for (const b of balloons) { const a = b.a + t * .012; b.g.position.set(coastX(0) - 140 + Math.cos(a) * b.r, b.alt + Math.sin(t * .3 + b.ph) * 5, 10 + Math.sin(a) * b.r * 1.15); b.g.rotation.y = t * .05 + b.ph; b.g.userData.burner.material.opacity = (Math.sin(t * 2.7 + b.ph * 3) > .5 ? 1 : .35) * (.4 + ENV.nf * .6); } }
+
+/* ---------- fireworks (night festival) ---------- */
+const FWN = 8, FWP = 80, fwG = new THREE.BufferGeometry(), fwPos = new Float32Array(FWN * FWP * 3), fwCol = new Float32Array(FWN * FWP * 3); fwG.setAttribute('position', new THREE.BufferAttribute(fwPos, 3)); fwG.setAttribute('color', new THREE.BufferAttribute(fwCol, 3));
+const fwTex = (() => { const c = cvs(64, 64), g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.3, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const fwPts = new THREE.Points(fwG, new THREE.PointsMaterial({size: 5, vertexColors: true, map: fwTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, toneMapped: false, fog: false})); fwPts.frustumCulled = false; scene.add(fwPts);
+const fws = Array.from({length: FWN}, () => ({t: -1, o: new V3(), dirs: Array.from({length: FWP}, () => new V3().randomDirection().multiplyScalar(.6 + Math.random() * .4)), c: new Col()})); let fwNext = 0;
+function updateFireworks(dt, t, hx, hy, hz) {
+  const on = ENV.nf > .45;
+  if (on && t > fwNext) { const f = fws.find(q => q.t < 0 || q.t > 4); if (f) { const a = Math.random() * 6.28, r = 300 + Math.random() * 160; f.o.set(hx + Math.cos(a) * r, 150 + Math.random() * 130, hz + Math.sin(a) * r); f.t = 0; f.c.setHSL(Math.random(), 1, .6); } fwNext = t + 1.4 + Math.random() * 2.2; }
+  for (let b = 0; b < FWN; b++) { const f = fws[b]; if (f.t >= 0) f.t += dt; const alive = f.t >= 0 && f.t < 3.4, k = alive ? Math.max(0, 1 - f.t / 3.4) : 0;
+    for (let i = 0; i < FWP; i++) { const j = (b * FWP + i) * 3; if (!alive) { fwPos[j + 1] = -9999; continue; } const d = f.dirs[i], sp = 62 * (1 - Math.exp(-f.t * 2.2)) ; fwPos[j] = f.o.x + d.x * sp; fwPos[j + 1] = f.o.y + d.y * sp - 9 * f.t * f.t; fwPos[j + 2] = f.o.z + d.z * sp; const fl = k * k * (.7 + .3 * Math.sin(t * 40 + i)); fwCol[j] = f.c.r * fl * 1.6; fwCol[j + 1] = f.c.g * fl * 1.6; fwCol[j + 2] = f.c.b * fl * 1.6; } }
+  fwG.attributes.position.needsUpdate = true; fwG.attributes.color.needsUpdate = true;
+}
+
+/* ---------- people: Mixamo-rigged humans animated on the sidewalks, plus a samba crew ---------- */
+const walkers = [], dancers = [];
+function tintHuman(o, h, s, l) { o.traverse(m => { if (m.isMesh) { m.material = m.material.clone(); if (m.material.color) m.material.color.setHSL(h, s, l); m.castShadow = true; m.frustumCulled = false; if (m.material.map) m.material.map.anisotropy = 8; } }); }
+loadGLB('Soldier.glb').then(gl => {
+  const walk = gl.animations.find(a => a.name === 'Walk'), idle = gl.animations.find(a => a.name === 'Idle');
+  for (let i = 0; i < 26; i++) {
+    const o = SkeletonUtils.clone(gl.scene), w = new THREE.Group(); w.add(o); const sc = .93 + Math.random() * .12; o.scale.multiplyScalar(sc); tintHuman(o, Math.random(), .08 + Math.random() * .3, .7 + Math.random() * .3);
+    const mx = new THREE.AnimationMixer(o), wa = mx.clipAction(walk); wa.play(); wa.time = Math.random() * 1.2; w.visible = false; scene.add(w); walkers.push({w, mx, wa, ped: -1});
+  }
+}).catch(e => console.warn('soldier model', e));
+loadGLB('Michelle.glb').then(gl => {
+  const dance = gl.animations.find(a => a.name === 'SambaDance'), cl = [[roadX - 6.4, -72], [roadX - 6.4, -68.4], [roadX - 6.4, -64.8], [roadX - 6.4, -61.2], [roadX - 8.1, -70.2], [roadX - 8.1, -63]], fq = [[FWX + 11, FWZ - 7], [FWX + 12.8, FWZ - 4], [FWX + 11, FWZ - 1]];
+  [...cl.map(p => [p[0], p[1], roadX]), ...fq.map(p => [p[0], p[1], FWX + 24])].forEach(([x, z, fx], i) => {
+    const o = SkeletonUtils.clone(gl.scene), w = new THREE.Group(); w.add(o); o.traverse(m => { if (m.isMesh) { m.castShadow = true; m.frustumCulled = false; } }); const mx = new THREE.AnimationMixer(o), a = mx.clipAction(dance); a.play(); a.time = Math.random() * 4; a.timeScale = .85 + Math.random() * .3;
+    w.position.set(x, groundY(x, z), z); w.rotation.y = Math.atan2(fx - x, (i < 6 ? -66 : FWZ - 4) - z + (i < 6 ? 0 : 0)); if (i < 6) w.rotation.y = Math.atan2(1, 0) + (Math.random() - .5) * .5; scene.add(w); dancers.push({w, mx, x, z});
+  });
+}).catch(e => console.warn('michelle model', e));
+function updateHumans(dt, hx, hz) {
+  for (const w of walkers) {
+    if (w.ped >= 0) { const i = w.ped, dx = pedPos[i * 3] - hx, dz = pedPos[i * 3 + 1] - hz; if (!pedPos[i * 3 + 2] || dx * dx + dz * dz > 90 * 90) { pedHide[i] = 0; w.ped = -1; w.w.visible = false; } }
+  }
+  const free = walkers.filter(w => w.ped < 0);
+  if (free.length) { let n = 0; for (let i = 0; i < NP && n < 4 && free.length; i++) { if (!pedPos[i * 3 + 2] || pedHide[i]) continue; const dx = pedPos[i * 3] - hx, dz = pedPos[i * 3 + 1] - hz; if (dx * dx + dz * dz < 62 * 62) { const w = free.pop(); w.ped = i; pedHide[i] = 1; w.w.visible = true; w.wa.timeScale = peds[i].sp / 1.25; n++; } } }
+  for (const w of walkers) if (w.ped >= 0) { const i = w.ped; w.w.position.set(pedPos[i * 3], .02, pedPos[i * 3 + 1]); w.w.rotation.y = pedYaw[i]; w.mx.update(dt); }
+  for (const d of dancers) { const near = Math.hypot(d.x - hx, d.z - hz) < 140; d.w.visible = near; if (near) d.mx.update(dt); }
+}
+function updateWorld(dt, t, hx, hy, hz) { updateClouds(t, hx, hy, hz); updateBirds(dt, hx, hz); updateBlimp(t, hx, hz); updateBalloons(t); updateFireworks(dt, t, hx, hy, hz); updateHumans(dt, hx, hz); }
+
+/* =====================================================================
    MAIN LOOP (desktop + WebXR)
    ===================================================================== */
 const Q0 = new URLSearchParams(location.search), HF = Q0.has('hf'); const terrC = new Col(), snap = (v, s) => Math.round(v / s) * s, tmpV = new V3(), tmpW = new V3();
@@ -2162,6 +2295,7 @@ function frame(now) {
   sunL.target.position.set(snap(tx, 2), 0, snap(tz, 2)); sunL.position.copy(sunDir).multiplyScalar(450).add(sunL.target.position); sunL.target.updateMatrixWorld();
   const hcx = X && vr.ride && vr.ride.type === 'heli' ? vr.ride.cx : tx, hcz = X && vr.ride && vr.ride.type === 'heli' ? vr.ride.cz : tz;
   updateCars(simT, tx, tz); updateBoats(simT, tz); updateHeli(simT, HF ? 30 : hcx, HF ? 10 : hcz); updateAirport(simT, dt); updatePeds(simT, tx, tz); updateFerris(simT);
+  headWorld(hv); updateWorld(dt, simT, X ? hv.x : camera.position.x, X ? hv.y : camera.position.y, X ? hv.z : camera.position.z);
   beaconMat.color.setScalar(Math.sin(simT * 3) > .1 ? 4.5 : .35);
   terrMesh.visible = showTerr.v && !X; pulse = Math.max(0, pulse - dt * 1.4);
   if (showTerr.v && !X) {
@@ -2214,7 +2348,7 @@ try {
   updateCars(0, controls.target.x, controls.target.z); composer.render();
   window.__vc = 'ready'; document.getElementById('boot').classList.add('gone'); setTimeout(() => document.getElementById('boot')?.remove(), 1400);
   renderer.setAnimationLoop(frame);
-  if (Q.has('sim')) { vr.sim = true; document.getElementById('vrbar').style.display = 'none'; const w = +(Q.get('wp') || 0); enterXR(); vr.fade = 0; vr.loading = false; if (w) { const q = WP[w]; rig.rotation.y = q.yaw; placeHeadXZ(...nearestFree(q.x, q.z)); } if (Q.has('yaw')) rig.rotation.y += +Q.get('yaw') * Math.PI / 180; if (Q.has('pitch')) camera.rotation.x = -(+Q.get('pitch')) * Math.PI / 180; if (Q.has('fly')) { vr.fly = true; rig.position.y = +Q.get('fly'); } if (!Q.has('panel')) { vr.panel = false; panel.visible = false; } if (Q.has('fall')) { startFall(); vr.vy = -(+Q.get('fall')); } camera.fov = +(Q.get('fov') || 80); camera.updateProjectionMatrix(); vrUpdate(0, 0); }
+  if (Q.has('sim')) { vr.sim = true; document.getElementById('vrbar').style.display = 'none'; const w = +(Q.get('wp') || 0); enterXR(); vr.fade = 0; vr.loading = false; if (w) { const q = WP[w]; rig.rotation.y = q.yaw; placeHeadXZ(...nearestFree(q.x, q.z)); } if (Q.has('at')) { const a = Q.get('at').split(',').map(Number); placeHeadXZ(a[0] + roadX, a[1]); } if (Q.has('yaw')) rig.rotation.y += +Q.get('yaw') * Math.PI / 180; if (Q.has('pitch')) camera.rotation.x = -(+Q.get('pitch')) * Math.PI / 180; if (Q.has('fly')) { vr.fly = true; rig.position.y = +Q.get('fly'); } if (!Q.has('panel')) { vr.panel = false; panel.visible = false; } if (Q.has('fall')) { startFall(); vr.vy = -(+Q.get('fall')); } camera.fov = +(Q.get('fov') || 80); camera.updateProjectionMatrix(); vrUpdate(0, 0); }
 } catch (err) { const e = $('#err'); e.style.display = 'block'; e.textContent = 'Vice City failed to start: ' + err.message; console.error(err); }
 
 </script>

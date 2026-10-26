@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wealth City</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,6 +26,7 @@
   --panel-w:396px;
   color-scheme:dark;
 }
+[hidden]{display:none!important}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;overflow:hidden;-webkit-tap-highlight-color:transparent}
@@ -226,6 +232,8 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 @media (max-width:420px){ .r3 b{font-size:12.5px} .big{font-size:24px} }
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
+</head>
+<body>
 <div id="app">
   <div id="stage"><canvas id="gl" tabindex="0" aria-label="3D Wealth City. Drag to rotate, scroll or pinch to zoom."></canvas></div>
 
@@ -1471,3 +1479,5 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if
   requestAnimationFrame(loop);
 })();
 </script>
+</body>
+</html>

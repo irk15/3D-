@@ -1,0 +1,1473 @@
+<title>Wealth City</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap">
+<style>
+/* Layout concept: a full-bleed night city is the page. Glass HUD floats on top:
+   wealth readout top-left, time-travel dock bottom, a four-tab control panel on the right (bottom sheet on phones).
+   Single committed look: deep indigo night, gold for growth, sky blue for money put in. */
+:root{
+  --night:#060a1a; --night-2:#0b1330;
+  --glass:rgba(9,15,38,.78); --glass-2:rgba(20,30,68,.62);
+  --line:rgba(150,172,255,.17); --line-2:rgba(150,172,255,.3);
+  --ink:#eef1ff; --dim:#a0abd9; --faint:#6f7bb0;
+  --gold:#f6bf55; --gold-hi:#ffe3a6; --sky:#47c6ff; --mint:#44dfa1; --coral:#ff6b7d; --wa:#2bd46f;
+  --f-display:"Bricolage Grotesque","Noto Sans Devanagari",system-ui,sans-serif;
+  --f-body:"Hanken Grotesk","Noto Sans Devanagari",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --gut:max(16px, env(safe-area-inset-left, 0px));
+  --gutR:max(16px, env(safe-area-inset-right, 0px));
+  --panel-w:396px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#app{position:relative;height:100%;overflow:hidden;background:radial-gradient(120% 90% at 50% 100%,#14214d 0%,var(--night) 70%)}
+#stage{position:absolute;inset:0;touch-action:none}
+#gl{display:block;width:100%;height:100%;cursor:grab;outline:none}
+#gl:active{cursor:grabbing}
+
+/* header */
+#top{position:absolute;top:12px;left:var(--gut);right:var(--gutR);display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:5;pointer-events:none}
+#top>*{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:34px;height:34px;flex:none;filter:drop-shadow(0 0 10px rgba(246,191,85,.45))}
+.brand-t{display:flex;flex-direction:column;min-width:0}
+.brand-t b{font-family:var(--f-display);font-weight:800;font-size:20px;letter-spacing:-.01em;line-height:1.05}
+.brand-t span{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-r{display:flex;gap:8px;flex:none}
+.pill{height:34px;min-width:34px;padding:0 12px;border-radius:99px;border:1px solid var(--line-2);background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:13px}
+.pill svg{width:16px;height:16px}
+.lang i{font-style:normal;color:var(--faint)}
+.lang span{color:var(--faint)}
+.lang span.on{color:var(--gold-hi)}
+
+/* wealth readout */
+#stats{position:absolute;top:62px;left:var(--gut);z-index:4;display:flex;flex-direction:column;gap:8px;max-width:min(430px,calc(100% - 32px));pointer-events:none}
+.s-main{display:flex;flex-direction:column}
+.k{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.s-main strong{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,6vw,58px);line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff2cf,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 40px rgba(246,191,85,.25)}
+.s-sub{font-size:12px;color:var(--dim);margin-top:4px;font-family:var(--f-mono)}
+.s-row{display:flex;flex-wrap:wrap;gap:6px}
+.s-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:10px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.s-chip .k{font-size:10px}
+.s-chip b{font-family:var(--f-mono);font-weight:500;font-size:13px;font-variant-numeric:tabular-nums}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.sky{background:var(--sky);box-shadow:0 0 8px var(--sky)}
+.dot.gold{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+#banner{pointer-events:auto;padding:10px 12px;border-radius:12px;background:var(--glass);border:1px solid var(--line-2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:13px;max-width:360px;animation:rise .35s ease}
+#banner.bad{border-color:rgba(255,107,125,.55)}
+#banner.good{border-color:rgba(68,223,161,.55)}
+#banner b{display:block;font-family:var(--f-display);font-size:15px;margin-bottom:2px}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+#toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-80px);z-index:30;padding:10px 16px;border-radius:99px;background:linear-gradient(90deg,#f6bf55,#ffdf9a);color:#1b1304;font-weight:700;font-size:13px;box-shadow:0 10px 40px rgba(246,191,85,.35);transition:transform .45s cubic-bezier(.2,.9,.2,1);max-width:calc(100% - 32px);text-align:center;pointer-events:none}
+#toast.show{transform:translate(-50%,56px)}
+
+/* dock */
+#dock{z-index:5;display:flex;align-items:center;gap:10px;padding:10px 14px 8px;border-radius:16px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.round{width:42px;height:42px;border-radius:50%;border:0;flex:none;background:linear-gradient(180deg,#ffe3a6,#f6bf55);color:#1b1304;display:grid;place-items:center;box-shadow:0 6px 22px rgba(246,191,85,.35)}
+.round svg{width:18px;height:18px}
+.speed{height:30px;min-width:40px;padding:0 8px;border-radius:8px;border:1px solid var(--line-2);background:transparent;font-family:var(--f-mono);font-size:12px;flex:none}
+.scrub{position:relative;flex:1;min-width:0;padding-bottom:26px;padding-top:10px}
+#marks{position:absolute;left:11px;right:11px;top:24px;height:30px;pointer-events:none}
+.mk{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-size:10px;color:var(--dim);white-space:nowrap;line-height:1.1}
+.mk::before{content:"";width:2px;height:7px;background:var(--gold);border-radius:2px;margin-bottom:2px}
+.mk.lo{margin-top:11px}
+.mk.done{color:var(--gold-hi);font-weight:700}
+.dock-y{flex:none;text-align:right;min-width:54px;font-family:var(--f-mono);font-size:12px;color:var(--dim);line-height:1.2}
+.dock-y b{display:block;color:var(--ink);font-size:16px;font-weight:500}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;margin:0;border-radius:99px;background:linear-gradient(90deg,var(--gold) var(--p,40%),rgba(255,255,255,.15) var(--p,40%));cursor:pointer;display:block}
+input[type=range]::-webkit-slider-runnable-track{background:transparent;height:6px}
+input[type=range]::-moz-range-track{background:transparent;height:6px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;background:var(--gold);border:2px solid #1b1304;box-shadow:0 0 0 4px rgba(246,191,85,.22),0 0 18px rgba(246,191,85,.65)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold);border:2px solid #1b1304;box-shadow:0 0 0 4px rgba(246,191,85,.22),0 0 18px rgba(246,191,85,.65)}
+
+/* panel */
+#panel{z-index:6;display:flex;flex-direction:column;min-height:0;border-radius:20px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(0,0,0,.45);overflow:hidden}
+.tabs{display:flex;align-items:stretch;gap:2px;padding:6px 6px 0;border-bottom:1px solid var(--line);flex:none}
+.tab{flex:1;min-width:0;border:0;background:transparent;padding:10px 4px 11px;font-weight:600;font-size:13px;color:var(--dim);border-radius:10px 10px 0 0;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab[aria-selected=true]{color:var(--gold-hi)}
+.tab[aria-selected=true]::after{content:"";position:absolute;left:14%;right:14%;bottom:-1px;height:3px;border-radius:3px;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+#btnSheet{display:none;flex:none;width:38px;border:0;background:transparent;color:var(--dim)}
+#btnSheet svg{width:18px;height:18px;transition:transform .2s}
+#panel.collapsed #btnSheet svg{transform:rotate(180deg)}
+#panel.collapsed .tab-body,#panel.collapsed .disc{display:none}
+.tab-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:14px 16px 8px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.tab-body>section{display:flex;flex-direction:column;gap:14px}
+.lead{margin:0;color:var(--dim);font-size:13px}
+.lbl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:600;font-size:12px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+.big{font-family:var(--f-display);font-weight:800;font-size:28px;color:var(--ink);letter-spacing:-.01em;text-transform:none;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{padding:6px 11px;border-radius:99px;border:1px solid var(--line-2);background:transparent;font-size:12.5px;font-weight:600;color:var(--dim)}
+.chip[aria-pressed=true]{background:rgba(246,191,85,.16);border-color:var(--gold);color:var(--gold-hi)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.seg button{border:0;background:transparent;border-radius:9px;padding:7px 4px;font-size:12px;font-weight:600;color:var(--dim);display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.2}
+.seg button b{font-family:var(--f-mono);font-weight:500;font-size:14px;color:var(--ink)}
+.seg button[aria-pressed=true]{background:linear-gradient(180deg,rgba(246,191,85,.28),rgba(246,191,85,.12));color:var(--gold-hi);box-shadow:inset 0 0 0 1px var(--gold)}
+.result{padding:12px;border-radius:14px;background:linear-gradient(180deg,rgba(71,198,255,.08),rgba(246,191,85,.08));border:1px solid var(--line-2);display:flex;flex-direction:column;gap:10px}
+.result h4{margin:0;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.r3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.r3>div{display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:10px;background:rgba(0,0,0,.25);min-width:0}
+.r3 span{font-size:11px;color:var(--faint)}
+.r3 b{font-family:var(--f-mono);font-weight:500;font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.r3 .mid b{color:var(--gold-hi)}
+.r-line{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--dim)}
+.r-line b{font-family:var(--f-mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.score{display:flex;align-items:center;gap:10px}
+.score .meter{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+.score .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sky),var(--mint));border-radius:99px;transition:width .5s}
+.score b{font-family:var(--f-display);font-size:20px;min-width:40px;text-align:right}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input[type=text]{height:40px;border-radius:10px;border:1px solid var(--line-2);background:rgba(0,0,0,.28);color:var(--ink);padding:0 12px;font:inherit;font-size:15px}
+.cta{display:flex;flex-direction:column;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border-radius:12px;border:1px solid transparent;font-weight:700;font-size:14px;text-decoration:none;text-align:center;line-height:1.2}
+.btn svg{width:18px;height:18px;flex:none}
+.btn.wa{background:var(--wa);color:#04170b;box-shadow:0 8px 26px rgba(43,212,111,.28)}
+.btn.gold{background:linear-gradient(180deg,#ffe3a6,#f6bf55);color:#1b1304;box-shadow:0 8px 26px rgba(246,191,85,.3)}
+.btn.ghost{background:transparent;border-color:var(--line-2);color:var(--ink)}
+.phone{font-family:var(--f-mono);font-size:12px;color:var(--dim);text-align:center;user-select:all}
+.miles{display:flex;flex-wrap:wrap;gap:6px}
+.ms{padding:5px 10px;border-radius:99px;font-size:12px;border:1px dashed var(--line-2);color:var(--faint)}
+.ms.lit{border-style:solid;border-color:var(--gold);color:var(--gold-hi);background:rgba(246,191,85,.12);box-shadow:0 0 14px rgba(246,191,85,.2)}
+.h5{margin:0;font-family:var(--f-display);font-size:15px;font-weight:700}
+.board{border:1px solid var(--line-2);border-radius:12px;background:#04071a;overflow:hidden;font-family:var(--f-mono);font-size:12px}
+.board .row{display:grid;grid-template-columns:62px 1fr auto;gap:8px;padding:8px 10px;border-top:1px solid var(--line);align-items:center}
+.board .row:first-child{border-top:0}
+.board .d{color:var(--gold-hi)}
+.board .ok{color:var(--mint);display:inline-flex;align-items:center;gap:5px;font-size:11px}
+.board .ok::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--mint);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* goals */
+.goal{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:12px;border-radius:14px;background:var(--glass-2);border:1px solid var(--line);cursor:pointer;transition:border-color .2s,opacity .2s}
+.goal:hover{border-color:var(--line-2)}
+.goal.off{opacity:.5}
+.goal h5{margin:0;font-family:var(--f-display);font-size:15px;font-weight:700}
+.goal .sub{grid-column:1/-1;font-size:12px;color:var(--dim)}
+.goal .bar{grid-column:1/-1;height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+.goal .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--sky),var(--gold));width:0;transition:width .5s}
+.goal .bar i.full{background:linear-gradient(90deg,var(--mint),#a6ffd9)}
+.goal .meta{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;font-size:12px;font-family:var(--f-mono);color:var(--dim)}
+.goal .meta b{color:var(--ink);font-weight:500}
+.sw{position:relative;width:42px;height:24px;flex:none}
+.sw input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;width:100%;height:100%}
+.sw i{position:absolute;inset:0;border-radius:99px;background:rgba(255,255,255,.14);transition:background .2s;pointer-events:none}
+.sw i::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw input:checked+i{background:var(--gold)}
+.sw input:checked+i::after{transform:translateX(18px);background:#1b1304}
+.sw input:focus-visible+i{outline:2px solid var(--gold);outline-offset:2px}
+
+/* events */
+.evs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ev{display:flex;flex-direction:column;gap:3px;text-align:left;padding:12px;border-radius:14px;background:var(--glass-2);border:1px solid var(--line);min-width:0}
+.ev b{font-family:var(--f-display);font-size:14.5px;line-height:1.15}
+.ev span{font-size:11.5px;color:var(--dim)}
+.ev[aria-pressed=true]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.ev.crash b{color:var(--coral)} .ev.storm b{color:#9db6ff} .ev.bull b{color:var(--mint)} .ev.wait b{color:var(--gold-hi)}
+.evbody{padding:12px;border-radius:14px;border:1px solid var(--line-2);background:rgba(0,0,0,.25);font-size:13px;color:var(--dim);display:flex;flex-direction:column;gap:10px}
+.evbody p{margin:0}
+.infl{display:flex;flex-direction:column;gap:6px;font-family:var(--f-mono);font-size:12px}
+.infl div{display:flex;justify-content:space-between;gap:8px}
+.infl b{color:var(--coral);font-weight:500}
+
+/* compare */
+.race{display:flex;flex-direction:column;gap:12px}
+.rb .t{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin-bottom:5px}
+.rb .t b{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+.rb .tr{height:14px;border-radius:7px;background:rgba(255,255,255,.08);overflow:hidden}
+.rb .tr i{display:block;height:100%;width:0;border-radius:7px;transition:width .35s}
+.rb.sip i{background:linear-gradient(90deg,var(--gold),#ffe3a6)}
+.rb.fd i{background:var(--sky)} .rb.sav i{background:#7d8ccc} .rb.cash i{background:var(--coral)}
+.note{font-size:11.5px;color:var(--faint);margin:0}
+.waitcard{padding:12px;border-radius:14px;border:1px solid var(--line-2);background:rgba(246,191,85,.07);display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--dim)}
+.waitcard b{color:var(--gold-hi)}
+.disc{flex:none;padding:8px 16px 10px;border-top:1px solid var(--line);font-size:10.5px;line-height:1.35;color:var(--faint)}
+.disc b{color:var(--dim);font-weight:600}
+
+/* intro + modal */
+#intro{position:absolute;inset:0;z-index:20;display:grid;place-items:center;padding:16px var(--gutR) 16px var(--gut);background:radial-gradient(90% 70% at 50% 50%,rgba(6,10,26,.45),rgba(6,10,26,.82));overflow-y:auto;transition:opacity .7s,visibility .7s}
+#intro.gone{opacity:0;visibility:hidden;pointer-events:none}
+.i-card{width:min(580px,100%);padding:clamp(18px,4vw,30px);border-radius:24px;background:var(--glass);border:1px solid var(--line-2);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 30px 100px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:18px}
+.i-eyebrow{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.i-card h1{margin:0;font-family:var(--f-display);font-weight:800;font-size:clamp(28px,6vw,44px);line-height:1.02;letter-spacing:-.02em;text-wrap:balance}
+.i-card .lead{font-size:14px}
+.i-adv{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--dim);padding-top:4px;border-top:1px solid var(--line);padding-top:12px}
+#modal{position:absolute;inset:0;z-index:40;display:grid;place-items:center;padding:16px var(--gutR) 16px var(--gut);background:rgba(3,6,18,.8);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow-y:auto}
+.m-card{position:relative;width:min(440px,100%);padding:18px;border-radius:20px;background:var(--night-2);border:1px solid var(--line-2);display:flex;flex-direction:column;gap:12px}
+.m-card h3{margin:0;font-family:var(--f-display);font-size:20px}
+.m-card img{width:100%;height:auto;border-radius:12px;display:block;background:#000}
+.m-note{margin:0;font-size:12.5px;color:var(--dim)}
+.x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line-2);background:var(--glass);display:grid;place-items:center}
+.x svg{width:14px;height:14px}
+
+@media (min-width:900px){
+  #hudBottom{display:contents}
+  #dock{position:absolute;left:var(--gut);right:calc(var(--panel-w) + var(--gutR) + 14px);bottom:16px}
+  #panel{position:absolute;top:12px;right:var(--gutR);bottom:16px;width:var(--panel-w)}
+  #top{right:calc(var(--panel-w) + var(--gutR) + 14px)}
+  #stats{top:66px}
+}
+@media (max-width:899px){
+  #hudBottom{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;flex-direction:column;gap:8px;padding:0 var(--gutR) 10px var(--gut)}
+  #panel{max-height:min(44vh,400px)}
+  #btnSheet{display:grid;place-items:center}
+  #dock{padding:8px 12px 4px;gap:8px}
+  .round{width:38px;height:38px}
+  .s-chip .k{display:none}
+  #stats{top:58px}
+  .tab{font-size:12.5px}
+  .evs{grid-template-columns:1fr 1fr}
+}
+@media (max-width:420px){ .r3 b{font-size:12.5px} .big{font-size:24px} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+<div id="app">
+  <div id="stage"><canvas id="gl" tabindex="0" aria-label="3D Wealth City. Drag to rotate, scroll or pinch to zoom."></canvas></div>
+
+  <header id="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3a6"/><stop offset="1" stop-color="#f6bf55"/></linearGradient></defs>
+        <path d="M16 2 18.2 8H13.8Z" fill="url(#mg)"/>
+        <rect x="12.5" y="8" width="7" height="22" rx="1" fill="url(#mg)"/>
+        <rect x="4" y="17" width="6" height="13" rx="1" fill="#47c6ff"/>
+        <rect x="22" y="13" width="6" height="17" rx="1" fill="#47c6ff" opacity=".8"/>
+        <rect x="2" y="30" width="28" height="1.5" rx=".75" fill="#eef1ff" opacity=".5"/>
+      </svg>
+      <div class="brand-t"><b id="brandName">Wealth City</b><span id="byline"></span></div>
+    </div>
+    <div class="top-r">
+      <button class="pill" id="btnReset" type="button" aria-label="Reset view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      </button>
+      <button class="pill lang" id="btnLang" type="button" aria-label="Language: English or Hindi"><span id="lEn" class="on">EN</span><i>|</i><span id="lHi">हिं</span></button>
+    </div>
+  </header>
+
+  <section id="stats" aria-live="off">
+    <div class="s-main">
+      <span class="k" id="kTotal"></span>
+      <strong id="vTotal">₹0</strong>
+      <span class="s-sub" id="vSub"></span>
+    </div>
+    <div class="s-row">
+      <div class="s-chip"><i class="dot sky"></i><span class="k" id="kInv"></span><b id="vInv">₹0</b></div>
+      <div class="s-chip"><i class="dot gold"></i><span class="k" id="kGain"></span><b id="vGain">₹0</b></div>
+      <div class="s-chip"><span class="k" id="kYear"></span><b id="vYear">0</b></div>
+    </div>
+    <div id="banner" hidden></div>
+  </section>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <div id="hudBottom">
+    <div id="dock">
+      <button id="btnPlay" class="round" type="button" aria-label="Play time travel">
+        <svg id="icPlay" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/></svg>
+        <svg id="icPause" viewBox="0 0 24 24" fill="currentColor" hidden><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>
+      </button>
+      <button id="btnSpeed" class="speed" type="button" aria-label="Playback speed">1×</button>
+      <div class="scrub">
+        <input id="scrub" type="range" min="0" max="300" step="1" value="0" aria-label="Time travel through the years">
+        <div id="marks" aria-hidden="true"></div>
+      </div>
+      <div class="dock-y"><span id="dockLbl"></span><b id="dockYear">0</b></div>
+    </div>
+
+    <aside id="panel" aria-label="Controls">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tb-plan" data-tab="plan" aria-selected="true" aria-controls="tab-plan" type="button"></button>
+        <button class="tab" role="tab" id="tb-goals" data-tab="goals" aria-selected="false" aria-controls="tab-goals" type="button"></button>
+        <button class="tab" role="tab" id="tb-events" data-tab="events" aria-selected="false" aria-controls="tab-events" type="button"></button>
+        <button class="tab" role="tab" id="tb-compare" data-tab="compare" aria-selected="false" aria-controls="tab-compare" type="button"></button>
+        <button id="btnSheet" type="button" aria-label="Show or hide panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      </div>
+
+      <div class="tab-body">
+        <section id="tab-plan" role="tabpanel" aria-labelledby="tb-plan">
+          <p class="lead" id="tSipWhat"></p>
+          <div>
+            <div class="lbl"><span id="lSip"></span><span class="big" id="sipVal"></span></div>
+            <input id="sip" type="range" min="1000" max="100000" step="500" value="20000" aria-label="Monthly SIP amount">
+            <div class="chips" id="sipChips"></div>
+          </div>
+          <div>
+            <div class="lbl"><span id="lStep"></span></div>
+            <div class="chips" id="stepChips" style="margin-top:0"></div>
+          </div>
+          <div>
+            <div class="lbl"><span id="lRate"></span></div>
+            <div class="seg" id="rateSeg"></div>
+          </div>
+          <div class="result" id="result">
+            <h4 id="resH"></h4>
+            <div class="r3" id="r3"></div>
+            <div class="r-line"><span id="resInvL"></span><b id="resInv"></b></div>
+            <div class="score"><span class="k" id="scoreL" style="flex:none"></span><div class="meter"><i id="scoreBar"></i></div><b id="scoreV">0</b></div>
+          </div>
+          <div class="field">
+            <label class="lbl" for="cname" style="margin:0"><span id="lName"></span></label>
+            <input id="cname" type="text" autocomplete="given-name" maxlength="40">
+          </div>
+          <div class="cta">
+            <a id="btnWa" class="btn wa" href="#" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.2 14.1c-.2.6-1.2 1.2-1.7 1.2-.5.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.3.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.8-.1 1.5Z"/></svg>
+              <span id="tWa"></span>
+            </a>
+            <a id="btnCall" class="btn ghost" href="#" target="_blank" rel="noopener"><span id="tCall"></span></a>
+            <button id="btnShare" class="btn gold" type="button"><span id="tShare"></span></button>
+            <div class="phone" id="advPhone"></div>
+          </div>
+          <div>
+            <div class="lbl"><span id="lMiles"></span></div>
+            <div class="miles" id="miles"></div>
+          </div>
+          <div>
+            <div class="lbl"><span id="lBoard"></span></div>
+            <div class="board" id="board"></div>
+          </div>
+        </section>
+
+        <section id="tab-goals" role="tabpanel" aria-labelledby="tb-goals" hidden>
+          <p class="lead" id="tGoalsHint"></p>
+          <div id="goalList" style="display:flex;flex-direction:column;gap:10px"></div>
+          <button id="btnAuto" class="btn ghost" type="button"></button>
+        </section>
+
+        <section id="tab-events" role="tabpanel" aria-labelledby="tb-events" hidden>
+          <p class="lead" id="tEvHint"></p>
+          <div class="evs" id="evList"></div>
+          <div class="evbody" id="evBody" hidden></div>
+        </section>
+
+        <section id="tab-compare" role="tabpanel" aria-labelledby="tb-compare" hidden>
+          <h3 class="h5" id="tCmpH"></h3>
+          <div class="race" id="race"></div>
+          <p class="note" id="tCmpNote"></p>
+          <div class="waitcard" id="waitCard"></div>
+        </section>
+      </div>
+
+      <footer class="disc" id="disc"></footer>
+    </aside>
+  </div>
+
+  <div id="intro">
+    <div class="i-card">
+      <div class="i-eyebrow"><span id="iEyebrow"></span></div>
+      <h1 id="iH"></h1>
+      <p class="lead" id="iSub"></p>
+      <div>
+        <div class="chips" id="iGoals" style="margin-top:0"></div>
+      </div>
+      <div>
+        <div class="lbl"><span id="iQ"></span><span class="big" id="iVal"></span></div>
+        <input id="iSip" type="range" min="1000" max="100000" step="500" value="20000" aria-label="Monthly SIP amount">
+        <div class="chips" id="iChips"></div>
+      </div>
+      <button id="iGo" class="btn gold" type="button" style="min-height:52px;font-size:16px"></button>
+      <div class="i-adv" id="iAdv"></div>
+    </div>
+  </div>
+
+  <div id="modal" hidden>
+    <div class="m-card" role="dialog" aria-modal="true" aria-labelledby="mH">
+      <button id="mClose" class="x" type="button" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <h3 id="mH"></h3>
+      <img id="shareImg" alt="Your Wealth City share card">
+      <p class="m-note" id="mNote"></p>
+      <a id="mWa" class="btn wa" href="#" target="_blank" rel="noopener"></a>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   WEALTH CITY  ·  edit this block for the advisor
+   ============================================================ */
+const ADVISOR = {
+  name: "Your Name",          // shown in the header, share card and WhatsApp message
+  firm: "NJ Funds",           // shown on the intro screen
+  title: "Mutual Fund Distributor",
+  arn: "ARN-XXXXXX",          // AMFI registration number
+  phone: "91XXXXXXXXXX",      // WhatsApp number: country code first, digits only (e.g. 919812345678)
+  city: "Your City",
+  sipDay: 5                   // day of month used on the SIP arrivals board
+};
+/* Illustrative assumptions used across the page. Change here, not in the code below. */
+const ASSUME = { scenarios: [0.08, 0.10, 0.12], fd: 0.065, savings: 0.03, cashInfl: 0.06, crash: 0.30, rally: 0.15 };
+
+/* Goals: cost is in today's rupees, infl is the assumed yearly rise in that cost */
+const GOALS = [
+  { id: "edu",  years: 15, cost: 2000000,  infl: 0.08 },
+  { id: "home", years: 10, cost: 3000000,  infl: 0.06 },
+  { id: "wed",  years: 12, cost: 1500000,  infl: 0.07 },
+  { id: "ret",  years: 25, cost: 10000000, infl: 0.06 }
+];
+
+/* ============================================================ language */
+const I18N = {
+  en: {
+    byline: (n, a) => `Guided by ${n} · ${a}`,
+    k_total: "Wealth at this point", k_inv: "You put in", k_gain: "Growth", k_year: "Year", dock_lbl: "Year",
+    tab_plan: "Plan", tab_goals: "Goals", tab_events: "Events", tab_compare: "Compare",
+    sip_what: "A SIP invests a fixed amount for you every month, automatically. Small steps, long time. Each instalment lands on your tower as a coin.",
+    l_sip: "Monthly SIP", l_step: "Raise my SIP every year by", l_rate: "Yearly return to assume (illustrative)",
+    step0: "No step-up", r_8: "Cautious", r_10: "Balanced", r_12: "Optimistic",
+    res_h: (n, y) => `Illustrative value after ${n} years (${y})`,
+    res_inv: "Money you put in", score_l: "Weakest goal funded",
+    l_name: "Your name (optional)",
+    b_wa: "Send my plan on WhatsApp", b_call: "Book a free 15-minute call", b_share: "Share my city",
+    l_miles: "Milestones", l_board: "SIP arrivals",
+    m_first: "First tower", m_half: "Growth beats deposits", m_goal: "Goal unlocked", m_crore: "Crore club", m_all: "All goals funded",
+    board_ok: "ON TIME",
+    goals_hint: "Your SIP is split across the goals that are switched on. Tap a goal to fly to it.",
+    auto: "Auto-balance my SIP", auto_done: "Balanced by need. Tap again for an equal split.",
+    g_edu: "Child's education", g_home: "Dream home", g_wed: "Wedding", g_ret: "Retirement",
+    gs_edu: "Study", gs_home: "Home", gs_wed: "Wedding", gs_ret: "Retire",
+    g_today_to: (a, b, y) => `${a} today → ${b} in ${y}`,
+    g_need: (v) => `Alone it needs ${v}/month to start`, g_alloc: (v) => `Gets ${v}/month`, g_funded: (p) => `${p}% funded`, g_off: "Switched off",
+    ev_hint: "Tap an event and watch the city react.",
+    ev_crash: "Market crash", ev_crash_s: "A 30% fall (example)",
+    ev_storm: "Inflation storm", ev_storm_s: "Watch goal costs rise",
+    ev_bull: "Bull run", ev_bull_s: "A 15% rally (example)",
+    ev_wait: "Start 5 years late", ev_wait_s: "The cost of waiting",
+    ev_crash_t: "Market down 30% (example)",
+    ev_crash_b: (u, s) => `Prices fall 30%. Your ${s} now buys ${u}% more units than before. Past recoveries do not guarantee future ones, but staying invested means every rupee buys more while prices are low.`,
+    ev_storm_t: "Inflation is raising your dreams",
+    ev_storm_b: "Inflation raises what your goals will cost. These are today's prices against the assumed prices when you need the money.",
+    ev_bull_t: "Market up 15% (example)",
+    ev_bull_b: "Prices rise 15%. Rallies feel good but do not last forever, which is why a steady monthly SIP matters more than timing the market.",
+    ev_wait_t: "Starting 5 years late",
+    ev_wait_b: (late, full, need, now) => `Start 5 years later and the same ${now} a month reaches ${late} instead of ${full}. To catch up you would need ${need} every month.`,
+    ev_stop: "Back to my city",
+    bn_crash: (u, s) => `Your ${s} now buys ${u}% more units.`, bn_storm: "Goal costs are climbing.", bn_bull: "Enjoy it, and keep the SIP steady.", bn_wait: (late, full) => `${late} instead of ${full}.`,
+    sub_ill: (r) => `at ${r}% a year · illustrative`,
+    cmp_h: "SIP and the alternatives", b_sip: (r) => `SIP at ${r}%`, b_fd: "Fixed deposit at 6.5%", b_sav: "Savings account at 3%", b_cash: "Cash kept at home, no growth",
+    cmp_note: "Illustrative and before tax. The same monthly amount goes into every bar. FD and savings rates are assumptions, not offers.",
+    wait_h: "Cost of waiting 5 years",
+    wait_b: (late, need, now) => `Starting 5 years later, the same SIP ends ${late} lower. To reach the same value you would need ${need} a month instead of ${now}.`,
+    d1: "Mutual fund investments are subject to market risks. Read all scheme related documents carefully.",
+    d2: "Every figure here is an illustration based on assumed returns. It is not a promise or a guarantee.",
+    i_eyebrow: (f) => `${f} · Wealth City`,
+    i_h: "What are you building towards?",
+    i_sub: "Pick your dreams, then watch your monthly SIP grow into a city.",
+    i_q: "How much can you invest each month?", i_go: "Build my city",
+    adv_title: "Mutual Fund Distributor",
+    t_goal: (n, y) => `Goal unlocked: ${n} (${y})`, t_end: (v, y) => `${y}: your city is worth ${v} (illustrative)`,
+    share_h: "Your Wealth City", share_note: "Press and hold the picture to save it, then share it on WhatsApp.", share_wa: "Send my plan on WhatsApp",
+    sc_title: (n) => n ? `${n}'s Wealth City` : "My Wealth City",
+    sc_line: (v, y) => `${v} by ${y}`, sc_sub: (s, st, n) => `${s} a month${st ? `, rising ${st}% a year` : ""}, for ${n} years`,
+    sc_range: "Illustrative at 8% / 10% / 12%",
+    wa_plan: (nm, adv, s, st, h, r, g) => `Hello ${adv}, I tried Wealth City${nm ? ` (${nm})` : ""}. My plan: ${s} a month${st ? `, rising ${st}% every year` : ""} for ${h} years. Illustrative value at 8% / 10% / 12%: ${r}. Goals funded: ${g}. Please guide me on how to start.`,
+    wa_call: (nm, adv, s, h) => `Hello ${adv}, I explored Wealth City with ${s} a month for ${h} years${nm ? ` (${nm})` : ""}. Please call me for a free 15-minute chat.`
+  },
+  hi: {
+    byline: (n, a) => `आपके सलाहकार: ${n} · ${a}`,
+    k_total: "इस समय की संपत्ति", k_inv: "आपका निवेश", k_gain: "बढ़ोतरी", k_year: "साल", dock_lbl: "साल",
+    tab_plan: "योजना", tab_goals: "लक्ष्य", tab_events: "घटनाएं", tab_compare: "तुलना",
+    sip_what: "SIP में हर महीने एक तय रकम अपने आप निवेश होती है। छोटे कदम, लंबा समय। हर किस्त आपकी मीनार पर सिक्के की तरह गिरती है।",
+    l_sip: "मासिक SIP", l_step: "हर साल SIP इतना बढ़ाएं", l_rate: "मानकर चलने वाला सालाना रिटर्न (उदाहरण)",
+    step0: "बिना बढ़ोतरी", r_8: "सतर्क", r_10: "संतुलित", r_12: "आशावादी",
+    res_h: (n, y) => `${n} साल बाद (${y}) अनुमानित मूल्य (उदाहरण)`,
+    res_inv: "आपकी लगाई रकम", score_l: "सबसे कमज़ोर लक्ष्य की पूर्ति",
+    l_name: "आपका नाम (वैकल्पिक)",
+    b_wa: "मेरा प्लान WhatsApp पर भेजें", b_call: "15 मिनट की मुफ़्त कॉल बुक करें", b_share: "मेरा शहर शेयर करें",
+    l_miles: "उपलब्धियां", l_board: "SIP आगमन",
+    m_first: "पहली मीनार", m_half: "बढ़ोतरी ने निवेश को पीछे छोड़ा", m_goal: "लक्ष्य पूरा", m_crore: "करोड़ क्लब", m_all: "सभी लक्ष्य पूरे",
+    board_ok: "समय पर",
+    goals_hint: "आपकी SIP चालू किए गए लक्ष्यों में बंटती है। किसी लक्ष्य पर टैप करके वहां पहुंचें।",
+    auto: "SIP अपने आप संतुलित करें", auto_done: "ज़रूरत के हिसाब से संतुलित। बराबर बंटवारे के लिए फिर टैप करें।",
+    g_edu: "बच्चों की पढ़ाई", g_home: "सपनों का घर", g_wed: "शादी", g_ret: "रिटायरमेंट",
+    gs_edu: "पढ़ाई", gs_home: "घर", gs_wed: "शादी", gs_ret: "रिटायर",
+    g_today_to: (a, b, y) => `आज ${a} → ${y} में ${b}`,
+    g_need: (v) => `अकेले के लिए शुरुआत में ${v}/माह चाहिए`, g_alloc: (v) => `${v}/माह मिल रहे हैं`, g_funded: (p) => `${p}% पूरा`, g_off: "बंद है",
+    ev_hint: "कोई घटना चुनें और शहर की प्रतिक्रिया देखें।",
+    ev_crash: "बाज़ार में गिरावट", ev_crash_s: "30% गिरावट (उदाहरण)",
+    ev_storm: "महंगाई का तूफ़ान", ev_storm_s: "लक्ष्यों की लागत बढ़ते देखें",
+    ev_bull: "बाज़ार में तेज़ी", ev_bull_s: "15% की तेज़ी (उदाहरण)",
+    ev_wait: "5 साल देर से शुरू", ev_wait_s: "इंतज़ार की कीमत",
+    ev_crash_t: "बाज़ार 30% नीचे (उदाहरण)",
+    ev_crash_b: (u, s) => `कीमतें 30% गिरती हैं। आपकी ${s} अब पहले से ${u}% ज़्यादा यूनिट खरीदती है। पिछली रिकवरी भविष्य की गारंटी नहीं है, लेकिन निवेश जारी रखने से कम कीमत पर हर रुपया ज़्यादा यूनिट खरीदता है।`,
+    ev_storm_t: "महंगाई आपके सपनों की कीमत बढ़ा रही है",
+    ev_storm_b: "महंगाई से आपके लक्ष्यों की लागत बढ़ती है। आज की कीमत के सामने वह अनुमानित कीमत है जब आपको पैसा चाहिए होगा।",
+    ev_bull_t: "बाज़ार 15% ऊपर (उदाहरण)",
+    ev_bull_b: "कीमतें 15% बढ़ती हैं। तेज़ी अच्छी लगती है पर हमेशा नहीं रहती, इसलिए बाज़ार का समय पकड़ने से ज़्यादा नियमित मासिक SIP मायने रखती है।",
+    ev_wait_t: "5 साल देर से शुरुआत",
+    ev_wait_b: (late, full, need, now) => `5 साल देर से शुरू करने पर वही ${now} प्रति माह ${full} की जगह ${late} तक पहुंचता है। बराबरी के लिए हर महीने ${need} चाहिए।`,
+    ev_stop: "मेरे शहर पर लौटें",
+    bn_crash: (u, s) => `आपकी ${s} अब ${u}% ज़्यादा यूनिट खरीदती है।`, bn_storm: "लक्ष्यों की लागत बढ़ रही है।", bn_bull: "आनंद लें, पर SIP नियमित रखें।", bn_wait: (late, full) => `${full} की जगह ${late}।`,
+    sub_ill: (r) => `${r}% सालाना · उदाहरण`,
+    cmp_h: "SIP और दूसरे विकल्प", b_sip: (r) => `SIP ${r}% पर`, b_fd: "फिक्स्ड डिपॉज़िट 6.5%", b_sav: "बचत खाता 3%", b_cash: "घर में रखा नकद, बिना बढ़ोतरी",
+    cmp_note: "उदाहरण मात्र, कर से पहले। हर बार में समान मासिक राशि है। FD और बचत की दरें मान्यताएं हैं, प्रस्ताव नहीं।",
+    wait_h: "5 साल इंतज़ार की कीमत",
+    wait_b: (late, need, now) => `5 साल देर से शुरू करने पर वही SIP ${late} कम पर खत्म होती है। उतना ही मूल्य पाने के लिए ${now} की जगह ${need} प्रति माह चाहिए।`,
+    d1: "म्यूचुअल फंड निवेश बाज़ार जोखिमों के अधीन हैं, कृपया निवेश करने से पहले योजना से संबंधित सभी दस्तावेज़ ध्यान से पढ़ें।",
+    d2: "यहां हर आंकड़ा मानी हुई दरों पर आधारित उदाहरण है। यह कोई वादा या गारंटी नहीं है।",
+    i_eyebrow: (f) => `${f} · वेल्थ सिटी`,
+    i_h: "आप किसके लिए निर्माण कर रहे हैं?",
+    i_sub: "अपने सपने चुनें, फिर देखें आपकी मासिक SIP एक शहर बन जाती है।",
+    i_q: "हर महीने कितना निवेश कर सकते हैं?", i_go: "मेरा शहर बनाएं",
+    adv_title: "म्यूचुअल फंड वितरक",
+    t_goal: (n, y) => `लक्ष्य पूरा: ${n} (${y})`, t_end: (v, y) => `${y}: आपका शहर ${v} का है (उदाहरण)`,
+    share_h: "आपका वेल्थ सिटी", share_note: "तस्वीर को दबाकर रखें और सेव करें, फिर WhatsApp पर शेयर करें।", share_wa: "मेरा प्लान WhatsApp पर भेजें",
+    sc_title: (n) => n ? `${n} का वेल्थ सिटी` : "मेरा वेल्थ सिटी",
+    sc_line: (v, y) => `${y} तक ${v}`, sc_sub: (s, st, n) => `${s} प्रति माह${st ? `, हर साल ${st}% बढ़ोतरी` : ""}, ${n} साल के लिए`,
+    sc_range: "उदाहरण: 8% / 10% / 12% पर",
+    wa_plan: (nm, adv, s, st, h, r, g) => `नमस्ते ${adv}, मैंने वेल्थ सिटी देखा${nm ? ` (${nm})` : ""}. मेरा प्लान: ${h} साल तक ${s} प्रति माह${st ? `, हर साल ${st}% बढ़ोतरी` : ""}. 8% / 10% / 12% पर अनुमानित मूल्य: ${r}. लक्ष्य पूर्ति: ${g}. कृपया शुरुआत करने में मेरी मदद करें।`,
+    wa_call: (nm, adv, s, h) => `नमस्ते ${adv}, मैंने ${h} साल के लिए ${s} प्रति माह का प्लान वेल्थ सिटी में देखा${nm ? ` (${nm})` : ""}. कृपया 15 मिनट की मुफ़्त कॉल के लिए मुझे फ़ोन करें।`
+  }
+};
+
+/* ============================================================ state */
+const S = {
+  lang: "en", sip: 20000, step: 0.10, rate: 0.10, alloc: "equal",
+  on: { edu: true, home: true, wed: true, ret: true },
+  tm: 0, H: 25, playing: false, speed: 1, name: "", ev: null, tab: "plan"
+};
+const M = { main: null, inv: 0, val: 0, range: [0, 0, 0], score: 0 };
+try { const l = localStorage.getItem("wc-lang"); if (l === "hi" || l === "en") S.lang = l; } catch (e) {}
+
+function t(key, ...a) {
+  const v = (I18N[S.lang] && I18N[S.lang][key] !== undefined) ? I18N[S.lang][key] : I18N.en[key];
+  return typeof v === "function" ? v(...a) : (v === undefined ? key : v);
+}
+const gname = (id) => t("g_" + id);
+const gshort = (id) => t("gs_" + id);
+
+/* ============================================================ numbers */
+const trim = (v, d) => String(+v.toFixed(d));
+function inr(n) {
+  n = Math.max(0, n || 0);
+  const hi = S.lang === "hi";
+  if (n >= 1e7) { const v = n / 1e7; return "₹" + (v >= 100 ? Math.round(v).toLocaleString("en-IN") : trim(v, v >= 10 ? 1 : 2)) + " " + (hi ? "करोड़" : "Cr"); }
+  if (n >= 1e5) { const v = n / 1e5; return "₹" + trim(v, v >= 10 ? 1 : 2) + " " + (hi ? "लाख" : "Lakh"); }
+  return "₹" + Math.round(n).toLocaleString("en-IN");
+}
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => k * k * (3 - 2 * k);
+
+/* ============================================================ finance model */
+const mRate = (r) => Math.pow(1 + r, 1 / 12) - 1;
+/* SIP paid at the start of each month, stepping up once a year */
+function simulate(sip, step, r, years) {
+  const n = years * 12, mr = mRate(r);
+  const inv = new Float64Array(n + 1), val = new Float64Array(n + 1);
+  let v = 0, i = 0, s = sip;
+  for (let m = 1; m <= n; m++) {
+    if (m > 1 && (m - 1) % 12 === 0) s *= 1 + step;
+    v = (v + s) * (1 + mr); i += s; inv[m] = i; val[m] = v;
+  }
+  return { inv, val };
+}
+function fvOnly(sip, step, r, years) {
+  const n = years * 12, mr = mRate(r); let v = 0, s = sip;
+  for (let m = 1; m <= n; m++) { if (m > 1 && (m - 1) % 12 === 0) s *= 1 + step; v = (v + s) * (1 + mr); }
+  return v;
+}
+function interp(arr, x) {
+  const L = arr.length - 1; x = clamp(x, 0, L);
+  const i = Math.floor(x), f = x - i;
+  return arr[i] * (1 - f) + arr[Math.min(i + 1, L)] * f;
+}
+/* flat monthly SIP that reaches fc in the given years, no step-up */
+function flatNeed(fc, years, r) {
+  const n = years * 12, mr = mRate(r);
+  return fc / (((Math.pow(1 + mr, n) - 1) / mr) * (1 + mr));
+}
+const activeGoals = () => GOALS.filter((g) => S.on[g.id]);
+
+function recalc() {
+  const act = activeGoals();
+  S.H = act.length ? clamp(Math.max(...act.map((g) => g.years)), 5, 30) : 20;
+  M.main = simulate(S.sip, S.step, S.rate, S.H);
+  M.inv = M.main.inv[S.H * 12]; M.val = M.main.val[S.H * 12];
+  M.range = ASSUME.scenarios.map((r) => fvOnly(S.sip, S.step, r, S.H));
+  GOALS.forEach((g) => { g.fc = g.cost * Math.pow(1 + g.infl, g.years); g.need = g.fc / fvOnly(1, S.step, S.rate, g.years); });
+  const sumNeed = act.reduce((a, g) => a + g.need, 0);
+  GOALS.forEach((g) => {
+    if (!S.on[g.id]) { g.share = 0; g.sip = 0; g.sim = null; g.funded = 0; return; }
+    g.share = S.alloc === "smart" ? g.need / sumNeed : 1 / act.length;
+    g.sip = S.sip * g.share;
+    g.sim = simulate(g.sip, S.step, S.rate, g.years);
+    g.funded = g.sim.val[g.years * 12] / g.fc;
+  });
+  M.score = act.length ? Math.round(Math.min(...act.map((g) => Math.min(1, g.funded))) * 100) : 0;
+  S.tm = clamp(S.tm, 0, S.H * 12);
+}
+const valAt = (tm) => interp(M.main.val, tm);
+const invAt = (tm) => interp(M.main.inv, tm);
+function goalProg(g, tm) { return g.sim ? interp(g.sim.val, Math.min(tm, g.years * 12)) / g.fc : 0; }
+
+/* what happens if the same SIP starts 5 years late */
+function waitStats(D = 5) {
+  const yrs = Math.max(1, S.H - D);
+  const full = M.val, late = fvOnly(S.sip, S.step, S.rate, yrs);
+  let lo = S.sip, hi = S.sip * 25;
+  for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (fvOnly(mid, S.step, S.rate, yrs) >= full) hi = mid; else lo = mid; }
+  return { yrs, full, late, need: hi };
+}
+const startYear = new Date().getFullYear();
+const startMonth = new Date().getMonth();
+const yearLabel = (tm) => startYear + Math.floor((startMonth + tm) / 12);
+
+/* messages for WhatsApp and the share card */
+function waLink(text) {
+  const d = (ADVISOR.phone || "").replace(/\D/g, "");
+  const ok = d.length >= 11 && !/x/i.test(ADVISOR.phone);
+  return "https://wa.me/" + (ok ? d : "") + "?text=" + encodeURIComponent(text);
+}
+function planText() {
+  const nm = S.name.trim(), goals = activeGoals().map((g) => `${gname(g.id)} ${Math.round(g.funded * 100)}%`).join(", ") || "-";
+  return t("wa_plan", nm, ADVISOR.name, inr(S.sip), Math.round(S.step * 100), S.H, M.range.map(inr).join(" / "), goals);
+}
+function callText() { return t("wa_call", S.name.trim(), ADVISOR.name, inr(S.sip), S.H); }
+/* ============================================================ 3D WORLD */
+function buildWorld() {
+  const canvas = document.getElementById("gl");
+  const stage = document.getElementById("stage");
+  const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const COMPACT = Math.min(window.innerWidth, window.innerHeight) < 700;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, COMPACT ? 1.75 : 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  renderer.setClearColor(0x060a1a);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0b1230, 0.0058);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 1800);
+
+  /* ---------- helpers ---------- */
+  let seed = 20261025;
+  const rnd = () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let q = Math.imul(seed ^ (seed >>> 15), 1 | seed); q = (q + Math.imul(q ^ (q >>> 7), 61 | q)) ^ q; return ((q ^ (q >>> 14)) >>> 0) / 4294967296; };
+  const mkc = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+  const tex = (c, rep) => { const T = new THREE.CanvasTexture(c); T.anisotropy = 4; if (rep) T.wrapS = T.wrapT = THREE.RepeatWrapping; return T; };
+  const GLOW = (() => { const c = mkc(128, 128), g = c.getContext("2d"); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(.25, "rgba(255,255,255,.5)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return tex(c); })();
+  const glowSprite = (color, size, op) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); s.scale.set(size, size, 1); return s; };
+  const std = (o) => new THREE.MeshStandardMaterial(o);
+  const GP = GOALS.map((g, k) => { const th = Math.PI / 4 + k * Math.PI / 2; return { x: Math.sin(th) * 24, z: Math.cos(th) * 24, th }; });
+
+  /* ---------- sky, stars, atmosphere ---------- */
+  const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, glow: { value: new THREE.Color() }, sun: { value: new THREE.Vector3(0, .1, -1).normalize() } };
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), new THREE.ShaderMaterial({
+    uniforms: skyU, side: THREE.BackSide, depthWrite: false,
+    vertexShader: "varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+    fragmentShader: "uniform vec3 top;uniform vec3 hor;uniform vec3 glow;uniform vec3 sun;varying vec3 vP;void main(){float h=clamp(vP.y,0.0,1.0);vec3 c=mix(hor,top,pow(h,0.55));if(vP.y<0.0)c=hor*(1.0+vP.y*0.7);float s=max(dot(normalize(vP),sun),0.0);c+=glow*(pow(s,5.0)*0.5+pow(s,36.0)*0.95);gl_FragColor=vec4(c,1.0);}"
+  }));
+  sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
+
+  const starGeo = new THREE.BufferGeometry(); const sp = new Float32Array(900 * 3);
+  for (let i = 0; i < 900; i++) { const a = rnd() * 6.283, y = Math.pow(rnd(), .7), r = Math.sqrt(1 - y * y); sp[i * 3] = Math.cos(a) * r * 800; sp[i * 3 + 1] = y * 800 + 20; sp[i * 3 + 2] = Math.sin(a) * r * 800; }
+  starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+  const starMat = new THREE.PointsMaterial({ color: 0xcfd9ff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: .9, depthWrite: false, fog: false });
+  const stars = new THREE.Points(starGeo, starMat); stars.frustumCulled = false; scene.add(stars);
+
+  const hemi = new THREE.HemisphereLight(0x7088ff, 0x1a1030, .7); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xb8c6ff, .5); sun.position.set(-70, 90, 60); scene.add(sun);
+  const gold = new THREE.PointLight(0xffc766, 1.4, 70, 1.6); gold.position.set(0, 5, 0); scene.add(gold);
+
+  const C = (h) => new THREE.Color(h);
+  const TOP0 = C(0x04061a), TOP1 = C(0x2c4a96), HOR0 = C(0x0b1330), HOR1 = C(0xff9a58), GLOW1 = C(0xffa45e);
+  const tmpA = new THREE.Color(), tmpB = new THREE.Color();
+  const FOG_DAY = C(0x7d5a66);
+  function atmosphere(dawn, tintCol, tintAmt) {
+    skyU.top.value.copy(TOP0).lerp(TOP1, dawn); skyU.hor.value.copy(HOR0).lerp(HOR1, dawn * dawn * .9 + dawn * .1);
+    if (tintAmt > 0) { skyU.top.value.lerp(tmpA.copy(tintCol).multiplyScalar(.35), tintAmt); skyU.hor.value.lerp(tintCol, tintAmt * .6); }
+    skyU.glow.value.copy(GLOW1).multiplyScalar(Math.pow(dawn, 1.3) * (1 - tintAmt * .7));
+    skyU.sun.value.set(.18, lerp(-.14, .2, dawn), -1).normalize();
+    scene.fog.color.copy(skyU.hor.value).multiplyScalar(.82); renderer.setClearColor(scene.fog.color);
+    hemi.intensity = .55 + .5 * dawn; sun.intensity = .45 + .95 * dawn;
+    sun.color.copy(C(0xb8c6ff)).lerp(C(0xffd8a8), dawn);
+    starMat.opacity = clamp(.95 - dawn * .95 - tintAmt * .4, 0, 1);
+  }
+
+  /* ---------- water + plinth + ground map ---------- */
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1000, 64), std({ color: 0x0b1a3d, metalness: .85, roughness: .28 }));
+  water.rotation.x = -Math.PI / 2; water.position.y = -3.4; scene.add(water);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(64, 67, 3.4, 96), std({ color: 0x0d1736, metalness: .55, roughness: .4 }));
+  plinth.position.y = -1.7; scene.add(plinth);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(64.2, .32, 10, 160), new THREE.MeshBasicMaterial({ color: 0xf6bf55 }));
+  rim.rotation.x = Math.PI / 2; rim.position.y = .02; scene.add(rim);
+  const rim2 = new THREE.Mesh(new THREE.TorusGeometry(67, .18, 8, 160), new THREE.MeshBasicMaterial({ color: 0x47c6ff, transparent: true, opacity: .6 }));
+  rim2.rotation.x = Math.PI / 2; rim2.position.y = -2.6; scene.add(rim2);
+
+  function groundTex() {
+    const N = COMPACT ? 1024 : 2048, c = mkc(N, N), g = c.getContext("2d"), u = N / 128, cx = N / 2;
+    const P = (x, z) => [cx + x * u, cx + z * u];
+    g.save(); g.beginPath(); g.arc(cx, cx, 64 * u, 0, 6.2832); g.clip();
+    const bg = g.createRadialGradient(cx, cx, 0, cx, cx, 64 * u); bg.addColorStop(0, "#14224f"); bg.addColorStop(.6, "#0b1636"); bg.addColorStop(1, "#070d22");
+    g.fillStyle = bg; g.fillRect(0, 0, N, N);
+    g.strokeStyle = "rgba(120,150,255,.06)"; g.lineWidth = Math.max(1, u * .08);
+    for (let k = -64; k <= 64; k += 4) { g.beginPath(); g.moveTo(cx + k * u, 0); g.lineTo(cx + k * u, N); g.stroke(); g.beginPath(); g.moveTo(0, cx + k * u); g.lineTo(N, cx + k * u); g.stroke(); }
+    for (let i = 0; i < 26; i++) { const a = rnd() * 6.283, r = 38 + rnd() * 22, [x, y] = P(Math.cos(a) * r, Math.sin(a) * r), rr = (3 + rnd() * 5) * u; const gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, "rgba(40,170,130,.30)"); gr.addColorStop(1, "rgba(40,170,130,0)"); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, 6.2832); g.fill(); }
+    const road = (r, w) => { g.strokeStyle = "#18255a"; g.lineWidth = w * u; g.beginPath(); g.arc(cx, cx, r * u, 0, 6.2832); g.stroke(); g.strokeStyle = "rgba(255,214,140,.38)"; g.lineWidth = .22 * u; g.setLineDash([1.4 * u, 1.4 * u]); g.beginPath(); g.arc(cx, cx, r * u, 0, 6.2832); g.stroke(); g.setLineDash([]); };
+    road(15, 3.4); road(34, 3.4);
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, [x1, y1] = P(Math.sin(a) * 11, Math.cos(a) * 11), [x2, y2] = P(Math.sin(a) * 63, Math.cos(a) * 63); g.strokeStyle = "#16225a"; g.lineWidth = 2.6 * u; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); g.strokeStyle = "rgba(255,214,140,.3)"; g.lineWidth = .2 * u; g.setLineDash([1.2 * u, 1.4 * u]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); g.setLineDash([]); }
+    GP.forEach((p) => { const [x, y] = P(p.x, p.z); const gr = g.createRadialGradient(x, y, 0, x, y, 9.4 * u); gr.addColorStop(0, "rgba(246,191,85,.16)"); gr.addColorStop(1, "rgba(246,191,85,0)"); g.fillStyle = gr; g.beginPath(); g.arc(x, y, 9.4 * u, 0, 6.2832); g.fill(); g.strokeStyle = "rgba(246,191,85,.55)"; g.lineWidth = .28 * u; g.beginPath(); g.arc(x, y, 8.8 * u, 0, 6.2832); g.stroke(); g.setLineDash([.7 * u, .9 * u]); g.beginPath(); g.arc(x, y, 7.4 * u, 0, 6.2832); g.stroke(); g.setLineDash([]); });
+    const cg = g.createRadialGradient(cx, cx, 0, cx, cx, 12 * u); cg.addColorStop(0, "rgba(71,198,255,.30)"); cg.addColorStop(.7, "rgba(246,191,85,.14)"); cg.addColorStop(1, "rgba(246,191,85,0)"); g.fillStyle = cg; g.beginPath(); g.arc(cx, cx, 12 * u, 0, 6.2832); g.fill();
+    [11.4, 9.6, 7.2].forEach((r, i) => { g.strokeStyle = i === 0 ? "rgba(246,191,85,.7)" : "rgba(71,198,255,.4)"; g.lineWidth = .24 * u; g.beginPath(); g.arc(cx, cx, r * u, 0, 6.2832); g.stroke(); });
+    for (let k = 0; k < 72; k++) { const a = k * Math.PI / 36, r1 = 11.4, r2 = k % 6 === 0 ? 12.6 : 12; g.strokeStyle = "rgba(246,191,85,.5)"; g.lineWidth = .16 * u; g.beginPath(); g.moveTo(cx + Math.sin(a) * r1 * u, cx + Math.cos(a) * r1 * u); g.lineTo(cx + Math.sin(a) * r2 * u, cx + Math.cos(a) * r2 * u); g.stroke(); }
+    g.restore();
+    return tex(c);
+  }
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(64, 96), new THREE.MeshStandardMaterial({ map: groundTex(), roughness: .8, metalness: .1 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = .02; scene.add(ground);
+
+  /* ---------- wealth tower ---------- */
+  const TW = 6.2, FH = 1, MAXF = 66, BASE_Y = 1.2;
+  const towerG = new THREE.Group(); scene.add(towerG);
+  const tBase = new THREE.Mesh(new THREE.CylinderGeometry(8.4, 9.4, 1.3, 56), std({ color: 0x131e4a, metalness: .6, roughness: .3 }));
+  tBase.position.y = .65; towerG.add(tBase);
+  const tRing = new THREE.Mesh(new THREE.TorusGeometry(8.6, .16, 10, 120), new THREE.MeshBasicMaterial({ color: 0xffd98a }));
+  tRing.rotation.x = Math.PI / 2; tRing.position.y = 1.3; towerG.add(tRing);
+
+  function floorTex(emissive) {
+    const c = mkc(256, 64), g = c.getContext("2d");
+    g.fillStyle = emissive ? "#000" : "#2b3558"; g.fillRect(0, 0, 256, 64);
+    for (let i = 0; i < 18; i++) { const x = 6 + i * 13.6; g.fillStyle = emissive ? "rgba(255,255,255," + (.55 + (i % 3) * .15) + ")" : "#c8d4ff"; g.fillRect(x, 14, 9.4, 36); }
+    g.fillStyle = emissive ? "rgba(255,255,255,.9)" : "#fff"; g.fillRect(0, 0, 256, 3); g.fillRect(0, 61, 256, 3);
+    return tex(c);
+  }
+  const fmapC = floorTex(false), fmapE = floorTex(true);
+  const matInv = std({ color: 0x35b4f0, map: fmapC, emissive: 0x1b7ac4, emissiveMap: fmapE, emissiveIntensity: 1.25, metalness: .55, roughness: .25 });
+  const matGain = std({ color: 0xf2b84f, map: fmapC, emissive: 0xd68a1c, emissiveMap: fmapE, emissiveIntensity: 1.35, metalness: .6, roughness: .22 });
+  const floorGeo = new THREE.BoxGeometry(1, 1, 1);
+  const imInv = new THREE.InstancedMesh(floorGeo, matInv, MAXF), imGain = new THREE.InstancedMesh(floorGeo, matGain, MAXF);
+  imInv.frustumCulled = imGain.frustumCulled = false; imInv.count = imGain.count = 0; towerG.add(imInv, imGain);
+  const core = new THREE.Mesh(new THREE.BoxGeometry(TW * .72, 1, TW * .72), std({ color: 0x0a1030, emissive: 0x16306b, emissiveIntensity: .8, metalness: .8, roughness: .3 }));
+  towerG.add(core);
+  const spire = new THREE.Mesh(new THREE.CylinderGeometry(.08, .32, 1, 10), std({ color: 0xffe3a6, emissive: 0xffb84a, emissiveIntensity: .8, metalness: .9, roughness: .2 }));
+  towerG.add(spire);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(.55, 20, 14), new THREE.MeshBasicMaterial({ color: 0xfff2c8 }));
+  const beaconGlow = glowSprite(0xffc766, 16, .9); towerG.add(beacon, beaconGlow);
+  const crown = new THREE.Mesh(new THREE.TorusGeometry(3.2, .1, 8, 64), new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: .8 }));
+  crown.rotation.x = Math.PI / 2; towerG.add(crown);
+  const crown2 = crown.clone(); crown2.scale.setScalar(.6); towerG.add(crown2);
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 60, 12), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+  hit.position.y = 30; towerG.add(hit);
+  const dummy = new THREE.Object3D();
+  const tower = { h: 0, top: BASE_Y };
+  function setTower(valTotal, invTotal, mult) {
+    const v = Math.max(1, valTotal);
+    let h = 3 + 56 * Math.tanh(Math.sqrt(v / 1e8) * .9);
+    h *= mult; if (valTotal < 1) h = 2;
+    const invFrac = clamp(invTotal / v, 0, 1);
+    const nF = clamp(Math.ceil(h / FH), 1, MAXF);
+    let ni = 0, ng = 0;
+    for (let i = 0; i < nF; i++) {
+      const fh = clamp(h - i * FH, 0, FH) * .88, w = TW * (1 - .07 * Math.floor(i / 14));
+      const isInv = (i + .5) * FH <= h * invFrac;
+      dummy.position.set(0, BASE_Y + i * FH + fh / 2, 0); dummy.scale.set(w, Math.max(.02, fh), w); dummy.updateMatrix();
+      if (isInv) imInv.setMatrixAt(ni++, dummy.matrix); else imGain.setMatrixAt(ng++, dummy.matrix);
+    }
+    imInv.count = ni; imGain.count = ng; imInv.instanceMatrix.needsUpdate = imGain.instanceMatrix.needsUpdate = true;
+    core.scale.y = h; core.position.y = BASE_Y + h / 2;
+    const top = BASE_Y + h, sh = 4 + h * .12;
+    spire.scale.y = sh; spire.position.y = top + sh / 2;
+    beacon.position.y = top + sh + .3; beaconGlow.position.y = top + sh + .3;
+    crown.position.y = top + 1.1; crown2.position.y = top + 2.6;
+    tower.h = h; tower.top = top;
+  }
+
+  /* ---------- particles (coins sparkle, confetti, fireworks) ---------- */
+  const PN = COMPACT ? 600 : 1000;
+  const pPos = new Float32Array(PN * 3), pCol = new Float32Array(PN * 3), pBase = new Float32Array(PN * 3), pVel = new Float32Array(PN * 3), pLife = new Float32Array(PN), pMax = new Float32Array(PN), pGrav = new Float32Array(PN);
+  for (let i = 0; i < PN; i++) pPos[i * 3 + 1] = -999;
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute("color", new THREE.BufferAttribute(pCol, 3));
+  const pts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 1.5, map: GLOW, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  pts.frustumCulled = false; scene.add(pts);
+  let pHead = 0;
+  function emit(x, y, z, vx, vy, vz, life, c, grav) {
+    const i = pHead; pHead = (pHead + 1) % PN; const j = i * 3;
+    pPos[j] = x; pPos[j + 1] = y; pPos[j + 2] = z; pVel[j] = vx; pVel[j + 1] = vy; pVel[j + 2] = vz;
+    pBase[j] = c.r; pBase[j + 1] = c.g; pBase[j + 2] = c.b; pLife[i] = pMax[i] = life; pGrav[i] = grav;
+  }
+  const PAL_GOLD = [C(0xffd98a), C(0xffb84a), C(0xfff2c8), C(0xffe3a6)];
+  const PAL_MIX = [C(0xffd98a), C(0x47c6ff), C(0x44dfa1), C(0xff6b7d), C(0xffe3a6), C(0xb99cff)];
+  function burst(x, y, z, n, pal, spd, grav) {
+    if (REDUCED) n = Math.ceil(n / 4);
+    for (let k = 0; k < n; k++) { const a = rnd() * 6.283, b = Math.acos(2 * rnd() - 1), s = spd * (.35 + rnd() * .65); emit(x, y, z, Math.sin(b) * Math.cos(a) * s, Math.cos(b) * s, Math.sin(b) * Math.sin(a) * s, 1.1 + rnd() * 1.1, pal[(rnd() * pal.length) | 0], grav); }
+  }
+  function confettiRain(n) {
+    for (let k = 0; k < n; k++) { const a = rnd() * 6.283, r = rnd() * 22; emit(Math.cos(a) * r, 52 + rnd() * 14, Math.sin(a) * r, (rnd() - .5) * 3, -6 - rnd() * 5, (rnd() - .5) * 3, 3.2 + rnd() * 1.5, PAL_MIX[(rnd() * PAL_MIX.length) | 0], 1.2); }
+  }
+  function updateParticles(dt) {
+    let any = false;
+    for (let i = 0; i < PN; i++) {
+      const j = i * 3;
+      if (pLife[i] > 0) {
+        any = true; pLife[i] -= dt; pVel[j + 1] -= pGrav[i] * dt;
+        pPos[j] += pVel[j] * dt; pPos[j + 1] += pVel[j + 1] * dt; pPos[j + 2] += pVel[j + 2] * dt;
+        const f = clamp(pLife[i] / pMax[i] * 1.8, 0, 1);
+        pCol[j] = pBase[j] * f; pCol[j + 1] = pBase[j + 1] * f; pCol[j + 2] = pBase[j + 2] * f;
+        if (pLife[i] <= 0) { pPos[j + 1] = -999; pCol[j] = pCol[j + 1] = pCol[j + 2] = 0; }
+      }
+    }
+    if (any) { pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true; }
+  }
+
+  /* money dust drifting up around the tower */
+  const DN = COMPACT ? 90 : 160, dPos = new Float32Array(DN * 3), dSpd = new Float32Array(DN);
+  for (let i = 0; i < DN; i++) { const a = rnd() * 6.283, r = 6 + rnd() * 8; dPos[i * 3] = Math.cos(a) * r; dPos[i * 3 + 1] = rnd() * 40; dPos[i * 3 + 2] = Math.sin(a) * r; dSpd[i] = .8 + rnd() * 1.6; }
+  const dGeo = new THREE.BufferGeometry(); dGeo.setAttribute("position", new THREE.BufferAttribute(dPos, 3));
+  const dust = new THREE.Points(dGeo, new THREE.PointsMaterial({ size: .9, map: GLOW, color: 0xffd98a, transparent: true, opacity: .75, blending: THREE.AdditiveBlending, depthWrite: false }));
+  dust.frustumCulled = false; scene.add(dust);
+
+  /* coins that drop onto the tower: one per SIP instalment */
+  const coinGeo = new THREE.CylinderGeometry(.62, .62, .16, 22);
+  const coinMat = std({ color: 0xffd36b, emissive: 0xb87a10, emissiveIntensity: .7, metalness: .9, roughness: .25 });
+  const coins = [];
+  for (let i = 0; i < 24; i++) { const m = new THREE.Mesh(coinGeo, coinMat); m.visible = false; m.userData = { vy: 0, ax: 0 }; scene.add(m); coins.push(m); }
+  let coinHead = 0;
+  function spawnCoin() {
+    const m = coins[coinHead]; coinHead = (coinHead + 1) % coins.length;
+    const a = rnd() * 6.283, r = rnd() * 2.4;
+    m.position.set(Math.cos(a) * r, tower.top + 34 + rnd() * 6, Math.sin(a) * r); m.rotation.set(rnd() * 3, 0, rnd() * 3);
+    m.userData.vy = 0; m.userData.spin = 4 + rnd() * 6; m.visible = true;
+  }
+  function updateCoins(dt) {
+    coins.forEach((m) => {
+      if (!m.visible) return;
+      m.userData.vy += 38 * dt; m.position.y -= m.userData.vy * dt; m.rotation.x += m.userData.spin * dt; m.rotation.z += dt * 2;
+      if (m.position.y <= tower.top + 3.6) { m.visible = false; burst(m.position.x, tower.top + 3.6, m.position.z, 10, PAL_GOLD, 7, 14); beaconPulse = 1; }
+    });
+  }
+  let beaconPulse = 0;
+
+  /* ---------- filler skyline: grows as wealth grows ---------- */
+  const facade = (() => {
+    const c = mkc(128, 128), g = c.getContext("2d"), e = mkc(128, 128), ge = e.getContext("2d");
+    g.fillStyle = "#141b3a"; g.fillRect(0, 0, 128, 128); ge.fillStyle = "#000"; ge.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+      const lit = rnd() < .5; g.fillStyle = lit ? "#33426f" : "#0b1230"; g.fillRect(x * 16 + 3, y * 16 + 4, 10, 9);
+      if (lit) { ge.globalAlpha = .55 + rnd() * .45; ge.fillStyle = rnd() < .72 ? "#ffd08a" : "#9ad8ff"; ge.fillRect(x * 16 + 3, y * 16 + 4, 10, 9); }
+    }
+    return [tex(c, true), tex(e, true)];
+  })();
+  const fillMats = [0x8196dc, 0x74b9cf, 0xa08cdc].map((col) => std({ color: col, map: facade[0], emissiveMap: facade[1], emissive: 0xffffff, emissiveIntensity: .95, roughness: .5, metalness: .25 }));
+  function bldGeo(w, h, d) {
+    const g = new THREE.BoxGeometry(w, h, d); g.translate(0, h / 2, 0);
+    const uv = g.attributes.uv, tile = 9;
+    for (let i = 0; i < 24; i++) {
+      const f = Math.floor(i / 4); let su = .01, sv = .01;
+      if (f < 2) { su = d / tile; sv = h / tile; } else if (f >= 4) { su = w / tile; sv = h / tile; }
+      uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+    }
+    uv.needsUpdate = true; return g;
+  }
+  const fill = [], antMat = new THREE.MeshBasicMaterial({ color: 0xff5d6c }), antGeo = new THREE.CylinderGeometry(.07, .07, 2.4, 6);
+  const wantB = COMPACT ? 64 : 96;
+  for (let n = 0; n < 1400 && fill.length < wantB; n++) {
+    const a = rnd() * 6.283, r = 37 + rnd() * 23, x = Math.sin(a) * r, z = Math.cos(a) * r;
+    const q = Math.PI / 4, ra = ((a % q) + q) % q, dAng = Math.min(ra, q - ra) * r;
+    if (dAng < 3.4) continue;
+    const w = 3.4 + rnd() * 3.2, d = 3.4 + rnd() * 3.2, rad = Math.max(w, d) * .72;
+    if (r + rad > 61) continue;
+    if (fill.some((b) => Math.hypot(b.x - x, b.z - z) < b.rad + rad + .9)) continue;
+    const h = r < 48 ? 10 + rnd() * 20 : 5 + rnd() * 11;
+    const mesh = new THREE.Mesh(bldGeo(w, h, d), fillMats[(rnd() * 3) | 0]);
+    mesh.position.set(x, 0, z); mesh.rotation.y = a + (rnd() - .5) * .25; scene.add(mesh);
+    let ant = null; if (rnd() < .38) { ant = new THREE.Mesh(antGeo, antMat); ant.position.set(x, h + 1.2, z); scene.add(ant); }
+    fill.push({ mesh, ant, x, z, rad, h, thr: ((r - 37) / 23) * .5 + rnd() * .5 });
+  }
+
+  /* trees in the parks, lamps along the roads */
+  const treeN = COMPACT ? 60 : 110, trees = new THREE.InstancedMesh(new THREE.ConeGeometry(1.15, 3.2, 6), std({ color: 0x1f7a5c, emissive: 0x0b3a2c, emissiveIntensity: .6, flatShading: true, roughness: .9 }), treeN);
+  { let k = 0; for (let n = 0; n < 2400 && k < treeN; n++) {
+      const a = rnd() * 6.283, r = 17 + rnd() * 45, x = Math.sin(a) * r, z = Math.cos(a) * r;
+      const q = Math.PI / 4, ra = ((a % q) + q) % q, dAng = Math.min(ra, q - ra) * r;
+      if (dAng < 2.6 || Math.abs(r - 15) < 3 || Math.abs(r - 34) < 3 || r < 13 || r > 62) continue;
+      if (GP.some((p) => Math.hypot(p.x - x, p.z - z) < 10.5)) continue;
+      if (fill.some((b) => Math.hypot(b.x - x, b.z - z) < b.rad + 1.6)) continue;
+      const s = .7 + rnd() * .8; dummy.position.set(x, 1.6 * s, z); dummy.scale.set(s, s, s); dummy.rotation.set(0, rnd() * 6, 0); dummy.updateMatrix(); trees.setMatrixAt(k++, dummy.matrix);
+    } trees.count = k; dummy.rotation.set(0, 0, 0); scene.add(trees); }
+  const lampPos = []; [[15, 40], [34, 84]].forEach(([r, n]) => { for (let i = 0; i < n; i++) { const a = i / n * 6.283; [-2.3, 2.3].forEach((o) => lampPos.push(Math.sin(a) * (r + o), 1.3, Math.cos(a) * (r + o))); } });
+  const lampGeo = new THREE.BufferGeometry(); lampGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(lampPos), 3));
+  scene.add(new THREE.Points(lampGeo, new THREE.PointsMaterial({ size: 1.5, map: GLOW, color: 0xffd9a0, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false })));
+
+  /* traffic */
+  const carN = 30, cars = new THREE.InstancedMesh(new THREE.BoxGeometry(1.2, .5, .6), new THREE.MeshBasicMaterial({ color: 0xffffff }), carN), carD = [];
+  for (let i = 0; i < carN; i++) { const ring = i % 2 ? 34 : 15; carD.push({ r: ring + (rnd() < .5 ? -1 : 1) * .9, a: rnd() * 6.283, v: (rnd() < .5 ? -1 : 1) * (.05 + rnd() * .08) * (15 / ring + .5) }); cars.setColorAt(i, new THREE.Color(rnd() < .5 ? 0xfff0c8 : rnd() < .5 ? 0xff7a88 : 0x8fd8ff)); }
+  scene.add(cars);
+
+  /* ---------- goal buildings ---------- */
+  const mIvory = std({ color: 0xece6d6, roughness: .55, metalness: .05 });
+  const mCream = std({ color: 0xf3e8cf, roughness: .6 });
+  const mGoldM = std({ color: 0xf0c060, metalness: .9, roughness: .25, emissive: 0x5a3a08, emissiveIntensity: .45 });
+  const mWhite = std({ color: 0xf6f8ff, roughness: .4, metalness: .1 });
+  const mRed = std({ color: 0x9c3d3d, roughness: .6 });
+  const mBrick = std({ color: 0x8a4b3c, roughness: .8 });
+  const mGreen = std({ color: 0x2f9a5a, roughness: .7, flatShading: true });
+  const mTrunk = std({ color: 0x7a5a3a, roughness: .9 });
+  const add = (parent, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  const BX = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const tree = (parent, x, z, s) => { add(parent, new THREE.CylinderGeometry(.18 * s, .24 * s, 1 * s, 6), mTrunk, x, .5 * s, z); add(parent, new THREE.ConeGeometry(1.1 * s, 2.8 * s, 7), mGreen, x, 2.2 * s, z); };
+
+  function buildSchool(lit) {
+    const g = new THREE.Group();
+    add(g, BX(11, 4.6, 5.6), mIvory, 0, 2.3, 0); add(g, BX(11.8, .5, 6.4), mRed, 0, 4.85, 0);
+    add(g, BX(3.2, 9.4, 3.2), mIvory, 0, 4.7, -.5);
+    const cone = add(g, new THREE.ConeGeometry(2.6, 3.4, 4), mGoldM, 0, 11.1, -.5); cone.rotation.y = Math.PI / 4;
+    add(g, new THREE.CircleGeometry(.95, 28), new THREE.MeshBasicMaterial({ color: 0xfff2c8 }), 0, 8, 1.12);
+    add(g, BX(.1, .7, .05), new THREE.MeshBasicMaterial({ color: 0x1b1304 }), 0, 8.2, 1.14);
+    [-4.2, -2.4, 2.4, 4.2].forEach((x) => add(g, BX(1.2, 1.9, .12), lit, x, 2.6, 2.82));
+    add(g, BX(1.7, 2.5, .14), mGoldM, 0, 1.25, 2.83);
+    [0, 1, 2].forEach((i) => add(g, BX(4.6 - i * .6, .26, 1.2 + (2 - i) * .3), mIvory, 0, .13 + i * .26, 3.4 - i * .1 + (2 - i) * .25));
+    add(g, new THREE.CylinderGeometry(.07, .07, 5.4, 6), mWhite, 5.9, 2.7, 2.4); add(g, BX(1.4, .8, .05), new THREE.MeshBasicMaterial({ color: 0xff9933 }), 6.6, 4.9, 2.4);
+    add(g, new THREE.CylinderGeometry(.5, .6, .9, 10), mIvory, -6.4, .45, 4.2);
+    add(g, new THREE.SphereGeometry(1.15, 18, 12), new THREE.MeshBasicMaterial({ color: 0x47c6ff, wireframe: true }), -6.4, 2.1, 4.2);
+    tree(g, 6.8, 4.4, 1); tree(g, -7, -1.6, 1.1);
+    return g;
+  }
+  function buildHome(lit) {
+    const g = new THREE.Group();
+    add(g, BX(8, 4.2, 6.4), mCream, 0, 2.1, 0);
+    const sh = new THREE.Shape(); sh.moveTo(-3.9, 0); sh.lineTo(3.9, 0); sh.lineTo(0, 3.6); sh.closePath();
+    const rg = new THREE.ExtrudeGeometry(sh, { depth: 9.2, bevelEnabled: false }); rg.translate(0, 0, -4.6);
+    const roof = add(g, rg, mRed, 0, 4.2, 0); roof.rotation.y = Math.PI / 2;
+    add(g, BX(.9, 2.6, .9), mBrick, 2.4, 6.4, -1);
+    add(g, BX(1.4, 2.4, .12), std({ color: 0x3b2418, emissive: 0xffa94d, emissiveIntensity: .8 }), 0, 1.2, 3.23);
+    [-2.5, 2.5].forEach((x) => add(g, BX(1.6, 1.5, .12), lit, x, 2.4, 3.23));
+    add(g, BX(1.8, .1, 1.4), mWhite, 0, 2.7, 3.7);
+    [-.8, .8].forEach((x) => add(g, new THREE.CylinderGeometry(.08, .08, 2.7, 6), mWhite, x, 1.35, 4.2));
+    add(g, BX(1.6, .06, 6), std({ color: 0xcdbd9a, roughness: .9 }), 0, .03, 6.4);
+    add(g, BX(6, .5, .3), mGreen, 0, .25, 4.9);
+    const lampG = glowSprite(0xffc766, 3, .9); lampG.position.set(1.4, 2.5, 3.6); g.add(lampG);
+    tree(g, 6, 3.6, 1.1); tree(g, -6.2, 3, .9); tree(g, 5.8, -3.6, 1);
+    return g;
+  }
+  function buildWedding(lit) {
+    const g = new THREE.Group();
+    add(g, new THREE.CylinderGeometry(5.9, 6.3, .7, 44), mIvory, 0, .35, 0);
+    const ed = add(g, new THREE.TorusGeometry(6.1, .13, 8, 80), mGoldM, 0, .72, 0); ed.rotation.x = Math.PI / 2;
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; add(g, new THREE.CylinderGeometry(.28, .32, 5.4, 12), mGoldM, Math.sin(a) * 4.6, 3.4, Math.cos(a) * 4.6); }
+    const tr = add(g, new THREE.TorusGeometry(4.6, .22, 10, 64), mGoldM, 0, 6.1, 0); tr.rotation.x = Math.PI / 2;
+    add(g, new THREE.SphereGeometry(4.9, 36, 16, 0, 6.2832, 0, Math.PI / 2), std({ color: 0xf6d27a, metalness: .85, roughness: .25, emissive: 0x6b4608, emissiveIntensity: .5 }), 0, 6.1, 0);
+    add(g, new THREE.ConeGeometry(.35, 1.6, 10), mGoldM, 0, 11.7, 0); add(g, new THREE.SphereGeometry(.28, 10, 8), mGoldM, 0, 12.6, 0);
+    const orange = std({ color: 0xff9a1f, emissive: 0x6b3300, emissiveIntensity: .5 }), yellow = std({ color: 0xffd23f, emissive: 0x6b5200, emissiveIntensity: .5 }), sg = new THREE.SphereGeometry(.2, 8, 6);
+    for (let i = 0; i < 64; i++) { const a = i / 64 * 6.283, sag = -.55 * Math.abs(Math.sin(a * 4)); add(g, sg, i % 2 ? orange : yellow, Math.sin(a) * 4.6, 5.8 + sag, Math.cos(a) * 4.6); }
+    const lg = new THREE.SphereGeometry(.12, 6, 5);
+    for (let i = 0; i < 30; i++) { const a = i / 30 * 6.283; add(g, lg, lit, Math.sin(a) * 3.6, 5.5 + Math.sin(a * 3) * .25, Math.cos(a) * 3.6); }
+    add(g, BX(2.1, .05, 6.4), std({ color: 0xb3202f, roughness: .8 }), 0, .74, 3.2);
+    add(g, new THREE.ConeGeometry(.4, 1.1, 8), new THREE.MeshBasicMaterial({ color: 0xff9a3c }), 0, 1.3, 0);
+    const fg = glowSprite(0xff9a3c, 5, .8); fg.position.set(0, 1.5, 0); g.add(fg);
+    return g;
+  }
+  function buildVilla(lit) {
+    const g = new THREE.Group();
+    add(g, new THREE.CylinderGeometry(8.4, 8.6, .14, 40), std({ color: 0xbfa974, roughness: 1 }), 0, .07, 0);
+    add(g, BX(7.4, 3.3, 6.2), mWhite, 0, 1.95, -.4); add(g, BX(5.2, 2.7, 5), mWhite, -.9, 4.65, -.6);
+    add(g, BX(8, .25, 6.8), mGoldM, 0, 3.7, -.4); add(g, BX(5.8, .25, 5.6), mGoldM, -.9, 6.1, -.6);
+    add(g, BX(5, 2.1, .1), lit, 0, 1.95, 2.76); add(g, BX(3.6, 1.7, .1), lit, -.9, 4.7, 1.95);
+    add(g, BX(7.6, .08, .08), mGoldM, 0, 4.4, 2.9);
+    const pool = add(g, BX(5.6, .12, 3.2), std({ color: 0x1fc3e8, emissive: 0x0b8fb8, emissiveIntensity: 1.1, roughness: .15, metalness: .3 }), -2.6, .2, 5.6);
+    add(g, BX(6, .2, 3.6), mWhite, -2.6, .12, 5.6).scale.y = .6;
+    pool.position.y = .26;
+    const palm = (x, z, lean) => {
+      let px = x, py = 0, pz = z, tilt = 0;
+      for (let i = 0; i < 5; i++) { const seg = add(g, new THREE.CylinderGeometry(.16, .22, 1.3, 7), mTrunk, px, py + .65, pz); seg.rotation.z = -tilt * lean; px += Math.sin(tilt) * 1.3 * lean; py += Math.cos(tilt) * 1.2; tilt += .09; seg.position.x = px; seg.position.y = py - .55; }
+      for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283, fr = add(g, new THREE.ConeGeometry(.45, 3.3, 5), mGreen, px + Math.sin(a) * 1.3, py + .1, z + Math.cos(a) * 1.3); fr.rotation.set(Math.cos(a) * 1.15, 0, -Math.sin(a) * 1.15); }
+    };
+    palm(5.6, 3.8, 1); palm(-6.4, -2.4, -1);
+    add(g, new THREE.CylinderGeometry(.06, .06, 2.4, 6), mWhite, 2.4, 1.2, 6.2);
+    add(g, new THREE.ConeGeometry(1.7, .7, 12), std({ color: 0xff6b7d, roughness: .7 }), 2.4, 2.6, 6.2);
+    add(g, BX(.9, .2, 2), mWhite, 3.8, .3, 6.4); add(g, BX(.9, .2, 2), mWhite, 4.9, .3, 6.2);
+    return g;
+  }
+
+  /* label sprite drawn on a canvas */
+  function makeLabel() {
+    const c = mkc(512, 176), g = c.getContext("2d"), T = tex(c);
+    T.minFilter = THREE.LinearFilter; T.generateMipmaps = false;
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: T, transparent: true, depthTest: false, depthWrite: false, fog: false }));
+    spr.scale.set(15.5, 5.33, 1); spr.renderOrder = 20;
+    spr.userData.draw = (name, pct, sub, done) => {
+      g.clearRect(0, 0, 512, 176);
+      g.fillStyle = "rgba(7,12,32,.86)"; g.strokeStyle = done ? "rgba(68,223,161,.9)" : "rgba(246,191,85,.75)"; g.lineWidth = 3;
+      g.beginPath(); g.roundRect ? g.roundRect(4, 4, 504, 168, 30) : g.rect(4, 4, 504, 168); g.fill(); g.stroke();
+      g.fillStyle = "#fff"; g.font = '700 46px "Bricolage Grotesque","Noto Sans Devanagari",sans-serif'; g.textBaseline = "alphabetic"; g.textAlign = "left"; g.fillText(name, 28, 66, 340);
+      g.fillStyle = done ? "#44dfa1" : "#ffd98a"; g.font = '500 44px "IBM Plex Mono",monospace'; g.textAlign = "right"; g.fillText(Math.round(pct * 100) + "%", 484, 66);
+      g.fillStyle = "rgba(255,255,255,.16)"; g.fillRect(28, 92, 456, 16);
+      const gr = g.createLinearGradient(28, 0, 484, 0); gr.addColorStop(0, "#47c6ff"); gr.addColorStop(1, done ? "#44dfa1" : "#f6bf55"); g.fillStyle = gr; g.fillRect(28, 92, 456 * clamp(pct, 0, 1), 16);
+      g.fillStyle = "#a0abd9"; g.font = '500 30px "IBM Plex Mono",monospace'; g.textAlign = "left"; g.fillText(sub, 28, 148);
+      T.needsUpdate = true;
+    };
+    return spr;
+  }
+
+  const tickGeo = new THREE.BoxGeometry(.5, .2, 1.1), tickMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const builders = { edu: buildSchool, home: buildHome, wed: buildWedding, ret: buildVilla };
+  const goals = GOALS.map((G, k) => {
+    const lit = std({ color: 0x1a2142, emissive: 0xffd08a, emissiveIntensity: .25, roughness: .4 });
+    const root = new THREE.Group(); root.position.set(GP[k].x, 0, GP[k].z); root.rotation.y = GP[k].th + Math.PI; scene.add(root);
+    const body = builders[G.id](lit); root.add(body);
+    const scaff = new THREE.LineSegments(new THREE.EdgesGeometry(BX(13, 14, 9)), new THREE.LineBasicMaterial({ color: 0xf6bf55, transparent: true, opacity: .5 })); scaff.position.y = 7; root.add(scaff);
+    const ticks = new THREE.InstancedMesh(tickGeo, tickMat, 40);
+    for (let i = 0; i < 40; i++) { const a = i / 40 * 6.283; dummy.position.set(GP[k].x + Math.sin(a) * 8.8, .22, GP[k].z + Math.cos(a) * 8.8); dummy.rotation.set(0, a, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); ticks.setMatrixAt(i, dummy.matrix); ticks.setColorAt(i, new THREE.Color(0x26315f)); }
+    dummy.rotation.set(0, 0, 0); scene.add(ticks);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(9.3, .24, 8, 80), new THREE.MeshBasicMaterial({ color: 0x44dfa1, transparent: true, opacity: 0 }));
+    halo.rotation.x = Math.PI / 2; halo.position.set(GP[k].x, .4, GP[k].z); scene.add(halo);
+    const label = makeLabel(); label.position.set(GP[k].x, 17, GP[k].z); scene.add(label);
+    const hitm = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 18, 10), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })); hitm.position.set(GP[k].x, 9, GP[k].z); hitm.userData.goal = G.id; scene.add(hitm);
+    return { G, k, root, body, lit, scaff, ticks, halo, label, hitm, litN: -1, key: "", done: false, pulse: 0 };
+  });
+  hit.userData.tower = true;
+
+  /* ---------- weather, ghost tower, lightning ---------- */
+  const RN = COMPACT ? 160 : 300, rDrops = [], rArr = new Float32Array(RN * 6);
+  for (let i = 0; i < RN; i++) rDrops.push({ x: (rnd() - .5) * 150, y: rnd() * 90, z: (rnd() - .5) * 150, v: 60 + rnd() * 30 });
+  const rGeo = new THREE.BufferGeometry(); rGeo.setAttribute("position", new THREE.BufferAttribute(rArr, 3));
+  const rainMat = new THREE.LineBasicMaterial({ color: 0x9db6ff, transparent: true, opacity: 0, depthWrite: false });
+  const rain = new THREE.LineSegments(rGeo, rainMat); rain.frustumCulled = false; rain.visible = false; scene.add(rain);
+
+  const clouds = new THREE.Group(), cloudMat = std({ color: 0x2c3558, roughness: 1, flatShading: true });
+  for (let i = 0; i < 9; i++) {
+    const pg = new THREE.Group(), a = i * .7 + rnd(), r = 16 + rnd() * 42; pg.position.set(Math.sin(a) * r, 64 + rnd() * 10, Math.cos(a) * r);
+    for (let j = 0; j < 5; j++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(6 + rnd() * 5, 1), cloudMat); m.position.set((rnd() - .5) * 14, (rnd() - .5) * 3, (rnd() - .5) * 9); m.scale.y = .62; pg.add(m); }
+    clouds.add(pg);
+  }
+  clouds.visible = false; scene.add(clouds);
+  const boltGeo = new THREE.BufferGeometry(); boltGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(13 * 3), 3));
+  const bolt = new THREE.Line(boltGeo, new THREE.LineBasicMaterial({ color: 0xe6edff })); bolt.visible = false; bolt.frustumCulled = false; scene.add(bolt);
+
+  const hOf = (v) => v < 1 ? 2 : 3 + 56 * Math.tanh(Math.sqrt(v / 1e8) * .9);
+  const ghost = new THREE.Mesh(new THREE.BoxGeometry(4.6, 1, 4.6).translate(0, .5, 0), new THREE.MeshBasicMaterial({ color: 0x9fb2ff, transparent: true, opacity: .26, depthWrite: false }));
+  ghost.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(4.6, 1, 4.6).translate(0, .5, 0)), new THREE.LineBasicMaterial({ color: 0xc9d4ff })));
+  ghost.position.set(-12.8, 1.2, 0); ghost.visible = false; scene.add(ghost);
+  const ghostLabel = makeLabel(); ghostLabel.visible = false; scene.add(ghostLabel);
+  let lateKey = "", lateSim = null;
+
+  const FX = { kind: null, t: 0, mult: 1, rain: 0, cloud: 0, tint: 0, ghost: 0, tintCol: new THREE.Color(0x000000), nextBolt: 1, boltT: 0, flash: 0 };
+  function strike() {
+    const p = boltGeo.attributes.position, tx = (rnd() - .5) * 70, tz = (rnd() - .5) * 70; let x = tx + (rnd() - .5) * 20, z = tz + (rnd() - .5) * 20;
+    for (let i = 0; i <= 12; i++) { const k = i / 12; p.setXYZ(i, lerp(x, tx, k) + (i && i < 12 ? (rnd() - .5) * 6 : 0), lerp(66, 0, k), lerp(z, tz, k) + (i && i < 12 ? (rnd() - .5) * 6 : 0)); }
+    p.needsUpdate = true; bolt.visible = true; FX.boltT = .16; FX.flash = 1;
+  }
+
+  /* ---------- camera + input ---------- */
+  const DEF = { theta: .78, phi: 1.03, r: 124, tx: 0, ty: 13, tz: 0 };
+  const cam = Object.assign({}, DEF, { r: 235, phi: .8 }), goal = Object.assign({}, DEF);
+  let fit = 1, offX = 0, offY = 0, lastInput = -99, focusOn = false, clock = 0;
+  const wrapPi = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  function applyCam(dt) {
+    const k = dt <= 0 ? 1 : 1 - Math.pow(.06, dt);
+    ["theta", "phi", "r", "tx", "ty", "tz"].forEach((p) => { cam[p] += (goal[p] - cam[p]) * k; });
+    const R = cam.r * fit, sp = Math.sin(cam.phi);
+    camera.position.set(cam.tx + R * sp * Math.sin(cam.theta), cam.ty + R * Math.cos(cam.phi), cam.tz + R * sp * Math.cos(cam.theta));
+    camera.lookAt(cam.tx, cam.ty, cam.tz);
+  }
+  function resize() {
+    const w = Math.max(2, stage.clientWidth), h = Math.max(2, stage.clientHeight);
+    renderer.setSize(w, h, false); camera.aspect = w / h;
+    fit = camera.aspect < 1 ? Math.pow(1 / camera.aspect, .7) : 1;
+    if (offX || offY) camera.setViewOffset(w, h, offX, offY, w, h); else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  }
+  const ptrs = new Map(); let pinch = 0, down = null;
+  canvas.addEventListener("pointerdown", (e) => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); down = { x: e.clientX, y: e.clientY, t: performance.now() }; lastInput = clock; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); } });
+  canvas.addEventListener("pointermove", (e) => {
+    const p = ptrs.get(e.pointerId); if (!p) return; lastInput = clock;
+    if (ptrs.size === 1) { goal.theta -= (e.clientX - p.x) * .0058; goal.phi = clamp(goal.phi - (e.clientY - p.y) * .0048, .3, 1.46); }
+    else if (ptrs.size === 2) { p.x = e.clientX; p.y = e.clientY; const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch > 0) goal.r = clamp(goal.r * pinch / d, 38, 240); pinch = d; return; }
+    p.x = e.clientX; p.y = e.clientY;
+  });
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function pick(cx, cy) {
+    const r = canvas.getBoundingClientRect(); ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera);
+    const hits = ray.intersectObjects([hit, ...goals.map((o) => o.hitm)], false); if (!hits.length) return;
+    const o = hits[0].object; if (api.onPick) api.onPick(o.userData.goal || "tower");
+  }
+  const endPtr = (e) => { const had = ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; if (had && down && e.type === "pointerup" && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 7 && performance.now() - down.t < 380) pick(e.clientX, e.clientY); };
+  canvas.addEventListener("pointerup", endPtr); canvas.addEventListener("pointercancel", endPtr);
+  canvas.addEventListener("wheel", (e) => { e.preventDefault(); goal.r = clamp(goal.r * Math.exp(e.deltaY * .0012), 38, 240); lastInput = clock; }, { passive: false });
+  canvas.addEventListener("keydown", (e) => {
+    const m = { ArrowLeft: () => goal.theta -= .12, ArrowRight: () => goal.theta += .12, ArrowUp: () => goal.phi = clamp(goal.phi - .08, .3, 1.46), ArrowDown: () => goal.phi = clamp(goal.phi + .08, .3, 1.46), "+": () => goal.r = clamp(goal.r * .9, 38, 240), "=": () => goal.r = clamp(goal.r * .9, 38, 240), "-": () => goal.r = clamp(goal.r * 1.1, 38, 240) };
+    if (m[e.key]) { e.preventDefault(); m[e.key](); lastInput = clock; }
+  });
+  function flyTo(id) {
+    focusOn = true; lastInput = clock;
+    if (id === "tower") { goal.tx = 0; goal.ty = 20; goal.tz = 0; goal.r = 92; goal.phi = 1.12; return; }
+    const o = goals.find((q) => q.G.id === id); if (!o) return; const p = GP[o.k];
+    goal.tx = p.x; goal.ty = 5; goal.tz = p.z; goal.r = 50; goal.phi = 1.15;
+    goal.theta = cam.theta + wrapPi(p.th + Math.PI + .4 - cam.theta);
+  }
+  function reset() { focusOn = false; Object.assign(goal, DEF, { theta: cam.theta + wrapPi(DEF.theta - cam.theta) }); lastInput = clock; }
+  function intro() { cam.r = 235; cam.phi = .8; Object.assign(goal, DEF); focusOn = false; lastInput = clock; }
+
+  /* ---------- frame update ---------- */
+  let dispV = 0, dispI = 0, snapNext = true;
+  function sync(dt) {
+    clock += dt; const tm = S.tm, prog = clamp(tm / (S.H * 12), 0, 1);
+    /* events */
+    let tRain = 0, tCloud = 0, tTint = 0, tGhost = 0, mult = 1;
+    if (FX.kind) {
+      FX.t += dt; const T = FX.t;
+      if (FX.kind === "crash") { const d = T < 2 ? ease(T / 2) : T < 5 ? 1 : T < 12 ? 1 - ease((T - 5) / 7) : 0; mult = 1 - ASSUME.crash * d; tRain = T < 10 ? .9 * Math.min(1, T / 1.2) : 0; tTint = .75 * d; FX.tintCol.set(0x7a1030); rainMat.color.set(0xff7a8a); }
+      else if (FX.kind === "storm") { tCloud = 1; tRain = .65; tTint = .55; FX.tintCol.set(0x1b2342); rainMat.color.set(0x9db6ff); FX.nextBolt -= dt; if (FX.nextBolt <= 0) { strike(); FX.nextBolt = .9 + rnd() * 1.9; } }
+      else if (FX.kind === "bull") { const up = ease(Math.min(1, T / 1.6)), dn = T < 6 ? 1 : 1 - ease(Math.min(1, (T - 6) / 4)); mult = 1 + ASSUME.rally * up * dn; if (T < 7 && !REDUCED) confettiRain(COMPACT ? 3 : 6); }
+      else if (FX.kind === "wait") tGhost = 1;
+    }
+    const sm = Math.min(1, dt * 3); FX.rain += (tRain - FX.rain) * sm; FX.cloud += (tCloud - FX.cloud) * sm; FX.tint += (tTint - FX.tint) * sm; FX.ghost += (tGhost - FX.ghost) * sm; FX.mult = mult;
+    if (FX.boltT > 0) { FX.boltT -= dt; if (FX.boltT <= 0) bolt.visible = false; } FX.flash = Math.max(0, FX.flash - dt * 6);
+    rain.visible = FX.rain > .02; rainMat.opacity = FX.rain * .55;
+    if (rain.visible) for (let i = 0; i < RN; i++) { const d = rDrops[i]; d.y -= d.v * dt; if (d.y < 0) d.y += 90; rArr.set([d.x, d.y, d.z, d.x + .3, d.y + 2.6, d.z], i * 6); rGeo.attributes.position.needsUpdate = true; }
+    clouds.visible = FX.cloud > .02; clouds.scale.setScalar(Math.max(.01, FX.cloud)); cloudMat.opacity = 1;
+
+    /* tower */
+    const vT = valAt(tm) * mult, iT = invAt(tm);
+    if (snapNext || dt === 0) { dispV = vT; dispI = iT; snapNext = false; } else { const k = Math.min(1, dt * 7); dispV += (vT - dispV) * k; dispI += (iT - dispI) * k; }
+    setTower(dispV, dispI, 1);
+    const growth = clamp(Math.sqrt(dispV / 6e7), 0, 1);
+    fill.forEach((b) => { const s = ease(clamp((growth * 1.25 - b.thr) / .25, 0, 1)); b.mesh.visible = s > .02; b.mesh.scale.y = Math.max(.001, s); if (b.ant) { b.ant.visible = s > .6; b.ant.position.y = b.h * s + 1.2; } });
+
+    /* atmosphere */
+    atmosphere(prog, FX.tintCol, FX.tint);
+    hemi.intensity += FX.flash * 2.2;
+
+    /* goals */
+    goals.forEach((o) => {
+      const on = S.on[o.G.id], p = on ? goalProg(o.G, tm) : 0, pc = clamp(p, 0, 1);
+      o.root.visible = on; o.label.visible = on; o.hitm.visible = true;
+      const sc = lerp(.62, 1, ease(pc)); o.body.scale.setScalar(sc); o.lit.emissiveIntensity = .22 + 1.5 * pc;
+      o.scaff.material.opacity = (1 - pc) * .55; o.scaff.scale.setScalar(.5 + .5 * sc);
+      const n = Math.round(40 * pc);
+      if (n !== o.litN) { o.litN = n; const col = new THREE.Color(p >= .999 ? 0x44dfa1 : 0xffd98a), dim = new THREE.Color(0x26315f); for (let i = 0; i < 40; i++) o.ticks.setColorAt(i, i < n ? col : dim); o.ticks.instanceColor.needsUpdate = true; }
+      o.ticks.visible = true;
+      if (p >= .999 && on && !o.done) { o.done = true; o.pulse = 1; burst(GP[o.k].x, 12, GP[o.k].z, 160, PAL_MIX, 22, 9); if (tm > 0 && api.onGoalDone) api.onGoalDone(o.G); }
+      else if (p < .99 || !on) o.done = false;
+      o.pulse = Math.max(0, o.pulse - dt * .5); o.halo.material.opacity = on && o.done ? .55 + .35 * Math.sin(clock * 3) : 0;
+      const key = S.lang + "|" + Math.round(p * 100) + "|" + o.done + "|" + on;
+      if (key !== o.key && on) { o.key = key; o.label.userData.draw(gname(o.G.id), Math.min(p, 9.99), "→ " + yearLabel(o.G.years * 12) + " · " + inr(o.G.fc), o.done); }
+    });
+
+    /* ghost */
+    ghost.visible = ghostLabel.visible = FX.ghost > .03;
+    if (ghost.visible) {
+      const key = [S.sip, S.step, S.rate, S.H].join("|"); if (key !== lateKey) { lateKey = key; lateSim = simulate(S.sip, S.step, S.rate, Math.max(1, S.H - 5)); }
+      const lv = tm > 60 ? interp(lateSim.val, tm - 60) : 0, gh = Math.max(1.2, hOf(lv)) * FX.ghost;
+      ghost.scale.y = gh; ghost.position.y = 1.2; ghostLabel.position.set(-12.8, gh + 6, 0);
+      const k2 = Math.round(lv / Math.max(1, vT) * 100) + "|" + S.lang; if (k2 !== ghostLabel.userData.k) { ghostLabel.userData.k = k2; ghostLabel.userData.draw(S.lang === "hi" ? "5 साल देर से" : "5 years late", lv / Math.max(1, vT), inr(lv), false); }
+    }
+
+    /* life: coins, dust, beacon, cars, crown */
+    if (!S.playing) { idleT -= dt; if (idleT <= 0) { spawnCoin(); idleT = 1.6; } }
+    updateCoins(dt); updateParticles(dt);
+    beaconPulse = Math.max(0, beaconPulse - dt * 2.5);
+    beaconGlow.scale.setScalar(14 + 8 * beaconPulse + Math.sin(clock * 3) * 1.2); beacon.scale.setScalar(1 + beaconPulse * .5);
+    gold.intensity = 1.1 + beaconPulse * 1.6; gold.position.y = Math.min(30, tower.top * .35);
+    crown.rotation.set(Math.PI / 2 + Math.sin(clock * .9) * .22, clock * .5, 0); crown2.rotation.set(Math.PI / 2 + Math.cos(clock * .7) * .3, -clock * .7, 0);
+    const dp = dGeo.attributes.position; for (let i = 0; i < DN; i++) { dp.array[i * 3 + 1] += dSpd[i] * dt; if (dp.array[i * 3 + 1] > tower.top + 8) dp.array[i * 3 + 1] = 1; } dp.needsUpdate = true;
+    for (let i = 0; i < carN; i++) { const c = carD[i]; c.a += c.v * dt; dummy.position.set(Math.sin(c.a) * c.r, .38, Math.cos(c.a) * c.r); dummy.rotation.set(0, c.v > 0 ? c.a : c.a + Math.PI, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); cars.setMatrixAt(i, dummy.matrix); }
+    dummy.rotation.set(0, 0, 0); cars.instanceMatrix.needsUpdate = true;
+    rim2.material.opacity = .45 + .2 * Math.sin(clock * 1.4);
+
+    /* camera */
+    if (!REDUCED && !focusOn && clock - lastInput > 4 && ptrs.size === 0) goal.theta += dt * .05;
+    applyCam(dt);
+  }
+  let idleT = 1;
+
+  let last = performance.now(), running = true;
+  function frame(now) { requestAnimationFrame(frame); if (!running) return; const dt = Math.min(.05, (now - last) / 1000); last = now; sync(dt); renderer.render(scene, camera); }
+
+  /* hero shot for the share card */
+  function snapshot() {
+    const keep = { w: stage.clientWidth, h: stage.clientHeight, th: cam.theta, ph: cam.phi, r: cam.r, tx: cam.tx, ty: cam.ty, tz: cam.tz, ox: offX, oy: offY, pr: renderer.getPixelRatio() };
+    const g0 = Object.assign({}, goal); offX = offY = 0; running = false;
+    renderer.setPixelRatio(1); renderer.setSize(1080, 760, false); camera.aspect = 1080 / 760; camera.clearViewOffset(); camera.updateProjectionMatrix();
+    Object.assign(cam, { theta: .72, phi: 1.0, r: 118, tx: 0, ty: 15, tz: 0 }); fit = 1;
+    snapNext = true; sync(0); renderer.render(scene, camera);
+    const url = canvas.toDataURL("image/jpeg", .9);
+    Object.assign(cam, { theta: keep.th, phi: keep.ph, r: keep.r, tx: keep.tx, ty: keep.ty, tz: keep.tz }); Object.assign(goal, g0);
+    offX = keep.ox; offY = keep.oy; renderer.setPixelRatio(keep.pr); resize(); snapNext = true; running = true; last = performance.now();
+    return url;
+  }
+
+  const api = {
+    renderer, onPick: null, onGoalDone: null, fx: FX,
+    resize, flyTo, reset, intro, snapshot, coin: spawnCoin, burst: (x, y, z, n) => burst(x, y, z, n, PAL_MIX, 22, 9),
+    fireworks: () => { for (let i = 0; i < 5; i++) setTimeout(() => burst((rnd() - .5) * 50, 30 + rnd() * 26, (rnd() - .5) * 50, 120, PAL_MIX, 24, 9), i * 260); },
+    layout: (x, y) => { offX = x; offY = y; resize(); },
+    snap: () => { snapNext = true; },
+    startEvent: (k) => { FX.kind = k; FX.t = 0; FX.nextBolt = .5; if (k === "storm") strike(); },
+    stopEvent: () => { FX.kind = null; },
+    labelsDirty: () => goals.forEach((o) => { o.key = ""; })
+  };
+  resize(); applyCam(0); requestAnimationFrame(frame);
+  return api;
+}
+
+/* ============================================================ UI */
+let World = null;
+try { World = buildWorld(); } catch (err) { console.error("3D view unavailable", err); }
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html !== undefined) n.innerHTML = html; return n; };
+const REDUCE = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+const ui = { goalRows: {}, r3: [], race: {}, miles: {}, evBtns: {}, marks: {} };
+let introOpen = true, toastTimer = 0;
+if (!World) { const n = el("div", "", ""); n.style.cssText = "position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:#a0abd9"; n.textContent = "The 3D view could not start on this device. Your plan, goals and comparisons still work."; $("stage").appendChild(n); }
+
+function setRangeFill(inp) { inp.style.setProperty("--p", ((inp.value - inp.min) / (inp.max - inp.min) * 100) + "%"); }
+function toast(msg) { const n = $("toast"); n.textContent = msg; n.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => n.classList.remove("show"), 3600); }
+function refreshModel() { recalc(); M.fd = simulate(S.sip, S.step, ASSUME.fd, S.H); M.sav = simulate(S.sip, S.step, ASSUME.savings, S.H); }
+
+/* ---------- language ---------- */
+function applyLang() {
+  document.documentElement.lang = S.lang;
+  $("lEn").classList.toggle("on", S.lang === "en"); $("lHi").classList.toggle("on", S.lang === "hi");
+  $("byline").textContent = t("byline", ADVISOR.name, ADVISOR.arn);
+  [["kTotal", "k_total"], ["kInv", "k_inv"], ["kGain", "k_gain"], ["kYear", "k_year"], ["dockLbl", "dock_lbl"], ["tb-plan", "tab_plan"], ["tb-goals", "tab_goals"], ["tb-events", "tab_events"], ["tb-compare", "tab_compare"], ["tSipWhat", "sip_what"], ["lSip", "l_sip"], ["lStep", "l_step"], ["lRate", "l_rate"], ["resInvL", "res_inv"], ["scoreL", "score_l"], ["lName", "l_name"], ["tWa", "b_wa"], ["tCall", "b_call"], ["tShare", "b_share"], ["lMiles", "l_miles"], ["lBoard", "l_board"], ["tGoalsHint", "goals_hint"], ["tEvHint", "ev_hint"], ["tCmpH", "cmp_h"], ["tCmpNote", "cmp_note"], ["iH", "i_h"], ["iSub", "i_sub"], ["iQ", "i_q"], ["iGo", "i_go"], ["mH", "share_h"], ["mNote", "share_note"], ["mWa", "share_wa"]].forEach(([i, k]) => { $(i).textContent = t(k); });
+  $("iEyebrow").textContent = t("i_eyebrow", ADVISOR.firm);
+  $("cname").placeholder = S.lang === "hi" ? "जैसे: अमित" : "e.g. Amit";
+  $("disc").innerHTML = ""; const b = el("b"); b.textContent = t("d1"); $("disc").append(b, " " + t("d2") + " " + ADVISOR.name + " · " + ADVISOR.arn + " · " + t("adv_title"));
+  $("iAdv").innerHTML = ""; [ADVISOR.name, t("adv_title"), ADVISOR.arn, ADVISOR.city].forEach((s) => { const sp = el("span"); sp.textContent = s; $("iAdv").appendChild(sp); });
+  const ph = (ADVISOR.phone || "").replace(/\D/g, ""), real = ph.length >= 11 && !/x/i.test(ADVISOR.phone);
+  $("advPhone").hidden = !real; $("advPhone").textContent = real ? "WhatsApp +" + ph : "";
+  buildStatic(); modelChanged(); if (World) World.labelsDirty();
+}
+
+/* ---------- builders (run on language change) ---------- */
+function chipRow(box, values, fmt, isOn, onPick) {
+  box.innerHTML = "";
+  values.forEach((v) => { const b = el("button", "chip"); b.type = "button"; b.textContent = fmt(v); b.setAttribute("aria-pressed", String(isOn(v))); b.onclick = () => onPick(v); box.appendChild(b); });
+}
+function buildStatic() {
+  /* quick amounts, step-up, scenarios */
+  const r3 = $("r3"); r3.innerHTML = ""; ui.r3 = [];
+  ASSUME.scenarios.forEach((r, i) => { const d = el("div", i === 1 ? "mid" : ""); const sp = el("span"); sp.textContent = Math.round(r * 100) + "% " + t("r_" + Math.round(r * 100)); const bb = el("b"); d.append(sp, bb); r3.appendChild(d); ui.r3.push(bb); });
+  /* goals */
+  const list = $("goalList"); list.innerHTML = ""; ui.goalRows = {};
+  GOALS.forEach((g) => {
+    const row = el("div", "goal"); row.tabIndex = 0; row.setAttribute("role", "button"); row.dataset.id = g.id;
+    const h = el("h5"); h.textContent = gname(g.id);
+    const sw = el("label", "sw"); const cb = el("input"); cb.type = "checkbox"; cb.checked = !!S.on[g.id]; cb.setAttribute("aria-label", gname(g.id)); sw.append(cb, el("i"));
+    const sub = el("div", "sub"), bar = el("div", "bar"), fill = el("i"); bar.appendChild(fill);
+    const meta = el("div", "meta"), m1 = el("span"), m2 = el("span"); meta.append(m1, m2); const need = el("div", "sub");
+    row.append(h, sw, sub, bar, meta, need); list.appendChild(row);
+    sw.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () => { S.on[g.id] = cb.checked; if (!GOALS.some((q) => S.on[q.id])) { S.on[g.id] = true; cb.checked = true; } modelChanged(); });
+    const go = () => { if (World) World.flyTo(g.id); };
+    row.addEventListener("click", go); row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); go(); } });
+    ui.goalRows[g.id] = { row, cb, sub, fill, m1, m2, need };
+  });
+  /* events */
+  const evs = $("evList"); evs.innerHTML = ""; ui.evBtns = {};
+  [["crash", "ev_crash", "ev_crash_s"], ["storm", "ev_storm", "ev_storm_s"], ["bull", "ev_bull", "ev_bull_s"], ["wait", "ev_wait", "ev_wait_s"]].forEach(([k, a, b]) => {
+    const btn = el("button", "ev " + k); btn.type = "button"; btn.setAttribute("aria-pressed", String(S.ev === k));
+    const x = el("b"); x.textContent = t(a); const y = el("span"); y.textContent = t(b); btn.append(x, y); btn.onclick = () => startEvent(k); evs.appendChild(btn); ui.evBtns[k] = btn;
+  });
+  if (S.ev) buildEventBody();
+  /* race */
+  const race = $("race"); race.innerHTML = ""; ui.race = {};
+  [["sip", () => t("b_sip", Math.round(S.rate * 100))], ["fd", () => t("b_fd")], ["sav", () => t("b_sav")], ["cash", () => t("b_cash")]].forEach(([k, lab]) => {
+    const rb = el("div", "rb " + k), tt = el("div", "t"), l = el("span"), v = el("b"), tr = el("div", "tr"), f = el("i"); tt.append(l, v); tr.appendChild(f); rb.append(tt, tr); race.appendChild(rb); ui.race[k] = { l, v, f, lab };
+  });
+  /* milestones */
+  const miles = $("miles"); miles.innerHTML = ""; ui.miles = {};
+  ["first", "half", "goal", "crore", "all"].forEach((k) => { const s = el("span", "ms"); s.textContent = t("m_" + k); miles.appendChild(s); ui.miles[k] = s; });
+  /* intro goal chips */
+  const ig = $("iGoals"); ig.innerHTML = "";
+  GOALS.forEach((g) => { const b = el("button", "chip"); b.type = "button"; b.textContent = gname(g.id); b.setAttribute("aria-pressed", String(!!S.on[g.id])); b.onclick = () => { S.on[g.id] = !S.on[g.id]; if (!GOALS.some((q) => S.on[q.id])) S.on[g.id] = true; modelChanged(); }; ig.appendChild(b); });
+  $("btnAuto").textContent = S.alloc === "smart" ? t("auto_done") : t("auto");
+}
+
+/* ---------- updates when the plan changes ---------- */
+function modelChanged() {
+  refreshModel();
+  $("sipVal").textContent = inr(S.sip); $("iVal").textContent = inr(S.sip);
+  $("sip").value = S.sip; $("iSip").value = S.sip; setRangeFill($("sip")); setRangeFill($("iSip"));
+  const sipVals = [5000, 10000, 25000, 50000];
+  chipRow($("sipChips"), sipVals, inr, (v) => S.sip === v, setSip); chipRow($("iChips"), sipVals, inr, (v) => S.sip === v, setSip);
+  chipRow($("stepChips"), [0, .05, .10, .15], (v) => v ? "+" + Math.round(v * 100) + "%" : t("step0"), (v) => S.step === v, (v) => { S.step = v; modelChanged(); });
+  const seg = $("rateSeg"); seg.innerHTML = "";
+  ASSUME.scenarios.forEach((r) => { const b = el("button"); b.type = "button"; b.setAttribute("aria-pressed", String(S.rate === r)); b.innerHTML = "<b>" + Math.round(r * 100) + "%</b>"; const s = el("span"); s.textContent = t("r_" + Math.round(r * 100)); b.appendChild(s); b.onclick = () => { S.rate = r; modelChanged(); }; seg.appendChild(b); });
+  Array.from($("iGoals").children).forEach((b, i) => b.setAttribute("aria-pressed", String(!!S.on[GOALS[i].id])));
+  $("resH").textContent = t("res_h", S.H, yearLabel(S.H * 12));
+  M.range.forEach((v, i) => { ui.r3[i].textContent = inr(v); });
+  $("resInv").textContent = inr(M.inv); $("scoreV").textContent = M.score + "%"; $("scoreBar").style.width = M.score + "%";
+  const sc = $("scrub"); sc.max = S.H * 12; sc.value = Math.round(S.tm); setRangeFill(sc);
+  $("vSub").textContent = t("sub_ill", Math.round(S.rate * 100));
+  /* goals list */
+  GOALS.forEach((g) => {
+    const r = ui.goalRows[g.id]; if (!r) return; const on = !!S.on[g.id];
+    r.row.classList.toggle("off", !on); r.cb.checked = on;
+    r.sub.textContent = t("g_today_to", inr(g.cost), inr(g.fc), yearLabel(g.years * 12));
+    const pct = Math.round(g.funded * 100); r.fill.style.width = (on ? Math.min(100, pct) : 0) + "%"; r.fill.classList.toggle("full", on && pct >= 100);
+    r.m1.innerHTML = on ? t("g_alloc", "<b>" + inr(g.sip) + "</b>") : t("g_off"); r.m2.innerHTML = on ? t("g_funded", "<b>" + pct + "</b>") : "";
+    r.need.textContent = on ? t("g_need", inr(g.need)) : "";
+  });
+  $("btnAuto").textContent = S.alloc === "smart" ? t("auto_done") : t("auto");
+  /* dock marks */
+  const mk = $("marks"); mk.innerHTML = ""; ui.marks = {};
+  activeGoals().slice().sort((a, b) => a.years - b.years).forEach((g, i) => { const m = el("div", "mk" + (i % 2 ? " lo" : "")); m.style.left = (g.years / S.H * 100) + "%"; m.textContent = gshort(g.id); mk.appendChild(m); ui.marks[g.id] = m; });
+  renderBoard(); renderWait(); renderLinks(); updateRace(); updateMiles();
+  if (S.ev === "wait") { buildEventBody(); showBanner(); }
+  if (S.ev === "crash") showBanner();
+  tick();
+}
+function setSip(v) { S.sip = clamp(Math.round(v / 500) * 500, 1000, 100000); modelChanged(); }
+function renderBoard() {
+  const b = $("board"); b.innerHTML = "";
+  for (let i = 1; i <= 3; i++) {
+    const d = new Date(startYear, startMonth + i, ADVISOR.sipDay), row = el("div", "row"), a = el("span", "d"), m = el("span"), s = el("span", "ok");
+    a.textContent = d.toLocaleDateString(S.lang === "hi" ? "hi-IN" : "en-IN", { day: "2-digit", month: "short" }); m.textContent = inr(S.sip); s.textContent = t("board_ok"); row.append(a, m, s); b.appendChild(row);
+  }
+}
+function renderWait() {
+  const w = waitStats(), c = $("waitCard"); c.innerHTML = ""; const h = el("b"); h.textContent = t("wait_h"); const p = el("span"); p.textContent = t("wait_b", inr(w.full - w.late), inr(w.need), inr(S.sip)); c.append(h, p);
+}
+function renderLinks() {
+  $("btnWa").href = waLink(planText()); $("btnCall").href = waLink(callText()); $("mWa").href = waLink(planText());
+}
+
+/* ---------- per-tick HUD ---------- */
+function updateRace() {
+  const tm = S.tm, v = { sip: valAt(tm), fd: interp(M.fd.val, tm), sav: interp(M.sav.val, tm), cash: invAt(tm) }, mx = Math.max(1, v.sip, v.fd, v.sav, v.cash);
+  Object.keys(ui.race).forEach((k) => { const r = ui.race[k]; r.l.textContent = r.lab(); r.v.textContent = inr(v[k]); r.f.style.width = Math.max(1.5, v[k] / mx * 100) + "%"; });
+}
+function updateMiles() {
+  const tm = S.tm, v = valAt(tm), inv = invAt(tm), act = activeGoals(), ps = act.map((g) => goalProg(g, tm));
+  const f = { first: tm > 0, half: v > 2 * inv && tm > 0, goal: ps.some((p) => p >= .999), crore: v >= 1e7, all: ps.length > 0 && ps.every((p) => p >= .999) };
+  Object.keys(ui.miles).forEach((k) => ui.miles[k].classList.toggle("lit", !!f[k]));
+  act.forEach((g) => { const m = ui.marks[g.id]; if (m) m.classList.toggle("done", tm >= g.years * 12); });
+}
+function tick() {
+  const tm = S.tm, mult = World ? World.fx.mult : 1, v = valAt(tm) * mult, inv = invAt(tm), gain = v - inv;
+  $("vTotal").textContent = inr(v); $("vInv").textContent = inr(inv);
+  const ge = $("vGain"); ge.textContent = (gain < 0 ? "−" : "") + inr(Math.abs(gain)); ge.style.color = gain < 0 ? "var(--coral)" : "";
+  $("vYear").textContent = yearLabel(tm); $("dockYear").textContent = Math.floor(tm / 12) + "/" + S.H;
+  const sc = $("scrub"); if (S.playing || document.activeElement !== sc) { sc.value = Math.round(tm); setRangeFill(sc); }
+  updateRace(); updateMiles();
+}
+
+/* ---------- events ---------- */
+function showBanner() {
+  const b = $("banner"); if (!S.ev) { b.hidden = true; return; }
+  const u = Math.round((1 / (1 - ASSUME.crash) - 1) * 100), w = S.ev === "wait" ? waitStats() : null;
+  const map = { crash: [t("ev_crash_t"), t("bn_crash", u, inr(S.sip)), "bad"], storm: [t("ev_storm_t"), t("bn_storm"), "bad"], bull: [t("ev_bull_t"), t("bn_bull"), "good"], wait: [t("ev_wait_t"), w ? t("bn_wait", inr(w.late), inr(w.full)) : "", "bad"] }[S.ev];
+  b.className = map[2]; b.innerHTML = ""; const h = el("b"); h.textContent = map[0]; const p = el("span"); p.textContent = map[1]; b.append(h, p); b.hidden = false;
+}
+function buildEventBody() {
+  const box = $("evBody"); if (!S.ev) { box.hidden = true; return; }
+  box.innerHTML = ""; const u = Math.round((1 / (1 - ASSUME.crash) - 1) * 100), p = el("p");
+  if (S.ev === "crash") p.textContent = t("ev_crash_b", u, inr(S.sip));
+  else if (S.ev === "storm") p.textContent = t("ev_storm_b");
+  else if (S.ev === "bull") p.textContent = t("ev_bull_b");
+  else { const w = waitStats(); p.textContent = t("ev_wait_b", inr(w.late), inr(w.full), inr(w.need), inr(S.sip)); }
+  box.appendChild(p);
+  if (S.ev === "storm") {
+    const tb = el("div", "infl"); const cells = [];
+    activeGoals().forEach((g) => { const r = el("div"), a = el("span"), b = el("b"); a.textContent = gname(g.id); b.textContent = inr(g.cost); r.append(a, b); tb.appendChild(r); cells.push([b, g]); });
+    box.appendChild(tb); const t0 = performance.now();
+    (function step(now) { const k = clamp(((now || performance.now()) - t0) / 3200, 0, 1); cells.forEach(([b, g]) => { b.textContent = inr(lerp(g.cost, g.fc, ease(k))); }); if (k < 1 && S.ev === "storm") requestAnimationFrame(step); })();
+  }
+  const stop = el("button", "btn ghost"); stop.type = "button"; stop.textContent = t("ev_stop"); stop.onclick = stopEvent; box.appendChild(stop); box.hidden = false;
+}
+function startEvent(k) {
+  if (S.ev === k) { stopEvent(); return; }
+  S.ev = k; S.playing = false; syncPlay();
+  if (k === "wait") S.tm = S.H * 12; else if (S.tm < S.H * 12 * .3) S.tm = Math.round(S.H * 12 * .5);
+  if (World) { World.startEvent(k); if (k === "wait") World.snap(); }
+  Object.keys(ui.evBtns).forEach((x) => ui.evBtns[x].setAttribute("aria-pressed", String(x === k)));
+  buildEventBody(); showBanner(); tick();
+}
+function stopEvent() {
+  S.ev = null; if (World) World.stopEvent(); $("evBody").hidden = true; $("banner").hidden = true;
+  Object.keys(ui.evBtns).forEach((x) => ui.evBtns[x].setAttribute("aria-pressed", "false"));
+}
+
+/* ---------- time travel ---------- */
+function syncPlay() { $("icPlay").hidden = S.playing; $("icPause").hidden = !S.playing; $("btnPlay").setAttribute("aria-label", S.playing ? "Pause" : "Play"); $("btnSpeed").textContent = S.speed + "×"; }
+function onEnd() { if (World) World.fireworks(); toast(t("t_end", inr(valAt(S.H * 12)), yearLabel(S.H * 12))); }
+let lastT = performance.now(), uiAcc = 0, coinCd = 0;
+function loop(now) {
+  requestAnimationFrame(loop); const dt = Math.min(.1, (now - lastT) / 1000); lastT = now;
+  if (S.playing) {
+    const before = Math.floor(S.tm); S.tm = Math.min(S.H * 12, S.tm + dt * 6 * S.speed); coinCd -= dt;
+    if (Math.floor(S.tm) !== before && coinCd <= 0 && World) { World.coin(); coinCd = .14; }
+    if (S.tm >= S.H * 12) { S.playing = false; syncPlay(); onEnd(); }
+  }
+  uiAcc += dt; if (uiAcc > .1) { uiAcc = 0; tick(); }
+}
+
+/* ---------- share card ---------- */
+function wrapText(c, text, x, y, maxW, lh) { const words = text.split(" "); let line = ""; for (const w of words) { const test = line ? line + " " + w : w; if (c.measureText(test).width > maxW && line) { c.fillText(line, x, y); line = w; y += lh; } else line = test; } c.fillText(line, x, y); return y + lh; }
+async function openShare() {
+  if (!World) return;
+  try { await Promise.all([document.fonts.load('800 60px "Bricolage Grotesque"'), document.fonts.load('500 30px "IBM Plex Mono"'), document.fonts.load('600 30px "Hanken Grotesk"'), document.fonts.load('700 30px "Noto Sans Devanagari"')]); } catch (e) {}
+  const keep = S.tm; S.tm = S.H * 12; const shot = World.snapshot(); S.tm = keep;
+  const im = new Image(); await new Promise((r) => { im.onload = r; im.onerror = r; im.src = shot; });
+  const c = document.createElement("canvas"); c.width = 1080; c.height = 1350; const g = c.getContext("2d");
+  const bg = g.createLinearGradient(0, 0, 0, 1350); bg.addColorStop(0, "#0b1330"); bg.addColorStop(1, "#050818"); g.fillStyle = bg; g.fillRect(0, 0, 1080, 1350);
+  g.drawImage(im, 0, 0, 1080, 760);
+  const fade = g.createLinearGradient(0, 560, 0, 760); fade.addColorStop(0, "rgba(5,8,24,0)"); fade.addColorStop(1, "#050818"); g.fillStyle = fade; g.fillRect(0, 560, 1080, 200);
+  const FD = '"Bricolage Grotesque","Noto Sans Devanagari",sans-serif', FB = '"Hanken Grotesk","Noto Sans Devanagari",sans-serif', FM = '"IBM Plex Mono",monospace';
+  g.textBaseline = "alphabetic"; g.textAlign = "left";
+  g.fillStyle = "#eef1ff"; g.font = "800 62px " + FD; g.fillText(t("sc_title", S.name.trim()), 60, 830, 960);
+  const grad = g.createLinearGradient(0, 870, 0, 970); grad.addColorStop(0, "#fff2cf"); grad.addColorStop(1, "#f6bf55"); g.fillStyle = grad; g.font = "800 104px " + FD; g.fillText(t("sc_line", inr(M.val), yearLabel(S.H * 12)), 60, 950, 960);
+  g.fillStyle = "#a0abd9"; g.font = "500 32px " + FM; g.fillText(t("sc_sub", inr(S.sip), Math.round(S.step * 100), S.H), 60, 1002, 960);
+  g.fillStyle = "#6f7bb0"; g.font = "500 26px " + FM; g.fillText(t("sc_range") + ": " + M.range.map(inr).join(" / "), 60, 1046, 960);
+  g.font = "600 30px " + FB; activeGoals().forEach((q, i) => { const x = 60 + (i % 2) * 500, y = 1112 + Math.floor(i / 2) * 48; g.fillStyle = q.funded >= 1 ? "#44dfa1" : "#f6bf55"; g.fillRect(x, y - 22, 8, 28); g.fillStyle = "#eef1ff"; g.fillText(gname(q.id) + "  " + Math.round(q.funded * 100) + "%", x + 20, y, 440); });
+  g.fillStyle = "rgba(150,172,255,.25)"; g.fillRect(60, 1196, 960, 2);
+  g.fillStyle = "#eef1ff"; g.font = "700 34px " + FD; g.fillText(ADVISOR.name + "  ·  " + ADVISOR.firm, 60, 1244, 960);
+  g.fillStyle = "#a0abd9"; g.font = "500 26px " + FB; const ph = (ADVISOR.phone || "").replace(/\D/g, ""); g.fillText(t("adv_title") + "  ·  " + ADVISOR.arn + (ph.length >= 11 && !/x/i.test(ADVISOR.phone) ? "  ·  +" + ph : ""), 60, 1282, 960);
+  g.fillStyle = "#6f7bb0"; g.font = "400 21px " + FB; wrapText(g, t("d1") + " " + t("d2"), 60, 1316, 960, 26);
+  $("shareImg").src = c.toDataURL("image/jpeg", .92); renderLinks(); $("modal").hidden = false; $("mClose").focus();
+}
+
+/* ---------- layout ---------- */
+function layout() {
+  if (!World) return;
+  const wide = window.innerWidth >= 900;
+  if (wide) World.layout(Math.round(($("panel").offsetWidth + 30) / 2), 0); else World.layout(0, Math.round($("hudBottom").offsetHeight / 2));
+}
+
+/* ---------- wiring ---------- */
+function setTab(n) { S.tab = n; ["plan", "goals", "events", "compare"].forEach((k) => { const on = k === n; $("tb-" + k).setAttribute("aria-selected", String(on)); $("tab-" + k).hidden = !on; }); $("panel").classList.remove("collapsed"); }
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+$("btnSheet").onclick = () => { $("panel").classList.toggle("collapsed"); };
+$("sip").addEventListener("input", (e) => setSip(+e.target.value));
+$("iSip").addEventListener("input", (e) => setSip(+e.target.value));
+$("scrub").addEventListener("input", (e) => { S.tm = +e.target.value; S.playing = false; syncPlay(); tick(); });
+$("btnPlay").onclick = () => { if (!S.playing && S.tm >= S.H * 12) S.tm = 0; S.playing = !S.playing; if (S.ev && S.playing) stopEvent(); syncPlay(); };
+$("btnSpeed").onclick = () => { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 4 : 1; syncPlay(); };
+$("btnReset").onclick = () => { if (World) World.reset(); };
+$("btnLang").onclick = () => { S.lang = S.lang === "en" ? "hi" : "en"; try { localStorage.setItem("wc-lang", S.lang); } catch (e) {} applyLang(); };
+$("cname").addEventListener("input", (e) => { S.name = e.target.value; renderLinks(); });
+$("btnAuto").onclick = () => { S.alloc = S.alloc === "smart" ? "equal" : "smart"; modelChanged(); };
+$("btnShare").onclick = openShare;
+$("mClose").onclick = () => { $("modal").hidden = true; };
+$("modal").addEventListener("click", (e) => { if (e.target === $("modal")) $("modal").hidden = true; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("modal").hidden) $("modal").hidden = true; });
+$("iGo").onclick = () => {
+  introOpen = false; $("intro").classList.add("gone"); setTimeout(() => { $("intro").hidden = true; }, 800);
+  S.tm = REDUCE ? S.H * 12 : 0; S.playing = !REDUCE; syncPlay();
+  if (World) { World.intro(); World.snap(); } tick();
+};
+if (World) {
+  World.onPick = (id) => { World.flyTo(id); if (id === "tower") setTab("plan"); else { setTab("goals"); const r = ui.goalRows[id]; if (r) r.row.scrollIntoView({ block: "nearest", behavior: REDUCE ? "auto" : "smooth" }); } };
+  World.onGoalDone = (G) => { if (!introOpen) toast(t("t_goal", gname(G.id), yearLabel(G.years * 12))); };
+  new ResizeObserver(() => { World.resize(); layout(); }).observe($("stage"));
+  new ResizeObserver(layout).observe($("hudBottom"));
+  new ResizeObserver(layout).observe($("panel"));
+}
+window.addEventListener("resize", layout);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (World) World.labelsDirty(); });
+
+/* ---------- start ---------- */
+(function init() {
+  try { if (!localStorage.getItem("wc-lang") && /^hi/i.test(navigator.language || "")) S.lang = "hi"; } catch (e) {}
+  refreshModel(); S.tm = Math.round(S.H * 12 * .55);
+  applyLang(); syncPlay(); setTab("plan"); layout();
+  if (World) World.snap();
+  requestAnimationFrame(loop);
+})();
+</script>

@@ -267,6 +267,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
       <div class="brand-t"><b id="brandName">Wealth City</b><span id="byline"></span></div>
     </div>
     <div class="top-r">
+      <button class="pill" id="btnDN" type="button" aria-label="Day or night" hidden>Auto</button>
       <button class="pill" id="btnQ" type="button" aria-label="Graphics quality" aria-pressed="true" hidden>HD</button>
       <button class="pill" id="btnReset" type="button" aria-label="Reset view">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
@@ -750,7 +751,7 @@ function buildWorld() {
     skyU.glow.value.copy(GLOW1).multiplyScalar(Math.pow(dawn, 1.3) * (1 - tintAmt * .7));
     skyU.sun.value.set(.18, lerp(-.14, .2, dawn), -1).normalize();
     scene.fog.color.copy(skyU.hor.value).multiplyScalar(.82); renderer.setClearColor(scene.fog.color);
-    hemi.intensity = .55 + .5 * dawn; sun.intensity = .45 + .95 * dawn;
+    hemi.intensity = .45 + .3 * dawn; sun.intensity = .4 + .55 * dawn;
     sun.color.copy(C(0xb8c6ff)).lerp(C(0xffd8a8), dawn);
     starMat.opacity = clamp(.95 - dawn * .95 - tintAmt * .4, 0, 1);
     moon.material.opacity = clamp(1 - dawn * 1.1 - tintAmt * .5, 0, 1); moonGlow.material.opacity = .8 * moon.material.opacity;
@@ -1260,7 +1261,7 @@ function buildWorld() {
     });
 
     /* atmosphere */
-    atmosphere(prog, FX.tintCol, FX.tint);
+    atmosphere(DAYMODE === 'night' ? 0 : DAYMODE === 'day' ? .9 : prog, FX.tintCol, FX.tint);
     hemi.intensity += FX.flash * 2.2;
 
     /* goals */
@@ -1332,6 +1333,7 @@ function buildWorld() {
       "col=mix(col,col*vec3(.93,.98,1.1),smoothstep(.5,.0,l)*.6);col=mix(col,col*vec3(1.07,1.0,.9),smoothstep(.5,1.0,l)*.5);" +
       "col*=1.0-vig*smoothstep(.22,.95,length(c)*1.3);col+=(hash(vUv*vec2(1920.0,1080.0)+time)-.5)*grain;gl_FragColor=vec4(col,1.0);}"
   };
+  const SanitizeShader = { uniforms: { tDiffuse: { value: null } }, vertexShader: "varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}", fragmentShader: "uniform sampler2D tDiffuse;varying vec2 vUv;void main(){vec3 c=texture2D(tDiffuse,vUv).rgb;if(!(c.r==c.r)||!(c.g==c.g)||!(c.b==c.b))c=vec3(0.0);c=clamp(c,0.0,4.0);gl_FragColor=vec4(c,1.0);}" };
   (function buildComposer() {
     if (!(THREE.EffectComposer && THREE.RenderPass && THREE.UnrealBloomPass && THREE.ShaderPass)) { console.warn("post-processing scripts missing, using direct render"); return; }
     try {
@@ -1340,6 +1342,7 @@ function buildWorld() {
       let rt; if (!COMPACT && gl2 && THREE.WebGLMultisampleRenderTarget) { rt = new THREE.WebGLMultisampleRenderTarget(sz.x, sz.y, opts); rt.samples = 4; } else rt = new THREE.WebGLRenderTarget(sz.x, sz.y, opts);
       composer = new THREE.EffectComposer(renderer, rt);
       composer.addPass(new THREE.RenderPass(scene, camera));
+      composer.addPass(new THREE.ShaderPass(SanitizeShader));
       bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x, sz.y), BLOOM, .4, COMPACT ? .85 : 1.0); composer.addPass(bloomPass);
       gradePass = new THREE.ShaderPass(GradeShader); composer.addPass(gradePass);
       if (COMPACT && THREE.FXAAShader) { fxaaPass = new THREE.ShaderPass(THREE.FXAAShader); composer.addPass(fxaaPass); }
@@ -1347,6 +1350,7 @@ function buildWorld() {
     } catch (e) { console.warn("post-processing disabled", e); composer = null; bloomPass = gradePass = fxaaPass = null; renderer.toneMapping = THREE.ACESFilmicToneMapping; }
   })();
 
+  let DAYMODE = 'auto';
   function setQuality(l, fromAuto) {
     if (l === Q.level) return; Q.level = l; if (!fromAuto) Q.auto = false;
     const post = l > 0 && !!composer;
@@ -1371,11 +1375,19 @@ function buildWorld() {
     } catch (e) { /* ignore */ }
   }
 
+  function whiteCheck() {
+    try {
+      const gl = renderer.getContext(), w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, b = new Uint8Array(4); let hot = 0;
+      [[.3, .12], [.5, .2], [.7, .12], [.5, .06]].forEach(([fx, fy]) => { gl.readPixels(Math.floor(w * fx), Math.floor(h * fy), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, b); if (b[0] + b[1] + b[2] > 480) hot++; });
+      if (hot >= 3) { console.warn("frame washed out, switching to safe lighting"); scene.environment = null; if (Q.level > 0) setQuality(0, true); else scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); }); }
+    } catch (e) { /* ignore */ }
+  }
   let last = performance.now(), running = true, frames = 0, fpsAcc = 0, fpsN = 0;
   function frame(now) {
     requestAnimationFrame(frame); if (!running) return;
     const raw = (now - last) / 1000, dt = Math.min(.05, raw); last = now; sync(dt); draw(dt); frames++;
     if (composer && Q.level > 0 && (frames === 8 || frames === 20 || frames === 45)) blackCheck();
+    if (frames === 12 || frames === 30 || frames === 60) whiteCheck();
     if (frames > 100 && raw < .25) { fpsAcc += raw; if (++fpsN === 70) { if (fpsAcc / fpsN > 1 / 30 && Q.level > 0 && Q.auto) setQuality(Q.level - 1, true); fpsAcc = 0; fpsN = 0; } }
   }
 
@@ -1399,7 +1411,7 @@ function buildWorld() {
     fireworks: () => { for (let i = 0; i < 5; i++) setTimeout(() => burst((rnd() - .5) * 50, 30 + rnd() * 26, (rnd() - .5) * 50, 120, PAL_MIX, 24, 9), i * 260); },
     layout: (x, y) => { offX = x; offY = y; resize(); },
     snap: () => { snapNext = true; },
-    setQuality: (l) => setQuality(l, false), quality: () => Q.level, hasPost: () => !!composer, onQuality: null,
+    setQuality: (l) => setQuality(l, false), setDay: (m) => { DAYMODE = m; }, dayMode: () => DAYMODE, quality: () => Q.level, hasPost: () => !!composer, onQuality: null,
     startEvent: (k) => { FX.kind = k; FX.t = 0; FX.nextBolt = .5; if (k === "storm") strike(); },
     stopEvent: () => { FX.kind = null; },
     labelsDirty: () => goals.forEach((o) => { o.key = ""; })
@@ -1681,6 +1693,8 @@ $("iGo").onclick = () => {
 };
 if (World) {
   World.onPick = (id) => { World.flyTo(id); if (id === "tower") setTab("plan"); else { setTab("goals"); const r = ui.goalRows[id]; if (r) r.row.scrollIntoView({ block: "nearest", behavior: REDUCE ? "auto" : "smooth" }); } };
+  $("btnDN").hidden = false;
+  $("btnDN").onclick = () => { const o = ["auto", "night", "day"], nx = o[(o.indexOf(World.dayMode()) + 1) % 3]; World.setDay(nx); $("btnDN").textContent = { auto: "Auto", night: "\u263E Night", day: "\u2600 Day" }[nx]; };
   $("btnQ").hidden = false;
   World.onQuality = (l, auto) => { $("btnQ").textContent = l > 0 ? "HD" : "Lite"; $("btnQ").setAttribute("aria-pressed", String(l > 0)); if (auto) toast(t("q_auto")); };
   $("btnQ").onclick = () => World.setQuality(World.quality() > 0 ? 0 : 2);

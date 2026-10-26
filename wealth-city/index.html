@@ -686,7 +686,7 @@ function buildWorld() {
   const DPR0 = Math.min(window.devicePixelRatio || 1, COMPACT ? 1.75 : 2);
   renderer.setPixelRatio(DPR0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  renderer.toneMappingExposure = .85;
   const CAN_SHADOW = !COMPACT;
   renderer.shadowMap.enabled = CAN_SHADOW; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setClearColor(0x060a1a);
@@ -723,10 +723,10 @@ function buildWorld() {
   moon.position.set(260, 300, -520); scene.add(moon);
   const moonGlow = glowSprite(0x9db8ff, 280, .8); moonGlow.position.copy(moon.position); scene.add(moonGlow);
   const sunDisc = glowSprite(0xffb070, 460, 0); scene.add(sunDisc);
-  const hemi = new THREE.HemisphereLight(0x7088ff, 0x1a1030, .7); scene.add(hemi);
+  const hemi = new THREE.HemisphereLight(0x7088ff, 0x1a1030, .5); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xb8c6ff, .5); sun.position.set(-80, 105, 70); scene.add(sun);
   if (CAN_SHADOW) { sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = -84; sc.right = 84; sc.top = 84; sc.bottom = -84; sc.near = 20; sc.far = 340; sun.shadow.bias = -.0006; sun.shadow.normalBias = .4; }
-  const gold = new THREE.PointLight(0xffc766, 1.4, 70, 1.6); gold.position.set(0, 5, 0); scene.add(gold);
+  const gold = new THREE.PointLight(0xffc766, .8, 70, 1.6); gold.position.set(0, 5, 0); scene.add(gold);
   const rimLight = new THREE.DirectionalLight(0x6f8cff, .55); rimLight.position.set(70, 40, -80); scene.add(rimLight);
 
   /* reflections: a small procedural studio so glass and metal have something to mirror */
@@ -735,7 +735,7 @@ function buildWorld() {
       const es = new THREE.Scene();
       es.add(new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, vertexShader: "varying vec3 p;void main(){p=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}", fragmentShader: "varying vec3 p;void main(){vec3 top=vec3(.09,.15,.40),hor=vec3(.85,.52,.36),bot=vec3(.02,.03,.08);vec3 c=p.y>0.0?mix(hor*.5,top,pow(p.y,.5)):mix(hor*.22,bot,pow(-p.y,.6));gl_FragColor=vec4(c,1.0);}" })));
       const panel = (w, h, col, x, y, z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); };
-      panel(30, 14, new THREE.Color(1.6, 1.8, 2.4), -30, 28, 20); panel(22, 10, new THREE.Color(2.6, 1.6, .8), 32, 10, -25); panel(16, 6, new THREE.Color(1.2, 1.7, 2.2), 0, 40, -10);
+      panel(30, 14, new THREE.Color(.7, .8, 1.1), -30, 28, 20); panel(22, 10, new THREE.Color(1.1, .7, .4), 32, 10, -25); panel(16, 6, new THREE.Color(.6, .8, 1.0), 0, 40, -10);
       const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(es, .02).texture; pm.dispose();
     } catch (e) { console.warn("reflections skipped", e); }
   })();
@@ -771,7 +771,7 @@ function buildWorld() {
     } catch (e) { return null; }
   }
   const wN = waterNormal();
-  const water = new THREE.Mesh(new THREE.CircleGeometry(1000, 64), std({ color: 0x0a1838, metalness: .9, roughness: .16, normalMap: wN || null, envMapIntensity: 1.6 }));
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1000, 64), std({ color: 0x0a1838, metalness: .6, roughness: .22, normalMap: wN || null, envMapIntensity: .3 }));
   if (wN) water.material.normalScale.set(.55, .55);
   water.rotation.x = -Math.PI / 2; water.position.y = -3.4; scene.add(water);
   const plinth = new THREE.Mesh(new THREE.CylinderGeometry(64, 67, 3.4, 96), std({ color: 0x0d1736, metalness: .55, roughness: .4 }));
@@ -819,8 +819,8 @@ function buildWorld() {
     return tex(c);
   }
   const fmapC = floorTex(false), fmapE = floorTex(true);
-  const matInv = std({ color: 0x35b4f0, map: fmapC, emissive: 0x1b7ac4, emissiveMap: fmapE, emissiveIntensity: 1.7, metalness: .7, roughness: .14, envMapIntensity: 1.9 });
-  const matGain = std({ color: 0xf2b84f, map: fmapC, emissive: 0xd68a1c, emissiveMap: fmapE, emissiveIntensity: 1.9, metalness: .75, roughness: .12, envMapIntensity: 1.9 });
+  const matInv = std({ color: 0x35b4f0, map: fmapC, emissive: 0x1b7ac4, emissiveMap: fmapE, emissiveIntensity: .9, metalness: .7, roughness: .18, envMapIntensity: .7 });
+  const matGain = std({ color: 0xf2b84f, map: fmapC, emissive: 0xd68a1c, emissiveMap: fmapE, emissiveIntensity: 1.0, metalness: .75, roughness: .16, envMapIntensity: .7 });
   const floorGeo = new THREE.BoxGeometry(1, 1, 1);
   const imInv = new THREE.InstancedMesh(floorGeo, matInv, MAXF), imGain = new THREE.InstancedMesh(floorGeo, matGain, MAXF);
   imInv.frustumCulled = imGain.frustumCulled = false; imInv.count = imGain.count = 0; imInv.castShadow = imGain.castShadow = true; towerG.add(imInv, imGain);
@@ -947,7 +947,7 @@ function buildWorld() {
     }
     return [tex(c, true), tex(e, true)];
   })();
-  const fillMats = [0x8196dc, 0x74b9cf, 0xa08cdc].map((col) => std({ color: col, map: facade[0], emissiveMap: facade[1], emissive: 0xffffff, emissiveIntensity: 1.05, roughness: .38, metalness: .4, envMapIntensity: 1.2 }));
+  const fillMats = [0x8196dc, 0x74b9cf, 0xa08cdc].map((col) => std({ color: col, map: facade[0], emissiveMap: facade[1], emissive: 0xffffff, emissiveIntensity: .55, roughness: .4, metalness: .3, envMapIntensity: .5 }));
   function bldGeo(w, h, d) {
     const g = new THREE.BoxGeometry(w, h, d); g.translate(0, h / 2, 0);
     const uv = g.attributes.uv, tile = 9;
@@ -1177,7 +1177,7 @@ function buildWorld() {
 
   /* ---------- camera + input ---------- */
   let composer = null, bloomPass = null, fxaaPass = null, gradePass = null;
-  const Q = { level: 2, auto: true }, BLOOM = COMPACT ? .5 : .62;
+  const Q = { level: 2, auto: true }, BLOOM = COMPACT ? .22 : .28;
   const DEF = { theta: .78, phi: 1.03, r: 124, tx: 0, ty: 13, tz: 0 };
   const cam = Object.assign({}, DEF, { r: 235, phi: .8 }), goal = Object.assign({}, DEF);
   let fit = 1, offX = 0, offY = 0, lastInput = -99, focusOn = false, clock = 0;
@@ -1321,7 +1321,7 @@ function buildWorld() {
 
   /* ---------- cinematic post-processing: HDR bloom, ACES grade, vignette, grain ---------- */
   const GradeShader = {
-    uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vig: { value: .42 }, aberr: { value: .0018 }, grain: { value: .03 }, exposure: { value: 1.12 } },
+    uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vig: { value: .42 }, aberr: { value: .0018 }, grain: { value: .03 }, exposure: { value: .85 } },
     vertexShader: "varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
     fragmentShader: "uniform sampler2D tDiffuse;uniform float time;uniform float vig;uniform float aberr;uniform float grain;uniform float exposure;varying vec2 vUv;" +
       "vec3 aces(vec3 x){const float a=2.51;const float b=.03;const float c=2.43;const float d=.59;const float e=.14;return clamp((x*(a*x+b))/(x*(c*x+d)+e),0.0,1.0);}" +
@@ -1340,7 +1340,7 @@ function buildWorld() {
       let rt; if (!COMPACT && gl2 && THREE.WebGLMultisampleRenderTarget) { rt = new THREE.WebGLMultisampleRenderTarget(sz.x, sz.y, opts); rt.samples = 4; } else rt = new THREE.WebGLRenderTarget(sz.x, sz.y, opts);
       composer = new THREE.EffectComposer(renderer, rt);
       composer.addPass(new THREE.RenderPass(scene, camera));
-      bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x, sz.y), BLOOM, .55, .7); composer.addPass(bloomPass);
+      bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x, sz.y), BLOOM, .4, COMPACT ? .85 : 1.0); composer.addPass(bloomPass);
       gradePass = new THREE.ShaderPass(GradeShader); composer.addPass(gradePass);
       if (COMPACT && THREE.FXAAShader) { fxaaPass = new THREE.ShaderPass(THREE.FXAAShader); composer.addPass(fxaaPass); }
       renderer.toneMapping = THREE.NoToneMapping;

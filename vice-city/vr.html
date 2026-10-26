@@ -599,12 +599,13 @@ void groundShade(vec2 p,out vec3 col,out float rough){
   sand*=.93+.07*gh(floor(p*3.));
   col=mix(col,sand,sandM); rough=mix(rough,.95,sandM);
 }`;
+window.__WET = {value: 0};
 const groundMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: .5, metalness: .04, envMapIntensity: .9});
-groundMat.onBeforeCompile = sh => {
+groundMat.onBeforeCompile = sh => { sh.uniforms.uWet = window.__WET;
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;\n' + COAST_GLSL).replace('#include <begin_vertex>', 'vec3 transformed=vec3(position); vec4 wp0=modelMatrix*vec4(transformed,1.); transformed.y+=-1.75*smoothstep(-3.,16.,wsd(wp0.xz)); vWP=(modelMatrix*vec4(transformed,1.)).xyz;');
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;\n' + COAST_GLSL + GROUND_GLSL)
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uWet;\nvarying vec3 vWP;\n' + COAST_GLSL + GROUND_GLSL)
     .replace('#include <color_fragment>', '#include <color_fragment>\nfloat gRough; vec3 gCol; groundShade(vWP.xz,gCol,gRough); diffuseColor.rgb=gCol;')
-    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor=gRough;');
+    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor=mix(gRough,gRough*.22,uWet*(1.-smoothstep(.55,.8,gRough)));');
 };
 const GSIZE = 1700;
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(GSIZE, GSIZE, 340, 340).rotateX(-Math.PI / 2), groundMat);
@@ -1801,7 +1802,7 @@ $('#radio').addEventListener('click', e => {
 /* =====================================================================
    VR: WebXR rig, controllers, locomotion, rides, wrist panel
    ===================================================================== */
-const vr = {active: false, sim: false, supported: false, fly: false, scale: 1.0, drawR: 260, shadowOn: true, vig: true, panel: false, ride: null, fade: 0, fadeDir: 0, pend: null, loading: false, loadT: 0, wpi: -1, hover: null, snapReady: true, speed: 0, msg: '', msgT: 0, panelT: 0, dirty: true, saved: null, trafficOn: true, viewMode: 1};
+const vr = {active: false, sim: false, supported: false, fly: false, scale: 1.0, drawR: 260, shadowOn: true, vig: true, panel: false, ride: null, fade: 0, fadeDir: 0, pend: null, loading: false, loadT: 0, wpi: -1, hover: null, snapReady: true, turnV: 0, strafed: false, falling: false, fvel: new V3(), wvel: new V3(), vy: 0, shake: 0, flash: 0, speed: 0, msg: '', msgT: 0, panelT: 0, dirty: true, saved: null, trafficOn: true, viewMode: 1};
 const rig = new THREE.Group(); rig.name = 'rig'; scene.add(rig); rig.add(camera);
 renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local-floor');
 const Yup = new V3(0, 1, 0), hv = new V3(), fw = new V3(), tv = new V3(), tv2 = new V3(), ZERO = new V3();
@@ -1858,7 +1859,7 @@ for (let i = 0; i < 2; i++) {
   const o = {c, g, ray, mark, hand: i ? 'right' : 'left', hit: null, valid: false};
   c.addEventListener('connected', e => { o.hand = e.data.handedness || o.hand; o.connected = true; ray.visible = true; });
   c.addEventListener('disconnected', () => { o.connected = false; ray.visible = false; mark.visible = false; });
-  c.addEventListener('selectstart', () => onSelect(o));
+  c.addEventListener('selectstart', () => onSelect(o)); c.addEventListener('selectend', () => onRelease(o));
   rig.add(c); rig.add(g); if (XRFactory) { try { g.add(XRFactory.createControllerModel(g)); } catch (e) { } }
   ctrls.push(o);
 }
@@ -1867,8 +1868,8 @@ for (let i = 0; i < 2; i++) {
 const keys = {}; addEventListener('keydown', e => { keys[e.code] = true; }); addEventListener('keyup', e => { keys[e.code] = false; });
 function simPads() {
   const ax = (a, b) => (keys[a] ? -1 : 0) + (keys[b] ? 1 : 0), mk = (x, y, btn) => ({axes: [0, 0, x, y], buttons: Array.from({length: 6}, (_, i) => ({pressed: !!btn[i]}))});
-  pad.L = mk(ax('KeyA', 'KeyD'), ax('KeyW', 'KeyS'), {3: keys.ShiftLeft, 5: keys.KeyP, 4: keys.KeyN});
-  pad.R = mk(ax('ArrowLeft', 'ArrowRight'), ax('ArrowUp', 'ArrowDown'), {4: keys.KeyF, 5: keys.KeyT});
+  pad.L = mk(ax('KeyA', 'KeyD'), ax('KeyW', 'KeyS'), {0: keys.Space, 3: keys.ShiftLeft, 5: keys.KeyP, 4: keys.KeyN});
+  pad.R = mk(ax('ArrowLeft', 'ArrowRight'), ax('ArrowUp', 'ArrowDown'), {3: keys.KeyG, 4: keys.KeyF, 5: keys.KeyT});
 }
 const pad = {L: null, R: null}, prevB = {L: [], R: []};
 function readPads() {
@@ -1890,7 +1891,7 @@ const carYaw = c => c.ax === 'x' ? (c.dir > 0 ? 0 : Math.PI) : (c.dir > 0 ? -Mat
 /* ---------- teleport / rides (all go through a fade to black) ---------- */
 function startJob(job) { if (vr.pend || vr.fadeDir) return; vr.pend = job; vr.fadeDir = 1; vr.panelT = 0; }
 function applyJob(j) {
-  endRideNow(false);
+  endRideNow(false); vr.falling = false; vr.fvel.set(0, 0, 0); vr.wvel.set(0, 0, 0);
   if (j.kind === 'tp') { const [x, z] = nearestFree(j.x, j.z); vr.fly = !!j.fly; rig.rotation.y = j.yaw ?? rig.rotation.y; placeHeadXZ(x, z); rig.position.y = j.fly ? j.y : groundY(x, z); if (j.then) beginRide(j.then); }
   else if (j.kind === 'ride') beginRide(j.type);
   else if (j.kind === 'land') { headWorld(hv); const [x, z] = nearestFree(hv.x, hv.z); vr.fly = false; placeHeadXZ(x, z); rig.position.y = groundY(x, z); }
@@ -1970,15 +1971,15 @@ function drawPanel() {
   label('TRAVEL', 28, 548); WP.forEach((w, i) => button(28 + i * 138, 560, 132, 48, w.n, () => teleportTo(i), {fs: 17, on: vr.wpi === i}));
   label('RIDES', 28, 626); let rx = 28;
   const rides = [['Convertible', () => startJob({kind: 'ride', type: 'car'})], ['Helicopter', () => startJob({kind: 'ride', type: 'heli'})], ['Ferris wheel', () => { const w = WP[7]; startJob({kind: 'tp', x: w.x, z: w.z, yaw: w.yaw, then: 'ferris'}); }]];
-  rides.forEach(([n, f]) => { button(rx, 638, 190, 46, n, f, {fs: 20}); rx += 198; });
-  button(rx, 638, 190, 46, vr.fly ? 'Fly mode ON' : 'Fly mode', () => { toggleFly(); vr.dirty = true; }, {on: vr.fly, fs: 20}); rx += 198; button(rx, 638, 190, 46, vr.ride ? 'Exit ride' : 'Land / walk', () => { if (vr.ride) startJob({kind: 'land'}); else if (vr.fly) startJob({kind: 'land'}); }, {fs: 20, dis: !vr.ride && !vr.fly});
+  rides.forEach(([n, f]) => { button(rx, 638, 160, 46, n, f, {fs: 19}); rx += 168; });
+  button(rx, 638, 160, 46, vr.fly ? 'Fly mode ON' : 'Fly mode', () => { toggleFly(); vr.dirty = true; }, {on: vr.fly, fs: 19}); rx += 168; button(rx, 638, 160, 46, 'Free fall', () => { vr.panel = false; panel.visible = false; startFall(); }, {fs: 19, dis: !vr.fly || vr.falling}); rx += 168; button(rx, 638, 160, 46, vr.ride ? 'Exit ride' : 'Land / walk', () => { if (vr.ride || vr.fly) startJob({kind: 'land'}); }, {fs: 19, dis: !vr.ride && !vr.fly});
   label('TIME & WORLD', 28, 702); const tn = ['Dawn', 'Day', 'Golden', 'Neon'];
   tn.forEach((n, i) => button(28 + i * 108, 714, 102, 44, n, () => timeBtns[i]?.click(), {fs: 19}));
   const tg = [['Radio', () => $('#radio').click(), radioOn], ['Traffic', () => { $('#tTraf').click(); }, trafficOn.v], ['Turf glow', () => $('#tTerr').click(), showTerr.v], ['Comfort', () => { vr.vig = !vr.vig; }, vr.vig], ['View: ' + ['Near', 'Mid', 'Far'][vr.viewMode], () => { vr.viewMode = (vr.viewMode + 1) % 3; STREAM_R = [190, 260, 350][vr.viewMode]; lastSX = 1e9; }, true]];
   tg.forEach(([n, f, on], i) => button(470 + i * 160, 714, 152, 44, n, () => { f(); vr.dirty = true; }, {fs: 18, on}));
   // ticker + hint
   pg.fillStyle = '#7dffd2'; pg.font = `500 20px ${FONT}`; pg.textAlign = 'left'; let nt = newsQ[newsShow % newsQ.length] || ''; while (pg.measureText(nt).width > 1190 && nt.length > 10) nt = nt.slice(0, -2); pg.fillText('NEON FM  ' + nt, 28, 772);
-  pg.fillStyle = '#a79bcb'; pg.font = `400 14px ${MONO}`; pg.fillText('L-stick walk · R-stick turn · Trigger teleport/click · A fly/exit · B time · X next place · Y this panel', 28, 791);
+  pg.fillStyle = '#a79bcb'; pg.font = `400 14px ${MONO}`; pg.fillText('Stick: move + smooth turn · Hold trigger + stick: strafe · Trigger: teleport/click · A fly/exit · R-stick click: free fall · B time · X place · Y panel', 28, 791);
   ptex.needsUpdate = true; vr.dirty = false;
 }
 function openPanel() {
@@ -1986,7 +1987,30 @@ function openPanel() {
   tv.copy(hv).addScaledVector(fw, 1.05); tv.y = hv.y - .12; rig.worldToLocal(tv); panel.position.copy(tv); panel.lookAt(hv.x, hv.y - .05, hv.z); panel.visible = true; vr.panel = true; vr.dirty = true; vr.hover = null;
 }
 function togglePanel() { if (vr.panel) { vr.panel = false; panel.visible = false; } else openPanel(); }
-function toggleFly() { if (vr.ride) return; if (vr.fly) startJob({kind: 'land'}); else { vr.fly = true; rig.position.y = Math.max(rig.position.y, 0) + 30; vrToast('Fly mode. Right stick up/down changes altitude.'); } }
+function startFall() {
+  if (!vr.fly || vr.ride || vr.falling || vr.fadeDir) { if (!vr.fly) vrToast('You can only free fall while flying. Press A to fly.'); return; }
+  vr.falling = true; vr.vy = Math.min(0, vr.fvel.y); vr.fall = {drift: new V3(vr.fvel.x * .5, 0, vr.fvel.z * .5)}; vr.panel = false; panel.visible = false; vrToast('FREE FALL. A to pull out.'); for (const o of ctrls) buzz(o, .5, 120);
+}
+function stopFall(msg) { vr.falling = false; vr.fvel.set(0, Math.max(0, vr.vy * .2), 0); vr.vy = 0; if (msg) vrToast(msg); }
+function fallStep(dt, lx, ly) {
+  if (bPressed('R', 4)) { stopFall('Chute out. Back in control.'); return; }
+  const g = 11.5, term = 66; vr.vy = Math.max(-term, vr.vy - g * dt);
+  camera.getWorldDirection(fw); fw.y = 0; if (fw.lengthSq() < 1e-4) fw.set(0, 0, -1); fw.normalize(); tv2.set(-fw.z, 0, fw.x);
+  tv.set(0, 0, 0).addScaledVector(fw, -ly * 16).addScaledVector(tv2, lx * 16); vr.fall.drift.lerp(tv, Math.min(1, dt * 1.2));
+  rig.position.x += vr.fall.drift.x * dt; rig.position.z += vr.fall.drift.z * dt; rig.position.y += vr.vy * dt; vr.speed = Math.max(vr.speed, -vr.vy * .9);
+  if (Math.floor(simT * 22) % 3 === 0) for (const o of ctrls) buzz(o, Math.min(.5, -vr.vy / 120), 20);
+  headWorld(hv); const gy = groundY(hv.x, hv.z);
+  if (rig.position.y <= gy) {
+    const imp = -vr.vy, water = wsd(hv.x, hv.z) > -12.5, solid = solidAt(hv.x, hv.z); rig.position.y = gy; stopFall(); vr.fvel.set(0, 0, 0);
+    vr.shake = Math.min(1, imp / 55); vr.dipPrev = vr.dipPrev || 0; vr.flash = Math.min(.9, imp / 60); for (const o of ctrls) buzz(o, Math.min(1, .3 + imp / 60), 160); thud(imp);
+    if (imp > 20) vrToast(water ? 'SPLASH!' : imp > 50 ? 'CRASH LANDING!' : 'Hard landing!'); else vrToast('Soft landing.');
+    vr.fly = false; if (water || solid) startJob({kind: 'land'});
+  }
+}
+let windN = null, windG = null, windF = null;
+function windStart() { if (windN || !ac) return; try { const b = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = b.getChannelData(0); let l = 0; for (let i = 0; i < d.length; i++) { l = l * .85 + (Math.random() * 2 - 1) * .15; d[i] = l * 3; } windN = ac.createBufferSource(); windN.buffer = b; windN.loop = true; windF = ac.createBiquadFilter(); windF.type = 'bandpass'; windF.frequency.value = 500; windF.Q.value = .6; windG = ac.createGain(); windG.gain.value = 0; windN.connect(windF); windF.connect(windG); windG.connect(ac.destination); windN.start(); } catch (e) { windN = null; } }
+function thud(imp) { if (!ac) return; try { const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(110, ac.currentTime); o.frequency.exponentialRampToValueAtTime(34, ac.currentTime + .35); g.gain.setValueAtTime(Math.min(.9, imp / 50), ac.currentTime); g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + .6); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + .65); } catch (e) { } }
+function toggleFly() { if (vr.ride) return; if (vr.fly) startJob({kind: 'land'}); else { vr.fly = true; vr.fvel.set(0, 0, 0); rig.position.y = Math.max(rig.position.y, 0) + 30; vrToast('Fly: point left controller + push stick to fly anywhere. Right-stick click = free fall.'); } }
 function cycleTime() { const i = ((vr.ti ?? 1) + 1) % 4; vr.ti = i; timeBtns[i]?.click(); vrToast(['Dawn', 'Day', 'Golden hour', 'Neon night'][i]); }
 
 /* ---------- pointer: panel hits, ground teleport marker, select ---------- */
@@ -2007,8 +2031,12 @@ function updatePointers() {
   const hv2 = anyHover; if (hv2 !== vr.hover) { vr.hover = hv2; vr.dirty = true; }
 }
 function onSelect(o) {
-  if (!vr.active || vr.fadeDir) return;
-  if (o.hit && o.hit.panel) { if (o.hit.b && !o.hit.b.dis) { o.hit.b.fn(); buzz(o, .6, 30); vr.dirty = true; } return; }
+  vr.strafed = false; if (!vr.active || vr.fadeDir) return;
+  if (o.hit && o.hit.panel) { if (o.hit.b && !o.hit.b.dis) { o.hit.b.fn(); buzz(o, .6, 30); vr.dirty = true; } o.panelClick = true; return; }
+  o.panelClick = false;
+}
+function onRelease(o) {
+  if (!vr.active || vr.fadeDir || vr.strafed || o.panelClick || vr.ride) return;
   if (o.hit && o.hit.ground && o.valid) { buzz(o, .4, 20); headWorld(hv); const g = o.hit.ground; startJob({kind: 'tp', x: g.x, z: g.z, yaw: rig.rotation.y, short: Math.hypot(g.x - hv.x, g.z - hv.z) < 60}); }
 }
 
@@ -2038,35 +2066,70 @@ renderer.xr.addEventListener('sessionend', leaveXR);
 function vrUpdate(dt, t) {
   readPads();
   const [lx, ly] = stickOf(pad.L), [rx, ry] = stickOf(pad.R);
-  if (bPressed('L', 5)) togglePanel(); if (bPressed('L', 4)) teleportTo(vr.wpi + 1); if (bPressed('R', 4)) { if (vr.ride) startJob({kind: 'land'}); else toggleFly(); } if (bPressed('R', 5)) cycleTime();
+  if (bPressed('L', 5)) togglePanel(); if (bPressed('L', 4)) teleportTo(vr.wpi + 1); if (bPressed('R', 4)) { if (vr.ride) startJob({kind: 'land'}); else toggleFly(); } if (bPressed('R', 5)) cycleTime(); if (bPressed('R', 3)) startFall();
   // fade state machine
   if (vr.fadeDir === 1) { vr.fade = Math.min(1, vr.fade + dt / .16); if (vr.fade >= 1) { const j = vr.pend; vr.pend = null; applyJob(j); if (j.short) { vr.fadeDir = -1; } else { vr.fadeDir = 0; vr.loading = true; vr.loadT = 0; } } }
   else if (vr.loading) { vr.loadT += dt; if (queue.length < 4 || vr.loadT > 2.6) { vr.loading = false; vr.fadeDir = -1; } }
   else if (vr.fadeDir === -1) { vr.fade = Math.max(0, vr.fade - dt / .35); if (vr.fade <= 0) vr.fadeDir = 0; }
   fadeMat.opacity = vr.fade; fadeMesh.visible = vr.fade > .002;
   vr.speed = 0; const busy = vr.fadeDir !== 0 || vr.loading;
-  if (!vr.ride && !busy) {
-    camera.getWorldDirection(fw); const sprint = bDown('L', 3) || bDown('L', 1);
+  const trig = bDown('L', 0) || bDown('R', 0), sprint = bDown('L', 3) || bDown('L', 1);
+  const sx = Math.abs(lx) > Math.abs(rx) ? lx : rx;           // sideways stick: turn, or strafe while a trigger is held
+  const turnIn = (trig || vr.ride) ? 0 : sx, strafeIn = trig && !vr.ride ? sx : 0;
+  if (trig && Math.abs(sx) > .2) vr.strafed = true;
+  vr.turnV += ((-turnIn * 2.15) - vr.turnV) * Math.min(1, dt * (Math.abs(turnIn) > .05 ? 7 : 11));   // rad/s, eased in and out
+  if (Math.abs(vr.turnV) < .002) vr.turnV = 0;
+  if (!vr.ride && !busy && vr.turnV) turnRig(vr.turnV * dt);
+  if (!vr.ride && !busy && !vr.falling) {
     if (vr.fly) {
-      const sp = sprint ? 55 : 18; tv.copy(fw); tv2.set(-fw.z, 0, fw.x).normalize();
-      const mv = tv.multiplyScalar(-ly * sp * dt).addScaledVector(tv2, lx * sp * dt); rig.position.add(mv); rig.position.y = clamp(rig.position.y - ry * 14 * dt, .6, 480); vr.speed = Math.hypot(lx, ly) * sp;
+      const L = ctrls.find(o => o.hand === 'left' && (o.connected || vr.sim)); if (L && !vr.sim) { aimFrom(L); fw.copy(vrd); } else camera.getWorldDirection(fw);
+      tv2.set(-fw.z, 0, fw.x).normalize(); const sp = sprint ? 95 : 24, fy = ly || 0;
+      tv.copy(fw).multiplyScalar(-fy * sp).addScaledVector(tv2, strafeIn * sp * .6); tv.y += -ry * 16;
+      vr.fvel.lerp(tv, Math.min(1, dt * 1.8)); rig.position.addScaledVector(vr.fvel, dt); rig.position.y = clamp(rig.position.y, .6, 1800);
+      vr.speed = vr.fvel.length(); if (rig.position.y <= .61 && vr.fvel.y < 0) vr.fvel.y = 0;
     } else {
-      fw.y = 0; if (fw.lengthSq() < 1e-4) fw.set(0, 0, -1); fw.normalize(); tv2.set(-fw.z, 0, fw.x); const sp = sprint ? 11 : 4.2;
-      if (lx || ly) walkMove((-ly * fw.x + lx * tv2.x) * sp * dt, (-ly * fw.z + lx * tv2.z) * sp * dt);
-      headWorld(hv); rig.position.y += (groundY(hv.x, hv.z) - rig.position.y) * Math.min(1, dt * 8); vr.speed = Math.hypot(lx, ly) * sp;
+      camera.getWorldDirection(fw); fw.y = 0; if (fw.lengthSq() < 1e-4) fw.set(0, 0, -1); fw.normalize(); tv2.set(-fw.z, 0, fw.x); const sp = sprint ? 9.5 : 4.2, fy = ly || ry;
+      tv.set(0, 0, 0).addScaledVector(fw, -fy * sp).addScaledVector(tv2, strafeIn * sp * .8); vr.wvel.lerp(tv, Math.min(1, dt * 9));
+      if (vr.wvel.lengthSq() > 1e-4) walkMove(vr.wvel.x * dt, vr.wvel.z * dt);
+      headWorld(hv); rig.position.y += (groundY(hv.x, hv.z) - rig.position.y) * Math.min(1, dt * 8); vr.speed = vr.wvel.length();
     }
-    if (Math.abs(rx) > .7 && vr.snapReady && !vr.fly || (vr.fly && Math.abs(rx) > .7 && vr.snapReady)) { turnRig(-Math.sign(rx) * Math.PI / 6); vr.snapReady = false; vr.speed = Math.max(vr.speed, 3); } else if (Math.abs(rx) < .3) vr.snapReady = true;
-  } else if (vr.ride && !busy && Math.abs(rx) > .7 && vr.snapReady) { vr.snapReady = false; } else if (Math.abs(rx) < .3) vr.snapReady = true;
+  } else if (vr.falling && !busy) fallStep(dt, lx, ly);
+  vr.speed = Math.max(vr.speed * (vr.fly ? .55 : 1), Math.abs(vr.turnV) * 2.6);
   followRide();
   if (vr.ride && vr.ride.type === 'ferris') { /* free head turn */ }
   // pointers + panel
   updatePointers(); if (vr.panel) { vr.panelT += dt; if (vr.dirty || vr.panelT > .35) { vr.panelT = 0; drawPanel(); } }
   // comfort vignette
-  const vt = vr.vig ? Math.min(.9, vr.speed / 9) * (vr.fly ? .9 : 1) + (vr.ride ? (vr.ride.type === 'ferris' ? .0 : .32) : 0) : 0; vigMat.opacity += (vt - vigMat.opacity) * Math.min(1, dt * 6); vigMesh.visible = vigMat.opacity > .01;
+  const vt = vr.vig ? Math.min(.9, vr.speed / 9) * (vr.fly ? .9 : 1) + (vr.ride ? (vr.ride.type === 'ferris' ? .0 : .32) : 0) + (vr.falling ? .4 + Math.min(.35, -vr.vy / 160) : 0) : 0; vigMat.opacity += (vt - vigMat.opacity) * Math.min(1, dt * 6); vigMesh.visible = vigMat.opacity > .01;
+  vrFx(dt);
   // toast
   if (vr.msgT > 0) { vr.msgT -= dt; msgMat.opacity = Math.min(1, vr.msgT * 2); } else msgMat.opacity = 0;
   // labels
   labels3.forEach((s, i) => { const d = DIS[i]; headWorld(hv); const dist = Math.hypot(hv.x - d.cx, hv.z - d.cz); s.material.opacity = clamp((dist - 60) / 80, 0, 1) * (1 - sstep(500, 800, dist)); s.visible = s.material.opacity > .02; });
+}
+
+/* ---------- atmosphere + fall effects ---------- */
+const WETU = window.__WET || {value: 0};
+const mote = (() => { const N = 520, g = new THREE.BufferGeometry(), p = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) p[i] = Math.random(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); const c = cvs(64, 64), x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  const m = new THREE.Points(g, new THREE.PointsMaterial({size: .075, map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, opacity: .55, toneMapped: false, fog: false})); m.frustumCulled = false; m.visible = false; m.renderOrder = 5; scene.add(m); return m; })();
+const moteBase = Float32Array.from(mote.geometry.attributes.position.array);
+const streak = (() => { const N = 110, g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 6), 3)); const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial({color: 0xcfe8ff, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false, fog: false, blending: THREE.AdditiveBlending})); m.frustumCulled = false; m.renderOrder = 998; camera.add(m); m.userData.s = Array.from({length: N}, () => { const a = Math.random() * 6.283, r = .35 + Math.random() * 1.6; return [Math.cos(a) * r, Math.sin(a) * r, -Math.random() * 6]; }); return m; })();
+const flashMat = new THREE.MeshBasicMaterial({color: 0xfff0e0, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false, fog: false});
+const flashMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), flashMat); flashMesh.position.z = -.19; flashMesh.renderOrder = 1001; flashMesh.frustumCulled = false; camera.add(flashMesh);
+function vrFx(dt) {
+  // drifting dust and glints around the head: strong parallax depth cue, tinted by time of day
+  const pa = mote.geometry.attributes.position.array; headWorld(hv); const hx = hv.x, hy = hv.y, hz = hv.z, W = 34, H = 14;
+  for (let i = 0; i < pa.length; i += 3) { const b = i; pa[i] = hx + ((moteBase[b] * W - hx + simT * .25 * (1 + (i % 7) * .1)) % W + W) % W - W / 2; pa[i + 1] = Math.max(.1, hy - 4 + ((moteBase[b + 1] * H + simT * .12 * (1 + (i % 5) * .1)) % H + H) % H); pa[i + 2] = hz + ((moteBase[b + 2] * W - hz + Math.sin(simT * .3 + i) * .5) % W + W) % W - W / 2; }
+  mote.geometry.attributes.position.needsUpdate = true; mote.visible = !vr.falling && hy < 140; mote.material.color.setHex(ENV.nf > .5 ? 0xff9be0 : 0xffe9c2); mote.material.opacity = .25 + ENV.nf * .5;
+  WETU.value = .3 + ENV.nf * .6;
+  // fall / high-speed streaks and wind
+  const sp = vr.falling ? -vr.vy * 1.25 : vr.fly ? vr.fvel.length() : 0, k = clamp((sp - 14) / 55, 0, 1);
+  streak.material.opacity += (k * .5 - streak.material.opacity) * Math.min(1, dt * 6); streak.visible = streak.material.opacity > .01;
+  if (streak.visible) { const pos = streak.geometry.attributes.position.array, S = streak.userData.s, len = .2 + k * 1.1; for (let i = 0; i < S.length; i++) { const q = S[i]; q[2] += (sp * .2 + 2) * dt; if (q[2] > -.4) { q[2] = -6 - Math.random() * 2; const a = Math.random() * 6.283, r = .4 + Math.random() * 1.6; q[0] = Math.cos(a) * r; q[1] = Math.sin(a) * r; } pos.set([q[0], q[1], q[2], q[0], q[1], q[2] - len], i * 6); } streak.geometry.attributes.position.needsUpdate = true; }
+  if (sp > 4 || windG) { windStart(); if (windG) { windG.gain.value += (clamp((sp - 10) / 60, 0, 1) * .55 - windG.gain.value) * Math.min(1, dt * 5); windF.frequency.value = 260 + sp * 14; } }
+  // landing flash and knee dip
+  vr.flash = Math.max(0, vr.flash - dt * 1.7); flashMat.opacity = vr.flash; flashMesh.visible = vr.flash > .01;
+  vr.shake = Math.max(0, vr.shake - dt * 1.4); vr.dipPrev = vr.dipPrev || 0; const dip = -.34 * vr.shake * vr.shake + Math.sin(simT * 60) * .014 * vr.shake; if (vr.active && !vr.ride) rig.position.y += dip - vr.dipPrev; vr.dipPrev = dip;
 }
 
 /* =====================================================================
@@ -2107,9 +2170,9 @@ function frame(now) {
   }
   if (X) {
     vrHud += dt; if (vrHud > 1.2) { vrHud = 0; refreshAll(); }
-    renderer.render(scene, camera);
+    renderer.toneMappingExposure = ENV.ex * (1.18 + ENV.nf * .5); renderer.render(scene, camera);
   } else {
-    updateLabels();
+    renderer.toneMappingExposure = ENV.ex; updateLabels();
     hudAcc += dt; if (hudAcc > .25) { hudAcc = 0; refreshAll(); const h = state.hour, hh = Math.floor(h), mi = Math.floor((h - hh) * 60); clockEl.textContent = String(hh).padStart(2, '0') + ':' + String(mi).padStart(2, '0'); phaseEl.textContent = phaseName(h); drawMini(); }
     composer.render();
     if (dt > .045) slow++; else slow = Math.max(0, slow - .25);
@@ -2133,7 +2196,7 @@ for (const b of $$('#vrQ button')) b.addEventListener('click', () => {
 });
 if (navigator.xr) navigator.xr.isSessionSupported('immersive-vr').then(ok => { vr.supported = ok; if (ok) { vrBtn.disabled = false; vrNote.textContent = 'Headset detected. Tap Enter VR.'; } else vrNote.textContent = 'No VR headset found here. Open this page in the Meta Quest Browser. Desktop mode below still works.'; }).catch(() => { });
 else vrNote.textContent = 'WebXR is not available in this browser. Open this page in the Meta Quest Browser.';
-function vrQualityOn() { sunL.shadow.mapSize.set(2048, 2048); Object.assign(sunL.shadow.camera, {left: -140, right: 140, top: 140, bottom: -140}); sunL.shadow.camera.updateProjectionMatrix(); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; } }
+function vrQualityOn() { const big = vr.scale > 1.1; sunL.shadow.mapSize.set(big ? 3072 : 2048, big ? 3072 : 2048); const an = Math.min(big ? 16 : 8, renderer.capabilities.getMaxAnisotropy()); const seen = new Set(); scene.traverse(o => { const m = o.material; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) for (const k of ['map', 'roughnessMap', 'metalnessMap', 'emissiveMap']) { const t = mm[k]; if (t && !seen.has(t) && t.anisotropy < an && !t.isCanvasTexture) { t.anisotropy = an; t.needsUpdate = true; seen.add(t); } } }); renderer.xr.setFoveation(big ? .5 : 1); Object.assign(sunL.shadow.camera, {left: -140, right: 140, top: 140, bottom: -140}); sunL.shadow.camera.updateProjectionMatrix(); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; } }
 function vrQualityOff() { sunL.shadow.mapSize.set(4096, 4096); Object.assign(sunL.shadow.camera, {left: -260, right: 260, top: 260, bottom: -260}); sunL.shadow.camera.updateProjectionMatrix(); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; } }
 renderer.xr.addEventListener('sessionstart', () => { vrQualityOn(); vr.fade = 1; vr.loading = true; vr.loadT = 0; });
 renderer.xr.addEventListener('sessionend', () => { vrQualityOff(); });
@@ -2151,7 +2214,7 @@ try {
   updateCars(0, controls.target.x, controls.target.z); composer.render();
   window.__vc = 'ready'; document.getElementById('boot').classList.add('gone'); setTimeout(() => document.getElementById('boot')?.remove(), 1400);
   renderer.setAnimationLoop(frame);
-  if (Q.has('sim')) { vr.sim = true; document.getElementById('vrbar').style.display = 'none'; const w = +(Q.get('wp') || 0); enterXR(); vr.fade = 0; vr.loading = false; if (w) { const q = WP[w]; rig.rotation.y = q.yaw; placeHeadXZ(...nearestFree(q.x, q.z)); } if (Q.has('yaw')) rig.rotation.y += +Q.get('yaw') * Math.PI / 180; if (Q.has('pitch')) camera.rotation.x = -(+Q.get('pitch')) * Math.PI / 180; if (Q.has('fly')) { vr.fly = true; rig.position.y = +Q.get('fly'); } if (!Q.has('panel')) { vr.panel = false; panel.visible = false; } camera.fov = +(Q.get('fov') || 80); camera.updateProjectionMatrix(); vrUpdate(0, 0); }
+  if (Q.has('sim')) { vr.sim = true; document.getElementById('vrbar').style.display = 'none'; const w = +(Q.get('wp') || 0); enterXR(); vr.fade = 0; vr.loading = false; if (w) { const q = WP[w]; rig.rotation.y = q.yaw; placeHeadXZ(...nearestFree(q.x, q.z)); } if (Q.has('yaw')) rig.rotation.y += +Q.get('yaw') * Math.PI / 180; if (Q.has('pitch')) camera.rotation.x = -(+Q.get('pitch')) * Math.PI / 180; if (Q.has('fly')) { vr.fly = true; rig.position.y = +Q.get('fly'); } if (!Q.has('panel')) { vr.panel = false; panel.visible = false; } if (Q.has('fall')) { startFall(); vr.vy = -(+Q.get('fall')); } camera.fov = +(Q.get('fov') || 80); camera.updateProjectionMatrix(); vrUpdate(0, 0); }
 } catch (err) { const e = $('#err'); e.style.display = 'block'; e.textContent = 'Vice City failed to start: ' + err.message; console.error(err); }
 
 </script>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tiny Town — A Miniature 3D City</title>
+<meta name="description" content="A tilt-shift miniature city built entirely in real-time 3D: clay-soft buildings, trams, cars, people and a forest. Drag to orbit.">
+<meta name="theme-color" content="#cfe0e0">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }</script>
+</head>
+<body>
+<canvas id="gl" aria-label="Interactive miniature 3D city with buildings, trams, cars, people, a park, a basketball court and a forest"></canvas>
+<div class="ui">
+  <div class="title"><b>Tiny Town</b><span>A miniature city in real-time 3D</span></div>
+  <div class="hint" id="hint">Drag to orbit · Scroll to zoom</div>
+  <div class="btns">
+    <button id="focus" aria-pressed="true">Tilt-shift: on</button>
+    <button id="pause" aria-pressed="false">Pause life</button>
+  </div>
+</div>
+<div id="loader"><i></i><span>Building the town…</span></div>
+<div id="nogl" hidden><h2>Your browser can’t run the 3D scene.</h2><p>Try a recent Chrome, Safari, Edge or Firefox with hardware acceleration on.</p></div>
+<script type="module" src="main.js"></script>
+</body>
+</html>

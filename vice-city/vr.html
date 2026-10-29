@@ -114,6 +114,7 @@ canvas#spark{width:100%;height:72px;display:block;background:linear-gradient(#ff
 #vrQ{display:flex;gap:6px}#vrQ button{font:600 11px var(--hud);letter-spacing:.1em;padding:6px 10px;background:rgba(40,20,90,.6);border:1px solid var(--line);cursor:pointer;color:var(--dim)}#vrQ button.on{color:#fff;border-color:var(--cyan);box-shadow:0 0 10px rgba(47,243,255,.4)}
 #vrNote{font:400 11px var(--mono);color:var(--dim)}
 body.invr #vrbar,body.invr #hud,body.invr #labels{display:none}
+#vrbar.novr{padding:6px 12px;gap:4px}#vrbar.novr #vrEnter,#vrbar.novr #vrQ{display:none}#vrbar{transition:opacity .8s}#vrbar.gone{opacity:0;pointer-events:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:1100px){#hud{grid-template-columns:minmax(0,220px) 1fr minmax(0,290px)}.res{gap:14px}}
 @media (max-width:860px){
@@ -2535,6 +2536,17 @@ window.__sim = (steps) => { const hx = hv.x, hz = hv.z; let maxOv = 0, ovSum = 0
     for (const c of TR.cars) { const was = prevOn.get(c); if (was && was.on && (Math.hypot(c.x - was.x, c.z - was.z) > 15) && Math.hypot(was.x - hx, was.z - hz) < 200) vanished++; prevOn.set(c, {on: c.on, x: c.x, z: c.z}); } }
   return {maxOv, avgOv: (ovSum / steps).toFixed(2), vanishedNear: vanished, ev, ...window.__t2()}; };
 window.__sim2 = (steps) => { const out = []; for (let k = 0; k < 6; k++) { const r = window.__sim(steps); const st = TR.cars.filter(c => c.on && c.stopT > 20); out.push([r.t, r.stopped, r.stuck, r.maxOv, r.vanishedNear, st.slice(0, 3).map(c => c.pc.key + '@' + c.s.toFixed(1) + (c.nd ? '>' + c.nd : '') + ' L' + (c.pc.k === 'L' ? lightState(hasLight(c.pc.ni, c.pc.nj) || {off: 0}, c.pc.d[0] !== 0, trT) : '-'))]); } return out; };
+window.__vanish = (frames, stepMs) => {
+  const fr = new THREE.Frustum(), pm = new THREE.Matrix4(), v = new V3(); let prev = new Map(), events = [], t = performance.now(), inViewMax = 0;
+  const rendered = () => { const m = new Map(); if (true) { if (CR.ready) for (let n = 0; n < NC; n++) { const c = cars[n]; if (c.on && trafficOn.v) m.set(n, [c.x, c.z]); } } else for (let n = 0; n < NC; n++) if (carPos[n * 3 + 2] > .5 && !carHide[n]) m.set(n, [carPos[n * 3], carPos[n * 3 + 1]]); return m; };
+  for (let k = 0; k < frames; k++) {
+    t += stepMs; window.__frame(t); camera.updateMatrixWorld(); pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(pm); const cp = new V3().setFromMatrixPosition(camera.matrixWorld);
+    const cur = rendered(); let iv = 0;
+    for (const [n, p] of prev) { v.set(p[0], 1, p[1]); const vis = fr.containsPoint(v) && v.distanceTo(cp) < 260; if (!vis) continue; iv++; const q = cur.get(n); if (!q) events.push({k, n, why: 'gone', d: +v.distanceTo(cp).toFixed(0), at: p.map(x => +x.toFixed(0))}); else if (Math.hypot(q[0] - p[0], q[1] - p[1]) > 6) events.push({k, n, why: 'jump', d: +v.distanceTo(cp).toFixed(0), from: p.map(x => +x.toFixed(0)), to: q.map(x => +x.toFixed(0))}); }
+    inViewMax = Math.max(inViewMax, iv); prev = cur;
+  }
+  return {mode: vr.active ? 'VR' : '2D', frames, inViewMax, events: events.length, sample: events.slice(0, 8)};
+};
 
 /* =====================================================================
    TRAFFIC: cars live on a road graph. Each car plans its next junction in advance, follows
@@ -2582,13 +2594,17 @@ function chooseNext(i, j, d) {
 const tp = [0, 0, 0, 0];
 function enterRoad(c, i, j, d, s) { c.pc = roadPiece(i, j, d); c.s = s; c.commit = false; c.nd = chooseNext(c.pc.ni, c.pc.nj, d); }
 function placeCar(c, i, j, d, s) { enterRoad(c, i, j, d, s); c.v = c.v0 * (.5 + Math.random() * .3); c.stopT = 0; pieceAt(c.pc, c.s, tp); c.x = tp[0]; c.z = tp[1]; c.fx = tp[2]; c.fz = tp[3]; c.yaw = Math.atan2(-c.fz, c.fx); }
-function inView(x, z, hx, hz, fa, m = 1.15) { return Math.abs(wrapA(Math.atan2(x - hx, z - hz) - fa)) < m; }
+function inView(x, z, hx, hz, fa, m = 1.15) { return seen(x, z); }
+const VF = new THREE.Frustum(), VFm = new THREE.Matrix4(), VFs = new THREE.Sphere(new V3(), 5), camP = new V3();
+function updateViewFrustum() { const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera; cam.updateMatrixWorld(); camera.updateMatrixWorld(); VFm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); VF.setFromProjectionMatrix(VFm); camP.setFromMatrixPosition(camera.matrixWorld); }
+// anything that could be on screen: inside the (slightly padded) view frustum and not too far away
+function seen(x, z) { VFs.center.set(x, 1.2, z); return VF.intersectsSphere(VFs) && Math.hypot(x - camP.x, z - camP.z) < 900; }
 function spawnSpot(hx, hz, rMin, rMax, hidden) {
   camera.getWorldDirection(fw); const fa = Math.atan2(fw.x, fw.z);
   for (let k = 0; k < 40; k++) {
     const a = Math.random() * 6.283, r = rMin + Math.random() * (rMax - rMin), i = Math.round((hx + Math.sin(a) * r) / P), j = Math.round((hz + Math.cos(a) * r) / P), d = pick(DIRS);
     if (!edgeOK(i, j, d[0], d[1])) continue; const pc = roadPiece(i, j, d), s = 1 + Math.random() * (pc.len - 2); pieceAt(pc, s, tp);
-    if (hidden && inView(tp[0], tp[1], hx, hz, fa) && Math.hypot(tp[0] - hx, tp[1] - hz) < 290) continue;
+    if (hidden && seen(tp[0], tp[1])) continue;
     if (TR.cars.some(o => o.on && Math.hypot(o.x - tp[0], o.z - tp[1]) < 12)) continue; return [i, j, d, s];
   }
   return null;
@@ -2604,7 +2620,7 @@ function firstOn(key, minS) { const a = byPiece.get(key); if (!a) return null; l
 function lastS(key) { const a = byPiece.get(key); if (!a) return 1e9; let m = 1e9; for (const o of a) m = Math.min(m, o.s); return m; }
 let trT = 0, hornCD = 0;
 function updateCarsVR(dt, hx, hz) {
-  if (!TR.ready) trafficInit(hx, hz); trT += dt; hornCD -= dt; dt = Math.min(dt, .05);
+  updateViewFrustum(); if (!TR.ready) trafficInit(hx, hz); trT += dt; hornCD -= dt; dt = Math.min(dt, .05);
   const want = Math.min(TR.n, NC); byPiece.clear(); grid.clear(); TR.occ.clear();
   for (const c of TR.cars) { if (!c.on) continue; let a = byPiece.get(c.pc.key); if (!a) byPiece.set(c.pc.key, a = []); a.push(c); const k = gk(c.x, c.z); let g = grid.get(k); if (!g) grid.set(k, g = []); g.push(c); if (c.pc.k === 'C') { const nk = c.pc.i + ',' + c.pc.j; let o = TR.occ.get(nk); if (!o) TR.occ.set(nk, o = []); o.push(c); } }
   const onFoot = vr.active && !vr.fly && !vr.ride && rig.position.y < 3; camera.getWorldDirection(fw); const fa = Math.atan2(fw.x, fw.z);
@@ -2614,7 +2630,7 @@ function updateCarsVR(dt, hx, hz) {
     if (!c.on) { if (active < want && n < want) { const sp = spawnSpot(hx, hz, 210, 300, true); if (sp) { placeCar(c, ...sp); c.on = true; } } if (!c.on) continue; }
     active++;
     const dh = Math.hypot(c.x - hx, c.z - hz), ridden = vr.ride && vr.ride.type === 'car' && vr.ride.n === n;
-    if (!ridden && (dh > 420 || (dh > 330 && !inView(c.x, c.z, hx, hz, fa, 1.3)))) { const sp = spawnSpot(hx, hz, 210, 300, true); if (sp) placeCar(c, ...sp); continue; }
+    if (!ridden && (dh > 650 || (dh > 320 && !seen(c.x, c.z)))) { const sp = spawnSpot(hx, hz, 210, 300, true); if (sp) placeCar(c, ...sp); continue; }
     // ---- gap along my own path ----
     let gap = 1e9, lv = 0, why = ''; const pc = c.pc, rem = pc.len - c.s;
     const ahead = (o, extra) => { if (!o) return; const g = extra + o.s - c.s - CARL; if (g < gap) { gap = g; lv = o.v; why = 'car'; } };
@@ -2664,7 +2680,7 @@ function updateCarsVR(dt, hx, hz) {
   }
   { const fl = Math.sin(trT * 11) > 0, br = 3.5 + ENV.nf * 4; redMat.color.setScalar(fl ? br : .12); blueMat.color.setScalar(fl ? .12 : br); }
   glowMesh.instanceMatrix.needsUpdate = true; beamMesh.instanceMatrix.needsUpdate = true;
-  renderCars(dt, hx, hz); updateSignalMeshes(hx, hz);
+  renderCars(dt, camP.x, camP.z); updateSignalMeshes(hx, hz);
 }
 
 /* ---------- traffic signal hardware near you ---------- */
@@ -2772,7 +2788,7 @@ function spawnWalker(w, hx, hz, rMin, rMax, hidden) {
   for (let k = 0; k < 40; k++) {
     const a = Math.random() * 6.283, r = rMin + Math.random() * (rMax - rMin), i = Math.round((hx + Math.sin(a) * r) / P), j = Math.round((hz + Math.cos(a) * r) / P), d = pick(DIRS), s = Math.random() < .5 ? 1 : -1;
     if (!sidewalkOK(i, j, d, s)) continue; Object.assign(w, {ni: i, nj: j, d, s, u: 8 + Math.random() * (P - 16), ph: 'walk', dec: false}); walkerPos(w, wp2);
-    if (hidden && inView(wp2[0], wp2[1], hx, hz, fa, 1.2) && Math.hypot(wp2[0] - hx, wp2[1] - hz) < 110) continue;
+    if (hidden && seen(wp2[0], wp2[1])) continue;
     if (walkers.some(o => o !== w && o.ped >= 0 && Math.hypot(o.px - wp2[0], o.pz - wp2[1]) < 1.5)) continue;
     w.px = wp2[0]; w.pz = wp2[1]; w.yawS = Math.atan2(d[0], d[1]); w.ped = 1; w.w.visible = true; w.spd = w.speed * (.9 + Math.random() * .25); return true;
   }
@@ -2794,7 +2810,7 @@ function updateWalkersVR(dt, hx, hz) {
     if (n >= cap) { if (w.ped >= 0) { w.ped = -1; w.w.visible = false; } continue; }
     if (w.ped < 0) { if (!spawnWalker(w, hx, hz, n < 10 ? 6 : 30, 95, w.spawned)) continue; w.spawned = true; }
     const dh = Math.hypot(w.px - hx, w.pz - hz);
-    if (dh > 150 || (dh > 100 && !inView(w.px, w.pz, hx, hz, fa, 1.25))) { w.ped = -1; w.w.visible = false; continue; }
+    if (dh > 400 || (dh > 100 && !seen(w.px, w.pz))) { w.ped = -1; w.w.visible = false; continue; }
     // ---- intent ----
     let moving = true, speed = w.spd;
     if (w.ph === 'walk' && w.u >= P - SWO - .2 && !w.dec) { w.dec = true; cornerDecision(w); }
@@ -3094,7 +3110,7 @@ function frame(now) {
   sky.position.set(cp.x, cp.y, cp.z); water.position.set(cp.x, -.9, cp.z); ground.position.set(snap(tx, 5), 0, snap(tz, 5));
   sunL.target.position.set(snap(tx, 2), 0, snap(tz, 2)); sunL.position.copy(sunDir).multiplyScalar(450).add(sunL.target.position); sunL.target.updateMatrixWorld();
   const hcx = X && vr.ride && vr.ride.type === 'heli' ? vr.ride.cx : tx, hcz = X && vr.ride && vr.ride.type === 'heli' ? vr.ride.cz : tz;
-  if (X) updateCarsVR(dt, tx, tz); else updateCars(simT, tx, tz); updateBoats(simT, tz); updateHeli(simT, HF ? 30 : hcx, HF ? 10 : hcz); updateAirport(simT, dt); updatePeds(simT, tx, tz); updateFerris(simT);
+  updateCarsVR(dt, tx, tz); updateBoats(simT, tz); updateHeli(simT, HF ? 30 : hcx, HF ? 10 : hcz); updateAirport(simT, dt); updatePeds(simT, tx, tz); updateFerris(simT);
   headWorld(hv); updateWorld(dt, simT, X ? hv.x : camera.position.x, X ? hv.y : camera.position.y, X ? hv.z : camera.position.z);
   beaconMat.color.setScalar(Math.sin(simT * 3) > .1 ? 4.5 : .35);
   terrMesh.visible = showTerr.v && !X; pulse = Math.max(0, pulse - dt * 1.4);
@@ -3113,6 +3129,7 @@ function frame(now) {
     if (slow > 40 && quality < 2) { quality++; slow = 0; const pr = quality === 1 ? 1 : .75; renderer.setPixelRatio(pr); composer.setPixelRatio(pr); composer.setSize(innerWidth, innerHeight); grade.uniforms.uRes.value.set(innerWidth * pr, innerHeight * pr); if (quality === 2) { renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); } }
   }
 }
+window.__frame = frame;
 /* ---------- VR session UI ---------- */
 const vrBtn = $('#vrEnter'), vrNote = $('#vrNote');
 async function startVR() {
@@ -3128,8 +3145,8 @@ for (const b of $$('#vrQ button')) b.addEventListener('click', () => {
   $$('#vrQ button').forEach(x => x.classList.toggle('on', x === b)); const q = b.dataset.q;
   vr.scale = {p: .8, b: 1.0, u: 1.25}[q]; vr.drawR = {p: 200, b: 260, u: 340}[q]; vr.viewMode = {p: 0, b: 1, u: 2}[q]; Object.assign(LQ, {p: {walkers: 12, idlers: 6, cars: 3}, b: {walkers: 26, idlers: 12, cars: 7}, u: {walkers: 40, idlers: 18, cars: 12}}[q]);
 });
-if (navigator.xr) navigator.xr.isSessionSupported('immersive-vr').then(ok => { vr.supported = ok; if (ok) { vrBtn.disabled = false; vrNote.textContent = 'Headset detected. Tap Enter VR.'; } else vrNote.textContent = 'No VR headset found here. Open this page in the Meta Quest Browser. Desktop mode below still works.'; }).catch(() => { });
-else vrNote.textContent = 'WebXR is not available in this browser. Open this page in the Meta Quest Browser.';
+if (navigator.xr) navigator.xr.isSessionSupported('immersive-vr').then(ok => { vr.supported = ok; if (ok) { vrBtn.disabled = false; vrNote.textContent = 'Headset detected. Tap Enter VR.'; } else { vrNote.textContent = 'VR: open this page in the Meta Quest Browser'; $('#vrbar').classList.add('novr'); setTimeout(() => $('#vrbar').classList.add('gone'), 9000); } }).catch(() => { });
+else { vrNote.textContent = 'VR: open this page in the Meta Quest Browser'; $('#vrbar').classList.add('novr'); setTimeout(() => $('#vrbar').classList.add('gone'), 9000); }
 function vrQualityOn() { const big = vr.scale > 1.1; sunL.shadow.mapSize.set(big ? 3072 : 2048, big ? 3072 : 2048); const an = Math.min(big ? 16 : 8, renderer.capabilities.getMaxAnisotropy()); const seen = new Set(); scene.traverse(o => { const m = o.material; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) for (const k of ['map', 'roughnessMap', 'metalnessMap', 'emissiveMap']) { const t = mm[k]; if (t && !seen.has(t) && t.anisotropy < an && !t.isCanvasTexture) { t.anisotropy = an; t.needsUpdate = true; seen.add(t); } } }); renderer.xr.setFoveation(big ? .5 : 1); Object.assign(sunL.shadow.camera, {left: -140, right: 140, top: 140, bottom: -140}); sunL.shadow.camera.updateProjectionMatrix(); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; } }
 function vrQualityOff() { sunL.shadow.mapSize.set(4096, 4096); Object.assign(sunL.shadow.camera, {left: -260, right: 260, top: 260, bottom: -260}); sunL.shadow.camera.updateProjectionMatrix(); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; } }
 renderer.xr.addEventListener('sessionstart', () => { vrQualityOn(); vr.fade = 1; vr.loading = true; vr.loadT = 0; });

@@ -5,7 +5,7 @@ Interactive Three.js creations, each with its own folder and URL.
 Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root) → Save.
 
 - [Vice City](https://irk15.github.io/3D-/vice-city/): 1986 Miami-style island with a day/night cycle, neon Art Deco skyline and a turf-war strategy dashboard (single HTML file, Three.js from a CDN)
-- [Bangalore](https://irk15.github.io/3D-/bangalore/): Bengaluru in Three.js with Vidhana Soudha, Cubbon Park tennis courts, UB City, Namma Metro, Lalbagh, Ulsoor Lake and Brigade Road, plus roaming people, monsoon weather, spatial sound and Meta Quest WebXR (single HTML file)
+- [Bangalore](https://irk15.github.io/3D-/bangalore/): Bengaluru in Three.js — Vidhana Soudha, Cubbon Park tennis courts, UB City, Namma Metro, Lalbagh, Ulsoor Lake and Brigade Road, with a signalled left-hand traffic simulation (lane discipline, car-following, junction turns, zebra crossings), roaming crowds, monsoon weather, spatial sound and Meta Quest WebXR (single HTML file)
 - [Skyline Penthouse VR](https://irk15.github.io/3D-/skyline-penthouse-vr/): the penthouse for Meta Quest 3 / WebXR (thumbstick walk, snap turn, teleport, wrist menu, hand-tracking pinch, spatial sound; Fast / Balanced / Sharp presets). Open in the Quest Browser and tap Enter VR
 - [Skyline Penthouse](https://irk15.github.io/3D-/skyline-penthouse/): walkable luxury penthouse on the 54th floor over a living Toronto skyline (1,500 cars, planes, helicopter, boats, time of day)
 - [Cala Rosa](https://irk15.github.io/3D-/cala-rosa/): Mediterranean seaside village with nineteen moving townsfolk, birds, boats and midday / golden / blue hour lighting

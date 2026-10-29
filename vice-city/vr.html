@@ -164,6 +164,7 @@ body.invr #vrbar,body.invr #hud,body.invr #labels{display:none}
       <button class="chip" data-cam="harbour" title="Key 6">Harbour</button>
       <button class="chip" data-cam="canyon" title="Key 7">Canyon</button>
       <button class="chip" data-cam="airport" title="Key 8">Airport</button>
+      <button class="chip" data-cam="villa" title="Inside the villa">Villa</button>
       <button class="chip" data-cam="chase" title="Key 9">Chase</button>
     </div>
     <div class="grp">
@@ -185,7 +186,7 @@ body.invr #vrbar,body.invr #hud,body.invr #labels{display:none}
   <footer id="tick" class="panel"><b>NEON FM 104.2</b><span id="tickt"></span><button class="chip" id="radio">Radio</button></footer>
 </div>
 <div id="toast" role="status"></div>
-<div id="vrbar"><button id="vrEnter" disabled>Enter VR</button><div id="vrQ"><button data-q="p">Performance</button><button data-q="b" class="on">Balanced</button><button data-q="u">Ultra</button></div><div id="vrNote">Checking for a headset...</div><div style="font:400 10px var(--mono);color:var(--dim)">People: Microsoft Rocketbox (MIT) · dancers, birds, cars: three.js example models</div></div>
+<div id="vrbar"><button id="vrEnter" disabled>Enter VR</button><div id="vrQ"><button data-q="p">Performance</button><button data-q="b" class="on">Balanced</button><button data-q="u">Ultra</button></div><div id="vrNote">Checking for a headset...</div><div style="font:400 10px var(--mono);color:var(--dim)">People: Microsoft Rocketbox (MIT) · villa furniture: Khronos glTF samples (Wayfair, DGG, ASWF; CC-BY 4.0) · dancers, birds, cars: three.js examples</div></div>
 <div id="boot"><span class="logo">Vice City</span><p>BUILDING THE SKYLINE…</p></div>
 <div id="err"></div>
 
@@ -768,6 +769,7 @@ const inAirport = (x, z, m = 0) => x > AP_X0 - m && x < AP_X1 + m && z > AP_Z0 -
 function blockKind(i, j) {
   if (i >= -17 && i <= -9 && j >= -1 && j <= 4) return 'airport';
   if (i >= -7 && i <= -4 && j >= 5 && j <= 8) return 'arena';
+  if (i >= 1 && i <= 2 && j >= -1 && j <= 0) return 'villa';
   const cx = bx(i), cz = bz(j), w = wsd(cx, cz); if (w > -12) return 'water'; if (w > -40) return 'beach';
   const gd = gameDistrict(cx, cz), h = hash2(i + 91, j - 17); let k = gd;
   if (!k) { const n = fbm2(cx * .004 + 3, cz * .004 - 2); k = w > -115 ? 'O' : (Math.hypot(cx - BAY.x, cz - BAY.z) - 70 < 105 ? 'P' : (n > .6 ? 'D' : n > .47 ? 'H' : n < .3 ? 'S' : 'F')); }
@@ -893,7 +895,7 @@ function streetDress(cx, cz, k) {
 const mulberryI = n => mulberry(Math.floor(n * 4294967295) >>> 0);
 function buildBlock(i, j) {
   rnd = mulberryI(hash2(i, j) + .000013); const cx = bx(i), cz = bz(j), k = blockKind(i, j);
-  if (k === 'water' || k === 'airport' || k === 'arena') return; if (k === 'beach') { beachDecor(cx, cz); return; }
+  if (k === 'water' || k === 'airport' || k === 'arena' || k === 'villa') return; if (k === 'beach') { beachDecor(cx, cz); return; }
   lotDecal(cx, cz, k); streetDress(cx, cz, k);
   if (k === 'park') { park(cx, cz); return; }
   const n = fbm2(cx * .004 + 3, cz * .004 - 2), tallBoost = Math.max(0, n - .5) * 55;
@@ -1722,9 +1724,10 @@ const PRESETS = {
   beach: {p: [coastX(-90) - 24, 3.4, -90], t: [coastX(20) - 28, 9, 100]},
   harbour: {p: [BAY.x - 30, 8, BAY.z - 8], t: [BAY.x + 8, 15, BAY.z + 78]},
   canyon: {p: [-34, 3.6, -34], t: [-34, 78, -170]},
-  airport: {p: [APC.x - 100, 36, APC.z + 100], t: [APC.x + 4, 6, APC.z - 6]}
+  airport: {p: [APC.x - 100, 36, APC.z + 100], t: [APC.x + 4, 6, APC.z - 6]},
+  villa: {p: [63, 2.1, -6.5], t: [64.5, 1.2, 12]}
 };
-const CAM_ORDER = ['command', 'boulevard', 'skyline', 'overhead', 'beach', 'harbour', 'canyon', 'airport', 'chase'];
+const CAM_ORDER = ['command', 'boulevard', 'skyline', 'overhead', 'beach', 'harbour', 'canyon', 'airport', 'villa', 'chase'];
 const chase = {on: false, i: 0}; let tween = null, idle = 0;
 function flyTo(p, t, dur = 2.2) { tween = {p0: camera.position.clone(), t0: controls.target.clone(), p1: new V3(...p), t1: new V3(...t), k: 0, dur}; }
 function flyToDistrict(d) { const off = camera.position.clone().sub(controls.target); off.setLength(clamp(off.length(), 85, 130)); off.y = Math.max(off.y, 45); const t = new V3(d.cx, d.h * .3, d.cz); flyTo(t.clone().add(off).toArray(), t.toArray(), 1.6); }
@@ -1828,14 +1831,15 @@ const vmoney = v => '$' + Math.round(v).toLocaleString('en-US');
 /* ---------- collision: water, buildings, airport structures ---------- */
 const SOLID_AP = [[-80, -62, 80, -37], [-149, -55, -115, -21], [-149, -21, -115, 5], [100, -62, 142, -36], [90, -24, 126, 0], [101, 8, 123, 20], [80, -58, 96, -44]];
 function solidAt(x, z) {
+  if (inVillaSite(x, z)) return villaSolid(x, z);
   if (wsd(x, z) > -12.5) return true;
   if (inAirport(x, z, 0)) { const lx = x - APC.x, lz = z - APC.z; for (const r of SOLID_AP) if (lx > r[0] && lx < r[2] && lz > r[1] && lz < r[3]) return true; return false; }
   const i = Math.floor(x / P), j = Math.floor(z / P), k = blockKind(i, j);
-  if (k === 'water') return true; if (k === 'arena') return arenaSolid(x, z); if (k === 'beach' || k === 'park' || k === 'airport') return false;
+  if (k === 'water') return true; if (k === 'arena') return arenaSolid(x, z); if (k === 'beach' || k === 'park' || k === 'airport' || k === 'villa') return false;
   return Math.abs(x - bx(i)) < 10.6 && Math.abs(z - bz(j)) < 10.6;
 }
 const blocked = (x, z) => solidAt(x + .35, z) || solidAt(x - .35, z) || solidAt(x, z + .35) || solidAt(x, z - .35);
-const groundY = (x, z) => inAirport(x, z, 0) ? Y0 : 0;
+const groundY = (x, z) => { const v = inVillaSite(x, z) ? villaFloor(x, z) : null; if (v !== null) return v; return inAirport(x, z, 0) ? Y0 : 0; };
 const rd = (x, z) => [Math.round(x / P) * P, Math.round(z / P) * P];
 function nearestFree(x, z) { if (!blocked(x, z)) return [x, z]; const [rx, rz] = rd(x, z); if (!blocked(rx, rz)) return [rx, rz]; for (let r = 1; r < 6; r++) for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const px = rx + a * r * P, pz = rz + b * r * P; if (!blocked(px, pz)) return [px, pz]; } return [x, z]; }
 
@@ -1844,7 +1848,7 @@ const WP = [
   {n: 'Ocean Drive', x: roadX, z: -90, yaw: Math.PI}, {n: 'Gold Coast', x: 0, z: -102, yaw: Math.PI}, {n: 'Little Havana', x: -34, z: 0, yaw: Math.PI},
   {n: 'Starfish Isl.', x: 102, z: 136, yaw: Math.PI}, {n: 'Vice Port', x: -136, z: -34, yaw: Math.PI},
   {n: 'Airport Gates', x: APC.x, z: APC.z - 31, yaw: Math.PI}, {n: 'Runway', x: APC.x + 70, z: APC.z + RWZ, yaw: Math.PI / 2},
-  {n: 'Ferris Wheel', x: FWX + 15, z: FWZ, yaw: Math.PI / 2}, {n: 'Beach', x: coastX(-90) - 30, z: -90, yaw: -Math.PI / 2}, {n: 'Stunt Arena', x: -5 * P - 14, z: 7 * P + 38.2, yaw: 0}
+  {n: 'Ferris Wheel', x: FWX + 15, z: FWZ, yaw: Math.PI / 2}, {n: 'Beach', x: coastX(-90) - 30, z: -90, yaw: -Math.PI / 2}, {n: 'Stunt Arena', x: -5 * P - 14, z: 7 * P + 38.2, yaw: 0}, {n: 'Casa Flamingo', x: 80.5, z: -6.9, yaw: Math.PI / 2}
 ];
 
 /* ---------- comfort vignette, fade, toast ---------- */
@@ -1908,7 +1912,7 @@ const carYaw = c => c.yaw !== undefined ? c.yaw : c.ax === 'x' ? (c.dir > 0 ? 0 
 function startJob(job) { if (vr.pend || vr.fadeDir) return; vr.pend = job; vr.fadeDir = 1; vr.panelT = 0; }
 function applyJob(j) {
   endRideNow(false); vr.falling = false; vr.fvel.set(0, 0, 0); vr.wvel.set(0, 0, 0);
-  if (j.kind === 'tp') { const [x, z] = nearestFree(j.x, j.z); vr.fly = !!j.fly; rig.rotation.y = j.yaw ?? rig.rotation.y; placeHeadXZ(x, z); rig.position.y = j.fly ? j.y : groundY(x, z); if (j.then) beginRide(j.then); }
+  if (j.kind === 'tp') { const [x, z] = nearestFree(j.x, j.z); vr.fly = !!j.fly; rig.rotation.y = j.yaw ?? rig.rotation.y; placeHeadXZ(x, z); rig.position.y = j.fly ? j.y : (j.villaY !== undefined ? j.villaY : groundY(x, z)); if (j.then) beginRide(j.then); }
   else if (j.kind === 'ride') beginRide(j.type);
   else if (j.kind === 'land') { headWorld(hv); const [x, z] = nearestFree(hv.x, hv.z); vr.fly = false; placeHeadXZ(x, z); rig.position.y = groundY(x, z); }
   vr.dirty = true;
@@ -1984,11 +1988,13 @@ function drawPanel() {
   const ax = 872; label('OPERATIONS', ax, 192);
   Object.entries(ACTIONS).forEach(([id, a], i) => { const c = a.cost(d), ok = a.ok(d) && G.cash >= c.cash && G.infl >= c.infl, why = !a.ok(d) ? a.why(d) : (G.cash < c.cash ? 'Not enough cash' : G.infl < c.infl ? 'Not enough influence' : ''); button(ax, 208 + i * 78, 380, 70, a.name + (c.cash ? '  ' + vmoney(c.cash) : '') + (c.infl ? '  ' + c.infl + ' inf' : ''), () => { doAction(id); vr.dirty = true; vrToast(a.name + ' done'); }, {dis: !ok, fs: 22, sub: ok ? a.desc : why}); });
   // travel
-  label('TRAVEL', 28, 548); WP.forEach((w, i) => button(28 + i * 122, 560, 116, 48, w.n, () => teleportTo(i), {fs: 15, on: vr.wpi === i}));
-  label('RIDES', 28, 626); let rx = 28;
+  label('TRAVEL', 28, 548); WP.forEach((w, i) => button(28 + i * 112, 560, 107, 48, w.n, () => teleportTo(i), {fs: 14, on: vr.wpi === i}));
+   let rx = 28;
+  headWorld(hv); if (inVillaSite(hv.x, hv.z, 8) && VIL.ready) { label('CASA FLAMINGO · TOUR', 28, 626); villaStops().forEach((s, i) => button(28 + i * 152, 638, 146, 46, s.n, () => villaGo(i), {fs: 17})); } else { label('RIDES', 28, 626);
   const rides = [['Ride a car', () => startJob({kind: 'ride', type: 'car'})], ['Helicopter', () => startJob({kind: 'ride', type: 'heli'})], ['Ferris wheel', () => { const w = WP[7]; startJob({kind: 'tp', x: w.x, z: w.z, yaw: w.yaw, then: 'ferris'}); }]];
   button(rx, 638, 140, 46, '★ Stunt Show', () => teleportTo(9), {fs: 18, on: true}); rx += 146; rides.forEach(([n, f]) => { button(rx, 638, 140, 46, n, f, {fs: 17}); rx += 146; });
   button(rx, 638, 140, 46, vr.fly ? 'Fly mode ON' : 'Fly mode', () => { toggleFly(); vr.dirty = true; }, {on: vr.fly, fs: 17}); rx += 146; button(rx, 638, 140, 46, 'Free fall', () => { vr.panel = false; panel.visible = false; startFall(); }, {fs: 17, dis: !vr.fly || vr.falling}); rx += 146; button(rx, 638, 140, 46, vr.ride ? 'Exit ride' : 'Land / walk', () => { if (vr.ride || vr.fly) startJob({kind: 'land'}); }, {fs: 17, dis: !vr.ride && !vr.fly}); rx += 146; button(rx, 638, 140, 46, 'Drop a ball', () => { dropBall(); }, {fs: 17});
+  }
   label('TIME & WORLD', 28, 702); const tn = ['Dawn', 'Day', 'Golden', 'Neon'];
   tn.forEach((n, i) => button(28 + i * 108, 714, 102, 44, n, () => timeBtns[i]?.click(), {fs: 19}));
   const tg = [['Radio', () => $('#radio').click(), radioOn], ['Traffic', () => { $('#tTraf').click(); }, trafficOn.v], ['Turf glow', () => $('#tTerr').click(), showTerr.v], ['Comfort', () => { vr.vig = !vr.vig; }, vr.vig], ['View: ' + ['Near', 'Mid', 'Far'][vr.viewMode], () => { vr.viewMode = (vr.viewMode + 1) % 3; STREAM_R = [190, 260, 350][vr.viewMode]; lastSX = 1e9; }, true]];
@@ -2251,7 +2257,7 @@ function updateFireworks(dt, t, hx, hy, hz) {
   fwG.attributes.position.needsUpdate = true; fwG.attributes.color.needsUpdate = true;
 }
 
-function updateWorld(dt, t, hx, hy, hz) { updateClouds(t, hx, hy, hz); updateBirds(dt, hx, hz); updateBlimp(t, hx, hz); updateBalloons(t); updateFireworks(dt, t, hx, hy, hz); updateLife(dt, hx, hy, hz); updatePhysics(dt, hx, hy, hz); updateArena(dt, hx, hy, hz); }
+function updateWorld(dt, t, hx, hy, hz) { updateClouds(t, hx, hy, hz); updateBirds(dt, hx, hz); updateBlimp(t, hx, hz); updateBalloons(t); updateFireworks(dt, t, hx, hy, hz); updateLife(dt, hx, hy, hz); updatePhysics(dt, hx, hy, hz); updateArena(dt, hx, hy, hz); updateVilla(dt, hx, hz); }
 
 /* =====================================================================
    LIFE: rigged people (3 body types, shared Mixamo motion), real sports cars with
@@ -2351,7 +2357,7 @@ function updatePeople(dt, hx, hz) {
         const road = alongX ? Math.round(pz / P) * P : Math.round(px / P) * P, sd = Math.random() < .5 ? -1 : 1, off = sd * 5.55, alongC = alongX ? px : pz, cross = Math.abs(alongC - Math.round(alongC / P) * P);
         if (cross < 9) continue;
         const cx = alongX ? px : road + off, cz = alongX ? road + off : pz;
-        if (wsd(cx, cz) > -36 || inAirport(cx, cz, 4) || inArena(cx, cz, 4) || solidAt(cx, cz)) continue;
+        if (wsd(cx, cz) > -36 || inAirport(cx, cz, 4) || inArena(cx, cz, 4) || inVillaSite(cx, cz, 6) || solidAt(cx, cz)) continue;
         grp.forEach((h, m) => { const u = (m - (grp.length - 1) / 2) * .95, x = alongX ? cx + u : cx + (m === 1 ? sd * .7 : 0), z = alongX ? cz + (m === 1 ? sd * .7 : 0) : cz + u; h.gx = cx; h.gz = cz; h.placed = true; h.x = x; h.z = z; h.w.position.set(x, groundY(x, z), z); h.yaw = Math.atan2(cx - x + (alongX ? 0 : -sd * .4), cz - z + (alongX ? -sd * .4 : 0)); h.w.rotation.y = h.yaw; h.w.visible = true; });
         break;
       }
@@ -2441,7 +2447,7 @@ function mkBlobB() { const s = new THREE.Mesh(blobGeo, blobB); s.renderOrder = 2
 const floorAt = (x, z) => inAirport(x, z, 0) ? Y0 : -1.75 * sstep(-3, 16, wsd(x, z));
 function wallBox(x, z, r) {
   if (inAirport(x, z, 2)) { const lx = x - APC.x, lz = z - APC.z; for (const q of SOLID_AP) if (lx > q[0] - r && lx < q[2] + r && lz > q[1] - r && lz < q[3] + r) return [APC.x + q[0], APC.z + q[1], APC.x + q[2], APC.z + q[3], 30]; return null; }
-  const i = Math.floor(x / P), j = Math.floor(z / P), k = blockKind(i, j); if (k === 'water' || k === 'beach' || k === 'park' || k === 'airport') return null; if (k === 'arena') return null;
+  const i = Math.floor(x / P), j = Math.floor(z / P), k = blockKind(i, j); if (k === 'water' || k === 'beach' || k === 'park' || k === 'airport') return null; if (k === 'arena' || k === 'villa') return null;
   const cx = bx(i), cz = bz(j), h = 10.6; if (Math.abs(x - cx) < h + r && Math.abs(z - cz) < h + r) return [cx - h, cz - h, cx + h, cz + h, k === 'F' || k === 'S' ? 6 : 14]; return null;
 }
 let pokT = 0;
@@ -2547,6 +2553,7 @@ window.__vanish = (frames, stepMs) => {
   }
   return {mode: vr.active ? 'VR' : '2D', frames, inViewMax, events: events.length, sample: events.slice(0, 8)};
 };
+window.__eval = s => eval(s);
 
 /* =====================================================================
    TRAFFIC: cars live on a road graph. Each car plans its next junction in advance, follows
@@ -2557,7 +2564,7 @@ window.__vanish = (frames, stepMs) => {
 const TR = {n: 130, cars: [], raw: new Map(), deg: new Map(), lights: new Map(), occ: new Map()}, SL = 9.2, LN = 2.0, CARL = 4.7;
 const ARENA = {x0: -7 * P, x1: -3 * P, z0: 5 * P, z1: 9 * P};
 const inArena = (x, z, m = 0) => x > ARENA.x0 - m && x < ARENA.x1 + m && z > ARENA.z0 - m && z < ARENA.z1 + m;
-const landOK = (x, z) => wsd(x, z) < -44 && !inAirport(x, z, 8) && !inArena(x, z, 6);
+const landOK = (x, z) => wsd(x, z) < -44 && !inAirport(x, z, 8) && !inArena(x, z, 6) && !inVillaSite(x, z, 0);
 function rawEdge(i, j, di, dj) { const k = (2 * i + di) + ',' + (2 * j + dj); let v = TR.raw.get(k); if (v === undefined) { v = landOK(i * P, j * P) && landOK((i + di) * P, (j + dj) * P) && landOK((i + di / 2) * P, (j + dj / 2) * P) && landOK((i + di * .25) * P, (j + dj * .25) * P) && landOK((i + di * .75) * P, (j + dj * .75) * P); TR.raw.set(k, v); } return v; }
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 function rawDeg(i, j) { const k = i + ',' + j; let v = TR.deg.get(k); if (v === undefined) { v = 0; for (const d of DIRS) if (rawEdge(i, j, d[0], d[1])) v++; TR.deg.set(k, v); } return v; }
@@ -3080,6 +3087,71 @@ function updateArena(dt, hx, hy, hz) {
     runs.forEach((r, i) => { const e = snd.eng[i], dd = Math.hypot(r.x - hx, r.z - hz), rev = r.st === 'air' ? 1.5 : r.st === 'drift' ? 1.35 : 1; const f = (r.kind === 'bike' ? 70 : 48) + r.v * (r.kind === 'bike' ? 9 : 6) * rev; e.o1.frequency.setTargetAtTime(f, ac.currentTime, .05); e.o2.frequency.setTargetAtTime(f * 1.003, ac.currentTime, .05); e.lp.frequency.value = 500 + r.v * 60; e.g.gain.setTargetAtTime(r.st === 'wait' ? .012 / (1 + dd / 10) : .09 / (1 + dd / 12), ac.currentTime, .1); }); } }
   else if (snd.ok) { snd.crowd.gain.value = 0; snd.eng.forEach(e => e.g.gain.value = 0); }
 }
+
+/* =====================================================================
+   CASA FLAMINGO: a two-storey Miami modern villa modelled in Blender, lightmapped with
+   Cycles (day + night bakes), furnished with realistic glTF furniture. Walk inside,
+   climb the stairs, tour every room.
+   ===================================================================== */
+const VIL = {cx: 68, cz: 0, ready: false, level: 0, data: null};
+VIL.rx = VIL.cx - 10; VIL.rz = VIL.cz + 3;
+const VSITE = {x0: 34, x1: 102, z0: -34, z1: 34};
+const inVillaSite = (x, z, m = 0) => x > VSITE.x0 + 6 - m && x < VSITE.x1 - 6 + m && z > VSITE.z0 + 6 - m && z < VSITE.z1 - 6 + m;
+const vToW = (bx, by) => [VIL.rx + bx, VIL.rz - by], vFromW = (x, z) => [x - VIL.rx, VIL.rz - z];
+const villaGrp = new THREE.Group(); villaGrp.position.set(VIL.rx, 0, VIL.rz); scene.add(villaGrp);
+const VTINT = {Stucco: [.98, .97, .95], StuccoPink: [.97, .78, .8], Plaster: [.97, .96, .93], Ceiling: [.99, .99, .98], OakSlat: [.9, .85, .8], Duvet: [.96, .95, .93], Rug: [.78, .62, .52], PoolTile: [.55, .85, 1], Steel: [.08, .08, .09], Chrome: [.85, .86, .88], Brass: [.85, .66, .35], Lacquer: [.93, .93, .91], Leather: [.55, .32, .2], Black: [.05, .05, .05], Lawn: [.24, .42, .2], Bark: [.48, .4, .32]};
+const lmUni = {night: {value: 0}};
+function villaMaterial(m, lmDay, lmNight, kDay, kNight) {
+  const n = m.name || '';
+  if (n === 'Glass') return new THREE.MeshStandardMaterial({color: 0xcfe3e8, roughness: .03, metalness: .2, transparent: true, opacity: .16, envMapIntensity: 1.6, depthWrite: false});
+  if (n === 'Mirror') return new THREE.MeshStandardMaterial({color: 0xe8ecf0, roughness: .02, metalness: 1, envMapIntensity: 1.4});
+  if (n === 'Water') return new THREE.MeshStandardMaterial({color: 0x3aa6c8, roughness: .04, metalness: .1, transparent: true, opacity: .74, envMapIntensity: 1.5, depthWrite: false});
+  if (n === 'LightStrip') { const b = new THREE.MeshBasicMaterial({color: 0xffd9a8, toneMapped: false}); sunLit.push(() => b.color.setRGB(1, .85, .66).multiplyScalar(.6 + ENV.nf * 3)); return b; }
+  if (n === 'Travertine' || n === 'PoolTile' || n === 'Bark') return new THREE.MeshStandardMaterial({map: m.map || null, normalMap: m.normalMap || null, roughnessMap: m.roughnessMap || null, color: n === 'PoolTile' ? new Col(.5, .8, 1) : n === 'Bark' ? new Col(.48, .4, .32) : new Col(1, 1, 1), roughness: n === 'PoolTile' ? .3 : .75, envMapIntensity: .6});
+  if (n === 'Frond') return new THREE.MeshStandardMaterial({map: m.map, alphaTest: .45, side: THREE.DoubleSide, roughness: .7});
+  // everything else: albedo x baked light (Cycles), cross-faded day/night
+  const t = VTINT[n], b = new THREE.MeshBasicMaterial({map: m.map || null, color: t ? new Col(...t.map(v => Math.pow(v, 2.2))) : new Col(1, 1, 1), lightMap: lmDay, lightMapIntensity: Math.PI * kDay * 1.2});
+  b.onBeforeCompile = sh => { sh.uniforms.lmNight = {value: lmNight}; sh.uniforms.uNight = lmUni.night; sh.uniforms.kRatio = {value: kNight / kDay};
+    sh.fragmentShader = 'uniform sampler2D lmNight; uniform float uNight; uniform float kRatio;\n' + sh.fragmentShader.replace('vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );', 'vec4 lightMapTexel = mix( texture2D( lightMap, vLightMapUv ), texture2D( lmNight, vLightMapUv ) * kRatio, uNight );'); };
+  return b;
+}
+Promise.all([fetch(MU + 'villa/villa.json').then(r => r.json()), fetch(MU + 'villa/lm_scale.json').then(r => r.json()), loadGLB('villa/villa.glb'), new Promise(r => new THREE.TextureLoader().load(MU + 'villa/lm_day.png', r)), new Promise(r => new THREE.TextureLoader().load(MU + 'villa/lm_night.png', r))]).then(([data, K, gl, lmD, lmN]) => {
+  for (const t of [lmD, lmN]) { t.channel = 1; t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; }
+  gl.scene.traverse(o => { if (!o.isMesh) return; const nm = o.material.name || ''; o.material = villaMaterial(o.material, lmD, lmN, K.day, K.night);
+    o.castShadow = !['Glass', 'Water', 'LightStrip', 'Mirror'].includes(nm); o.receiveShadow = !(o.material.isMeshBasicMaterial); if (nm === 'Glass' || nm === 'Water') o.renderOrder = 3; });
+  villaGrp.add(gl.scene); VIL.data = data;
+  // lawn + garden across the plot
+  const lawn = new THREE.Mesh(new THREE.PlaneGeometry(VSITE.x1 - VSITE.x0 - 11, VSITE.z1 - VSITE.z0 - 11).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({color: 0x3f6b33, roughness: .95})); lawn.position.set(VIL.cx, .012, VIL.cz); lawn.receiveShadow = true; scene.add(lawn);
+  // furniture: realistic glTF models placed where the Blender scene put them
+  VIL.loadFurniture = () => { for (const f of data.furniture) loadGLB('villa/f_' + f.name + '.glb').then(g => {
+    const piv = new THREE.Group(), o = g.scene; const bb = new THREE.Box3().setFromObject(o), c = bb.getCenter(new V3()); o.position.set(-c.x, -bb.min.y, -c.z);
+    piv.add(o); piv.scale.setScalar(f.scale); piv.rotation.y = f.yaw; piv.position.set(f.x, f.y, f.z); villaGrp.add(piv);
+    o.traverse(m => { if (m.isMesh) { m.castShadow = m.receiveShadow = true; const ms = Array.isArray(m.material) ? m.material : [m.material]; ms.forEach(q => { q.envMapIntensity = .45; }); } });
+  }).catch(e => console.warn('furniture', f.name, e)); };
+  // collision segments in world space
+  VIL.walls = [0, 1].map(L => data['walls' + L].map(([x0, y0, x1, y1, a, b, ax]) => ax ? [...vToW(a, y0), ...vToW(b, y1)] : [...vToW(x0, a), ...vToW(x1, b)]));
+  VIL.ready = true; console.log('villa ready', data.furniture.length, 'pieces');
+}).catch(e => console.warn('villa', e));
+
+// ---------- walking: floors, stairs, walls ----------
+function villaFloor(x, z) {   // returns floor height or null when not inside the house
+  if (!VIL.ready) return null; const [bx, by] = vFromW(x, z), d = VIL.data, s = d.stairs, [W, Dp] = d.size, [G0, G1] = d.levels;
+  if (bx > s.x0 - .1 && bx < s.x1 + .1 && by > s.y0 - .2 && by < s.y1 + .1) { const h = G0 + clamp((by - s.y0) / (s.y1 - s.y0), 0, 1) * (G1 - G0); VIL.level = h > (G0 + G1) / 2 ? 1 : 0; return h; }
+  if (VIL.level === 1) { for (const f of d.floors) if (f[5] === 1 && bx > f[0] && bx < f[2] && by > f[1] && by < f[3]) return G1; VIL.level = 0; }
+  if (bx > -.3 && bx < W + .3 && by > -.3 && by < Dp + .3) return G0;
+  for (const r of d.deck) if (bx > r[0] && bx < r[2] && by > r[1] && by < r[3]) return d.deckZ;
+  return null;
+}
+function villaSolid(x, z) {
+  if (!VIL.ready) return false; const [bx, by] = vFromW(x, z), [W, Dp] = VIL.data.size;
+  const pl = VIL.data.pool; if (bx > pl[0] - .3 && bx < pl[2] + .3 && by > pl[1] - .3 && by < pl[3] + .3) return true;   // the pool
+  for (const w of VIL.walls[VIL.level]) { const [x0, z0, x1, z1] = w, minx = Math.min(x0, x1) - .22, maxx = Math.max(x0, x1) + .22, minz = Math.min(z0, z1) - .22, maxz = Math.max(z0, z1) + .22; if (x > minx && x < maxx && z > minz && z < maxz) return true; }
+  return false;
+}
+// ---------- tour stops ----------
+function villaStops() { if (!VIL.ready) return []; return Object.entries(VIL.data.points).map(([n, p]) => { const [x, z] = vToW(p[0], p[1]); return {n, x, z, y: p[2], lvl: p[2] > 2 ? 1 : 0}; }); }
+function villaGo(i) { const s = villaStops()[i]; if (!s) return; VIL.level = s.lvl; startJob({kind: 'tp', x: s.x, z: s.z, yaw: Math.PI, villaY: s.y}); vrToast('Casa Flamingo: ' + s.n); }
+function updateVilla(dt, hx, hz) { const d = Math.hypot(hx - VIL.cx, hz - VIL.cz); lmUni.night.value = clamp(ENV.nf * 1.15, 0, 1); villaGrp.visible = d < 900; if (VIL.ready && !VIL.furn && (d < 230 || Q0.has('villa'))) { VIL.furn = true; VIL.loadFurniture(); } }
 
 /* =====================================================================
    MAIN LOOP (desktop + WebXR)

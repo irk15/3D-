@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Montréal · 3D City</title>
+<meta name="description" content="An interactive 3D model of Montreal in Three.js — Mount Royal, Old Montreal, downtown, the Saint Lawrence and its bridges — for desktop and Meta Quest 3 (WebXR).">
+<meta name="theme-color" content="#0a0f1c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,650;1,9..144,500;1,9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#f3f1ec; --dim:#a7b1c4; --faint:#6d7891;
+  --panel:rgba(10,15,28,.62); --panel-hi:rgba(22,30,52,.86); --line:rgba(255,255,255,.10); --line-hi:rgba(255,255,255,.24);
+  --red:#e4002b; --red-soft:rgba(228,0,43,.16); --blue:#3d8bff; --snow:#eef3fb;
+  --serif:'Fraunces',Georgia,serif; --sans:'Manrope',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:#0a0f1c}
+body{color:var(--ink);font:500 13px/1.4 var(--sans);-webkit-font-smoothing:antialiased;user-select:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none}
+#labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;will-change:transform;transition:opacity .3s}
+.lbl span{display:block;padding:4px 9px 5px;border-radius:999px;background:rgba(8,12,24,.62);border:1px solid var(--line);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font:600 11px var(--sans);letter-spacing:.02em;white-space:nowrap;position:relative}
+.lbl span::after{content:"";position:absolute;left:50%;bottom:-7px;width:1px;height:7px;background:rgba(255,255,255,.45)}
+.lbl.sel span{background:var(--red);border-color:var(--red)}
+#hud{position:fixed;inset:0;pointer-events:none;display:grid;gap:12px;
+  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  grid-template-columns:minmax(0,260px) 1fr minmax(0,320px);grid-template-rows:auto 1fr auto;
+  grid-template-areas:"top top top" "left . right" "dock dock dock";transition:opacity .45s}
+#hud>*{pointer-events:auto;min-width:0}
+body.clean #hud>*:not(#hudToggle){opacity:0;pointer-events:none}
+body.vr #hud,body.vr #labels{display:none}
+body.touring #left,body.touring #card{opacity:.25}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);box-shadow:0 18px 50px rgba(0,0,0,.35)}
+h2{margin:0 0 10px;font:700 10px/1 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:8px}
+h2::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--red)}
+/* top bar */
+#top{grid-area:top;display:flex;align-items:center;gap:20px;padding:10px 12px 10px 18px}
+.brand{display:flex;align-items:baseline;gap:14px;margin-right:auto;min-width:0}
+.mark{font:italic 600 30px/1 var(--serif);letter-spacing:-.01em}
+.mark em{font-style:normal;color:var(--red)}
+.sub{font:500 10px/1 var(--mono);letter-spacing:.14em;color:var(--dim);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clock{display:flex;flex-direction:column;align-items:flex-end;font-family:var(--mono)}
+.clock b{font:500 22px/1 var(--mono)}
+.clock span{font-size:9.5px;letter-spacing:.18em;color:var(--dim);margin-top:4px}
+.compass{width:44px;height:44px;border-radius:50%;border:1px solid var(--line-hi);position:relative;flex:none}
+#compassRose{position:absolute;inset:0;transition:transform .1s linear}
+#compassRose i{position:absolute;left:50%;top:3px;transform-origin:50% 19px;width:0;height:0;margin-left:-4px;border:4px solid transparent;border-bottom:9px solid var(--red)}
+#compassRose i.t{transform:rotate(55deg);border-bottom-color:var(--snow);opacity:.75}
+#compassRose em{position:absolute;left:50%;top:50%;font:600 8px var(--mono);transform:translate(-50%,-50%);color:var(--dim);font-style:normal}
+.vr{display:flex;align-items:center;gap:8px;padding:11px 16px;border-radius:12px;background:var(--red);font:700 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;transition:filter .2s,opacity .2s}
+.vr i{width:18px;height:11px;border:2px solid currentColor;border-radius:4px 4px 6px 6px;position:relative}
+.vr i::after{content:"";position:absolute;left:50%;bottom:-2px;width:6px;height:4px;margin-left:-3px;background:var(--red);border-radius:3px 3px 0 0}
+.vr:disabled{background:rgba(255,255,255,.08);color:var(--dim);cursor:help}
+.vr:disabled i::after{background:transparent}
+.vr:not(:disabled):hover{filter:brightness(1.12)}
+/* landmarks */
+#left{grid-area:left;align-self:start;padding:14px;display:flex;flex-direction:column;max-height:100%;overflow:hidden}
+#lmFilter{width:100%;padding:8px 11px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);font:500 12px var(--sans);outline:none;margin-bottom:8px}
+#lmFilter:focus{border-color:var(--line-hi)}
+#lmList{list-style:none;margin:0;padding:0 2px 0 0;overflow:auto;scrollbar-width:thin}
+#lmList li.grp{font:700 9.5px var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--faint);padding:10px 4px 5px}
+#lmList li.lm{padding:7px 10px;border-radius:9px;cursor:pointer;transition:background .15s;border-left:2px solid transparent}
+#lmList li.lm:hover{background:rgba(255,255,255,.06)}
+#lmList li.lm.sel{background:var(--red-soft);border-left-color:var(--red)}
+#lmList b{display:block;font-weight:600;font-size:12.5px}
+#lmList small{display:block;color:var(--dim);font:italic 11px var(--serif);margin-top:1px}
+/* card */
+#card{grid-area:right;align-self:start;padding:18px 18px 16px;display:none;flex-direction:column;gap:8px;position:relative}
+#card.show{display:flex;animation:in .35s ease}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#cardArea{font:700 9.5px var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--red)}
+#cardName{margin:0;font:600 25px/1.08 var(--serif)}
+#cardFr{font:italic 14px var(--serif);color:var(--dim)}
+#cardYear{position:absolute;top:16px;right:46px;font:500 11px var(--mono);color:var(--dim)}
+#cardClose{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;color:var(--dim);font-size:18px}
+#cardClose:hover{background:rgba(255,255,255,.08);color:var(--ink)}
+#cardFacts{margin:4px 0 6px;padding-left:16px;color:#dfe5ef;font-size:12.5px;line-height:1.5}
+#cardFacts li{margin:3px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 13px;border-radius:10px;border:1px solid var(--line-hi);background:rgba(255,255,255,.06);font:600 12px var(--sans);transition:background .15s}
+.btn:hover{background:rgba(255,255,255,.14)}
+.btn.primary{background:var(--red);border-color:var(--red)}
+/* dock */
+#dock{grid-area:dock;display:flex;gap:16px;align-items:stretch;padding:12px 14px;overflow-x:auto;scrollbar-width:none}
+#dock::-webkit-scrollbar{display:none}
+.dg{display:flex;flex-direction:column;gap:7px;flex:none}
+.dg+.dg{padding-left:16px;border-left:1px solid var(--line)}
+.dg label{font:700 9.5px var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
+.segs{display:flex;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;padding:2px}
+.seg{padding:6px 11px;border-radius:8px;font:600 12px var(--sans);color:var(--dim);transition:background .15s,color .15s}
+.seg:hover{color:var(--ink)}
+.seg.on{background:var(--ink);color:#0b1020}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font:600 11.5px var(--sans);color:var(--dim);white-space:nowrap;transition:all .15s}
+.chip:hover{color:var(--ink);border-color:var(--line-hi)}
+.chip.on{background:var(--red-soft);border-color:var(--red);color:var(--ink)}
+.chip.tour{color:var(--ink)}
+#modeHint{font:500 11px var(--sans);color:var(--faint);max-width:280px}
+.time{display:flex;align-items:center;gap:10px}
+#timeSlider{width:200px;accent-color:var(--red)}
+/* stats */
+#stats{position:fixed;right:16px;bottom:118px;padding:12px 14px;display:none;min-width:230px;font:500 11px var(--mono);pointer-events:none}
+#stats.show{display:block}
+#stats div{display:flex;justify-content:space-between;gap:16px;padding:2px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
+#stats span{color:var(--dim)}
+#fpsMini{position:fixed;right:18px;bottom:max(96px,calc(env(safe-area-inset-bottom) + 96px));font:500 10px var(--mono);color:var(--faint);pointer-events:none}
+#hudToggle{position:fixed;left:18px;bottom:max(100px,calc(env(safe-area-inset-bottom) + 100px));width:34px;height:34px;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--dim);font-size:15px}
+/* help, toast, loader */
+#help{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,7,14,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:20}
+#help.show{display:flex}
+#help .panel{max-width:min(720px,calc(100vw - 32px));padding:26px 28px;display:grid;grid-template-columns:1fr 1fr;gap:10px 30px}
+#help h3{grid-column:1/-1;margin:0 0 6px;font:600 26px var(--serif)}
+#help dl{margin:0}#help dt{font:700 10px var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--red);margin-top:10px}#help dd{margin:4px 0 0;color:#dfe5ef}
+kbd{font:500 11px var(--mono);padding:1px 5px;border:1px solid var(--line-hi);border-radius:5px;background:rgba(255,255,255,.06)}
+#toast{position:fixed;left:50%;top:84px;transform:translate(-50%,-10px);padding:10px 16px;border-radius:12px;background:var(--panel-hi);border:1px solid var(--line-hi);opacity:0;transition:all .35s;pointer-events:none;z-index:30}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#loader{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(120% 90% at 50% 100%,#1b2440 0%,#0a0f1c 60%);transition:opacity 1s}
+#loader.done{opacity:0;pointer-events:none}
+#loader .mark{font-size:clamp(46px,9vw,92px)}
+#loader p{margin:0;font:500 11px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.bar{width:min(340px,70vw);height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+#loadBar{height:100%;width:0;background:var(--red);transition:width .4s}
+#loadMsg{font:italic 15px var(--serif)!important;letter-spacing:0!important;text-transform:none!important;color:var(--ink)!important}
+.skyline{width:min(420px,80vw);opacity:.5}
+@media (max-width:900px){
+  #hud{grid-template-columns:1fr;grid-template-areas:"top" "." "right" "dock"}
+  #left{display:none}
+  .sub{display:none}
+  #card{max-height:40vh;overflow:auto}
+  #stats{top:auto;bottom:120px}
+}
+</style>
+</head>
+<body>
+<canvas id="gl" tabindex="0"></canvas>
+<div id="labels"></div>
+<div id="hud">
+  <header id="top" class="panel">
+    <div class="brand"><span class="mark">Montréal<em>.</em></span><span class="sub">Île de Montréal · 45.50°N 73.57°W · 3D</span></div>
+    <div class="compass" title="Red: Montreal 'north' (the street grid). White: true north."><div id="compassRose"><i></i><i class="t"></i><em>N</em></div></div>
+    <div class="clock"><b id="clock">--:--</b><span id="clockSub">AUTUMN · CLEAR</span></div>
+    <button id="vrBtn" class="vr" disabled><i></i>VR on Quest</button>
+  </header>
+  <aside id="left" class="panel">
+    <h2>Landmarks</h2>
+    <input id="lmFilter" type="search" placeholder="Search landmarks…" autocomplete="off">
+    <ul id="lmList"></ul>
+  </aside>
+  <aside id="card" class="panel">
+    <span id="cardArea"></span><span id="cardYear"></span>
+    <h3 id="cardName"></h3><span id="cardFr"></span>
+    <ul id="cardFacts"></ul>
+    <div class="row"><button class="btn primary" id="cardFly">Fly there</button><button class="btn" id="cardWalk">Walk around</button></div>
+    <button id="cardClose" aria-label="Close">×</button>
+  </aside>
+  <footer id="dock" class="panel">
+    <div class="dg"><label>Camera</label><div class="segs" id="modeSeg"></div><span id="modeHint"></span></div>
+    <div class="dg"><label>Time of day</label>
+      <div class="time"><input id="timeSlider" type="range" min="0" max="24" step="0.05"><button class="chip" id="timeLapse" title="One hour per minute">Time-lapse</button><button class="chip" id="liveBtn" title="Follow the real clock in Montreal">Live</button></div>
+      <div class="chips" id="timePresets"></div></div>
+    <div class="dg"><label>Season</label><div class="segs" id="seasonSeg"></div></div>
+    <div class="dg"><label>Weather</label><div class="segs" id="weatherSeg"></div></div>
+    <div class="dg"><label>Cinematic tours</label><div class="chips" id="tours"></div></div>
+    <div class="dg"><label>View</label><div class="segs" id="qualSeg"></div>
+      <div class="chips"><button class="chip on" id="labelsBtn">Labels</button><button class="chip" id="statsBtn">Stats</button><button class="chip" id="soundBtn">Sound</button><button class="chip" id="helpBtn">Help</button></div></div>
+  </footer>
+  <div id="stats" class="panel"></div>
+  <div id="fpsMini"><span id="fps">0</span> fps</div>
+  <button id="hudToggle" title="Hide / show the interface (U)">◐</button>
+</div>
+<div id="help"><div class="panel">
+  <h3>Getting around Montréal</h3>
+  <dl><dt>Orbit (1)</dt><dd>Drag to rotate, right-drag to pan, scroll to zoom, <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to glide. Click a label to learn about it.</dd>
+  <dt>Fly (2)</dt><dd>Click to capture the mouse. <kbd>WASD</kbd> fly, <kbd>E</kbd>/<kbd>Q</kbd> up and down, <kbd>Shift</kbd> faster.</dd>
+  <dt>Walk (3)</dt><dd>Street level with collisions. <kbd>WASD</kbd>, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump. <kbd>Esc</kbd> frees the mouse.</dd></dl>
+  <dl><dt>Meta Quest 3</dt><dd>Open this page in the Quest Browser and press <b>Enter VR</b>. Right stick forward and release to teleport, sideways to snap-turn. Left stick to walk (grip to sprint). <kbd>Y</kbd> shows the wrist menu: time, season, weather, landmarks and the map. Point at a landmark and pull the trigger for its story.</dd>
+  <dt>Shortcuts</dt><dd><kbd>N</kbd> day / night · <kbd>L</kbd> labels · <kbd>U</kbd> hide interface · <kbd>H</kbd> help</dd></dl>
+</div></div>
+<div id="toast"></div>
+<div id="loader">
+  <svg class="skyline" viewBox="0 0 420 70" fill="none" stroke="#e4002b" stroke-width="1.4" stroke-linejoin="round"><path d="M0 64h40l6-10 8 0 4-18 4 18h10l2-30 3-6 3 6 2 30h14V34h3l3-12 3 12h3v30h10l14-26 20 6 26-14 30 4 18-6 14 12 10-4v26h12l6-34h8l6 34h20V40h6v24h16l10-22 4 4 4-10 6 28h46"/><path d="M262 30v-10M257 24h10" /></svg>
+  <span class="mark">Montréal<em style="color:#e4002b;font-style:normal">.</em></span>
+  <div class="bar"><div id="loadBar"></div></div>
+  <p id="loadMsg">Loading…</p>
+  <p>Desktop · Meta Quest 3</p>
+</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

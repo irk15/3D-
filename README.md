@@ -4,6 +4,7 @@ Interactive Three.js creations, each with its own folder and URL.
 
 Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root) → Save.
 
+- [Montréal](https://irk15.github.io/3D-/montreal/): the island's heart in Three.js — real street grid (rotated 55°), ~64,000 district-styled buildings, Mount Royal, Old Montreal and the Old Port, 25+ landmarks at their real positions, four bridges and the REM, signalised traffic, pedestrians, seasons, weather and night lights; flicker-free by construction (single ground shader, no stacked planes, overlap audit) with desktop modes and Meta Quest 3 WebXR (teleport, wrist menu, map tablet)
 - [Vice City](https://irk15.github.io/3D-/vice-city/): 1986 Miami-style island with a day/night cycle, neon Art Deco skyline and a turf-war strategy dashboard (single HTML file, Three.js from a CDN)
 - [Bangalore](https://irk15.github.io/3D-/bangalore/): Bengaluru in Three.js — Vidhana Soudha, Cubbon Park tennis courts, UB City, Namma Metro, Lalbagh, Ulsoor Lake and Brigade Road, with a signalled left-hand traffic simulation (lane discipline, car-following, junction turns, zebra crossings), roaming crowds, monsoon weather, spatial sound and Meta Quest WebXR (single HTML file)
 - [Skyline Penthouse VR](https://irk15.github.io/3D-/skyline-penthouse-vr/): the penthouse for Meta Quest 3 / WebXR (thumbstick walk, snap turn, teleport, wrist menu, hand-tracking pinch, spatial sound; Fast / Balanced / Sharp presets). Open in the Quest Browser and tap Enter VR

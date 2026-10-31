@@ -312,8 +312,11 @@ export function makeRigged(o = {}) {
     if (st.wave > 0.01) { aim('RightArm', 'RightForeArm', V(-0.6, 0.85, 0.15), st.wave); aim('RightForeArm', 'RightHand', V(-0.15 + Math.sin(st.t * 11) * 0.45, 1, 0.25), st.wave); }
     // ---- whole-body: lean into turns, fly tilt, flip, squash & stretch
     let dy = root.rotation.y - st.prevYaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); st.prevYaw = root.rotation.y;
-    st.lean = lerp(st.lean, Math.max(-0.35, Math.min(0.35, -dy / Math.max(dt, 1e-3) * 0.045 * Math.min(1, speed / 3))), k(6));
-    if (op.fly != null && op.wings) st.lean = lerp(st.lean, st.lean * 2.2, 0.2);
+    // lean into turns; when flying, bank like a bird (more, but always capped and always easing back)
+    const flying = op.fly != null && op.wings, spd = flying ? op.fly * 14 : speed, maxL = flying ? 0.55 : 0.35;
+    const turn = Number.isFinite(dy) && dt > 1e-4 ? -dy / dt : 0;
+    const leanT = Math.max(-maxL, Math.min(maxL, turn * (flying ? 0.09 : 0.045) * Math.min(1, spd / 3)));
+    st.lean = lerp(Number.isFinite(st.lean) ? st.lean : 0, leanT, k(flying ? 4 : 6));
     const flip = op.flip ? -op.flip * Math.PI * 2 : 0;
     body.rotation.set(f * 1.25 + (op.bike ? 0 : 0) + flip, 0, st.lean, 'YXZ');
     if (st.jump > 0) st.jump = Math.max(0, st.jump - dt * 5);

@@ -83,13 +83,6 @@ body.playing #title{opacity:0;pointer-events:none}
 #win .card{text-align:center}
 #win h3{font-size:34px;color:var(--red)}
 /* touch controls */
-#joy{position:fixed;display:none;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:rgba(255,250,241,.35);border:3px solid rgba(255,255,255,.8);pointer-events:none;z-index:4}
-#joyKnob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:var(--paper);box-shadow:var(--shadow)}
-.tbtns{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));display:none;gap:12px;align-items:flex-end}
-.tb{width:64px;height:64px;border-radius:50%;background:var(--paper);box-shadow:var(--shadow);font-weight:700;font-size:13px}
-.tb.big{width:82px;height:82px;background:var(--red);color:#fff;font-size:15px}
-.tb.on{background:var(--gold)}
-@media (pointer:coarse){.tbtns{display:flex}#prompt{bottom:130px}.icons{top:auto;bottom:130px;transform:none}}
 @media (max-width:700px){#mini{width:112px;height:112px}.ic{width:42px;height:42px}#area{top:24%}#areaName{font-size:22px;white-space:nowrap}#area small{font-size:10px;letter-spacing:.18em}#counter{font-size:18px}#counter i{width:30px;height:30px}#sayText{font-size:16px}}
 
 /* ---- v2 HUD ---- */
@@ -255,20 +248,124 @@ body:has(#drive.show) #wingsHud{display:none}
 .logo p{margin:6px 0 14px}
 #play{font-size:18px;padding:12px 18px;border-radius:999px;box-shadow:0 4px 0 var(--ink)}
 @media (max-width:700px){#board{top:170px;min-width:140px;max-width:170px}#board li{font-size:12px;padding:3px 6px}#misCard{top:auto;bottom:150px;min-width:0;width:calc(100vw - 24px)}body.mission #jobCard{top:70px}#wingsHud .bar{width:100px}#count{font-size:34vw}.code{font-size:32px}}
-@media (pointer:coarse){#chat{bottom:120px}#wingsHud{bottom:120px}}
 /* loader + flash */
 #loader{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:linear-gradient(180deg,#3c9be8,#c4e9ff);transition:opacity .8s;color:#fff;font-weight:600;font-size:18px;text-shadow:0 2px 0 var(--ink)}
 #loader.done{opacity:0;pointer-events:none}
 #loader b{display:block;font-size:56px;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-align:center}
 body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl .4s forwards;pointer-events:none;z-index:30}
 @keyframes fl{from{opacity:.9}to{opacity:0}}
+/* ---- touch / mobile ---- */
+body:not(.touch) .touchOnly,body.touch .keyOnly{display:none}
+#joy,#tc,#tMenu,#rotate,#prompt .hand,.touchHelp,.thint,#btnFull{display:none}
+body.touch .thint{display:block;margin-top:14px;font-size:14px;color:#fff;text-shadow:0 2px 0 var(--ink)}
+body.touch.canfs #btnFull{display:flex}
+/* phones and tablets: body.touch is set from JS (coarse pointer or a touch screen) */
+body.touch{-webkit-touch-callout:none;-webkit-user-select:none}
+body.touch button{touch-action:manipulation}
+body.touch #joy{display:block;position:fixed;left:calc(max(18px,env(safe-area-inset-left)) + 74px);top:calc(100% - max(18px,env(safe-area-inset-bottom)) - 74px);width:132px;height:132px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,250,241,.18) 0 55%,rgba(255,250,241,.32) 56%);border:3px solid rgba(255,255,255,.75);box-shadow:0 4px 18px rgba(43,37,80,.18);pointer-events:none;z-index:4;opacity:0;transition:opacity .3s,border-color .2s}
+body.touch.playing #joy{opacity:.55}
+body.photo #joy,body.menu #joy{display:none!important}
+body.touch #joy.live{opacity:1;transition:border-color .2s}
+body.touch #joy.run{border-color:var(--gold);box-shadow:0 0 0 4px rgba(242,169,59,.35)}
+#joyKnob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:var(--paper);box-shadow:0 4px 0 rgba(43,37,80,.25),0 6px 14px rgba(43,37,80,.25)}
+#joyRun{position:absolute;left:50%;top:-26px;transform:translateX(-50%);font:700 11px var(--f);letter-spacing:.14em;color:#fff;background:var(--gold);padding:3px 9px;border-radius:999px;opacity:0;transition:opacity .2s}
+#joy.run #joyRun{opacity:1}
+body.touch #tc{display:block;position:absolute;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));width:250px;height:200px;pointer-events:none;touch-action:none}
+#tc .pad{position:absolute;inset:0}
+#tc .tb{position:absolute;display:none;place-items:center;align-content:center;gap:0;width:60px;height:60px;border-radius:50%;background:rgba(255,250,241,.92);border:3px solid var(--ink);box-shadow:0 5px 0 var(--ink);color:var(--ink);pointer-events:auto;touch-action:none;transition:transform .08s,box-shadow .08s,background .15s}
+#tc .tb i{font-style:normal;font-size:22px;line-height:1}
+#tc .tb b{font-size:9.5px;font-weight:700;letter-spacing:.02em;line-height:1.1;margin-top:2px;text-align:center;max-width:56px}
+#tc .tb.big{width:88px;height:88px;background:var(--red);color:#fff}
+#tc .tb.big i{font-size:32px}#tc .tb.big b{font-size:12px}
+#tc .tb.mid{width:70px;height:70px}
+#tc .tb.on,#tc .tb:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+#tc .tb.hold.on{background:var(--gold);color:var(--ink)}
+#tc .tb.big.hold.on{background:#ff6a4f;color:#fff}
+#tc .tb.lit{background:var(--gold)}
+body[data-ctl=walk] #tc [data-m~=walk],body[data-ctl=bike] #tc [data-m~=bike],body[data-ctl=fly] #tc [data-m~=fly],body[data-ctl=car] #tc [data-m~=car]{display:grid}
+body:not(.multi) #tc .mp{display:none!important}
+/* slots: A big corner · B left of it · C above it · D diagonal · E far left */
+#tJump,#tUp,#tGas{right:0;bottom:0}
+#tDash,#tBell,#tBrake,#tDown{right:100px;bottom:4px}
+#tDown,#tBrake{right:98px;bottom:0}
+#tFly,#tBoost,#tHorn{right:14px;bottom:100px}
+#tLand,#tHand{right:86px;bottom:84px}
+#tView{right:180px;bottom:6px}
+#tChat{right:190px;bottom:120px;width:46px!important;height:46px!important}
+#tEmo{right:140px;bottom:150px;width:46px!important;height:46px!important}
+#tc .pedal{border-radius:22px}
+#tGas.pedal{width:80px;height:104px}
+#tBrake.pedal{width:66px;height:80px;right:92px}
+/* interact: the prompt becomes a big tappable button above the action pad */
+body.touch #prompt{left:auto;right:calc(max(14px,env(safe-area-inset-right)) + 4px);bottom:calc(max(14px,env(safe-area-inset-bottom)) + 214px);transform:translateY(10px);pointer-events:none;padding:10px 18px 10px 10px;font-size:16px;border:3px solid var(--ink);max-width:min(300px,calc(100vw - 40px))}
+body.touch #prompt.show{transform:none;pointer-events:auto;animation:nudge 1.6s ease-in-out infinite}
+body.touch #prompt kbd{display:none}
+body.touch #prompt .hand{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--red);font-style:normal;font-size:18px}
+body.touch #prompt:active{transform:scale(.95)}
+@keyframes nudge{50%{transform:translateY(-3px)}}
+/* menu: the icon column becomes a bottom sheet */
+body.touch #tMenu{display:grid;place-items:center;width:48px;height:48px;flex:none;border-radius:15px;background:var(--paper);box-shadow:var(--shadow)}
+#tMenu svg{width:26px;height:26px;stroke:var(--ink);fill:none;stroke-width:2.4;stroke-linecap:round}
+body.touch .icons{position:fixed;left:0;right:0;top:auto;bottom:0;transform:translateY(110%);display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;padding:18px max(16px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:var(--paper);border-top:3px solid var(--ink);border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(43,37,80,.3);transition:transform .3s cubic-bezier(.3,1.2,.5,1);z-index:8;max-height:70vh;overflow-y:auto}
+body.touch.menu .icons{transform:none}
+body.touch .icons .ic{width:auto;height:74px;border-radius:16px;display:flex;flex-direction:column;gap:5px;box-shadow:none;background:#f1e9da}
+body.touch .icons .ic::after{content:attr(data-l);font-size:12px;font-weight:600;color:var(--ink)}
+body.touch .icons .ic:hover{transform:none}
+body.touch.menu::after{content:"";position:fixed;inset:0;background:rgba(43,37,80,.3);z-index:7}
+body.touch .icons::before{content:"";position:absolute;left:50%;top:7px;width:44px;height:5px;margin-left:-22px;border-radius:9px;background:var(--line)}
+/* move things out of the thumbs' way */
+body.touch .chatHint,body.touch #drive span,body.touch .hint{display:none}
+body.touch #chat{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 160px)}
+body.touch #achs{bottom:auto;top:calc(max(14px,env(safe-area-inset-top)) + 8px)}
+body.touch #say{bottom:auto;top:calc(max(10px,env(safe-area-inset-top)) + 10px);width:min(520px,calc(100vw - 460px));min-width:300px;padding:16px 18px 18px;z-index:6}
+body.touch #sayText{font-size:16px;min-height:0}
+body.touch #sayName{font-size:14px;top:-14px;padding:3px 12px}
+body.touch #say.show{transform:translate(-50%,0)}
+body.touch #say{transform:translate(-50%,-20px)}
+body.touch #say::after{content:"touche pour continuer ▼"}
+body.touch #wingsHud,body.touch #drive{bottom:max(18px,env(safe-area-inset-bottom))}
+body.touch .card{max-height:calc(100dvh - 40px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+body.touch .keyHelp{display:none}body.touch .touchHelp{display:grid}
+body.touch input{font-size:16px!important}
+body.touch #title{overflow-y:auto;padding:max(12px,env(safe-area-inset-top)) 12px 12px}
+body.touch .btn,body.touch #pChars button{min-height:44px}
+body.touch #pCols button{width:38px;height:38px}
+body.touch #title{display:block;overflow-y:auto}body.touch #title .logo{min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:8px 0}
+/* portrait phone: speed / wings readouts go up top, out of the thumbs' way */
+@media (orientation:portrait) and (max-width:700px){
+  body.touch #wingsHud,body.touch #drive{bottom:auto;top:calc(max(14px,env(safe-area-inset-top)) + 150px)}
+  body.touch #rotate.show{display:flex}
+  body.touch #area{top:30%}
+  body.touch #say{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 230px);width:calc(100vw - 24px);transform:translate(-50%,20px)}
+}
+#rotate{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 150px);transform:translateX(-50%);gap:10px;align-items:center;white-space:nowrap;background:var(--ink);color:#fff;font-weight:600;font-size:13px;padding:7px 8px 7px 14px;border-radius:999px;box-shadow:var(--shadow)}
+#rotate button{background:var(--paper);color:var(--ink);border-radius:999px;padding:3px 12px;font-weight:700}
+/* landscape phone: low height, shrink the top HUD */
+@media (max-height:520px){
+  body.touch #mini{width:86px;height:86px;border-width:3px}
+  body.touch .map{gap:5px}
+  body.touch .chip{font-size:12px;padding:4px 10px}
+  body.touch #counter{font-size:16px;padding:5px 12px 5px 5px}body.touch #counter i{width:26px;height:26px}
+  body.touch #tMenu{width:38px;height:38px;border-radius:12px}body.touch .counters .chip{font-size:14px;padding:6px 12px}
+  body.touch #say{top:max(8px,env(safe-area-inset-top));padding:14px 16px 16px}body.touch #sayText{font-size:15px;line-height:1.35}
+  body.touch #area{top:6%}body.touch #areaName{font-size:20px}
+  body.touch #tc{transform:scale(.86);transform-origin:100% 100%}
+  body.touch #joy{width:118px;height:118px}
+  body.touch #prompt{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 182px)}
+  body.touch #board{top:110px}
+  .logo .k,.logo p{display:none}.logo h1{font-size:46px;margin:0 0 8px}
+  body.touch .lobby{grid-template-columns:1fr 1fr;width:min(780px,calc(100vw - 24px));gap:10px 18px;padding:12px 16px}
+  body.touch .lobby .or{display:none}body.touch .lobby #joinRow{grid-column:1/-1}
+  body.touch .thint{margin-top:8px}
+}
+@media (max-width:420px){body.touch .counters{gap:6px}body.touch .counters .chip{font-size:14px;padding:7px 10px}body.touch #counter{font-size:16px;padding:5px 10px 5px 5px}body.touch #counter i{width:26px;height:26px}body.touch #tMenu{width:42px;height:42px}}
 </style>
 </head>
 <body>
 <canvas id="gl" tabindex="0"></canvas>
 <div class="hud">
   <div class="map"><canvas id="mini" width="300" height="300"></canvas><div class="chips"><span class="chip" id="clock">09:00</span><span class="chip" id="room" title="Inviter des amis"></span></div></div>
-  <div class="counters"><div class="chip" id="money">0 $</div><div id="counter"><i></i><b id="bCount">0</b><span>/ <b id="bTotal">12</b></span></div></div>
+  <div class="counters"><div class="chip" id="money">0 $</div><div id="counter"><i></i><b id="bCount">0</b><span>/ <b id="bTotal">12</b></span></div><button id="tMenu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div>
   <div id="jobCard"><div class="row"><span id="jobWho">—</span><span id="jobTime">0 s</span></div><div class="row"><span id="jobAddr">—</span><span id="jobDist"></span></div><div class="bar"><div id="jobBar"></div></div></div>
   <ul id="board"></ul>
   <div id="misCard"><span id="misIc">⭐</span><b id="misName">Mission</b><span id="misTime">0:00</span><span id="misGoal">—</span><div class="bar"><div id="misBar"></div></div><div id="misHeat"><span id="heatTxt">Froid</span><div class="bar"><div id="heatBar"></div></div></div></div>
@@ -276,7 +373,7 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
   <div id="wingsHud"><span>🕊</span><div class="bar"><div id="energy"></div></div><span id="alt">0 m</span></div>
   <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Écris un message… (Entrée)" autocomplete="off"><div class="chatHint">Entrée: discuter · 1–4: émotes</div></div>
   <div id="marr"><span></span></div>
-  <div id="arrow"></div><div id="achs"></div><div id="floats"></div><div id="onBike">🚲 BIXI · E pour descendre · B sonnette</div>
+  <div id="arrow"></div><div id="achs"></div><div id="floats"></div><div id="onBike"><span class="keyOnly">🚲 BIXI · E pour descendre · B sonnette</span><span class="touchOnly">🚲 BIXI · bulle pour descendre</span></div>
   <div class="boosts" style="top:84px"><div class="boost" id="boostCafe">☕ Caféine!</div><div class="boost" id="boostJump">🥐 Super saut!</div></div>
   <div class="icons">
     <button class="ic" id="btnMission" title="Lancer une mission (N)"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
@@ -288,16 +385,36 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
     <button class="ic" id="btnJournal" title="Carnet (J)"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11M9 8h6"/></svg></button>
     <button class="ic" id="btnCam" title="Recentrer la caméra"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
     <button class="ic" id="btnPhoto" title="Photo (P)"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+    <button class="ic" id="btnFull" title="Plein écran"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button class="ic off" id="btnSound" title="Musique (M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
   </div>
   <div id="area"><small>LE PLATEAU-MONT-ROYAL</small><span id="areaName">Rue Saint-Denis</span></div>
-  <div id="prompt"><kbd>E</kbd><span id="promptText">Parler</span></div>
+  <div id="prompt"><kbd>E</kbd><i class="hand">👆</i><span id="promptText">Parler</span></div>
   <div id="say"><span id="sayName">Nom</span><span id="sayHearts"></span><div id="sayText"></div></div>
-  <div class="tbtns"><button class="tb mp" id="tChat">💬</button><button class="tb mp" id="tEmo">👋</button><button class="tb" id="tFly">Voler</button><button class="tb" id="tTalk">Parler</button><button class="tb" id="tDash">Élan</button><button class="tb" id="tRun">Courir</button><button class="tb big" id="tJump">Sauter</button></div>
+  <div id="tc">
+    <button class="tb mp" id="tChat" data-m="walk bike">💬</button><button class="tb mp" id="tEmo" data-m="walk bike">👋</button>
+    <div class="pad">
+      <button class="tb sm" id="tFly" data-m="walk"><i>🕊</i><b>Voler</b></button>
+      <button class="tb sm" id="tDash" data-m="walk fly"><i>💨</i><b>Élan</b></button>
+      <button class="tb big" id="tJump" data-m="walk bike"><i>⤒</i><b>Sauter</b></button>
+      <button class="tb sm" id="tBell" data-m="bike"><i>🔔</i><b>Sonnette</b></button>
+      <button class="tb sm" id="tLand" data-m="fly"><i>🛬</i><b>Atterrir</b></button>
+      <button class="tb sm hold" id="tBoost" data-m="fly"><i>⚡</i><b>Turbo</b></button>
+      <button class="tb mid hold" id="tDown" data-m="fly"><i>▼</i><b>Descendre</b></button>
+      <button class="tb big hold" id="tUp" data-m="fly"><i>▲</i><b>Monter</b></button>
+      <button class="tb sm" id="tView" data-m="car"><i>👁</i><b>Vue</b></button>
+      <button class="tb sm" id="tHorn" data-m="car"><i>📯</i><b>Klaxon</b></button>
+      <button class="tb sm hold" id="tHand" data-m="car"><i>⟲</i><b>Frein à main</b></button>
+      <button class="tb mid hold pedal" id="tBrake" data-m="car"><i>⏷</i><b>Frein</b></button>
+      <button class="tb big hold pedal" id="tGas" data-m="car"><i>⏶</i><b>Gaz</b></button>
+    </div>
+  </div>
+  <div id="rotate">↻ Tourne ton téléphone pour un meilleur angle <button id="rotOk">OK</button></div>
+</div>
 </div>
 <div id="photoBar"><button id="pFilter">Filtre: <span id="pfName">Normal</span></button><button id="pPose">Pose ✌</button><button id="pSnap" title="Photo"></button><button id="pExit">Quitter</button></div>
 <div id="journal"><div class="card" style="max-width:min(640px,calc(100vw - 32px))"><h3>Mon carnet du Plateau</h3><div id="jStats"></div><ul id="jAch"></ul></div></div>
-<div id="joy"><div id="joyKnob"></div></div>
+<div id="joy"><div id="joyKnob"></div><span id="joyRun">COURSE</span></div>
 <div id="title"><div class="logo">
   <div class="k">MONTRÉAL · LE PLATEAU</div>
   <h1>PLATEAU<em>.</em></h1>
@@ -310,11 +427,21 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
     <div class="or">— ou rejoins tes amis avec un code —</div>
     <div class="row2" id="joinRow"><input id="pCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn blue" id="join">Rejoindre</button></div>
   </div>
-  <div class="hint">WASD + Espace · triple saut ou V pour voler · E interagir · N mission · H aide</div>
+  <div class="thint">🕹 joystick à gauche · boutons à droite · glisse pour regarder</div><div class="hint">WASD + Espace · triple saut ou V pour voler · E interagir · N mission · H aide</div>
 </div></div>
 <div id="help"><div class="card">
   <h3>Comment jouer</h3>
-  <dl>
+  <dl class="touchHelp">
+    <dt>🕹 Gauche</dt><dd>Pose ton pouce n'importe où à gauche: joystick. Pousse à fond pour courir.</dd>
+    <dt>👆 Droite</dt><dd>Glisse pour tourner la caméra · pince avec deux doigts pour zoomer.</dd>
+    <dt>⤒ Sauter</dt><dd>Deux fois pour un salto · trois fois pour s'envoler · maintenir en l'air pour planer au parapluie.</dd>
+    <dt>🕊 Voler</dt><dd>▲ Monter, ▼ Descendre, ⚡ Turbo (maintenir). La caméra donne la direction. Les ailes se fatiguent: pose-toi pour recharger.</dd>
+    <dt>👆 Bulle</dt><dd>Quand une bulle apparaît en haut à droite (parler, conduire, prendre un BIXI, livrer…), touche-la.</dd>
+    <dt>🚗 Voiture</dt><dd>Joystick: diriger · ⏶ Gaz · ⏷ Frein et marche arrière · ⟲ Frein à main pour déraper · 👁 vue intérieure.</dd>
+    <dt>☰ Menu</dt><dd>Missions, amis, heure, météo, saison, carnet, photo, musique, plein écran.</dd>
+    <dt>But</dt><dd>Livre des colis à temps, trouve les 12 bagels dorés, gagne les missions contre tes amis.</dd>
+  </dl>
+  <dl class="keyHelp">
     <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Marcher · <kbd>Maj</kbd> courir</dd>
     <dt><kbd>Espace</kbd></dt><dd>Sauter · deux fois pour un salto · maintenir en l'air pour planer au parapluie</dd>
     <dt><kbd>F</kbd></dt><dd>Élan (dash), même en l'air</dd>

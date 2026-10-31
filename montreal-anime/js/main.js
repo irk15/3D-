@@ -133,7 +133,7 @@ async function boot() {
     if (player.bike) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Descendre du vélo', act: () => { player.dismount(); sfx.blip(); } }); return out; }
     for (const n of npcs.list) if (n.out) out.push({ x: n.pos.x, z: n.pos.z, y: n.pos.y, label: `Parler à ${n.name}`, act: () => talkTo(n) });
     for (const s of world.shops) out.push({ x: s.x, z: s.z, y: h(s.z), label: shopLabel(s), act: () => shopAct(s) });
-    for (const d of world.docks) out.push({ x: d.x, z: d.z, y: h(d.z) + 0.15, label: 'Prendre un BIXI', act: () => { player.mountBike(bikeModel()); ach.unlock('bixi'); sfx.bell(); say(d.name, 'Bon trajet! Utilise la piste cyclable de Saint-Denis. (E pour descendre, B pour la sonnette)'); } });
+    for (const d of world.docks) out.push({ x: d.x, z: d.z, y: h(d.z) + 0.15, label: 'Prendre un BIXI', act: () => { player.mountBike(bikeModel()); ach.unlock('bixi'); sfx.bell(); say(d.name, (isTouch ? 'Bon trajet! Utilise la piste cyclable de Saint-Denis. Touche la bulle pour descendre, 🔔 pour la sonnette.' : 'Bon trajet! Utilise la piste cyclable de Saint-Denis. (E pour descendre, B pour la sonnette)')); } });
     out.push({ x: cat.g.position.x, z: cat.g.position.z, y: cat.g.position.y, label: 'Flatter le chat', act: () => { say('Le chat', 'Miaou! ♥  (Il ronronne et cligne des yeux.)', 3); sfx.meow(); ach.unlock('cat'); } });
     return out;
   };
@@ -265,32 +265,86 @@ async function boot() {
   cv.addEventListener('pointermove', (e) => { if (!drag) return; cam.yaw -= (e.clientX - drag.x) * 0.006; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + (e.clientY - drag.y) * 0.005)); drag = { x: e.clientX, y: e.clientY }; cam.lastInput = clock.elapsedTime; });
   cv.addEventListener('pointerup', () => { drag = null; });
   cv.addEventListener('wheel', (e) => { cam.dist = Math.min(photoMode ? 16 : 10, Math.max(photoMode ? 1.2 : 2.4, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); e.preventDefault(); }, { passive: false });
-  const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, lookT = { id: null, x: 0, y: 0 };
+  // ---- touch: floating joystick on the left (push to the edge to run), swipe to look and pinch to zoom
+  // on the right, and a button pad that changes with what you're doing (walking, flying, biking, driving)
+  const isTouch = app.isTouch = touch || params.has('touch') || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches);
+  const B = document.body;
+  B.classList.toggle('touch', isTouch);
+  if (document.fullscreenEnabled || document.webkitFullscreenEnabled) B.classList.add('canfs');
+  const buzz = (ms = 10) => { if (isTouch) try { navigator.vibrate?.(ms); } catch (e) { /* not supported */ } };
+  const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0, run: false }, looks = new Map(), tHeld = {};
+  let pinch = 0;
+  const joyEl = $('#joy'), knob = $('#joyKnob');
+  const camDist = (v) => Math.min(photoMode ? 16 : 10, Math.max(photoMode ? 1.2 : 2.4, v));
+  const joyRelease = () => { joy.id = null; joy.x = joy.y = 0; joy.run = false; joyEl.classList.remove('live', 'run'); joyEl.style.left = joyEl.style.top = ''; knob.style.transform = ''; };
   cv.addEventListener('touchstart', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.clientX < innerWidth * 0.45 && joy.id === null) { joy.id = t.identifier; joy.ox = t.clientX; joy.oy = t.clientY; joy.x = joy.y = 0; $('#joy').style.cssText = `display:block;left:${t.clientX}px;top:${t.clientY}px`; }
-      else if (lookT.id === null) { lookT.id = t.identifier; lookT.x = t.clientX; lookT.y = t.clientY; }
-    }
     e.preventDefault();
+    if (B.classList.contains('menu')) { B.classList.remove('menu'); return; }
+    for (const t of e.changedTouches) {
+      if (t.clientX < innerWidth * 0.42 && joy.id === null && !photoMode) {
+        joy.id = t.identifier; joy.ox = t.clientX; joy.oy = t.clientY; joy.x = joy.y = 0;
+        joyEl.classList.add('live'); joyEl.style.left = t.clientX + 'px'; joyEl.style.top = t.clientY + 'px';
+      } else looks.set(t.identifier, { x: t.clientX, y: t.clientY });
+    }
+    if (looks.size === 2) { const [a, b] = [...looks.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
   }, { passive: false });
   cv.addEventListener('touchmove', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === joy.id) { let dx = t.clientX - joy.ox, dy = t.clientY - joy.oy; const l = Math.hypot(dx, dy), m = 55; if (l > m) { dx *= m / l; dy *= m / l; } joy.x = dx / m; joy.y = -dy / m; $('#joyKnob').style.transform = `translate(${dx}px,${dy}px)`; }
-      if (t.identifier === lookT.id) { cam.yaw -= (t.clientX - lookT.x) * 0.008; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + (t.clientY - lookT.y) * 0.006)); lookT.x = t.clientX; lookT.y = t.clientY; cam.lastInput = clock.elapsedTime; }
-    }
     e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === joy.id) {
+        let dx = t.clientX - joy.ox, dy = t.clientY - joy.oy; const l = Math.hypot(dx, dy), m = 56;
+        if (l > m) { dx *= m / l; dy *= m / l; }
+        const k = l < 7 ? 0 : 1;   // small dead zone so a resting thumb doesn't creep
+        joy.x = k * dx / m; joy.y = -k * dy / m; joy.run = !car && l > m * 0.92;
+        knob.style.transform = `translate(${dx}px,${dy}px)`; joyEl.classList.toggle('run', joy.run);
+        continue;
+      }
+      const lk = looks.get(t.identifier); if (!lk) continue;
+      const mx = t.clientX - lk.x, my = t.clientY - lk.y; lk.x = t.clientX; lk.y = t.clientY;
+      if (looks.size >= 2) { const [a, b] = [...looks.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch > 0 && d > 0) cam.dist = camDist(cam.dist * pinch / d); pinch = d; continue; }
+      const sens = 0.0085 * Math.min(1.25, Math.max(0.8, 700 / Math.min(innerWidth, innerHeight * 1.6)));
+      cam.yaw -= mx * sens; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + my * sens * 0.75)); cam.lastInput = clock.elapsedTime;
+    }
   }, { passive: false });
-  const tEnd = (e) => { for (const t of e.changedTouches) { if (t.identifier === joy.id) { joy.id = null; joy.x = joy.y = 0; $('#joy').style.display = 'none'; $('#joyKnob').style.transform = ''; } if (t.identifier === lookT.id) lookT.id = null; } };
+  const tEnd = (e) => { for (const t of e.changedTouches) { if (t.identifier === joy.id) joyRelease(); looks.delete(t.identifier); } if (looks.size < 2) pinch = 0; };
   cv.addEventListener('touchend', tEnd); cv.addEventListener('touchcancel', tEnd);
-  let touchJump = false, touchRun = false;
-  $('#tJump').addEventListener('touchstart', (e) => { inp.jump = true; touchJump = true; e.preventDefault(); });
-  $('#tJump').addEventListener('touchend', () => { touchJump = false; });
-  $('#tRun').addEventListener('touchstart', (e) => { touchRun = !touchRun; e.currentTarget.classList.toggle('on', touchRun); e.preventDefault(); });
-  $('#tTalk').addEventListener('touchstart', (e) => { interact(); e.preventDefault(); });
-  $('#tDash').addEventListener('touchstart', (e) => { inp.dash = true; e.preventDefault(); });
-  $('#tFly').addEventListener('touchstart', (e) => { inp.fly = true; e.preventDefault(); });
+  // pad buttons: pointer events so several can be held at once (gas + handbrake while steering)
+  const pad = (id, on) => {
+    const b = $('#' + id);
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (err) { /* ok */ } b.classList.add('on'); tHeld[id] = true; buzz(); on?.(); });
+    const up = () => { tHeld[id] = false; b.classList.remove('on'); };
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, up);
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
+  };
+  pad('tJump', () => { inp.jump = true; });
+  pad('tDash', () => { inp.dash = true; });
+  pad('tFly', () => { inp.fly = true; });
+  pad('tLand', () => { inp.fly = true; });
+  pad('tBell', () => sfx.bell(2));
+  pad('tHorn', () => sfx.horn());
+  pad('tView', () => { carView = carView === 'chase' ? 'cabin' : 'chase'; carCam.look = 0; });
+  for (const id of ['tUp', 'tDown', 'tBoost', 'tGas', 'tBrake', 'tHand']) pad(id);
+  addEventListener('blur', () => { for (const k in tHeld) tHeld[k] = false; joyRelease(); looks.clear(); });
   $('#tChat').addEventListener('click', () => openChat());
   let emoI = 0; $('#tEmo').addEventListener('click', () => { emote(emoI); emoI = (emoI + 1) % 4; $('#tEmo').textContent = ['👋', '❤️', '😂', '🏆'][emoI]; });
+  // the interaction bubble is the button on touch screens
+  $('#prompt').addEventListener('pointerdown', (e) => { if (!isTouch) return; e.preventDefault(); buzz(15); interact(); });
+  // menu: the icon column becomes a bottom sheet with labels
+  const LBL = { btnMission: 'Mission', btnInvite: 'Amis', btnHelp: 'Aide', btnTime: 'Heure', btnWeather: 'Météo', btnSeason: 'Saison', btnJournal: 'Carnet', btnCam: 'Caméra', btnPhoto: 'Photo', btnFull: 'Plein écran', btnSound: 'Musique' };
+  for (const [id, l] of Object.entries(LBL)) $('#' + id)?.setAttribute('data-l', l);
+  $('#tMenu').addEventListener('click', () => { B.classList.toggle('menu'); buzz(); });
+  document.querySelector('.icons').addEventListener('click', (e) => { if (isTouch && e.target.closest('.ic') && e.target.closest('.ic').id !== 'btnSound') setTimeout(() => B.classList.remove('menu'), 120); });
+  addEventListener('pointerdown', (e) => { if (e.target === B || e.target === document.documentElement) B.classList.remove('menu'); });
+  const goFull = () => { const d = document.documentElement; if (document.fullscreenElement || document.webkitFullscreenElement) return; try { const r = (d.requestFullscreen || d.webkitRequestFullscreen)?.call(d, { navigationUI: 'hide' }); r?.catch?.(() => {}); } catch (e) { /* iPhone Safari has no fullscreen for pages */ } };
+  $('#btnFull').addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen?.(); else goFull(); });
+  for (const id of ['play', 'host', 'join']) $('#' + id)?.addEventListener('click', () => {
+    if (!isTouch) return;
+    if (B.classList.contains('canfs') && innerWidth < 1100) goFull();
+    let seen = false; try { seen = localStorage.getItem('rotOk') === '1'; } catch (e) { /* private mode */ }
+    if (!seen && innerHeight > innerWidth) setTimeout(() => $('#rotate').classList.add('show'), 1500);
+  });
+  $('#rotOk').addEventListener('click', () => { $('#rotate').classList.remove('show'); try { localStorage.setItem('rotOk', '1'); } catch (e) { /* ok */ } });
+  addEventListener('resize', () => { if (innerWidth > innerHeight) $('#rotate').classList.remove('show'); joyRelease(); });
   let gpPrev = [];
   function readInput() {
     let x = 0, y = 0;
@@ -298,9 +352,12 @@ async function boot() {
     if (keys.has('KeyS') || keys.has('ArrowDown')) y -= 1;
     if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
     if (keys.has('KeyA') || keys.has('ArrowLeft') || keys.has('KeyQ')) x -= 1;
-    x += joy.x; y += joy.y;
-    let run = keys.has('ShiftLeft') || keys.has('ShiftRight') || touchRun;
-    let held = keys.has('Space') || touchJump;
+    const ctl = car ? 'car' : player.flying ? 'fly' : player.bike ? 'bike' : 'walk';
+    if (B.dataset.ctl !== ctl) { B.dataset.ctl = ctl; for (const k in tHeld) tHeld[k] = false; document.querySelectorAll('#tc .on').forEach((b) => b.classList.remove('on')); }
+    x += joy.x;
+    if (car) y += (tHeld.tGas ? 1 : 0) - (tHeld.tBrake ? 1 : 0); else y += joy.y;   // driving: thumb steers, pedals do gas and brake
+    let run = keys.has('ShiftLeft') || keys.has('ShiftRight') || joy.run || !!tHeld.tBoost;
+    let held = keys.has('Space') || !!tHeld.tJump || !!tHeld.tUp || !!tHeld.tHand;
     const gp = navigator.getGamepads ? [...navigator.getGamepads()].find((g) => g) : null;
     if (gp) {
       const dz = (v) => (Math.abs(v) < 0.15 ? 0 : v);
@@ -312,9 +369,10 @@ async function boot() {
       run = run || gp.buttons[7]?.value > 0.4 || gp.buttons[5]?.pressed;
       gpPrev = gp.buttons.map((b) => b.pressed);
     }
-    const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+    const l = Math.hypot(x, y); if (l > 1 && !car) { x /= l; y /= l; }
+    x = Math.max(-1, Math.min(1, x)); y = Math.max(-1, Math.min(1, y));
     inp.x = x; inp.y = y; inp.run = run; inp.jumpHeld = held; inp.rain = weather.precip === 'rain';
-    inp.down = keys.has('KeyC') || keys.has('ControlLeft') || (gp && gp.buttons[6]?.value > 0.4); inp.camPitch = cam.pitch;
+    inp.down = keys.has('KeyC') || keys.has('ControlLeft') || !!tHeld.tDown || (gp && gp.buttons[6]?.value > 0.4); inp.camPitch = cam.pitch;
   }
 
   // ---- dialog, prompts, toasts
@@ -619,7 +677,7 @@ async function boot() {
     started = true; document.body.classList.add('playing'); sfx.start(); $('#btnSound').classList.remove('off');
     if (room) { goOnline(room); if (!invited) setTimeout(showInvite, 900); }
     setTimeout(() => areaToast('Rue Saint-Denis'), 600);
-    if (!save.deliveries && !params.has('play')) setTimeout(() => say('Tutoriel', room ? 'Bienvenue! Quand tes amis sont là, l\'hôte lance une mission (N). Le premier qui réussit gagne! Appuie sur V (ou saute trois fois) pour voler.' : 'Bienvenue sur le Plateau! Appuie sur V (ou saute trois fois) pour voler. N lance une mission. Entre dans un commerce (E) pour une livraison, et cherche les 12 bagels dorés.'), 2500);
+    if (!save.deliveries && !params.has('play')) setTimeout(() => say('Tutoriel', room ? (isTouch ? 'Bienvenue! Quand tes amis sont là, l\'hôte lance une mission depuis le menu ☰. Le premier qui réussit gagne! Touche 🕊 Voler pour t\'envoler.' : 'Bienvenue! Quand tes amis sont là, l\'hôte lance une mission (N). Le premier qui réussit gagne! Appuie sur V (ou saute trois fois) pour voler.') : (isTouch ? 'Bienvenue sur le Plateau! Pouce gauche pour marcher, glisse à droite pour regarder. Touche 🕊 Voler pour t\'envoler, et la bulle 👆 pour parler ou livrer. Trouve les 12 bagels dorés!' : 'Bienvenue sur le Plateau! Appuie sur V (ou saute trois fois) pour voler. N lance une mission. Entre dans un commerce (E) pour une livraison, et cherche les 12 bagels dorés.')), 2500);
   };
   $('#play').onclick = () => begin();
   $('#host').onclick = () => begin(randomCode());
@@ -682,7 +740,7 @@ async function boot() {
       player.pos.copy(car.pos); player.yaw = car.yaw; player.speed = car.speed; player.vel.set(Math.sin(car.yaw) * car.vF, 0, Math.cos(car.yaw) * car.vF); player.grounded = true; player.flying = false;
       const seat = car.seatPos(); hero.root.position.set(seat.x, seat.y - 0.47, seat.z); hero.root.rotation.y = car.yaw;
       hero.animate(dt, 0, true, 0, { drive: true, steer: car.steer });
-      if (car.impact > 3.5) { sfx.crash(Math.min(1, car.impact / 18)); cam.shake = Math.min(1, car.impact / 15); puffs.ring(car.pos.clone().setY(car.pos.y + 0.4), 0xd9cdb8); if (car.impact > 12) ach.unlock('crash'); }
+      if (car.impact > 3.5) { sfx.crash(Math.min(1, car.impact / 18)); buzz(Math.min(60, 15 + car.impact * 3)); cam.shake = Math.min(1, car.impact / 15); puffs.ring(car.pos.clone().setY(car.pos.y + 0.4), 0xd9cdb8); if (car.impact > 12) ach.unlock('crash'); }
       car.impact = 0;
       sfx.engine(car.rpm, Math.max(0, inp.y), car.speed);
       $('#driveSpd').textContent = Math.round(car.speed * 3.6); $('#driveGear').textContent = car.gear;

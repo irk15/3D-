@@ -23,3 +23,4 @@ Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / 
 Static HTML, CSS, and JavaScript. Three.js is bundled; its license is included in each vendor directory. Dua Lipa poster is an unofficial fan concept. No music is bundled.
 - [Cahier Section B](https://irk15.github.io/3D-/french/): TEF Canada speaking study notebook (arguments, objections and replies, phrases, idioms, practice)
 - [Penthouse Walkthrough](https://irk15.github.io/3D-/penthouse-walkthrough/): walkable high-end penthouse for phone and laptop — foyer, living, dining, kitchen, bedroom, bath; guided tour, room jumps, day/dusk. Concept visualization recreated from listing photography.
+- [Penthouse Photo Walkthrough](https://irk15.github.io/3D-/penthouse-photo-tour/): photographic walk-through of a luxury penthouse using the real listing photos — hotspots between rooms, forward-walk transitions, drag to look around, auto walk. Works on phone and laptop.

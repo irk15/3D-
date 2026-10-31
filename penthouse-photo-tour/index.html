@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Penthouse Photo Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one full-bleed photograph at a time. Glass chrome floats on top: room + plan at top-left, actions top-right, thumbnails along the bottom. */
+:root{
+  --ink:#f4efe6;--ink-dim:#bdb6a9;--glass:rgba(16,15,14,.55);--line:rgba(244,239,230,.18);--accent:#dcc08a;--accent-ink:#1a1610;--bg:#0d0c0b;
+  --display:"Bodoni Moda",Georgia,"Times New Roman",serif;--ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.glass{background:var(--glass);border:1px solid var(--line);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2)}
+#stage{position:fixed;inset:0;overflow:hidden;background:#000;touch-action:none;cursor:grab}
+#stage.drag{cursor:grabbing}
+.layer{position:absolute;inset:0;overflow:hidden;will-change:transform,opacity}
+.pano{position:absolute;left:0;top:0;will-change:transform}
+.pano img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+.hs{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;z-index:2}
+.hs i{position:relative;flex:none;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid #fff;box-shadow:0 2px 14px rgba(0,0,0,.45)}
+.hs i::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid rgba(255,255,255,.7);animation:ping 2.2s ease-out infinite}
+.hs i::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#fff}
+.hs span{position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);white-space:nowrap;font-size:12px;font-weight:500;letter-spacing:.04em;padding:6px 11px;border-radius:999px;background:rgba(16,15,14,.62);border:1px solid var(--line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.hs.flip span{left:auto;right:calc(100% + 8px)}
+.hs:hover i,.hs:focus-visible i{background:rgba(220,192,138,.55);border-color:var(--accent)}
+@keyframes ping{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+#ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+#ui>*{pointer-events:none}#ui button,#ui .glass,#ui a{pointer-events:auto}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.tl{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+#title{padding:9px 16px;border-radius:18px;display:flex;flex-direction:column;gap:2px}
+#room{font-family:var(--display);font-size:20px;line-height:1.1}
+#count{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+#plan{width:104px;border-radius:12px;padding:6px;display:block}
+#plan rect{fill:rgba(244,239,230,.1);stroke:rgba(244,239,230,.5);stroke-width:.14;transition:fill .35s}
+#plan rect.on{fill:var(--accent);stroke:var(--accent)}
+.tr{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.act{display:flex;align-items:center;gap:8px;padding:0 14px;height:40px;border-radius:999px;font-size:13px;font-weight:500}
+.act svg{width:16px;height:16px;flex:none}
+.act[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.bot{display:flex;flex-direction:column;gap:8px;align-items:center}
+#strip{display:flex;gap:8px;padding:8px;border-radius:18px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+#strip::-webkit-scrollbar{display:none}
+#strip button{flex:none;width:76px;height:54px;border-radius:10px;border:2px solid transparent;padding:0;overflow:hidden;background:#222;opacity:.7;transition:opacity .2s,border-color .2s}
+#strip button img{width:100%;height:100%;object-fit:cover;display:block}
+#strip button[aria-current="true"]{opacity:1;border-color:var(--accent)}
+#credit{font-size:11px;color:var(--ink-dim);text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.7);max-width:60ch}
+.arrow{position:fixed;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);z-index:5}
+.arrow svg{width:18px;height:18px}
+#prev{left:max(12px,env(safe-area-inset-left,0px))}#next{right:max(12px,env(safe-area-inset-right,0px))}
+#load{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:20;transition:opacity .6s,visibility .6s;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
+#load.gone{opacity:0;visibility:hidden}
+#sheet{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(420px,calc(100% - 32px));border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px;z-index:30}
+#sheet[hidden]{display:none}
+#sheet h2{margin:0;font-family:var(--display);font-weight:500;font-size:22px}
+#sheet p{margin:0;font-size:13px;color:var(--ink-dim);line-height:1.5}
+.mail{display:flex;gap:8px;align-items:center}
+.mail code{flex:1;min-width:0;overflow-wrap:anywhere;font:500 14px var(--ui);padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(244,239,230,.06);-webkit-user-select:text;user-select:text}
+.mail button,#sheet .close{height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:transparent;font-size:13px;font-weight:500}
+#sheet a{color:var(--accent);font-size:13px}
+@media (max-width:640px){.act span{display:none}.act{width:40px;padding:0;justify-content:center}#plan{width:86px}#strip button{width:64px;height:46px}.arrow{top:auto;bottom:calc(max(12px,env(safe-area-inset-bottom,0px)) + 132px);transform:none}#room{font-size:17px}}
+@media (prefers-reduced-motion:reduce){.hs i::before{animation:none}}
+</style>
+</head>
+<body>
+<div id="stage" aria-label="Photo walkthrough"></div>
+<div id="ui">
+  <div class="top">
+    <div class="tl">
+      <div id="title" class="glass"><div id="room">Foyer</div><div id="count">1 of 14</div></div>
+      <svg id="plan" class="glass" viewBox="-.3 -.3 13.8 13.8" aria-hidden="true"></svg>
+    </div>
+    <div class="tr">
+      <button id="bWalk" class="act glass" aria-pressed="false"><svg viewBox="0 0 24 24" fill="currentColor"><path id="walkIcon" d="M7 4.5v15l12-7.5z"/></svg><span id="walkLbl">Auto walk</span></button>
+      <button id="bMail" class="act glass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span>Enquire</span></button>
+    </div>
+  </div>
+  <div class="bot">
+    <div id="strip" class="glass" role="group" aria-label="Rooms and views"></div>
+    <div id="credit">Listing photography by RE/MAX Ultimate Realty Inc., Brokerage. Drag to look around, tap the glowing dots to walk.</div>
+  </div>
+</div>
+<button id="prev" class="arrow glass" aria-label="Previous view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg></button>
+<button id="next" class="arrow glass" aria-label="Next view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></button>
+<div id="load">Loading the tour…</div>
+<div id="sheet" class="glass" hidden>
+  <h2>Penthouse Suite</h2>
+  <p>Interested in this suite, or a walkthrough like this for your property? Get in touch.</p>
+  <div class="mail"><code id="mailTxt"></code><button id="mailCopy">Copy</button></div>
+  <a id="mailLink" href="#">Open in your email app</a>
+  <a id="site" href="#" target="_blank" rel="noopener">Portfolio</a>
+  <button class="close" id="mailClose">Close</button>
+</div>
+
+<script>
+const CONFIG={email:'rohit.socialenza@gmail.com',portfolio:'https://irohitk.framer.website'};
+const W=1920,Hh=1440,AR=W/Hh;
+/* Photos in walking order. hs = hotspots: x,y are % of the photo, to = id, l = label, f = flip label to the left. room keys the plan. */
+const P=[
+ {id:'p03',room:'foyer',name:'Foyer',hs:[{x:50,y:90,to:'p07',l:'Walk in'}]},
+ {id:'p07',room:'living',name:'Living room',hs:[{x:82,y:44,to:'p03',l:'Foyer',f:1},{x:63,y:53,to:'p14',l:'Dining'},{x:71,y:38,to:'p10',l:'Kitchen'}]},
+ {id:'p14',room:'dining',name:'Dining',hs:[{x:83,y:40,to:'p04',l:'Living room',f:1},{x:56,y:56,to:'p05',l:'Fireplace'}]},
+ {id:'p05',room:'living',name:'Living room',hs:[{x:66,y:46,to:'p08',l:'Window view'},{x:90,y:78,to:'p06',l:'Sofa',f:1}]},
+ {id:'p04',room:'living',name:'Living room',hs:[{x:82,y:62,to:'p08',l:'Sofa side',f:1},{x:11,y:60,to:'p05',l:'Fireplace'}]},
+ {id:'p08',room:'living',name:'Living room',hs:[{x:90,y:70,to:'p14',l:'Dining',f:1}]},
+ {id:'p06',room:'living',name:'Living room',hs:[{x:89,y:48,to:'p07',l:'Open plan',f:1}]},
+ {id:'p09',room:'living',name:'Living and dining',hs:[{x:15,y:52,to:'p11',l:'Kitchen'},{x:24,y:60,to:'p14',l:'Dining'}]},
+ {id:'p11',room:'kitchen',name:'Kitchen',hs:[{x:13,y:40,to:'p03',l:'Foyer'},{x:86,y:52,to:'p04',l:'Living room',f:1},{x:50,y:60,to:'p10',l:'Island'}]},
+ {id:'p10',room:'kitchen',name:'Kitchen',hs:[{x:60,y:52,to:'p13',l:'Ovens'},{x:48,y:78,to:'p12',l:'Island and sink'}]},
+ {id:'p12',room:'kitchen',name:'Kitchen island',hs:[{x:84,y:40,to:'p02',l:'Bedroom',f:1},{x:24,y:40,to:'p09',l:'Living room'}]},
+ {id:'p13',room:'kitchen',name:'Kitchen',hs:[{x:14,y:42,to:'p02',l:'Bedroom'}]},
+ {id:'p02',room:'bedroom',name:'Bedroom',hs:[]},
+ {id:'p01',room:'bath',name:'Bathroom',hs:[{x:88,y:56,to:'p02',l:'Bedroom',f:1}]},
+];
+const byId=Object.fromEntries(P.map((p,i)=>[p.id,i]));
+const ROOMS={living:[0,0,5.6,5.6],dining:[0,5.6,5.6,8.8],kitchen:[2,8.8,5.6,12],foyer:[0,8.8,2,13.2],bedroom:[5.6,7.8,9.8,12],bath:[9.8,7.8,13.2,12]};
+const $=s=>document.querySelector(s);const stage=$('#stage');
+let idx=0,cur=null,busy=false,auto=false,autoT=0,drag=null,moved=false;
+
+/* plan */
+const plan=$('#plan');plan.innerHTML=Object.entries(ROOMS).map(([k,r])=>`<rect data-r="${k}" x="${r[0]}" y="${r[1]}" width="${r[2]-r[0]}" height="${r[3]-r[1]}" rx=".25"/>`).join('');
+/* thumbs */
+const strip=$('#strip');P.forEach((p,i)=>{const b=document.createElement('button');b.setAttribute('aria-label',p.name+' view '+(i+1));b.innerHTML=`<img src="img/${p.id}-s.jpg" alt="" loading="lazy">`;b.addEventListener('click',()=>{stopAuto();go(i,null,i>idx?1:-1);});strip.appendChild(b);});
+
+function size(){const vw=innerWidth,vh=innerHeight,s=Math.max(vw/W,vh/Hh);return{w:W*s,h:Hh*s,vw,vh};}
+function clampPan(L){const z=size();L.x=Math.min(0,Math.max(z.vw-z.w,L.x));L.y=Math.min(0,Math.max(z.vh-z.h,L.y));}
+function applyPan(L){L.pano.style.transform=`translate3d(${L.x}px,${L.y}px,0)`;}
+function place(L){const z=size();L.pano.style.width=z.w+'px';L.pano.style.height=z.h+'px';L.img.sizes=Math.round(z.w)+'px';clampPan(L);applyPan(L);}
+function hsFocus(i){const h=P[i].hs;if(!h.length)return[.5,.5];const ax=h.reduce((a,b)=>a+b.x,0)/h.length/100;return[(ax+.5)/2,.5];}
+function focusPan(L,fx=.5,fy=.5){const z=size();L.x=z.vw/2-z.w*fx;L.y=z.vh/2-z.h*fy;clampPan(L);applyPan(L);}
+
+function makeLayer(i){
+  const p=P[i],el=document.createElement('div');el.className='layer';
+  const pano=document.createElement('div');pano.className='pano';
+  const img=document.createElement('img');img.alt=p.name;img.srcset=`img/${p.id}-s.jpg 1100w, img/${p.id}.jpg 1920w`;img.src=`img/${p.id}.jpg`;img.decoding='async';
+  pano.appendChild(img);
+  for(const h of p.hs){const b=document.createElement('button');b.className='hs'+(h.f?' flip':'');b.style.left=h.x+'%';b.style.top=h.y+'%';b.setAttribute('aria-label','Go to '+h.l);b.innerHTML=`<i></i><span>${h.l}</span>`;
+    b.addEventListener('click',e=>{if(moved)return;e.stopPropagation();stopAuto();const r=b.getBoundingClientRect();go(byId[h.to],{x:r.left+17,y:r.top+r.height/2},1);});pano.appendChild(b);}
+  el.appendChild(pano);const L={el,pano,img,i,x:0,y:0};return L;
+}
+async function show(L){stage.appendChild(L.el);place(L);try{await L.img.decode();}catch(e){}}
+
+function setChrome(i){const p=P[i];$('#room').textContent=p.name;$('#count').textContent=`${i+1} of ${P.length}`;
+  plan.querySelectorAll('rect').forEach(r=>r.classList.toggle('on',r.dataset.r===p.room));
+  [...strip.children].forEach((b,k)=>b.setAttribute('aria-current',String(k===i)));
+  const t=strip.children[i];if(t)strip.scrollTo({left:t.offsetLeft-strip.clientWidth/2+t.clientWidth/2,behavior:'smooth'});
+  for(const k of[i+1,i-1]){const q=P[(k+P.length)%P.length];const im=new Image();im.src=`img/${q.id}.jpg`;}}
+
+const ease='cubic-bezier(.45,0,.25,1)';
+async function go(i,origin,dir=1){
+  if(busy||i===idx||i<0||i>=P.length)return;busy=true;
+  const old=cur,L=makeLayer(i);
+  stage.appendChild(L.el);L.el.style.opacity=0;place(L);try{await L.img.decode();}catch(e){}
+  {const f=hsFocus(i);focusPan(L,f[0],f[1]);}
+  const dur=matchMedia('(prefers-reduced-motion:reduce)').matches?1:1000;
+  const ox=origin?origin.x:innerWidth/2,oy=origin?origin.y:innerHeight/2;
+  old.el.style.transformOrigin=`${ox}px ${oy}px`;
+  if(dir>0){
+    old.el.animate([{transform:'scale(1)'},{transform:'scale(1.55)'}],{duration:dur,easing:ease,fill:'forwards'});
+    L.el.animate([{transform:'scale(.88)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:dur,easing:ease,fill:'forwards'});
+  }else{
+    old.el.animate([{transform:'scale(1)'},{transform:'scale(.9)'}],{duration:dur,easing:ease,fill:'forwards'});
+    L.el.animate([{transform:'scale(1.25)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:dur,easing:ease,fill:'forwards'});
+  }
+  L.el.style.opacity=1;setChrome(i);
+  await new Promise(r=>setTimeout(r,dur+30));
+  old.el.remove();L.el.getAnimations().forEach(a=>a.cancel());cur=L;idx=i;busy=false;
+}
+const step=d=>{stopAuto();go((idx+d+P.length)%P.length,null,d);};
+$('#next').addEventListener('click',()=>step(1));$('#prev').addEventListener('click',()=>step(-1));
+addEventListener('keydown',e=>{if(e.key==='ArrowRight')step(1);else if(e.key==='ArrowLeft')step(-1);else if(e.key===' '){e.preventDefault();auto?stopAuto():startAuto();}});
+
+/* drag to look around */
+stage.addEventListener('pointerdown',e=>{if(!cur)return;drag={x:e.clientX,y:e.clientY,px:cur.x,py:cur.y,id:e.pointerId};moved=false;});
+stage.addEventListener('pointermove',e=>{if(!drag||!cur)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!moved&&Math.abs(dx)+Math.abs(dy)>6){try{stage.setPointerCapture(drag.id);}catch(_){}}if(Math.abs(dx)+Math.abs(dy)>6){moved=true;stage.classList.add('drag');stopAuto();}if(moved){cur.x=drag.px+dx;cur.y=drag.py+dy;clampPan(cur);applyPan(cur);}});
+const endDrag=()=>{drag=null;stage.classList.remove('drag');setTimeout(()=>moved=false,0);};
+stage.addEventListener('pointerup',endDrag);stage.addEventListener('pointercancel',endDrag);
+addEventListener('resize',()=>{if(cur)place(cur);});
+
+/* auto walk */
+function startAuto(){auto=true;$('#bWalk').setAttribute('aria-pressed','true');$('#walkLbl').textContent='Pause';$('#walkIcon').setAttribute('d','M6 5h4v14H6zM14 5h4v14h-4z');tick();}
+function stopAuto(){auto=false;clearTimeout(autoT);$('#bWalk').setAttribute('aria-pressed','false');$('#walkLbl').textContent='Auto walk';$('#walkIcon').setAttribute('d','M7 4.5v15l12-7.5z');}
+function tick(){clearTimeout(autoT);if(!auto)return;
+  if(cur){const z=size(),L=cur;if(z.w>z.vw+8){L.pano.animate([{transform:`translate3d(${L.x}px,${L.y}px,0)`},{transform:`translate3d(${L.x<(z.vw-z.w)/2?0:z.vw-z.w}px,${L.y}px,0)`}],{duration:5200,easing:'ease-in-out',fill:'forwards'}).onfinish=()=>{};}
+    else L.pano.animate([{transform:`translate3d(${L.x}px,${L.y}px,0) scale(1)`},{transform:`translate3d(${L.x}px,${L.y}px,0) scale(1.06)`}],{duration:5200,easing:'ease-in-out',fill:'forwards'});}
+  autoT=setTimeout(async()=>{if(!auto)return;if(cur)cur.pano.getAnimations().forEach(a=>a.cancel());await go((idx+1)%P.length,null,1);tick();},5400);}
+$('#bWalk').addEventListener('click',()=>auto?stopAuto():startAuto());
+
+/* enquire */
+$('#mailTxt').textContent=CONFIG.email;$('#mailLink').href='mailto:'+CONFIG.email+'?subject='+encodeURIComponent('Penthouse walkthrough enquiry');$('#site').href=CONFIG.portfolio;
+$('#bMail').addEventListener('click',()=>{$('#sheet').hidden=!$('#sheet').hidden;});$('#mailClose').addEventListener('click',()=>{$('#sheet').hidden=true;});
+$('#mailCopy').addEventListener('click',async()=>{const b=$('#mailCopy');try{await navigator.clipboard.writeText(CONFIG.email);b.textContent='Copied';}catch(e){const r=document.createRange();r.selectNodeContents($('#mailTxt'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Selected';}setTimeout(()=>b.textContent='Copy',1600);});
+
+/* boot */
+(async()=>{const L=makeLayer(0);await show(L);{const f=hsFocus(0);focusPan(L,f[0],f[1]);}cur=L;idx=0;setChrome(0);$('#load').classList.add('gone');
+  const q=new URLSearchParams(location.search);if(q.get('walk')==='1')startAuto();
+  window.__tour={go:(id)=>go(byId[id],null,1),idx:()=>idx};})();
+</script>
+</body>
+</html>

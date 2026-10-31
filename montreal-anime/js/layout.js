@@ -63,7 +63,7 @@ export function lin(hex) { _c.set(hex); return [_c.r, _c.g, _c.b]; }
 
 // ---------------------------------------------------------------- shared uniforms
 export const U = {
-  uTime: { value: 0 }, uNight: { value: 0 }, uSnow: { value: 0 }, uAutumn: { value: 0 }, uWinter: { value: 0 },
+  uTime: { value: 0 }, uNight: { value: 0 }, uSnow: { value: 0 }, uAutumn: { value: 0 }, uWinter: { value: 0 }, uWet: { value: 0 },
 };
 
 // ---------------------------------------------------------------- GLSL street functions for the ground shader

@@ -29,6 +29,21 @@ Tips: the **Café Lumière** gives you a 30-second speed boost, a croissant from
 - A green alley with planters and laundry lines, utility poles and overhead wires, the Carré Saint-Louis-style square with its fountain and gazebo, the Mont-Royal metro plaza with a poutine truck and pigeons, a church on Saint-Denis, murals, stop signs (ARRÊT) and street plates.
 - Neighbours who walk the sidewalks and chat (in French), cars that stop at the traffic lights, at all-way stops and for you, an orange cat, synthesised lo-fi music, footsteps and birds.
 
+
+## Version 2 — "the 2040 update"
+
+- **Living clock**: a full day passes in 24 minutes, with dawn, golden hour, dusk and night blended continuously; the sun crosses the sky and the moon takes over.
+- **Weather**: sun, clouds and rain (snow in winter) that change on their own. Puddles mirror the sky, raindrops ripple, walls darken, neighbours open umbrellas.
+- **Coursier**: walk into almost any shop to take a delivery to a real address on the Plateau, follow the blue beam, beat the timer for bigger tips, chain combos.
+- **Moves**: double jump with a flip, hold jump to glide under your umbrella, dash (F) on the ground or mid-air.
+- **BIXI**: take a bike at four stations and ride the Saint-Denis bike lane (B rings the bell).
+- **Neighbours who remember you**: they speak French aloud (your browser's voices), keep friendship hearts, react to the weather, season, time and your deliveries, and keep their own hours.
+- **Wardrobe**: spend tips at the friperie on new tuques and jackets.
+- **Journal (J)**: achievements and stats; progress saves automatically in your browser.
+- **Look**: glow on lights, soft ambient occlusion, cloud shadows drifting over the streets, anime speed lines and a speed-reactive camera, dust, snow and splash puffs.
+- **Photo mode (P)**: free camera, a pose, and Manga screentone and Film filters.
+- **Music** gains a beat while you're on a delivery and speeds up when time runs short.
+
 ## How it looks the way it does
 
 - **Toon shading**: three-band light ramp, blue-violet ambient shadows, painted sky with flat two-tone clouds.

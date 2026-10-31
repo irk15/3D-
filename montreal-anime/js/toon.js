@@ -34,13 +34,13 @@ export function toon(hex, opts = {}) {
 export function batchMaterial() {
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uTime: U.uTime });
+    Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uTime: U.uTime, uWet: U.uWet });
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
 attribute float aKind; flat varying float vKind; varying vec3 vWP; varying vec3 vWN;`)
       .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
 vKind = aKind; vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uNight, uSnow, uTime; flat varying float vKind; varying vec3 vWP; varying vec3 vWN;
+uniform float uNight, uSnow, uTime, uWet; flat varying float vKind; varying vec3 vWP; varying vec3 vWN;
 ${GLSL_NOISE}
 vec3 gEmit;`).replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
 gEmit = vec3(0.0);
@@ -91,6 +91,7 @@ gEmit = vec3(0.0);
   }
   // contact shading at the foot of walls
   if (side && k < 4.5) c *= 0.8 + 0.2 * smoothstep(0.0, 1.1, gy);
+  if (k < 4.5 || k > 8.5) c *= 1.0 - 0.22 * uWet * (1.0 - uSnow);
   // snow on anything facing up (not glass or lamps)
   float up = smoothstep(0.55, 0.85, vWN.y);
   if (k < 4.5 || k > 8.5) c = mix(c, vec3(0.93, 0.95, 1.0), uSnow * up);
@@ -105,11 +106,11 @@ gEmit = vec3(0.0);
 export function groundMaterial() {
   const m = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradient });
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uAutumn: U.uAutumn });
+    Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uAutumn: U.uAutumn, uWet: U.uWet, uTime: U.uTime });
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uNight, uSnow, uAutumn; varying vec3 vWP;
+uniform float uNight, uSnow, uAutumn, uWet, uTime; varying vec3 vWP;
 ${GLSL_NOISE}
 ${GLSL_STREETS}
 vec3 gE;`).replace('#include <color_fragment>', GROUND_GLSL)
@@ -194,6 +195,19 @@ if (onNS || onEW) {
 float snowAmt = uSnow;
 if (onNS || onEW) { float lane = onNS ? abs(abs(dx) - 2.0) : abs(abs(dz) - 2.0); snowAmt *= 0.35 + 0.65 * smoothstep(0.4, 1.4, lane); }
 col = mix(col, vec3(0.92, 0.94, 0.99) * (0.96 + 0.04 * n2), snowAmt * 0.95);
+// rain: darker ground, puddles that mirror the sky, rings where drops land
+float pud = 0.0;
+if (uWet > 0.01) {
+  col *= 1.0 - 0.28 * uWet * (1.0 - snowAmt);
+  pud = smoothstep(0.56, 0.62, fbm(p * 0.13 + 7.0)) * uWet * (1.0 - snowAmt);
+  #ifdef USE_FOG
+  col = mix(col, fogColor * 0.85 + vec3(0.03), pud * 0.75);
+  #endif
+  vec2 cell = floor(p / 1.3); vec2 ctr = (cell + 0.2 + 0.6 * vec2(h21(cell), h21(cell + 3.1))) * 1.3;
+  float ph = fract(uTime * 0.9 + h21(cell + 7.7)), rr = length(p - ctr);
+  float ring = band(rr, ph * 0.55, ph * 0.55 + 0.035) * (1.0 - ph) * vis(0.04, fw);
+  col += vec3(0.5) * ring * pud;
+}
 // warm lamp pools at night (lamps every 30 m on both sidewalks, mirrored in world.js)
 if (uNight > 0.01) {
   float pool = 0.0;
@@ -202,7 +216,7 @@ if (uNight > 0.01) {
   { float off = hwz + 0.6; float l1 = floor(p.x / 30.0 + 0.5) * 30.0, l2 = floor((p.x - 15.0) / 30.0 + 0.5) * 30.0 + 15.0;
     pool += exp(-dot(p - vec2(l1, sz + off), p - vec2(l1, sz + off)) / 40.0) + exp(-dot(p - vec2(l2, sz - off), p - vec2(l2, sz - off)) / 40.0); }
   pool = floor(min(pool, 1.0) * 3.0 + 0.5) / 3.0;                      // banded, anime-style pools
-  gE += col * vec3(1.0, 0.78, 0.45) * pool * uNight * 1.3;
+  gE += col * vec3(1.0, 0.78, 0.45) * pool * uNight * 1.3 + vec3(1.0, 0.8, 0.5) * pool * pud * uNight * 0.9;
 }
 diffuseColor.rgb = col;
 `;
@@ -271,16 +285,20 @@ void main(){ vUv = uv * 2.0 - 1.0; vec4 mv = modelViewMatrix * vec4(iPos, 1.0); 
   commit() { this.g.instanceCount = this.n; this.g.attributes.iPos.needsUpdate = true; this.g.attributes.iCol.needsUpdate = true; }
 }
 
-// ---------------------------------------------------------------- render pipeline: colour + normal/depth → ink + grade
+// ---------------------------------------------------------------- render pipeline
+// colour (MSAA) + normal/depth → bloom → composite: ink lines, soft AO, drifting cloud shadows,
+// glow, anime speed lines, photo filters and grade. Lines come from the normal/depth image, so
+// they never z-fight with the geometry; AO and lines fade with distance so they never shimmer.
+const FSQ = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
 export class Pipeline {
   constructor(renderer, scene, camera) {
     this.r = renderer; this.scene = scene; this.camera = camera;
-    const opts = { type: THREE.HalfFloatType };
-    this.color = new THREE.WebGLRenderTarget(4, 4, Object.assign({ samples: 4 }, opts));
-    this.normal = new THREE.WebGLRenderTarget(4, 4, Object.assign({ minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter }, opts));
+    const half = { type: THREE.HalfFloatType };
+    this.color = new THREE.WebGLRenderTarget(4, 4, Object.assign({ samples: 4 }, half));
+    this.normal = new THREE.WebGLRenderTarget(4, 4, Object.assign({ minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter }, half));
+    this.b1 = new THREE.WebGLRenderTarget(4, 4, half); this.b2 = new THREE.WebGLRenderTarget(4, 4, half);
     this.nmat = new THREE.ShaderMaterial({
-      vertexShader: /* glsl */`
-#include <common>
+      vertexShader: `#include <common>
 varying vec3 vN; varying float vZ;
 void main(){
   #include <beginnormal_vertex>
@@ -291,65 +309,125 @@ void main(){
 }`,
       fragmentShader: 'varying vec3 vN; varying float vZ; void main(){ gl_FragColor = vec4(normalize(vN) * (gl_FrontFacing ? 1.0 : -1.0), vZ); }',
     });
-    this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-      uniforms: { tC: { value: this.color.texture }, tN: { value: this.normal.texture }, uPx: { value: new THREE.Vector2() }, uLW: { value: 1 }, uInk: { value: new THREE.Color(0.10, 0.08, 0.20) }, uNight: U.uNight, uGrade: { value: new THREE.Vector3(1.08, 1, 0) } },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-      fragmentShader: /* glsl */`
-uniform sampler2D tC, tN; uniform vec2 uPx; uniform float uLW, uNight; uniform vec3 uInk, uGrade; varying vec2 vUv;
+    const pass = (frag, uniforms) => new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ uniforms, vertexShader: FSQ, fragmentShader: frag, depthTest: false, depthWrite: false, toneMapped: false }));
+    this.bright = pass(`uniform sampler2D tC; varying vec2 vUv; void main(){ vec3 c = texture2D(tC, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(1.05, 1.9, l), 1.0); }`, { tC: { value: this.color.texture } });
+    this.blur = pass(`uniform sampler2D tB; uniform vec2 uDir; varying vec2 vUv; void main(){
+      vec3 s = texture2D(tB, vUv).rgb * 0.227;
+      s += (texture2D(tB, vUv + uDir * 1.38).rgb + texture2D(tB, vUv - uDir * 1.38).rgb) * 0.316;
+      s += (texture2D(tB, vUv + uDir * 3.23).rgb + texture2D(tB, vUv - uDir * 3.23).rgb) * 0.07;
+      gl_FragColor = vec4(s, 1.0); }`, { tB: { value: null }, uDir: { value: new THREE.Vector2() } });
+    this.U = {
+      tC: { value: this.color.texture }, tN: { value: this.normal.texture }, tB: { value: this.b1.texture },
+      uPx: { value: new THREE.Vector2() }, uLW: { value: 1 }, uInk: { value: new THREE.Color(0.10, 0.08, 0.20) }, uNight: U.uNight, uTime: U.uTime,
+      uGrade: { value: new THREE.Vector3(1.08, 1, 0) }, uTan: { value: new THREE.Vector2(1, 1) }, uCamM: { value: new THREE.Matrix4() },
+      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 },
+    };
+    this.quad = pass(/* glsl */`
+uniform sampler2D tC, tN, tB; uniform vec2 uPx, uTan; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash; uniform vec3 uInk, uGrade, uSun; uniform mat4 uCamM; varying vec2 vUv;
+${GLSL_NOISE}
+float D(vec2 uv){ float a = texture2D(tN, uv).a; return a < 0.001 ? 1e4 : a; }
 void main(){
   vec3 c = texture2D(tC, vUv).rgb;
   vec4 n0 = texture2D(tN, vUv);
-  float d0 = n0.a < 0.001 ? 1e4 : n0.a;
+  bool sky = n0.a < 0.001;
+  float d0 = sky ? 1e4 : n0.a;
   vec2 o = uPx * uLW;
-  vec4 s[4]; s[0] = texture2D(tN, vUv + vec2(o.x, 0.0)); s[1] = texture2D(tN, vUv - vec2(o.x, 0.0)); s[2] = texture2D(tN, vUv + vec2(0.0, o.y)); s[3] = texture2D(tN, vUv - vec2(0.0, o.y));
-  float dmin = d0, ne = 0.0;
-  float dd[4];
-  for (int i = 0; i < 4; i++) { dd[i] = s[i].a < 0.001 ? 1e4 : s[i].a; dmin = min(dmin, dd[i]); }
-  // depth creases & silhouettes (second difference, relative to distance → no false lines on slopes)
-  float lap = abs(dd[0] + dd[1] - 2.0 * d0) + abs(dd[2] + dd[3] - 2.0 * d0);
+  float dd0 = D(vUv + vec2(o.x, 0.0)), dd1 = D(vUv - vec2(o.x, 0.0)), dd2 = D(vUv + vec2(0.0, o.y)), dd3 = D(vUv - vec2(0.0, o.y));
+  float dmin = min(d0, min(min(dd0, dd1), min(dd2, dd3)));
+  float lap = abs(dd0 + dd1 - 2.0 * d0) + abs(dd2 + dd3 - 2.0 * d0);
   float de = smoothstep(0.05, 0.1, lap / max(dmin, 0.3));
-  // normal creases (only up close, where they read as drawn lines)
-  if (n0.a > 0.001) for (int i = 0; i < 4; i++) if (s[i].a > 0.001) ne = max(ne, 1.0 - dot(n0.xyz, s[i].xyz));
+  float ne = 0.0;
+  if (!sky) {
+    vec3 s0 = texture2D(tN, vUv + vec2(o.x, 0.0)).xyz, s1 = texture2D(tN, vUv - vec2(o.x, 0.0)).xyz, s2 = texture2D(tN, vUv + vec2(0.0, o.y)).xyz, s3 = texture2D(tN, vUv - vec2(0.0, o.y)).xyz;
+    ne = max(max(1.0 - dot(n0.xyz, s0), 1.0 - dot(n0.xyz, s1)), max(1.0 - dot(n0.xyz, s2), 1.0 - dot(n0.xyz, s3)));
+  }
   float nearF = 1.0 - smoothstep(35.0, 140.0, dmin);
-  float edge = max(de, smoothstep(0.25, 0.5, ne) * nearF);
-  edge *= 1.0 - smoothstep(150.0, 520.0, dmin) * 0.85;
+  float edge = max(de, smoothstep(0.25, 0.5, ne) * nearF) * (1.0 - smoothstep(150.0, 520.0, dmin) * 0.85);
+  if (!sky) {
+    // soft ambient occlusion from the depth image (8 taps, range-checked)
+    float r = clamp(28.0 / d0, 1.5, 14.0), ao = 0.0;
+    for (int i = 0; i < 8; i++) {
+      float a = float(i) * 0.785 + h21(vUv * 913.0) * 0.6;
+      float sd = D(vUv + vec2(cos(a), sin(a)) * uPx * r * (1.0 + float(i - (i / 2) * 2)));
+      float dz = d0 - sd; ao += smoothstep(0.08, 0.5, dz) * (1.0 - smoothstep(1.5, 3.0, dz));
+    }
+    c *= 1.0 - 0.38 * uAO * (ao / 8.0) * (1.0 - smoothstep(40.0, 160.0, d0));
+    // drifting cloud shadows, projected along the sun
+    vec2 ndc = vUv * 2.0 - 1.0;
+    vec3 wp = (uCamM * vec4(ndc.x * uTan.x * d0, ndc.y * uTan.y * d0, -d0, 1.0)).xyz;
+    vec2 cp = wp.xz - uSun.xz / max(uSun.y, 0.25) * wp.y;
+    float cl = fbm(cp * 0.0045 + vec2(uTime * 0.012, uTime * 0.005));
+    c *= 1.0 - 0.24 * uCloud * smoothstep(0.52, 0.6, cl);
+  }
+  // ink
   vec3 ink = mix(c * vec3(0.32, 0.30, 0.45), uInk, 0.35);
   ink = mix(ink, c * 0.55 + vec3(0.02, 0.02, 0.06), uNight * 0.5);
   c = mix(c, ink, edge * 0.92);
-  // gentle grade: saturation + vignette
+  // glow
+  c += texture2D(tB, vUv).rgb * uBloom;
+  // rain tint
+  c = mix(c, c * vec3(0.86, 0.9, 1.0), uWet * 0.35);
+  // anime speed lines when sprinting / dashing / biking
+  if (uSpeed > 0.01) {
+    vec2 v = vUv - 0.5; v.x *= uPx.y / uPx.x;
+    float ang = atan(v.y, v.x), rr = length(v);
+    float id = floor(ang * 70.0);
+    float ln = step(0.9, h21(vec2(id, floor(uTime * 14.0)))) * smoothstep(0.4, 0.7, rr + 0.06 * h21(vec2(id, 3.0)));
+    ln *= 1.0 - smoothstep(0.06, 0.16, abs(fract(ang * 70.0) - 0.5));
+    c = mix(c, vec3(1.0), ln * uSpeed * 0.4);
+  }
+  // photo filters: 1 manga screentone, 2 film
   float l = dot(c, vec3(0.299, 0.587, 0.114));
-  c = mix(vec3(l), c, uGrade.x);
-  vec2 v = vUv - 0.5; c *= 1.0 - dot(v, v) * 0.35;
+  if (uFilter > 0.5 && uFilter < 1.5) {
+    vec2 px = vUv / uPx; vec2 g = fract(px / 5.0) - 0.5; float dot5 = length(g);
+    float tone = l > 0.62 ? 1.0 : l > 0.32 ? step(0.32, dot5) : l > 0.12 ? step(0.45, dot5) * 0.6 : 0.08;
+    c = mix(vec3(tone) * vec3(1.0, 0.98, 0.94), vec3(0.05), edge);
+  } else if (uFilter > 1.5) {
+    c = mix(vec3(l), c, 0.65) * vec3(1.08, 0.98, 0.84) + (h21(vUv * 700.0 + uTime) - 0.5) * 0.06;
+  } else {
+    c = mix(vec3(l), c, uGrade.x);
+  }
+  vec2 v2 = vUv - 0.5; c *= 1.0 - dot(v2, v2) * (uFilter > 1.5 ? 0.9 : 0.35);
+  c = mix(c, vec3(1.0), uFlash);
   gl_FragColor = vec4(c, 1.0);
   #include <colorspace_fragment>
-}`,
-      depthTest: false, depthWrite: false, toneMapped: false,
-    }));
-    this.quad.frustumCulled = false;
-    this.qscene = new THREE.Scene(); this.qscene.add(this.quad);
-    this.qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+}`, this.U);
+    this.qscene = new THREE.Scene(); this.qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.clearN = new THREE.Color(0, 0, 0);
+    this.bloomOn = true; this.aoOn = true;
   }
   setSize(w, h, pr) {
     const W = Math.floor(w * pr), H = Math.floor(h * pr);
     this.color.setSize(W, H); this.normal.setSize(W, H);
-    this.quad.material.uniforms.uPx.value.set(1 / W, 1 / H);
-    this.quad.material.uniforms.uLW.value = Math.max(1, Math.round(H / 820));
+    this.b1.setSize(Math.max(1, W >> 2), Math.max(1, H >> 2)); this.b2.setSize(Math.max(1, W >> 2), Math.max(1, H >> 2));
+    this.U.uPx.value.set(1 / W, 1 / H);
+    this.U.uLW.value = Math.max(1, Math.round(H / 820));
+    this.bw = W >> 2; this.bh = H >> 2;
   }
+  draw(mesh, target) { this.qscene.children.length = 0; this.qscene.add(mesh); this.r.setRenderTarget(target); this.r.render(this.qscene, this.qcam); }
   render() {
     const r = this.r, cam = this.camera, sc = this.scene;
-    // 1) normal + depth (layer 0 only, no sky / glows / particles)
-    const fog = sc.fog, bg = sc.background;
-    sc.fog = null; sc.background = null; sc.overrideMaterial = this.nmat;
+    const fog = sc.fog; sc.fog = null; sc.overrideMaterial = this.nmat;
     const mask = cam.layers.mask; cam.layers.set(0);
     r.setRenderTarget(this.normal); r.setClearColor(this.clearN, 0); r.clear();
     const sh = r.shadowMap.autoUpdate; r.shadowMap.autoUpdate = false;
     r.render(sc, cam);
     r.shadowMap.autoUpdate = sh;
-    sc.overrideMaterial = null; sc.fog = fog; sc.background = bg; cam.layers.mask = mask;
-    // 2) colour (all layers, MSAA)
+    sc.overrideMaterial = null; sc.fog = fog; cam.layers.mask = mask;
     r.setRenderTarget(this.color); r.render(sc, cam);
-    // 3) composite to screen
-    r.setRenderTarget(null); r.render(this.qscene, this.qcam);
+    // bloom
+    if (this.bloomOn) {
+      this.draw(this.bright, this.b1);
+      const bu = this.blur.material.uniforms;
+      for (let i = 0; i < 2; i++) {
+        bu.tB.value = this.b1.texture; bu.uDir.value.set(1 / this.bw * (1 + i), 0); this.draw(this.blur, this.b2);
+        bu.tB.value = this.b2.texture; bu.uDir.value.set(0, 1 / this.bh * (1 + i)); this.draw(this.blur, this.b1);
+      }
+    }
+    this.U.uBloom.value = this.bloomOn ? 0.85 : 0;
+    this.U.uAO.value = this.aoOn ? 1 : 0;
+    const t = Math.tan(cam.fov * Math.PI / 360);
+    this.U.uTan.value.set(t * cam.aspect, t); this.U.uCamM.value.copy(cam.matrixWorld);
+    this.draw(this.quad, null);
   }
 }

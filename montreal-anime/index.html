@@ -91,6 +91,62 @@ body.playing #title{opacity:0;pointer-events:none}
 .tb.on{background:var(--gold)}
 @media (pointer:coarse){.tbtns{display:flex}#prompt{bottom:130px}.icons{top:auto;bottom:130px;transform:none}}
 @media (max-width:700px){#mini{width:112px;height:112px}.ic{width:42px;height:42px}#area{top:24%}#areaName{font-size:22px;white-space:nowrap}#area small{font-size:10px;letter-spacing:.18em}#counter{font-size:18px}#counter i{width:30px;height:30px}#sayText{font-size:16px}}
+
+/* ---- v2 HUD ---- */
+.chips{display:flex;gap:6px;margin-top:2px}
+.chip{background:var(--paper);box-shadow:var(--shadow);border-radius:999px;padding:4px 12px;font-weight:700;font-size:14px;display:flex;gap:6px;align-items:center}
+#money{color:#2f7f4a}
+.counters{position:absolute;right:max(16px,env(safe-area-inset-right));top:max(16px,env(safe-area-inset-top));display:flex;gap:10px;align-items:center}
+.counters #counter{position:static}
+.counters .chip{padding:10px 16px;font-size:18px}
+#btnWeather svg>g{display:none}
+#btnWeather[data-v=clear] .wc,#btnWeather[data-v=cloudy] .wn,#btnWeather[data-v=rain] .wr{display:inline}
+#jobCard{position:absolute;left:50%;top:max(16px,env(safe-area-inset-top));transform:translate(-50%,-140%);transition:transform .45s cubic-bezier(.3,1.4,.5,1);background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:var(--shadow);padding:10px 16px 12px;min-width:300px;max-width:calc(100vw - 360px)}
+body.onjob #jobCard{transform:translate(-50%,0)}
+#jobCard .row{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+#jobWho{font-weight:700;font-size:15px}#jobAddr{font-size:13px;color:var(--ink2)}
+#jobTime{font-weight:700;font-variant-numeric:tabular-nums}#jobDist{font-size:13px;color:var(--ink2);font-weight:600}
+.bar{height:8px;border-radius:99px;background:#eadfcb;margin-top:8px;overflow:hidden}
+#jobBar{height:100%;background:linear-gradient(90deg,#2fd0ee,#5ff0b0);border-radius:99px;transition:width .2s}
+#jobBar.late{background:linear-gradient(90deg,#e4402b,#f2a93b);animation:blink .5s infinite alternate}
+@keyframes blink{to{opacity:.55}}
+#arrow{position:absolute;left:0;top:0;width:44px;height:44px;display:none;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(43,37,80,.35))}
+body.onjob.playing:not(.photo) #arrow{display:block}
+#arrow::before{content:"";position:absolute;inset:0;background:#2fd0ee;clip-path:polygon(50% 0,100% 80%,50% 62%,0 80%);border-radius:4px}
+#arrow.on::before{clip-path:polygon(50% 100%,100% 20%,50% 38%,0 20%)}
+#achs{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.ach{display:flex;gap:12px;align-items:center;background:var(--ink);color:#fff;padding:10px 20px 10px 12px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:achIn .5s cubic-bezier(.3,1.5,.5,1);transition:all .5s}
+.ach.out{opacity:0;transform:translateY(10px)}
+.ach i{font-style:normal;font-size:28px;width:44px;height:44px;display:grid;place-items:center;background:rgba(255,255,255,.12);border-radius:12px}
+.ach small{display:block;font-size:10px;letter-spacing:.2em;color:var(--gold);font-weight:700}.ach b{font-size:17px}
+@keyframes achIn{from{opacity:0;transform:translateY(20px) scale(.9)}}
+#floats{position:absolute;left:50%;top:42%;pointer-events:none}
+.float{position:absolute;left:0;transform:translate(-50%,0);font-weight:700;font-size:28px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;animation:floatUp 1.6s ease-out forwards;white-space:nowrap}
+.float.money{color:#5fe08a}.float.combo{color:var(--gold);font-size:22px}
+@keyframes floatUp{0%{opacity:0;transform:translate(-50%,20px) scale(.6)}15%{opacity:1;transform:translate(-50%,0) scale(1.15)}100%{opacity:0;transform:translate(-50%,-70px) scale(1)}}
+#onBike{display:none;position:absolute;left:max(16px,env(safe-area-inset-left));top:236px;background:#d0312d;color:#fff;font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;box-shadow:var(--shadow)}
+#onBike.show{display:block}
+#sayHearts{position:absolute;right:22px;top:-15px;color:var(--red);font-size:18px;letter-spacing:2px;background:var(--paper);padding:0 8px;border-radius:10px;border:2px solid var(--ink)}
+#sayHearts:empty{display:none}
+/* photo mode */
+#photoBar{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160%);transition:transform .4s cubic-bezier(.3,1.4,.5,1);display:flex;gap:10px;align-items:center;background:var(--paper);border:3px solid var(--ink);border-radius:999px;padding:8px;box-shadow:var(--shadow);z-index:8}
+body.photo #photoBar{transform:translate(-50%,0)}
+body.photo .hud{opacity:0;pointer-events:none}
+#photoBar button{font-weight:700;padding:10px 16px;border-radius:999px;background:#efe7d8}
+#photoBar #pSnap{width:58px;height:58px;padding:0;border-radius:50%;background:var(--red);border:4px solid var(--paper);box-shadow:0 0 0 3px var(--ink)}
+/* journal */
+#journal{position:fixed;inset:0;display:none;place-items:center;background:rgba(43,37,80,.35);backdrop-filter:blur(4px);z-index:10}
+#journal.show{display:grid}
+#jStats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+#jStats div{background:#f3ead8;border-radius:14px;padding:10px;text-align:center}#jStats b{display:block;font-size:22px}#jStats small{color:var(--ink2)}
+#jAch{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:50vh;overflow:auto}
+#jAch li{display:grid;grid-template-columns:36px 1fr;column-gap:10px;align-items:center;padding:8px;border-radius:12px;background:#f3ead8;opacity:.45;filter:grayscale(1)}
+#jAch li.got{opacity:1;filter:none}
+#jAch i{font-style:normal;font-size:24px;grid-row:span 2;text-align:center}#jAch b{font-size:14px}#jAch small{font-size:12px;color:var(--ink2)}
+.sets{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.set{padding:8px 14px;border-radius:999px;background:#efe7d8;font-weight:600;font-size:14px;border:2px solid transparent}
+.set.on{background:var(--ink);color:#fff}
+@media (max-width:700px){#jobCard{min-width:0;max-width:calc(100vw - 150px);left:auto;right:12px;transform:translate(0,-160%);top:70px;padding:8px 12px}body.onjob #jobCard{transform:none}.counters .chip{font-size:14px;padding:8px 12px}#jAch{grid-template-columns:1fr}#jStats{grid-template-columns:1fr 1fr}#onBike{top:180px}}
 /* loader + flash */
 #loader{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:linear-gradient(180deg,#3c9be8,#c4e9ff);transition:opacity .8s;color:#fff;font-weight:600;font-size:18px;text-shadow:0 2px 0 var(--ink)}
 #loader.done{opacity:0;pointer-events:none}
@@ -102,42 +158,49 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
 <body>
 <canvas id="gl" tabindex="0"></canvas>
 <div class="hud">
-  <div class="map"><canvas id="mini" width="300" height="300"></canvas><small>LE PLATEAU</small></div>
-  <div id="counter"><i></i><b id="bCount">0</b><span>/ <b id="bTotal">12</b></span></div>
-  <div class="boosts"><div class="boost" id="boostCafe">☕ Caféine!</div><div class="boost" id="boostJump">🥐 Super saut!</div></div>
+  <div class="map"><canvas id="mini" width="300" height="300"></canvas><div class="chips"><span class="chip" id="clock">09:00</span></div></div>
+  <div class="counters"><div class="chip" id="money">0 $</div><div id="counter"><i></i><b id="bCount">0</b><span>/ <b id="bTotal">12</b></span></div></div>
+  <div id="jobCard"><div class="row"><span id="jobWho">—</span><span id="jobTime">0 s</span></div><div class="row"><span id="jobAddr">—</span><span id="jobDist"></span></div><div class="bar"><div id="jobBar"></div></div></div>
+  <div id="arrow"></div><div id="achs"></div><div id="floats"></div><div id="onBike">🚲 BIXI · E pour descendre · B sonnette</div>
+  <div class="boosts" style="top:84px"><div class="boost" id="boostCafe">☕ Caféine!</div><div class="boost" id="boostJump">🥐 Super saut!</div></div>
   <div class="icons">
     <button class="ic" id="btnHelp" title="Aide (H)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <button class="ic" id="btnTime" data-v="day" title="Moment de la journée (T)"><svg viewBox="0 0 24 24"><g class="sun"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g><g class="set"><path d="M3 17h18M6 17a6 6 0 0112 0M12 4v4M5 9l2 2M19 9l-2 2M8 21h8"/></g><g class="moon"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></g></svg></button>
+    <button class="ic" id="btnWeather" data-v="clear" title="Météo (R)"><svg viewBox="0 0 24 24"><g class="wc"><circle cx="9" cy="9" r="3.5"/><path d="M9 2.5v1.5M2.5 9H4M4.4 4.4l1 1M13.6 4.4l-1 1M8 20h9a4 4 0 000-8 5 5 0 00-9.5 1.5A3.3 3.3 0 008 20z"/></g><g class="wn"><path d="M6 19h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 19z"/></g><g class="wr"><path d="M6 15h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></g></svg></button>
     <button class="ic" id="btnSeason" data-v="autumn" title="Saison (Y)"><svg viewBox="0 0 24 24"><g class="su"><path d="M12 21v-7M12 14c-4 0-7-3-7-7 4 0 7 3 7 7zM12 14c4 0 7-3 7-7-4 0-7 3-7 7z"/></g><g class="au"><path d="M12 22v-6M12 3l2 4 4-1-1 4 3 2-4 1 1 3-5-2-5 2 1-3-4-1 3-2-1-4 4 1z"/></g><g class="wi"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2"/></g></svg></button>
+    <button class="ic" id="btnJournal" title="Carnet (J)"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11M9 8h6"/></svg></button>
     <button class="ic" id="btnCam" title="Recentrer la caméra"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
     <button class="ic" id="btnPhoto" title="Photo (P)"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
     <button class="ic off" id="btnSound" title="Musique (M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
   </div>
   <div id="area"><small>LE PLATEAU-MONT-ROYAL</small><span id="areaName">Rue Saint-Denis</span></div>
   <div id="prompt"><kbd>E</kbd><span id="promptText">Parler</span></div>
-  <div id="say"><span id="sayName">Nom</span><div id="sayText"></div></div>
-  <div class="tbtns"><button class="tb" id="tTalk">Parler</button><button class="tb" id="tRun">Courir</button><button class="tb big" id="tJump">Sauter</button></div>
+  <div id="say"><span id="sayName">Nom</span><span id="sayHearts"></span><div id="sayText"></div></div>
+  <div class="tbtns"><button class="tb" id="tTalk">Parler</button><button class="tb" id="tDash">Élan</button><button class="tb" id="tRun">Courir</button><button class="tb big" id="tJump">Sauter</button></div>
 </div>
+<div id="photoBar"><button id="pFilter">Filtre: <span id="pfName">Normal</span></button><button id="pPose">Pose ✌</button><button id="pSnap" title="Photo"></button><button id="pExit">Quitter</button></div>
+<div id="journal"><div class="card" style="max-width:min(640px,calc(100vw - 32px))"><h3>Mon carnet du Plateau</h3><div id="jStats"></div><ul id="jAch"></ul></div></div>
 <div id="joy"><div id="joyKnob"></div></div>
 <div id="title"><div class="logo">
   <div class="k">MONTRÉAL · LE PLATEAU</div>
   <h1>PLATEAU<em>.</em></h1>
-  <p>une balade dans le quartier · find the 12 golden bagels</p>
+  <p>coursier sur le Plateau · deliver, explore, find the 12 golden bagels</p>
   <button id="play">Jouer ▸</button>
-  <div class="hint">WASD / flèches pour marcher · Maj pour courir · Espace pour sauter · E pour parler · glisser pour tourner la caméra</div>
+  <div class="hint">Coursier, bagels, BIXI et voisins qui parlent · WASD + Espace + E · glisser pour la caméra · H pour l'aide</div>
 </div></div>
 <div id="help"><div class="card">
   <h3>Comment jouer</h3>
   <dl>
-    <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Marcher (flèches ou manette aussi)</dd>
-    <dt><kbd>Maj</kbd></dt><dd>Courir</dd>
-    <dt><kbd>Espace</kbd></dt><dd>Sauter — les escaliers extérieurs mènent aux balcons</dd>
-    <dt><kbd>E</kbd></dt><dd>Parler aux voisins, entrer dans les commerces, flatter le chat</dd>
-    <dt>Souris</dt><dd>Glisser pour tourner la caméra, molette pour zoomer</dd>
-    <dt><kbd>T</kbd> <kbd>Y</kbd></dt><dd>Jour → heure dorée → nuit · été → automne → hiver</dd>
-    <dt><kbd>P</kbd> <kbd>M</kbd></dt><dd>Photo · musique</dd>
-    <dt>Astuce</dt><dd>Le café te fait courir plus vite, le croissant te fait sauter plus haut. Les bagels dorés sont sur la mini-carte.</dd>
+    <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Marcher · <kbd>Maj</kbd> courir</dd>
+    <dt><kbd>Espace</kbd></dt><dd>Sauter · deux fois pour un salto · maintenir en l'air pour planer au parapluie</dd>
+    <dt><kbd>F</kbd></dt><dd>Élan (dash), même en l'air</dd>
+    <dt><kbd>E</kbd></dt><dd>Parler, prendre une livraison dans un commerce, prendre un BIXI, flatter le chat</dd>
+    <dt><kbd>B</kbd></dt><dd>Sonnette du vélo</dd>
+    <dt><kbd>T</kbd> <kbd>R</kbd> <kbd>Y</kbd></dt><dd>Avancer l'heure · changer la météo · changer de saison</dd>
+    <dt><kbd>P</kbd> <kbd>J</kbd> <kbd>M</kbd></dt><dd>Mode photo (filtres manga et pellicule) · carnet de succès · musique</dd>
+    <dt>But</dt><dd>Livre des colis à temps pour gagner des pourboires, achète des tenues à la friperie, trouve les 12 bagels dorés. Le café fait courir plus vite, le croissant fait sauter plus haut.</dd>
   </dl>
+  <div class="sets"><button class="set" id="setVoice">🗣 Voix des voisins</button><button class="set" id="setBloom">✨ Lueur</button><button class="set" id="setAO">🌓 Ombrage doux</button><button class="set" id="setFast">⏩ Temps rapide</button><button class="set" id="setFreeze">⏸ Figer l'heure</button><button class="set" id="setReset">↺ Recommencer</button></div>
 </div></div>
 <div id="win"><div class="card"><h3>Bravo!</h3><p style="font-size:19px;margin:0 0 6px">Tu as trouvé les 12 bagels dorés du Plateau.</p><p style="color:var(--ink2);margin:0 0 18px">Temps: <b id="winTime"></b></p><button id="winClose" class="tb big" style="width:auto;padding:0 28px;border-radius:999px;height:56px">Continuer la balade</button></div></div>
 <div id="loader"><div><b>PLATEAU.</b><span id="loadMsg">Chargement…</span></div></div>

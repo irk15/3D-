@@ -231,7 +231,8 @@ const L = (hex) => lin(hex);
 export function buildWorld(scene) {
   const B = new Batch(96), C = new Colliders(), atlas = new Atlas(2048), S = new SignBatch(atlas);
   const glows = new Glows(1600);
-  const spots = { balcony: [], back: [], alley: [], sidewalk: [], shed: [] };
+  const spots = { balcony: [], back: [], alley: [], sidewalk: [], shed: [], doors: [], stairs: [] };
+  const docks = [];
   const npcPaths = [], shops = [], lamps = [], trees = [], parked = [], benches = [], foot = [];
   const SIDE = atlas.draw(8, 8, (x) => { x.fillStyle = '#e9e4d8'; x.fillRect(0, 0, 8, 8); });
   const SIDE_DARK = atlas.draw(8, 8, (x) => { x.fillStyle = '#2b3036'; x.fillRect(0, 0, 8, 8); });
@@ -383,6 +384,7 @@ export function buildWorld(scene) {
       const left = R() < 0.5;
       const d1 = z0 + W * (left ? 0.2 : 0.8), d2 = z0 + W * (left ? 0.42 : 0.58), wz = z0 + W * (left ? 0.75 : 0.25);
       doorAt('x', xf, f, d1, base, 1.0, 2.35, doorCol, trim); doorAt('x', xf, f, d2, base, 1.0, 2.35, L(pick(DOORS, R)), trim);
+      if (!fill) spots.doors.push({ x: xf + f * 1.35, z: d1, y: base, street: o.street, num: 4000 + Math.round(-xf * 3 + d1 * 7) % 900 * 2 });
       windowAt('x', xf, f, wz, base + 1.5, 1.3, 1.5, trim, { mullion: true, brow: stone ? L('#a9a296') : null });
       // stoop
       const sh0 = Math.min(d1, d2) - 0.7, sh1 = Math.max(d1, d2) + 0.7;
@@ -787,6 +789,8 @@ export function buildWorld(scene) {
     shops.push({ x: tx + 2.6, z: tz, name: 'Camion à poutine', kind: 'poutine', line: 'Une poutine bien chaude? Mange-la sur la place.' });
     // bike-share dock
     for (let i = 0; i < 7; i++) { const z = PLAZA.z0 + 4 + i * 1.1, x = PLAZA.x1 - 2.2; bike(B, x, z); }
+    docks.push({ x: PLAZA.x1 - 3.2, z: PLAZA.z0 + 7.3, name: 'Station BIXI · Métro Mont-Royal' });
+    for (const [dx, dz, nm] of [[8.4, 36, 'Station BIXI · Saint-Denis / Rachel'], [-84.0, -66, 'Station BIXI · Drolet'], [96.0, 124, 'Station BIXI · Saint-Hubert']]) { for (let i = 0; i < 5; i++) bike(B, dx, dz + i * 1.1); docks.push({ x: dx + 1.1, z: dz + 2.2, name: nm }); }
     // bus shelter on Mont-Royal (with a bin and a bench to climb)
     const sx = 26, sz = ewZ(-1) - ewHW(-1) - 2.2, sy = h(sz) + CURB;
     for (const dx of [-2.2, 2.2]) for (const dz of [-0.7, 0.7]) B.box(sx + dx - 0.05, sx + dx + 0.05, sy, sy + 2.5, sz + dz - 0.05, sz + dz + 0.05, L('#3d4650'), 10);
@@ -886,7 +890,7 @@ export function buildWorld(scene) {
   const backdrop = buildBackdrop(scene, glows);
   glows.commit();
 
-  return { city, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot };
+  return { city, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot, docks };
 }
 function await0(o, k, f) { if (!o[k]) o[k] = f(); return o[k]; }
 const nameNS = (k) => ({ '-1': 'Rue Drolet', 0: 'Rue Saint-Denis', 1: 'Rue Saint-Hubert' }[k] || 'Rue');

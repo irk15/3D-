@@ -27,12 +27,13 @@ export function makeCharacter(o = {}) {
   mesh(G.cyl, toon(c.skin), torso, 0, 0.47, 0, 0.05, 0.1, 0.05);
   const head = new THREE.Group(); head.position.y = 0.5; torso.add(head);
   mesh(G.sph, toon(c.skin), head, 0, 0.17, 0, 0.165, 0.172, 0.16);
+  const eyes = [];
   for (const s of [-1, 1]) {
-    mesh(G.sph, EYE, head, s * 0.058, 0.158, 0.143, 0.022, 0.036, 0.012).castShadow = false;
-    mesh(G.sph, WHITE, head, s * 0.058 + 0.008, 0.172, 0.152, 0.008, 0.01, 0.006).castShadow = false;
+    const ey = mesh(G.sph, EYE, head, s * 0.058, 0.158, 0.143, 0.022, 0.036, 0.012); ey.castShadow = false; eyes.push(ey);
+    const hl = mesh(G.sph, WHITE, head, s * 0.058 + 0.008, 0.172, 0.152, 0.008, 0.01, 0.006); hl.castShadow = false; eyes.push(hl);
     const b = mesh(G.sph, BLUSH, head, s * 0.098, 0.11, 0.128, 0.026, 0.013, 0.008); b.castShadow = false; b.layers.set(LAYER_FX);
   }
-  mesh(G.sph, EYE, head, 0, 0.083, 0.156, 0.018, 0.006, 0.005).castShadow = false;
+  const mouth = mesh(G.sph, EYE, head, 0, 0.083, 0.156, 0.018, 0.006, 0.005); mouth.castShadow = false;
   // hair
   const hairM = toon(c.hair);
   const capG = new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.58);
@@ -74,10 +75,19 @@ export function makeCharacter(o = {}) {
     return { hp, kn };
   };
   const L = { arm: [arm(1), arm(-1)], leg: [leg(1), leg(-1)] };
+  // umbrella in the right hand (rain + glide), parcel on the back (deliveries)
+  const umb = new THREE.Group(); umb.position.y = -0.23; L.arm[1].el.add(umb); umb.visible = false;
+  mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.95, 6), toon('#2a2e33'), umb, 0, -0.4, 0);
+  const canopyCol = c.umbrella || pick(['#e4402b', '#2f7fbf', '#f2b43c', '#7b4fb0', '#3f9a6a', '#e79cb4'], Math.random);
+  const can = mesh(new THREE.ConeGeometry(0.62, 0.3, 10, 1, true), toon(canopyCol, { side: THREE.DoubleSide }), umb, 0, -0.92, 0); can.rotation.x = Math.PI;
+  const parcel = new THREE.Group(); torso.add(parcel); parcel.visible = false;
+  mesh(new THREE.BoxGeometry(0.36, 0.28, 0.26), toon('#c89a5e'), parcel, 0, 0.5, -0.24);
+  mesh(new THREE.BoxGeometry(0.37, 0.05, 0.27), toon('#e4402b'), parcel, 0, 0.5, -0.24);
   root.scale.setScalar(c.scale);
   const st = { ph: 0, air: 0, run: 0, mv: 0, land: 0, t: Math.random() * 10, look: 0 };
   const lerp = (a, b, k) => a + (b - a) * k;
-  function animate(dt, speed, grounded, wave = 0) {
+  let blinkT = 2 + Math.random() * 3, blink = 0;
+  function animate(dt, speed, grounded, wave = 0, o = {}) {
     st.t += dt;
     const k = 1 - Math.exp(-dt * 14);
     st.mv = lerp(st.mv, Math.min(1, speed / 1.8), k);
@@ -98,6 +108,24 @@ export function makeCharacter(o = {}) {
       ar.el.rotation.x = lerp(-(0.18 + 1.0 * r) * m - 0.1, -0.4, a);
     }
     if (wave > 0) { L.arm[1].sh.rotation.x = -2.7; L.arm[1].sh.rotation.z = -0.4 + Math.sin(st.t * 10) * 0.25 * wave; L.arm[1].el.rotation.x = -0.3; }
+    // umbrella: right arm up holding it overhead
+    umb.visible = !!o.umbrella;
+    if (o.umbrella) { L.arm[1].sh.rotation.x = Math.PI - 0.15; L.arm[1].sh.rotation.z = -0.15; L.arm[1].el.rotation.x = 0.05; }
+    parcel.visible = !!o.parcel;
+    // on a bike: pedal, hands on the bars, lean forward
+    if (o.bike) {
+      const p2 = st.ph * 0.9;
+      for (let i = 0; i < 2; i++) { const s2 = i ? Math.PI : 0; L.leg[i].hp.rotation.x = -1.05 + Math.sin(p2 + s2) * 0.42; L.leg[i].kn.rotation.x = 1.25 + Math.cos(p2 + s2) * 0.4; L.arm[i].sh.rotation.x = -1.05; L.arm[i].sh.rotation.z = (i ? -1 : 1) * 0.22; L.arm[i].el.rotation.x = -0.35; }
+      torso.rotation.x = 0.32; body.position.y = 0.98; body.rotation.y = 0;
+    }
+    // double-jump flip
+    body.rotation.x = o.flip ? -o.flip * Math.PI * 2 : 0;
+    // blink + talking mouth
+    blinkT -= dt; if (blinkT < 0) { blink = 0.14; blinkT = 2 + Math.random() * 4; }
+    blink = Math.max(0, blink - dt);
+    const ey = blink > 0 ? 0.15 : 1;
+    eyes[0].scale.y = 0.036 * ey; eyes[2].scale.y = 0.036 * ey; eyes[1].visible = eyes[3].visible = blink <= 0;
+    mouth.scale.y = o.talk ? 0.006 + Math.abs(Math.sin(st.t * 16)) * 0.016 : 0.006;
     body.position.y = 0.8 - Math.abs(Math.cos(ph)) * 0.035 * m + 0.02 * a - st.land * 0.08;
     torso.rotation.x = 0.04 * m + 0.2 * r + 0.08 * a;
     body.rotation.y = Math.sin(ph) * 0.07 * m; torso.rotation.y = -Math.sin(ph) * 0.1 * m;
@@ -111,26 +139,50 @@ export function makeCharacter(o = {}) {
 }
 
 // ================================================================= player controller
+// walk / run / jump + double jump with a flip, umbrella glide, dash, and BIXI bike riding
 export class Player {
   constructor(world, char) {
     this.w = world; this.c = char; this.pos = new THREE.Vector3(9, 0, 112); this.pos.y = world.colliders.ground(this.pos.x, this.pos.z, 99);
     this.vel = new THREE.Vector3(); this.vy = 0; this.grounded = true; this.coyote = 0; this.jumpBuf = 0; this.yaw = Math.PI; this.visY = this.pos.y;
-    this.boost = 0; this.jumpBoost = 0; this.speed = 0; this.r = 0.3;
+    this.boost = 0; this.jumpBoost = 0; this.speed = 0; this.r = 0.3; this.jumps = 0; this.flip = 0; this.gliding = false; this.dashT = 0; this.dashCD = 0; this.airDash = true;
+    this.bike = null; this.parcel = false; this.fx = { dashed: false, doubled: false, glide: false };
     char.root.position.copy(this.pos); char.root.rotation.y = this.yaw;
   }
+  mountBike(model) { this.bike = model; this.c.root.add(model.g); model.g.position.set(0, 0, 0); this.r = 0.45; }
+  dismount() { if (!this.bike) return; this.c.root.remove(this.bike.g); this.bike = null; this.r = 0.3; }
   update(dt, inp, camYaw) {
-    const C = this.w.colliders, p = this.pos;
+    const C = this.w.colliders, p = this.pos, bike = !!this.bike;
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
     let mx = fx * inp.y + rx * inp.x, mz = fz * inp.y + rz * inp.x;
     const mag = Math.min(1, Math.hypot(mx, mz));
-    if (mag > 0.01) { mx /= Math.hypot(mx, mz); mz /= Math.hypot(mx, mz) || 1; }
-    const top = (inp.run ? 5.4 : 2.5) * (this.boost > 0 ? 1.4 : 1) * mag;
-    const acc = this.grounded ? 16 : 5;
-    const tx = mx * top, tz = mz * top, k = 1 - Math.exp(-acc * dt);
-    this.vel.x += (tx - this.vel.x) * k; this.vel.z += (tz - this.vel.z) * k;
-    if (mag > 0.05) { const ty = Math.atan2(mx, mz); let d = ty - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 12)); }
-    // horizontal move with sliding
-    const step = 0.45, head = p.y + 1.5;
+    if (mag > 0.01) { const l = Math.hypot(mx, mz); mx /= l; mz /= l; }
+    this.jumpBuf -= dt; this.coyote -= dt; this.boost -= dt; this.jumpBoost -= dt; this.dashCD -= dt; this.dashT -= dt;
+    let top = (inp.run ? 5.4 : 2.5) * (this.boost > 0 ? 1.4 : 1) * mag;
+    if (bike) top = (inp.run ? 11.5 : 8) * mag;
+    if (this.gliding) top = Math.max(top, 4.2 * mag);
+    // dash
+    if (inp.dash && this.dashCD <= 0 && !bike && (this.grounded || this.airDash)) {
+      const dx = mag > 0.05 ? mx : Math.sin(this.yaw), dz = mag > 0.05 ? mz : Math.cos(this.yaw);
+      this.vel.set(dx * 12, 0, dz * 12); this.dashT = 0.2; this.dashCD = 0.7; if (!this.grounded) { this.airDash = false; this.vy = Math.max(this.vy, 1.5); }
+      this.yaw = Math.atan2(dx, dz); this.fx.dashed = true;
+    }
+    inp.dash = false;
+    if (this.dashT <= 0) {
+      const acc = bike ? (this.grounded ? 4 : 1.5) : this.grounded ? 16 : 5;
+      const k = 1 - Math.exp(-acc * dt);
+      if (bike) {
+        // a bike can't strafe: steer toward the input, roll forward
+        const fwd = this.speed;
+        let target = mag > 0.05 ? Math.atan2(mx, mz) : this.yaw, d = target - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+        this.yaw += Math.max(-2.6 * dt, Math.min(2.6 * dt, d)) * Math.min(1, 0.4 + fwd / 4);
+        const sp = fwd + ((top * Math.max(0, Math.cos(d))) - fwd) * k;
+        this.vel.set(Math.sin(this.yaw) * sp, 0, Math.cos(this.yaw) * sp);
+      } else {
+        this.vel.x += (mx * top - this.vel.x) * k; this.vel.z += (mz * top - this.vel.z) * k;
+        if (mag > 0.05) { const ty = Math.atan2(mx, mz); let d = ty - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 12)); }
+      }
+    }
+    const step = bike ? 0.35 : 0.45, head = p.y + 1.5;
     const tryMove = (dx, dz) => {
       const nx = p.x + dx, nz = p.z + dz;
       if (nx < BOUNDS.x0 || nx > BOUNDS.x1 || nz < BOUNDS.z0 || nz > BOUNDS.z1) return false;
@@ -139,29 +191,48 @@ export class Player {
       p.x = nx; p.z = nz; return true;
     };
     const dx = this.vel.x * dt, dz = this.vel.z * dt;
-    if (!tryMove(dx, dz)) { if (!tryMove(dx, 0)) this.vel.x *= 0.2; if (!tryMove(0, dz)) this.vel.z *= 0.2; }
+    if (!tryMove(dx, dz)) { if (!tryMove(dx, 0)) this.vel.x *= bike ? -0.2 : 0.2; if (!tryMove(0, dz)) this.vel.z *= bike ? -0.2 : 0.2; if (bike) this.bumped = true; }
     // vertical
     const g = C.ground(p.x, p.z, p.y + (this.grounded ? step : 0.05), 0.18);
-    this.jumpBuf -= dt; this.coyote -= dt; this.boost -= dt; this.jumpBoost -= dt;
     if (inp.jump) { this.jumpBuf = 0.15; inp.jump = false; }
     if (this.grounded) {
       if (g < p.y - 0.4) { this.grounded = false; this.coyote = 0.12; this.vy = 0; }
-      else { p.y = g; this.vy = 0; }
+      else { p.y = g; this.vy = 0; this.jumps = 0; this.airDash = true; }
     }
-    if (this.jumpBuf > 0 && (this.grounded || this.coyote > 0)) { this.vy = this.jumpBoost > 0 ? 7.6 : 6.0; this.grounded = false; this.coyote = 0; this.jumpBuf = 0; this.jumped = true; }
+    if (this.jumpBuf > 0) {
+      if (this.grounded || this.coyote > 0) { this.vy = bike ? 4.8 : this.jumpBoost > 0 ? 7.6 : 6.0; this.grounded = false; this.coyote = 0; this.jumpBuf = 0; this.jumps = 1; this.jumped = true; }
+      else if (!bike && this.jumps < 2 && this.vy < 4) { this.vy = this.jumpBoost > 0 ? 7 : 5.6; this.jumps = 2; this.jumpBuf = 0; this.flip = 0.0001; this.fx.doubled = true; }
+    }
+    this.gliding = false;
     if (!this.grounded) {
-      this.vy -= 15 * dt; p.y += this.vy * dt;
+      this.vy -= 15 * dt;
+      if (!bike && inp.jumpHeld && this.vy < -1.0 && this.jumps >= 1 && this.flip === 0) { this.vy = Math.max(this.vy, -1.7); this.gliding = true; this.fx.glide = true; }
+      if (this.dashT > 0) this.vy = Math.max(this.vy, 0);
+      p.y += this.vy * dt;
       const g2 = C.ground(p.x, p.z, p.y + 0.05, 0.18);
-      if (p.y <= g2 && this.vy <= 0) { p.y = g2; this.grounded = true; if (this.vy < -4) { this.c.land(); this.landed = true; } this.vy = 0; }
-      // bump head
+      if (p.y <= g2 && this.vy <= 0) { p.y = g2; this.grounded = true; if (this.vy < -4) { this.c.land(); this.landed = true; } this.vy = 0; this.flip = 0; }
       if (this.vy > 0 && C.blocked(p.x, p.z, 0.2, p.y + 1.5, 0.05, p.y + 1.7) && !C.blocked(p.x, p.z, 0.2, p.y, 0.05, p.y + 1.2)) this.vy = 0;
     }
+    if (this.flip > 0) { this.flip += dt / 0.45; if (this.flip >= 1) this.flip = 0; }
     this.visY += (p.y - this.visY) * (1 - Math.exp(-dt * (this.grounded ? 22 : 60)));
     if (Math.abs(p.y - this.visY) > 1) this.visY = p.y;
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.c.root.position.set(p.x, this.visY, p.z); this.c.root.rotation.y = this.yaw;
-    return this.c.animate(dt, this.speed, this.grounded);
+    if (bike) { this.bike.spin(this.speed * dt); this.c.root.rotation.z = 0; }
+    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel });
   }
+}
+export function bikeModel() {
+  const g = new THREE.Group(), red = toon('#d0312d'), dk = toon('#22262b'), grey = toon('#9aa3a8');
+  const wheels = [];
+  for (const z of [-0.55, 0.55]) { const w = new THREE.Group(); w.position.set(0, 0.36, z); g.add(w); const t = mesh(new THREE.TorusGeometry(0.33, 0.04, 6, 18), dk, w); t.rotation.y = Math.PI / 2; for (let i = 0; i < 3; i++) { const sp = mesh(new THREE.BoxGeometry(0.02, 0.62, 0.02), grey, w); sp.rotation.x = i * Math.PI / 3; } wheels.push(w); }
+  const bar = (a, b, t, m) => { const d = new THREE.Vector3().subVectors(b, a), L = d.length(); const o = mesh(new THREE.BoxGeometry(t, L, t), m, g); o.position.copy(a).add(b).multiplyScalar(0.5); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); };
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  bar(V(0, 0.36, -0.55), V(0, 0.75, -0.1), 0.05, red); bar(V(0, 0.75, -0.1), V(0, 0.95, 0.4), 0.06, red); bar(V(0, 0.36, -0.55), V(0, 0.42, 0.1), 0.05, red); bar(V(0, 0.42, 0.1), V(0, 0.95, 0.4), 0.06, red);
+  bar(V(0, 0.36, 0.55), V(0, 1.05, 0.42), 0.04, grey); bar(V(-0.28, 1.05, 0.42), V(0.28, 1.05, 0.42), 0.035, dk);
+  mesh(new THREE.BoxGeometry(0.16, 0.06, 0.26), dk, g, 0, 0.9, -0.15);
+  mesh(new THREE.BoxGeometry(0.34, 0.2, 0.26), red, g, 0, 0.95, 0.62);
+  return { g, spin(d) { for (const w of wheels) w.rotation.x += d / 0.33; } };
 }
 
 // ================================================================= neighbours
@@ -204,14 +275,18 @@ export class Neighbours {
     paths.push({ axis: 'wander', rect: PARK, c: 0 }, { axis: 'wander', rect: PLAZA, c: 0 });
     paths.forEach((p, i) => {
       const ch = makeCharacter(LOOKS[i % LOOKS.length]); scene.add(ch.root);
-      const n = { ch, p, name: LINES[i % LINES.length][0], line: LINES[i % LINES.length][1], s: p.a0 + R() * ((p.a1 || 1) - (p.a0 || 0)), dir: R() < 0.5 ? 1 : -1, speed: 1.05 + R() * 0.35, wait: 0, pos: new THREE.Vector3(), yaw: 0, talk: 0 };
+      const HOURS = [[7, 21], [8, 23], [9, 20], [6, 22], [10, 26], [7, 19], [11, 25], [8, 22], [9, 21], [8, 19], [16, 27], [6, 24], [9, 22], [7, 23]];
+      const n = { id: i, hours: HOURS[i % HOURS.length], out: true, ch, p, name: LINES[i % LINES.length][0], line: LINES[i % LINES.length][1], s: p.a0 + R() * ((p.a1 || 1) - (p.a0 || 0)), dir: R() < 0.5 ? 1 : -1, speed: 1.05 + R() * 0.35, wait: 0, pos: new THREE.Vector3(), yaw: 0, talk: 0 };
       if (p.axis === 'wander') { const r = p.rect; n.pos.set(r.x0 + 6 + R() * (r.x1 - r.x0 - 12), 0, r.z0 + 6 + R() * (r.z1 - r.z0 - 12)); n.yaw = R() * 6.28; }
       this.list.push(n);
     });
   }
-  update(dt, player) {
+  update(dt, player, ctx = { hour: 12, rain: false }) {
     const C = this.w.colliders;
     for (const n of this.list) {
+      const hr = ctx.hour < n.hours[0] ? ctx.hour + 24 : ctx.hour;
+      n.out = hr >= n.hours[0] && hr < n.hours[1];
+      if (!n.out) { n.ch.root.visible = false; continue; }
       const dp = Math.hypot(n.pos.x - player.pos.x, n.pos.z - player.pos.z);
       let moving = n.wait <= 0 && n.talk <= 0 && dp > 1.6;
       n.wait -= dt; n.talk -= dt;
@@ -241,7 +316,7 @@ export class Neighbours {
       let d = yaw - n.ch.root.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
       n.ch.root.rotation.y += d * (1 - Math.exp(-dt * 6));
       n.ch.root.position.copy(n.pos);
-      n.ch.animate(dt, moving ? n.speed : 0, true, n.talk > 0 ? Math.min(1, n.talk) : 0);
+      n.ch.animate(dt, moving ? n.speed : 0, true, n.talk > 0 && !ctx.rain ? Math.min(1, n.talk) : 0, { umbrella: ctx.rain, talk: n.talk > 2.5 });
     }
   }
 }

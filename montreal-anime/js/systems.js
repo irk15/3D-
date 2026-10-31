@@ -87,6 +87,9 @@ export const ACH = {
   summit: ['⛰️', 'Plus haut que la croix', 'Vole à plus de 100 m'],
   mwin: ['🏅', 'Champion du Plateau', 'Gagne une mission'],
   online: ['🌐', 'Entre amis', 'Joue avec quelqu\'un en ligne'],
+  driver: ['🚗', 'Au volant', 'Conduis une voiture dans Montréal'],
+  crash: ['💥', 'Carambolage', 'Rentre dans quelque chose à pleine vitesse'],
+  downtown: ['🏙️', 'Centre-ville', 'Pose-toi sur une tour du centre-ville'],
 };
 export class Achievements {
   constructor(save, toast) { this.s = save; this.toast = toast; }

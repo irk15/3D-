@@ -73,6 +73,16 @@ Tips: the **Café Lumière** gives you a 30-second speed boost, a croissant from
 
 Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) characters as published in the three.js examples, compressed with meshopt (1.7 MB for all three).
 
+## Version 5 — drive Montréal
+
+- **Drive**: press **E** by one of the parked cars (a red and a yellow coupé, an SUV, a sedan) or by any traffic car that's stopped, and drive. A bicycle-model chassis with an engine curve and gears, brakes and reverse, tyre grip that lets the back step out (handbrake on **Space** to drift), and suspension that follows the street: it pitches on hills, dives when you brake and squats when you accelerate, rolls in corners, and goes airborne off ledges. Crashes bounce you back with a thump and camera shake. Traffic stops behind you, people jump out of the way. **X** switches to the driver's seat: dashboard with live speed and rev gauges and gear, an infotainment screen, a steering wheel that turns, seats, door cards, pedals and mirror. Your friends see you driving.
+- **Better cars and BIXI**: drivable cars have see-through glass and a full cabin, spoked rims with brake discs and red calipers, exhausts, wipers and an antenna. The BIXI is modelled after the real one: step-through frame, front rack and basket, fenders, chain guard, cranks and pedals that turn, a steering fork, a bell and dynamo lights.
+- **Physics**: Montréal's grey bins and blue recycling bins, orange construction cones (of course), cardboard boxes, crates, café chairs and footballs fall, bounce, slide, tip over when knocked hard enough (and rock back up when they aren't), roll, hit walls and each other, and sleep when still. You can kick them, ride into them or plough through them with a car.
+- **Standing on nothing, fixed**: poles, tree trunks, railings and lamp posts are solid but no longer walkable, and parked cars use two boxes that follow their shape (hood and cabin), so you can't hover over a hood.
+- **Montréal around the Plateau**: a real downtown to the south-west: glass and stone towers with lit offices at night, Place Ville Marie with its rotating searchlight, 1000 de La Gauchetière with its copper pyramid, 1250 René-Lévesque, Tour CIBC and Tour de la Bourse. Also the Olympic Stadium with its leaning tower to the east, Notre-Dame Basilica in Old Montréal, Habitat 67, the St. Lawrence with the Jacques-Cartier Bridge and the Biosphère. Fly there or drive.
+- **More people**: shopkeepers in their doorways who wave as you pass, customers on café terraces, people waiting at the bus shelter on their phones, sitters on the park benches and the fountain, a queue at the poutine truck, friends chatting on the plaza, office workers downtown.
+- **Fixed**: arms vanishing as you fall after flying.
+
 ## How it looks the way it does
 
 - **Toon shading**: three-band light ramp, blue-violet ambient shadows, painted sky with flat two-tone clouds.
@@ -82,6 +92,6 @@ Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) charac
 
 ## Files
 
-`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/rig.js` (Mixamo characters, animation blending, procedural poses) · `js/cars.js` (car models) · `models/` (compressed Mixamo glTF) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
+`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/rig.js` (Mixamo characters, animation blending, procedural poses) · `js/cars.js` (car models) · `js/vehicle.js` (driving physics) · `js/physics.js` (loose objects) · `js/crowd.js` (people around town) · `js/downtown.js` (downtown, landmarks, river) · `models/` (compressed Mixamo glTF, plus light crowd versions) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
 
 The neighbourhood is a stylised impression of the Plateau, not a survey-accurate map; street names are real, but the shops and characters are invented.

@@ -228,6 +228,13 @@ body.mission.playing:not(.photo) #marr.has{display:block}
 @media (pointer:fine) and (max-height:700px){.ic{width:40px;height:40px;border-radius:12px}.ic svg{width:22px;height:22px}.icons{gap:6px;top:76px}}
 @media (pointer:fine) and (max-height:560px){.ic{width:34px;height:34px}.ic svg{width:19px;height:19px}.icons{gap:4px;top:70px}}
 .logo p{padding:0 16px}
+#drive{position:absolute;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,40px);opacity:0;transition:all .35s cubic-bezier(.3,1.4,.5,1);display:flex;gap:10px;align-items:baseline;background:var(--ink);color:#fff;padding:8px 18px;border-radius:999px;box-shadow:var(--shadow);pointer-events:none}
+#drive.show{opacity:1;transform:translate(-50%,0)}
+#drive b{font-size:30px;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}#drive small{color:#c9c4ef;font-weight:600}
+#drive i{font-style:normal;font-weight:700;background:rgba(255,255,255,.14);border-radius:8px;padding:0 9px;font-size:18px}
+#drive span{font-size:12px;color:#c9c4ef;font-weight:600;margin-left:6px}
+body:has(#drive.show) #wingsHud{display:none}
+@media (max-width:700px){#drive span{display:none}}
 /* lobby on the title screen */
 #pChars{display:flex;gap:8px;flex-wrap:wrap}#pChars button{font-weight:700;font-size:15px;padding:8px 14px;border-radius:999px;background:#efe7d8;border:3px solid transparent}#pChars button.on{border-color:var(--ink);background:#fff3cf}
 .lobby{margin:0 auto;display:grid;gap:12px;background:rgba(255,250,241,.95);color:var(--ink);text-shadow:none;border:3px solid var(--ink);border-radius:24px;box-shadow:0 8px 0 var(--ink);padding:16px 18px;width:min(520px,calc(100vw - 32px));text-align:left}
@@ -265,6 +272,7 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
   <div id="jobCard"><div class="row"><span id="jobWho">—</span><span id="jobTime">0 s</span></div><div class="row"><span id="jobAddr">—</span><span id="jobDist"></span></div><div class="bar"><div id="jobBar"></div></div></div>
   <ul id="board"></ul>
   <div id="misCard"><span id="misIc">⭐</span><b id="misName">Mission</b><span id="misTime">0:00</span><span id="misGoal">—</span><div class="bar"><div id="misBar"></div></div><div id="misHeat"><span id="heatTxt">Froid</span><div class="bar"><div id="heatBar"></div></div></div></div>
+  <div id="drive"><b id="driveSpd">0</b><small>km/h</small><i id="driveGear">P</i><span>E sortir · X vue · Espace frein à main · B klaxon</span></div>
   <div id="wingsHud"><span>🕊</span><div class="bar"><div id="energy"></div></div><span id="alt">0 m</span></div>
   <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Écris un message… (Entrée)" autocomplete="off"><div class="chatHint">Entrée: discuter · 1–4: émotes</div></div>
   <div id="marr"><span></span></div>
@@ -311,6 +319,7 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
     <dt><kbd>Espace</kbd></dt><dd>Sauter · deux fois pour un salto · maintenir en l'air pour planer au parapluie</dd>
     <dt><kbd>F</kbd></dt><dd>Élan (dash), même en l'air</dd>
     <dt><kbd>V</kbd></dt><dd>Voler! (ou 3e saut) · <kbd>Espace</kbd> monter · <kbd>C</kbd> descendre · <kbd>Maj</kbd> turbo · la caméra donne la direction. Les ailes se fatiguent: pose-toi pour les recharger.</dd>
+    <dt>🚗 <kbd>E</kbd></dt><dd>Près d'une voiture: conduire (ou prendre une voiture arrêtée). <kbd>W</kbd>/<kbd>S</kbd> gaz et frein, <kbd>Espace</kbd> frein à main (dérapages!), <kbd>X</kbd> vue intérieure, <kbd>B</kbd> klaxon, <kbd>E</kbd> sortir.</dd>
     <dt><kbd>N</kbd></dt><dd>Lancer une mission: étoiles, anneaux, trésor, roi du toit, livraison éclair. Le premier qui réussit gagne!</dd>
     <dt><kbd>Entrée</kbd> <kbd>1</kbd>–<kbd>4</kbd></dt><dd>En ligne: discuter · émotes 👋 ❤️ 😂 🏆</dd>
     <dt><kbd>E</kbd></dt><dd>Parler, prendre une livraison dans un commerce, prendre un BIXI, flatter le chat</dd>

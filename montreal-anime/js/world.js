@@ -117,7 +117,9 @@ export class Colliders {
     let g = h(z);
     for (const id of this.near(x, z, r + 0.01)) {
       const c = this.list[id];
-      if (x < c.x0 - r || x > c.x1 + r || z < c.z0 - r || z > c.z1 + r) continue;
+      if (c.thin || c.nowalk) continue;   // railings, poles, trunks: solid, but nothing you can stand on
+      const ex = c.x1 - c.x0 < 0.6 || c.z1 - c.z0 < 0.6 ? 0 : r;   // no edge grace on slim things
+      if (x < c.x0 - ex || x > c.x1 + ex || z < c.z0 - ex || z > c.z1 + ex) continue;
       const t = this.top(c, Math.min(c.x1, Math.max(c.x0, x)), Math.min(c.z1, Math.max(c.z0, z)));
       if (t <= maxY && t > g) g = t;
     }
@@ -611,7 +613,7 @@ export function buildWorld(scene) {
     B.box(Math.min(x, ex) - 0.05, Math.max(x, ex) + 0.05, y + 7.05, y + 7.15, Math.min(z, ez) - 0.05, Math.max(z, ez) + 0.05, poleCol, 10);
     B.box(ex - 0.32, ex + 0.32, y + 6.85, y + 7.12, ez - 0.2, ez + 0.2, L('#5a6066'), 10);
     B.box(ex - 0.26, ex + 0.26, y + 6.80, y + 6.86, ez - 0.15, ez + 0.15, L('#fff4d6'), 7);
-    C.add({ x0: x - 0.12, x1: x + 0.12, z0: z - 0.12, z1: z + 0.12, y0: y - 0.2, y1: y + 7.2 });
+    C.add({ x0: x - 0.12, x1: x + 0.12, z0: z - 0.12, z1: z + 0.12, y0: y - 0.2, y1: y + 7.2, nowalk: true });
     lamps.push([ex, y + 6.75, ez]);
     glows.add(ex, y + 6.7, ez, 1, 0.82, 0.55, 0.7);
   }
@@ -684,7 +686,7 @@ export function buildWorld(scene) {
         B.box(px - 0.13, px + 0.13, y - 0.3, y + 8.4, z - 0.13, z + 0.13, L('#7a5a3e'), 3);
         B.box(px - 1.0, px + 0.6, y + 7.7, y + 7.85, z - 0.07, z + 0.07, L('#7a5a3e'), 3);
         B.box(px - 0.2, px + 0.2, y + 6.6, y + 7.3, z + 0.13, z + 0.53, L('#5f6870'), 10);   // transformer
-        C.add({ x0: px - 0.15, x1: px + 0.15, z0: z - 0.15, z1: z + 0.15, y0: y - 0.3, y1: y + 8.4 });
+        C.add({ x0: px - 0.15, x1: px + 0.15, z0: z - 0.15, z1: z + 0.15, y0: y - 0.3, y1: y + 8.4, nowalk: true });
       }
       for (let i = 0; i < poles.length - 1; i++) for (const [dx, dy] of [[-0.9, 7.85], [0.5, 7.85], [-0.2, 7.2]]) {
         const a = new THREE.Vector3(px + dx, h(poles[i]) + dy, poles[i]), b = new THREE.Vector3(px + dx, h(poles[i + 1]) + dy, poles[i + 1]);
@@ -780,7 +782,7 @@ export function buildWorld(scene) {
     B.box(mx - 0.15, mx + 0.15, my - 0.2, my + 4.6, mz - 0.15, mz + 0.15, L('#3d4650'), 10);
     S.box(mx, my + 5.2, mz, 1.2, 1.2, 0.25, 0, 0, metroR, SIDE, 1, metroR);
     S.box(cx, by + 3.95, pz1 + 0.06, 9, 0.6, 0.12, 0, 0, metroName, SIDE, 1);
-    C.add({ x0: mx - 0.2, x1: mx + 0.2, z0: mz - 0.2, z1: mz + 0.2, y0: my, y1: my + 5.8 });
+    C.add({ x0: mx - 0.2, x1: mx + 0.2, z0: mz - 0.2, z1: mz + 0.2, y0: my, y1: my + 5.8, nowalk: true });
     // crates stacked against the pavilion (a way up to its roof)
     const crx = px1 + 1.0, crz = pz0 + 2;
     for (const [dx, dz, lvl] of [[0, 0, 0], [0, 1.0, 0], [1.0, 0, 0], [0, 0, 1], [0, 1.0, 1], [0, 0.5, 2]]) {
@@ -859,7 +861,7 @@ export function buildWorld(scene) {
     for (const [cxs, czs] of [[1, 1], [-1, -1]]) {
       const x = sx + cxs * ox, z = sz + czs * oz, y = h(z) + CURB;
       B.box(x - 0.05, x + 0.05, y - 0.2, y + 3.2, z - 0.05, z + 0.05, poleCol, 10);
-      C.add({ x0: x - 0.08, x1: x + 0.08, z0: z - 0.08, z1: z + 0.08, y0: y, y1: y + 3.2 });
+      C.add({ x0: x - 0.08, x1: x + 0.08, z0: z - 0.08, z1: z + 0.08, y0: y, y1: y + 3.2, nowalk: true });
       S.box(x, y + 3.45, z, 1.9, 0.36, 0.06, 0, 0, ewN, SIDE, 0, ewN);
       S.box(x, y + 3.85, z, 1.9, 0.36, 0.06, Math.PI / 2, 0, nsN, SIDE, 0, nsN);
       if (!lights && k !== 0) {
@@ -919,7 +921,7 @@ function lantern(B, C, glows, x, z) {
   B.box(x - 0.07, x + 0.07, y - 0.1, y + 3.4, z - 0.07, z + 0.07, c, 10);
   B.geo(new THREE.CylinderGeometry(0.22, 0.15, 0.55, 6), new THREE.Matrix4().makeTranslation(x, y + 3.7, z), lin('#fff1cc'), 7);
   B.geo(new THREE.ConeGeometry(0.32, 0.3, 6), new THREE.Matrix4().makeTranslation(x, y + 4.12, z), c, 10);
-  C.add({ x0: x - 0.1, x1: x + 0.1, z0: z - 0.1, z1: z + 0.1, y0: y, y1: y + 4 });
+  C.add({ x0: x - 0.1, x1: x + 0.1, z0: z - 0.1, z1: z + 0.1, y0: y, y1: y + 4, nowalk: true });
   glows.add(x, y + 3.7, z, 1, 0.85, 0.6, 0.6);
 }
 function bike(B, x, z) {
@@ -931,9 +933,11 @@ function bike(B, x, z) {
 export function carStatic(B, C, x, z, ry, col, kind = 'sedan') {
   const y = h(z);
   const S = carIntoBatch(B, lin, x, y, z, ry, col, kind);
-  const c = Math.cos(ry), s = Math.sin(ry), hw = S.W / 2 + 0.05, hl = S.L / 2 + 0.05;
-  const ex = Math.abs(c) * hw + Math.abs(s) * hl, ez = Math.abs(s) * hw + Math.abs(c) * hl;
-  C.add({ x0: x - ex, x1: x + ex, z0: z - ez, z1: z + ez, y0: y, y1: y + S.roof });   // solid up to the roof: you can jump onto it
+  // two boxes that follow the real shape: the body (hood / trunk height) and the cabin up to the roof
+  const c = Math.cos(ry), s = Math.sin(ry);
+  const box = (hw, z0, z1, top) => { const zc = (z0 + z1) / 2, hl = (z1 - z0) / 2, cx = x + s * zc, cz = z + c * zc; const ex = Math.abs(c) * hw + Math.abs(s) * hl, ez = Math.abs(s) * hw + Math.abs(c) * hl; C.add({ x0: cx - ex, x1: cx + ex, z0: cz - ez, z1: cz + ez, y0: y, y1: y + top }); };
+  box(S.W / 2, -S.L / 2, S.L / 2, S.van ? S.roof : S.belt);
+  if (!S.van) box(S.W / 2 - 0.12, S.cb + 0.05, S.cf - 0.1, S.roof);
 }
 function foodTruck(B, C, S, atlas, x, z, SIDE, FONT) {
   const y = h(z), body = lin('#f2b43c');
@@ -984,7 +988,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.94, 0.96, 1.0), uSnow * smoothst
   const greens = ['#5aa04a', '#4f9a44', '#6bb054', '#3f8a46', '#7ab85a'];
   const recs = list.map(([x, z, s, type]) => {
     const rot = R() * 6.28, sy = s * (0.9 + R() * 0.2), g = type === 1 ? null : pick(greens, R);
-    C.add({ x0: x - 0.25 * s, x1: x + 0.25 * s, z0: z - 0.25 * s, z1: z + 0.25 * s, y0: h(z) - 0.2, y1: h(z) + 4 * s });
+    C.add({ x0: x - 0.25 * s, x1: x + 0.25 * s, z0: z - 0.25 * s, z1: z + 0.25 * s, y0: h(z) - 0.2, y1: h(z) + 4 * s, nowalk: true });
     const k = Math.floor(x / TILE) + ',' + Math.floor(z / TILE); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push({ x, z, s, sy, rot, type, g });
     return null;
   });
@@ -1052,13 +1056,7 @@ diffuseColor.rgb = c;`);
   cross.position.set(cx, cy + 15, cz); g.add(cross);
   for (let i = 0; i < 12; i++) glows.add(cx, cy + 1 + i * 2.6, cz + 2, 1, 1, 1, 3.5);
   for (const dx of [-5, -2.5, 2.5, 5]) glows.add(cx + dx, cy + 23, cz + 2, 1, 1, 1, 3.5);
-  // distant downtown skyline (south-west), simple toon towers
-  const tR = rng(5), towerCols = ['#9fb6cc', '#b8c4d4', '#8fa6bf', '#c8d0dc', '#7f96b2'];
-  for (let i = 0; i < 26; i++) {
-    const w = 18 + tR() * 26, hh = 60 + tR() * 150, x = -950 + tR() * 700, z = 700 + tR() * 380;
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, w * (0.7 + tR() * 0.6)), fogless(pick(towerCols, tR)));
-    m.position.set(x, h(z) + hh / 2 - 20, z); g.add(m);
-  }
+  // (the downtown skyline is real now: see downtown.js)
   g.traverse((o) => { if (o.isMesh) { o.matrixAutoUpdate = false; o.updateMatrix(); } });
   scene.add(g);
   return { group: g, crossM, mountain: mtn };

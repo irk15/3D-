@@ -2,7 +2,7 @@
 // cars with lights and stop signs, pigeons, a cat and the golden bagels.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, PLAZA, PARK, rng, pick, U } from './layout.js';
+import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, WALK, FLY, PLAZA, PARK, rng, pick, U } from './layout.js';
 import { toon, LAYER_FX, gradient, Glows } from './toon.js';
 import { makeRigged, rigReady } from './rig.js';
 import { carModel, CAR_KINDS, WheelSet } from './cars.js';
@@ -190,7 +190,7 @@ export class Player {
     // horizontal with collisions
     const tryMove = (dx, dz) => {
       const nx = p.x + dx, nz = p.z + dz;
-      if (nx < BOUNDS.x0 - 60 || nx > BOUNDS.x1 + 60 || nz < BOUNDS.z0 - 60 || nz > BOUNDS.z1 + 60) return false;
+      if (nx < FLY.x0 || nx > FLY.x1 || nz < FLY.z0 || nz > FLY.z1) return false;
       if (C.blocked(nx, nz, 0.35, p.y, 0.3, p.y + 1.5)) return false;
       p.x = nx; p.z = nz; return true;
     };
@@ -284,7 +284,7 @@ export class Player {
     const step = bike ? 0.35 : 0.45, head = p.y + 1.5;
     const tryMove = (dx, dz) => {
       const nx = p.x + dx, nz = p.z + dz;
-      if (nx < BOUNDS.x0 || nx > BOUNDS.x1 || nz < BOUNDS.z0 || nz > BOUNDS.z1) return false;
+      if (nx < WALK.x0 || nx > WALK.x1 || nz < WALK.z0 || nz > WALK.z1) return false;
       if (C.blocked(nx, nz, this.r, p.y, step, head)) return false;
       if (this.carBlock && this.carBlock(nx, nz)) return false;
       p.x = nx; p.z = nz; return true;
@@ -322,21 +322,64 @@ export class Player {
     if (Math.abs(p.y - this.visY) > 1) this.visY = p.y;
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.c.root.position.set(p.x, this.visY, p.z); this.c.root.rotation.y = this.yaw;
-    if (bike) { this.bike.spin(this.speed * dt); this.c.root.rotation.z = 0; }
+    if (bike) { this.bike.spin(this.speed * dt); this.c.root.rotation.z = 0; let dy = this.yaw - (this.prevYaw ?? this.yaw); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); this.bikeSteer = (this.bikeSteer || 0) + (Math.max(-0.5, Math.min(0.5, dy / Math.max(dt, 1e-3) * 0.25)) - (this.bikeSteer || 0)) * (1 - Math.exp(-dt * 8)); this.bike.steer?.(this.bikeSteer); }
+    this.prevYaw = this.yaw;
     return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel });
   }
 }
+// BIXI — Montréal's shared bike: step-through grey frame with the red accents, front rack and basket,
+// fenders, chain guard, 3-speed hub, dynamo lights, kickstand. Wheels and cranks turn, the fork steers.
 export function bikeModel() {
-  const g = new THREE.Group(), red = toon('#d0312d'), dk = toon('#22262b'), grey = toon('#9aa3a8');
-  const wheels = [];
-  for (const z of [-0.55, 0.55]) { const w = new THREE.Group(); w.position.set(0, 0.36, z); g.add(w); const t = mesh(new THREE.TorusGeometry(0.33, 0.04, 6, 18), dk, w); t.rotation.y = Math.PI / 2; for (let i = 0; i < 3; i++) { const sp = mesh(new THREE.BoxGeometry(0.02, 0.62, 0.02), grey, w); sp.rotation.x = i * Math.PI / 3; } wheels.push(w); }
-  const bar = (a, b, t, m) => { const d = new THREE.Vector3().subVectors(b, a), L = d.length(); const o = mesh(new THREE.BoxGeometry(t, L, t), m, g); o.position.copy(a).add(b).multiplyScalar(0.5); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); };
+  const g = new THREE.Group(), frameM = toon('#c9ced6'), red = toon('#d0312d'), dk = toon('#22262b'), grey = toon('#9aa3a8'), chrome = toon('#e2e6ea');
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
-  bar(V(0, 0.36, -0.55), V(0, 0.75, -0.1), 0.05, red); bar(V(0, 0.75, -0.1), V(0, 0.95, 0.4), 0.06, red); bar(V(0, 0.36, -0.55), V(0, 0.42, 0.1), 0.05, red); bar(V(0, 0.42, 0.1), V(0, 0.95, 0.4), 0.06, red);
-  bar(V(0, 0.36, 0.55), V(0, 1.05, 0.42), 0.04, grey); bar(V(-0.28, 1.05, 0.42), V(0.28, 1.05, 0.42), 0.035, dk);
-  mesh(new THREE.BoxGeometry(0.16, 0.06, 0.26), dk, g, 0, 0.9, -0.15);
-  mesh(new THREE.BoxGeometry(0.34, 0.2, 0.26), red, g, 0, 0.95, 0.62);
-  return { g, spin(d) { for (const w of wheels) w.rotation.x += d / 0.33; } };
+  const tube = (pts, r, m, parent = g) => { const o = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, r, 8), m); o.castShadow = true; parent.add(o); return o; };
+  const wheel = (z) => {
+    const w = new THREE.Group(); w.position.set(0, 0.34, z);
+    const spin = new THREE.Group(); w.add(spin);
+    const tyre = new THREE.Mesh(new THREE.TorusGeometry(0.315, 0.032, 10, 32), dk); tyre.rotation.y = Math.PI / 2; tyre.castShadow = true; spin.add(tyre);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.285, 0.012, 6, 32), chrome); rim.rotation.y = Math.PI / 2; spin.add(rim);
+    const spokes = []; for (let i = 0; i < 18; i++) { const s = new THREE.CylinderGeometry(0.0035, 0.0035, 0.28, 3); s.translate(0, 0.14, 0); s.rotateX(i / 18 * Math.PI * 2); s.translate((i % 2 ? 1 : -1) * 0.012, 0, 0); spokes.push(s); }
+    spin.add(new THREE.Mesh(mergeGeometries(spokes), grey));
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.1, 12).rotateZ(Math.PI / 2), grey); spin.add(hub);
+    const fender = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 4, 20, Math.PI * 0.95), frameM); fender.rotation.set(0, Math.PI / 2, 0); fender.rotation.order = 'YXZ'; fender.rotation.x = -0.15; fender.scale.set(1, 1, 1.6); w.add(fender);
+    return { w, spin };
+  };
+  const rearW = wheel(-0.52); g.add(rearW.w);
+  // fork group steers: front wheel, fork, handlebars, basket, lamp
+  const fork = new THREE.Group(); fork.position.set(0, 0.34, 0.52); g.add(fork);
+  const frontW = wheel(0); frontW.w.position.set(0, 0, 0); fork.add(frontW.w);
+  tube([V(0.05, 0, 0), V(0.05, 0.32, -0.04), V(0, 0.62, -0.1)], 0.015, frameM, fork); tube([V(-0.05, 0, 0), V(-0.05, 0.32, -0.04), V(0, 0.62, -0.1)], 0.015, frameM, fork);
+  tube([V(0, 0.6, -0.1), V(0, 0.78, -0.16)], 0.02, frameM, fork);
+  tube([V(-0.3, 0.78, -0.26), V(-0.16, 0.8, -0.16), V(0, 0.8, -0.14), V(0.16, 0.8, -0.16), V(0.3, 0.78, -0.26)], 0.013, chrome, fork);
+  for (const s of [-1, 1]) { const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.11, 8).rotateZ(Math.PI / 2), dk); grip.position.set(s * 0.29, 0.78, -0.25); fork.add(grip); }
+  const bell = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), chrome); bell.position.set(-0.16, 0.81, -0.16); fork.add(bell);
+  // front rack + basket with the BIXI red band
+  const rack = new THREE.Group(); rack.position.set(0, 0.55, 0.06); fork.add(rack);
+  rack.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.02, 0.28), dk), {}));
+  const bsk = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.16, 0.28), toon('#3a3f47')); bsk.position.y = 0.09; rack.add(bsk);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.05, 0.29), red); band.position.y = 0.14; rack.add(band);
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.06, 12).rotateX(Math.PI / 2), toon('#fff6dc', { emissive: 0xfff2c8, emissiveIntensity: 0.6 })); lamp.position.set(0, 0.5, 0.22); fork.add(lamp);
+  // step-through frame
+  tube([V(0, 0.95, 0.38), V(0, 0.62, 0.26), V(0, 0.36, 0.0), V(0, 0.32, -0.12)], 0.028, frameM);    // swooping down tube
+  tube([V(0, 0.32, -0.12), V(0, 0.62, -0.2), V(0, 0.86, -0.27)], 0.026, frameM);                  // seat tube
+  for (const s of [-1, 1]) { tube([V(s * 0.05, 0.32, -0.12), V(s * 0.06, 0.34, -0.52)], 0.012, frameM); tube([V(s * 0.05, 0.62, -0.2), V(s * 0.06, 0.34, -0.52)], 0.012, frameM); }
+  tube([V(0, 0.95, 0.38), V(0, 1.0, 0.44)], 0.03, red);                                              // head tube in red
+  // saddle on its post, rear carrier, mudguard reflector
+  tube([V(0, 0.86, -0.27), V(0, 0.98, -0.31)], 0.014, chrome);
+  const sad = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), dk); sad.scale.set(0.09, 0.035, 0.15); sad.position.set(0, 1.0, -0.31); sad.castShadow = true; g.add(sad);
+  const refl = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.04, 0.02), toon('#d0312d', { emissive: 0xff2a2a, emissiveIntensity: 0.6 })); refl.position.set(0, 0.62, -0.86); g.add(refl);
+  // chain guard, chainring, cranks and pedals (they turn)
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.1, 0.46), frameM); guard.position.set(0.06, 0.34, -0.3); g.add(guard);
+  const crank = new THREE.Group(); crank.position.set(0, 0.32, -0.12); g.add(crank);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.012, 6, 20), grey); ring.rotation.y = Math.PI / 2; ring.position.x = 0.07; crank.add(ring);
+  for (const s of [-1, 1]) { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.17, 0.025), grey); arm.position.set(s * 0.09, s * 0.075, 0); crank.add(arm); const ped = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.022, 0.06), dk); ped.position.set(s * 0.14, s * 0.15, 0); crank.add(ped); }
+  // kickstand
+  const kick = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 5), grey); kick.position.set(0.08, 0.2, -0.2); kick.rotation.set(0.6, 0, 0.5); g.add(kick);
+  return {
+    g,
+    spin(d) { rearW.spin.rotation.x += d / 0.34; frontW.spin.rotation.x += d / 0.34; crank.rotation.x += d / 0.34 * 0.42; },
+    steer(a) { fork.rotation.y = a; },
+  };
 }
 
 // ================================================================= neighbours
@@ -382,6 +425,8 @@ export class Neighbours {
       const HOURS = [[7, 21], [8, 23], [9, 20], [6, 22], [10, 26], [7, 19], [11, 25], [8, 22], [9, 21], [8, 19], [16, 27], [6, 24], [9, 22], [7, 23]];
       const n = { id: i, hours: HOURS[i % HOURS.length], out: true, ch, p, name: LINES[i % LINES.length][0], line: LINES[i % LINES.length][1], s: p.a0 + R() * ((p.a1 || 1) - (p.a0 || 0)), dir: R() < 0.5 ? 1 : -1, speed: 1.05 + R() * 0.35, wait: 0, pos: new THREE.Vector3(), yaw: 0, talk: 0 };
       if (p.axis === 'wander') { const r = p.rect; n.pos.set(r.x0 + 6 + R() * (r.x1 - r.x0 - 12), 0, r.z0 + 6 + R() * (r.z1 - r.z0 - 12)); n.yaw = R() * 6.28; }
+      // jump out of the way of a car (sidestep + a startled head-shake)
+      n.dodge = (sx, sz) => { if (n.dodgeT > 0) return; n.dodgeT = 0.5; n.dodgeV = new THREE.Vector3(sx, 0, sz).multiplyScalar(5); n.wait = 1.5; n.ch.gesture?.('shake', 1.6); };
       this.list.push(n);
     });
   }
@@ -394,6 +439,9 @@ export class Neighbours {
       const dp = Math.hypot(n.pos.x - player.pos.x, n.pos.z - player.pos.z);
       let moving = n.wait <= 0 && n.talk <= 0 && dp > 1.6;
       n.wait -= dt; n.talk -= dt;
+      n.offX = n.offX || 0; n.offZ = n.offZ || 0;
+      if (n.dodgeT > 0) { n.dodgeT -= dt; const ox = n.offX + n.dodgeV.x * dt, oz = n.offZ + n.dodgeV.z * dt; if (!this.w.colliders.blocked(n.pos.x + n.dodgeV.x * dt, n.pos.z + n.dodgeV.z * dt, 0.3, n.pos.y, 0.45, n.pos.y + 1.5)) { n.offX = ox; n.offZ = oz; } moving = false; }
+      else if (n.wait <= 0) { n.offX *= Math.exp(-dt * 0.8); n.offZ *= Math.exp(-dt * 0.8); }
       if (n.p.axis === 'wander') {
         if (moving) {
           const nx = n.pos.x + Math.sin(n.yaw) * n.speed * dt, nz = n.pos.z + Math.cos(n.yaw) * n.speed * dt, r = n.p.rect;
@@ -409,7 +457,7 @@ export class Neighbours {
           if (C.blocked(x, z, 0.25, n.pos.y, 0.3, n.pos.y + 1.5) && n.wait <= 0) { n.dir *= -1; n.wait = 0.8; }
           if (Math.random() < dt * 0.04) n.wait = 2 + Math.random() * 3;
         }
-        n.pos.x = n.p.axis === 'z' ? n.p.c : n.s; n.pos.z = n.p.axis === 'z' ? n.s : n.p.c;
+        n.pos.x = (n.p.axis === 'z' ? n.p.c : n.s) + n.offX; n.pos.z = (n.p.axis === 'z' ? n.s : n.p.c) + n.offZ;
         if (moving) n.yaw = n.p.axis === 'z' ? (n.dir > 0 ? 0 : Math.PI) : (n.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
       }
       n.pos.y = C.ground(n.pos.x, n.pos.z, n.pos.y + 0.5 || 99, 0.1);
@@ -444,8 +492,9 @@ export class Traffic {
     let i = 0;
     for (const L of lanes) for (let j = 0; j < L.n; j++) {
       const span = L.axis === 'z' ? [-470, 470] : [-380, 380];
-      const m = carModel(cols[i % cols.length], CAR_KINDS[(i * 3 + 1) % CAR_KINDS.length]); i++; scene.add(m.g);
-      const car = { m, L, s: span[0] + (span[1] - span[0]) * (j + Math.random() * 0.5) / L.n, span, v: 8, vmax: L.k === 0 || L.m === -1 ? 11 : 8, stopT: 0, lastStop: null };
+      const col = cols[i % cols.length], kind = CAR_KINDS[(i * 3 + 1) % CAR_KINDS.length];
+      const m = carModel(col, kind); i++; scene.add(m.g);
+      const car = { m, col, kind, isTrafficCar: true, knock: 0, bumped(vx, vz) { this.v = 0; this.knock = 2.5; }, L, s: span[0] + (span[1] - span[0]) * (j + Math.random() * 0.5) / L.n, span, v: 8, vmax: L.k === 0 || L.m === -1 ? 11 : 8, stopT: 0, lastStop: null };
       car.gl = [glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35)];
       this.cars.push(car);
     }
@@ -483,13 +532,16 @@ export class Traffic {
     for (const set of ['ns', 'ew']) this.mats[set].forEach((m, i) => { m.emissiveIntensity = (2 - i) === ph[set] ? 2.2 : 0; });
     const night = U.uNight.value;
     for (const car of this.cars) {
+      if (car.taken) continue;
       const L = car.L;
       let vT = car.vmax;
+      if (car.knock > 0) { car.knock -= dt; vT = 0; }
       // car ahead in the same lane
-      for (const o of this.cars) if (o !== car && o.L === L) { const d = (o.s - car.s) * L.dir; if (d > 0 && d < 10) vT = Math.min(vT, (d - 6) * 1.2); }
+      for (const o of this.cars) if (o !== car && !o.taken && o.L === L) { const d = (o.s - car.s) * L.dir; if (d > 0 && d < 10) vT = Math.min(vT, (d - 6) * 1.2); }
       // people in front
       const ahead = (px, pz) => { const along = (L.axis === 'z' ? pz - car.s : px - car.s) * L.dir, lat = Math.abs(L.axis === 'z' ? px - L.c : pz - L.c); return along > 0 && along < 9 && lat < 1.6 ? along : null; };
-      const pa = ahead(player.pos.x, player.pos.z); if (pa !== null) vT = Math.min(vT, (pa - 3.5) * 1.5);
+      const pa = ahead(player.pos.x, player.pos.z); if (pa !== null) vT = Math.min(vT, (pa - (player.driving ? 6.5 : 3.5)) * 1.5);
+      for (const vh of this.vehicles || []) { const va = ahead(vh.pos.x, vh.pos.z); if (va !== null) vT = Math.min(vT, (va - 6.5) * 1.5); }
       for (const n of npcs) { const a = ahead(n.pos.x, n.pos.z); if (a !== null) vT = Math.min(vT, (a - 3.5) * 1.5); }
       // signals and stop signs at the next crossing
       if (L.axis === 'z') {
@@ -527,9 +579,22 @@ export class Traffic {
     this.glows.g.attributes.iPos.needsUpdate = true;
     this.wheelSet.sync(this.cars);
   }
+  // a traffic car overlapping a circle (for drivable cars)
+  hitCar(x, z, r) {
+    for (const c of this.cars) {
+      if (c.taken || c.x === undefined) continue;
+      const ex = (c.L.axis === 'z' ? 0.95 : 2.3) + r, ez = (c.L.axis === 'z' ? 2.3 : 0.95) + r;
+      if (Math.abs(x - c.x) < ex && Math.abs(z - c.z) < ez) return c;
+    }
+    return null;
+  }
+  // the nearest stopped (or slow) car you could climb into
+  nearest(x, z, maxD = 3.4) { let best = null, bd = maxD; for (const c of this.cars) { if (c.taken || c.x === undefined || c.v > 2.5) continue; const d = Math.hypot(c.x - x, c.z - z); if (d < bd) { bd = d; best = c; } } return best; }
+  take(c) { c.taken = true; c.m.g.visible = false; for (const gi of c.gl) this.glows.set(gi, 0, -9999, 0); this.glows.g.attributes.iPos.needsUpdate = true; }
   // block the player from walking into a car
   blocks(px, pz) {
     for (const c of this.cars) {
+      if (c.taken) continue;
       const L = c.L, ex = L.axis === 'z' ? 1.2 : 2.5, ez = L.axis === 'z' ? 2.5 : 1.2;
       if (Math.abs(px - c.x) < ex && Math.abs(pz - c.z) < ez) return true;
     }

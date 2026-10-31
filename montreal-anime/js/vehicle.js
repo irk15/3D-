@@ -1,0 +1,112 @@
+// vehicle.js — cars you can drive. A bicycle-model chassis with an engine curve, gears, brakes and a
+// handbrake; tyre grip that lets the rear step out when you push it; suspension that follows the
+// street (pitch on hills, dive under braking, squat on acceleration, roll in corners); collisions with
+// buildings, parked cars, traffic and other drivable cars (with a bounce and a thump), loose props that
+// get knocked flying, and pedestrians who jump out of the way.
+import * as THREE from 'three';
+import { h, WALK } from './layout.js';
+import { carDrivable } from './cars.js';
+
+const GEARS = [0, 4.2, 9, 15, 22, 30, 60];   // m/s where each gear tops out
+export class Vehicle {
+  constructor(scene, world, kind, color, x, z, yaw) {
+    this.w = world; this.kind = kind; this.color = color;
+    this.m = carDrivable(color, kind); scene.add(this.m.g);
+    const S = this.S = this.m.S;
+    this.pos = new THREE.Vector3(x, world.colliders.ground(x, z, h(z) + 2, 0), z); this.yaw = yaw;
+    this.vF = 0; this.vR = 0; this.vy = 0; this.steer = 0; this.yawRate = 0;
+    this.pitch = 0; this.roll = 0; this.dive = 0; this.spin = 0; this.rpm = 900; this.gear = 'P';
+    this.driver = null; this.impact = 0; this.horn = 0; this.braking = false;
+    this.place();
+  }
+  get speed() { return Math.abs(this.vF); }
+  forward() { return new THREE.Vector3(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
+  // three circles along the car approximate its footprint
+  circles(x, z, yaw) { const s = Math.sin(yaw), c = Math.cos(yaw), r = this.S.W / 2, o = this.S.L / 2 - r; return [[x + s * o, z + c * o, r], [x, z, r], [x - s * o, z - c * o, r]]; }
+  blockedAt(x, z, yaw, others) {
+    const C = this.w.colliders, y = this.pos.y;
+    if (x < WALK.x0 || x > WALK.x1 || z < WALK.z0 || z > WALK.z1) return true;
+    for (const [cx, cz, r] of this.circles(x, z, yaw)) {
+      if (C.blocked(cx, cz, r * 0.92, y, 0.55, y + 1.3)) return true;
+      for (const o of others) if (o !== this && o.hitCircle && o.hitCircle(cx, cz, r * 0.92)) return o;
+    }
+    return false;
+  }
+  hitCircle(x, z, r) { for (const [cx, cz, rr] of this.circles(this.pos.x, this.pos.z, this.yaw)) if ((cx - x) ** 2 + (cz - z) ** 2 < (r + rr) ** 2) return true; return false; }
+  update(dt, inp, ctx) {
+    const S = this.S, C = this.w.colliders;
+    const driving = !!inp;
+    const thr = driving ? Math.max(0, inp.y) : 0, brk = driving ? Math.max(0, -inp.y) : 0, steerIn = driving ? -inp.x : 0, hand = driving && inp.jumpHeld;
+    // engine / brakes / reverse
+    let a = 0; this.braking = false;
+    const vmax = this.kind === 'sport' ? 52 : this.kind === 'van' || this.kind === 'pickup' ? 33 : 40;
+    if (thr > 0) { if (this.vF < -0.5) { a = 16 * thr; this.braking = true; } else a = (this.kind === 'sport' ? 11 : 8) * thr * Math.max(0.12, 1 - this.vF / vmax); }
+    if (brk > 0) { if (this.vF > 0.5) { a = -16 * brk; this.braking = true; } else a = -5 * brk * Math.max(0, 1 + this.vF / 9); }
+    if (hand) { a += -Math.sign(this.vF) * 6; this.braking = true; }
+    a -= this.vF * Math.abs(this.vF) * 0.0028 + Math.sign(this.vF) * 0.35;   // air drag + rolling resistance
+    if (!driving) a = -Math.sign(this.vF) * Math.min(Math.abs(this.vF) / dt, 5);
+    if (Math.abs(this.vF) < 0.05 && !thr && !brk) this.vF = 0;
+    // steering: less lock at speed; yaw rate from the bicycle model, limited by tyre grip
+    const lock = 0.6 / (1 + this.speed * 0.045);
+    this.steer += (steerIn * lock - this.steer) * (1 - Math.exp(-dt * 7));
+    const wb = S.wb * 2;
+    let yr = this.vF / wb * Math.tan(this.steer);
+    const grip = hand ? 5 : 11, lat = Math.abs(yr * this.vF);
+    if (lat > grip) { const k = grip / lat; this.vR += -this.vF * yr * (1 - k) * dt * 0.9; yr *= k + (1 - k) * (hand ? 0.85 : 0.35); }
+    this.yawRate += (yr - this.yawRate) * (1 - Math.exp(-dt * 10));
+    const prevYaw = this.yaw; this.yaw += this.yawRate * dt;
+    this.vF += a * dt;
+    this.vR *= Math.exp(-dt * (hand ? 1.2 : 6));
+    // move, then resolve collisions against the city, traffic and other cars
+    const f = this.forward(), r = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    const vx = f.x * this.vF + r.x * this.vR, vz = f.z * this.vF + r.z * this.vR;
+    const nx = this.pos.x + vx * dt, nz = this.pos.z + vz * dt;
+    let hit = this.blockedAt(nx, nz, this.yaw, ctx.vehicles);
+    if (!hit && ctx.traffic) for (const [cx, cz, cr] of this.circles(nx, nz, this.yaw)) { const t = ctx.traffic.hitCar(cx, cz, cr); if (t) { hit = t; break; } }
+    if (!hit) { this.pos.x = nx; this.pos.z = nz; }
+    else {
+      const sp = Math.hypot(vx, vz);
+      if (!this.blockedAt(nx, this.pos.z, this.yaw, ctx.vehicles)) this.pos.x = nx; else if (!this.blockedAt(this.pos.x, nz, this.yaw, ctx.vehicles)) this.pos.z = nz;
+      if (this.blockedAt(this.pos.x, this.pos.z, this.yaw, ctx.vehicles)) this.yaw = prevYaw;
+      this.impact = Math.max(this.impact, sp);
+      if (hit.isTrafficCar) hit.bumped(f.x * this.vF, f.z * this.vF);
+      if (hit instanceof Vehicle) { hit.vF += this.vF * 0.45; hit.vR += this.vR * 0.5; }
+      this.vF *= -0.28; this.vR *= 0.4; this.yawRate *= -0.3;
+    }
+    // loose props and people
+    for (const [cx, cz, cr] of this.circles(this.pos.x, this.pos.z, this.yaw)) ctx.props?.push(cx, cz, this.pos.y, this.pos.y + 1.4, cr, vx, vz, 1300);
+    if (ctx.peds && this.speed > 2.5) for (const n of ctx.peds) { const dx = n.pos.x - (this.pos.x + f.x * 3), dz = n.pos.z - (this.pos.z + f.z * 3); if (dx * dx + dz * dz < 9) n.dodge?.(r.x * Math.sign(dx * r.x + dz * r.z || 1), r.z * Math.sign(dx * r.x + dz * r.z || 1)); }
+    // suspension: ground under each wheel → height, pitch and roll; airborne off ledges
+    const W = this.m.wheels, hs = [];
+    for (const w of W) { const lx = w.g.position.x, lz = w.g.position.z, wx = this.pos.x + f.x * lz + r.x * lx, wz = this.pos.z + f.z * lz + r.z * lx; hs.push(C.ground(wx, wz, this.pos.y + 0.6, 0)); }
+    const front = (hs[0] + hs[1]) / 2, rear = (hs[2] + hs[3]) / 2, left = (hs[0] + hs[2]) / 2, right = (hs[1] + hs[3]) / 2, gy = Math.max((front + rear) / 2, Math.max(...hs) - 0.25);
+    if (this.pos.y > gy + 0.05) { this.vy -= 15 * dt; this.pos.y = Math.max(gy, this.pos.y + this.vy * dt); if (this.pos.y <= gy) { this.impact = Math.max(this.impact, -this.vy * 0.6); this.vy = 0; } }
+    else { this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-dt * 18)); this.vy = 0; }
+    const tp = Math.atan2(rear - front, wb), tr = Math.atan2(right - left, S.W - 0.3);
+    this.dive += ((-a * 0.0065) - this.dive) * (1 - Math.exp(-dt * 6));
+    this.pitch += (tp + this.dive - this.pitch) * (1 - Math.exp(-dt * 9));
+    this.roll += (tr + this.yawRate * this.vF * 0.0045 - this.roll) * (1 - Math.exp(-dt * 7));
+    // gears and revs (for the gauges and the engine sound)
+    const v = Math.abs(this.vF); let gi = 1; while (gi < GEARS.length - 1 && v > GEARS[gi]) gi++;
+    const lo = GEARS[gi - 1], hi = GEARS[gi];
+    const rpmT = this.vF < -0.3 ? 1500 + v * 300 : v < 0.2 ? 850 + thr * 2500 : 1300 + (v - lo) / (hi - lo) * 4800 + thr * 400;
+    this.rpm += (rpmT - this.rpm) * (1 - Math.exp(-dt * 8));
+    this.gear = !driving ? 'P' : this.vF < -0.3 ? 'R' : v < 0.2 && !thr ? 'N' : String(gi);
+    this.spin += this.vF * dt / S.wr;
+    this.place(dt, ctx);
+  }
+  place(dt = 0, ctx = {}) {
+    const g = this.m.g;
+    g.position.copy(this.pos); g.rotation.set(this.pitch, this.yaw, this.roll, 'YXZ');
+    for (const w of this.m.wheels) { w.spin.rotation.x = this.spin; if (w.front) w.g.rotation.y = this.steer; }
+    this.m.wheel.rotation.z = -this.steer * 5.5;
+    const night = ctx.night || 0;
+    this.m.hl.emissiveIntensity = 0.2 + night * 2.8; this.m.tl.emissiveIntensity = 0.2 + night * 1.2 + (this.braking ? 2.4 : 0);
+    if (dt && this.driver) this.m.updateGauges(dt, Math.abs(this.vF) * 3.6, this.rpm, this.gear, night > 0.4, ctx.clock || '');
+  }
+  // world-space seat / eye / door positions
+  local(v) { return v.clone().applyEuler(this.m.g.rotation).add(this.pos); }
+  seatPos() { return this.local(this.m.seat); }
+  eyePos() { return this.local(this.m.eye); }
+  doorPos() { const S = this.S; return this.local(new THREE.Vector3(S.W / 2 + 1.0, 0, this.m.seat.z)); }
+}

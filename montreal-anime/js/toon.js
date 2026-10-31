@@ -86,6 +86,24 @@ gEmit = vec3(0.0);
   } else if (k > 7.5 && k < 8.5) {           // shop windows
     c = mix(vec3(0.42, 0.62, 0.72), vec3(0.95, 0.80, 0.55), uNight);
     gEmit += vec3(1.0, 0.82, 0.55) * uNight * 1.1;
+  } else if (k > 10.5 && k < 11.5 && side) { // downtown curtain wall: mullion grid, sky reflections, offices lit at night
+    float cw = 1.6, fh = 3.9;
+    float col = floor(u / cw), fl = floor(vWP.y / fh);
+    float mull = max(band(fract(u / cw), 0.0, 0.07), band(fract(vWP.y / fh), 0.0, 0.12)) * vis(0.08, fw);
+    float refl = smoothstep(0.1, 0.9, fract(vWP.y * 0.0085 + u * 0.0031 + 0.37));
+    vec3 glassC = mix(c * 0.62, mix(vec3(0.52, 0.70, 0.88), vec3(0.88, 0.94, 1.0), refl), 0.5);
+    float lit = step(h21(vec2(col, fl) + floor(vWP.x * 0.02) * 5.7 + floor(vWP.z * 0.02) * 2.3), 0.36);
+    vec3 nightC = mix(vec3(0.04, 0.06, 0.12), vec3(1.0, 0.84, 0.58) * 0.32, lit);
+    float nf = smoothstep(0.3, 0.85, uNight);   // offices only show once it's properly dark
+    c = mix(glassC, nightC, nf);
+    c = mix(c, c * 0.45 + 0.07, mull);
+    gEmit += vec3(1.0, 0.82, 0.52) * lit * (1.0 - mull) * nf * 1.25;
+  } else if (k > 11.5 && k < 12.5 && side) { // stone tower: punched windows
+    float col = floor(u / 2.1), fl = floor(vWP.y / 3.7);
+    float win = band(fract(u / 2.1), 0.2, 0.8) * band(fract(vWP.y / 3.7), 0.28, 0.86) * vis(0.5, fw);
+    float lit = step(h21(vec2(col, fl) + 3.1 + floor(vWP.x * 0.02)), 0.4);
+    c = mix(c, mix(vec3(0.22, 0.32, 0.46), vec3(0.06, 0.08, 0.14), uNight), win * 0.9);
+    gEmit += vec3(1.0, 0.78, 0.45) * lit * win * uNight * 1.4;
   } else if (k > 8.5 && k < 9.5) {           // roofs
     c *= 0.9 + 0.12 * vn(vWP.xz * 1.7);
   }

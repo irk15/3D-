@@ -25,6 +25,12 @@ export const alleyX = (k) => 45 + 90 * k;
 // the detailed district (everything outside is simpler "fill" city)
 export const DETAIL = { x0: -135, x1: 135, z0: -270, z1: 280 };
 export const BOUNDS = { x0: -131, x1: 131, z0: -264, z1: 274 };
+// the wider Montréal around the Plateau (downtown, Olympic Park, Old Montréal, the river)
+export const DOWNTOWN = { x0: -735, x1: -80, z0: 560, z1: 1060 };
+export const RIVER_Z = 1290;                                              // the St. Lawrence starts here (south)
+export const WATER_Y = -0.055 * RIVER_Z - 3;
+export const WALK = { x0: -950, x1: 1150, z0: -560, z1: RIVER_Z - 6 };   // where you can walk
+export const FLY = { x0: -1150, x1: 1350, z0: -760, z1: 1950 };           // where you can fly
 
 // special places
 export const PARK = { x0: -90 + nsHW(-1) + nsSW(-1), x1: -nsHW(0) - nsSW(0), z0: ewZ(1) + ewHW(1) + ewSW(1), z1: ewZ(2) - ewHW(2) - ewSW(2), name: 'Carré Saint-Louis' };

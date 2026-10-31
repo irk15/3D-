@@ -13,6 +13,9 @@ export const MODELS = {
   bot: { file: 'xbot.glb', name: 'X Bot', height: 1.72 },
   michelle: { file: 'michelle.glb', name: 'Michelle', height: 1.66 },
   soldier: { file: 'soldier.glb', name: 'Vanguard', height: 1.76 },
+  // light versions for crowds (same skeleton and animations, ~⅓ the triangles)
+  bot_lo: { file: 'xbot_lo.glb', name: 'X Bot', height: 1.72, base: 'bot' },
+  michelle_lo: { file: 'michelle_lo.glb', name: 'Michelle', height: 1.66, base: 'michelle' },
 };
 const LIB = {};
 export const rigReady = () => Object.keys(LIB).length > 0;
@@ -41,6 +44,7 @@ export async function loadRigs(base, onProgress) {
   // build each character's clip set: own clips where it has them, X Bot's otherwise (same Mixamo skeleton)
   const src = (k, n) => LIB[k].clips.find((c) => c.name.toLowerCase() === n.toLowerCase());
   for (const k of keys) {
+    if (MODELS[k].base) continue;
     const L = LIB[k], set = {};
     const take = (name, from, clipName) => { const c = src(from, clipName); if (c) set[name] = from === k ? clean(c, null, null) : retarget(c, LIB[from], L); };
     take('idle', k === 'soldier' ? 'soldier' : 'bot', k === 'soldier' ? 'Idle' : 'idle');
@@ -51,6 +55,7 @@ export async function loadRigs(base, onProgress) {
     for (const c of Object.values(set)) c.tracks = c.tracks.filter((t) => names.has(t.name.slice(0, t.name.lastIndexOf('.'))));
     L.set = set;
   }
+  for (const k of keys) if (MODELS[k].base) { const b = LIB[MODELS[k].base]; LIB[k].set = b.set; LIB[k].faceYaw = b.faceYaw; }
   return LIB;
 }
 function findBone(root, name) { let b = null; root.traverse((o) => { if (!b && o.isBone && o.name.replace(/^mixamorig:?/, '') === name) b = o; }); return b; }
@@ -171,10 +176,15 @@ export function makeRigged(o = {}) {
   const top = o.top || '#2f8f8a', joints = o.pants || '#2f3550';
   model.traverse((m) => {
     if (!m.isMesh) return;
-    m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
+    // cull off-screen characters in every pass (colour, outlines, shadows) with a generous bounding sphere
+    m.castShadow = true; m.receiveShadow = true; m.frustumCulled = true; 
     if (kind === 'bot') m.material = /joint/i.test(m.material.name) ? toon(joints) : toon(top);
     else m.material = toonFrom(m.material, o.tint || '#ffffff');
   });
+  // culling sphere: a 1.5 m ball around the body, expressed in each skinned mesh's own space
+  // (compressed meshes keep normalised positions, so the geometry's own bounds are meaningless)
+  root.updateMatrixWorld(true);
+  model.traverse((m) => { if (m.isSkinnedMesh) { const inv = m.matrixWorld.clone().invert(); m.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.5).applyMatrix4(inv); } });
   const bones = {};
   model.traverse((b) => { if (b.isBone) bones[b.name.replace(/^mixamorig:?/, '')] = b; });
   const mixer = new THREE.AnimationMixer(model);
@@ -212,7 +222,7 @@ export function makeRigged(o = {}) {
     _q.setFromUnitVectors(_d, want);
     A.getWorldQuaternion(_wq); _q.multiply(_wq);
     A.parent.getWorldQuaternion(_pq).invert(); _pq.multiply(_q);
-    A.quaternion.slerp(_pq, Math.min(1, w));
+    if (Number.isFinite(_pq.x + _pq.y + _pq.z + _pq.w)) A.quaternion.slerp(_pq, Math.min(1, w));   // never let a bad target poison a bone
   }
   function gesture(name, dur = 2.5) { if (!act[name]) return; st.gest = name; st.gestT = dur; act[name].reset(); act[name].setEffectiveWeight(0); }
 
@@ -257,7 +267,7 @@ export function makeRigged(o = {}) {
     }
     // flying: torso horizontal, right fist forward, left arm swept back, legs trailing
     if (f > 0.01) {
-      const sup = Math.min(1, Math.max(0, (op.fly - 0.6) * 3)) * f;
+      const sup = Math.min(1, Math.max(0, ((op.fly || 0) - 0.6) * 3)) * f;   // op.fly is undefined once you stop flying
       aim('Spine', 'Spine1', V(0, 1, 0.12), f * 0.6);
       aim('LeftArm', 'LeftForeArm', V(0.75 - 0.35 * sup, -0.35 - 0.4 * sup, -0.35 - 0.2 * sup), f);
       aim('LeftForeArm', 'LeftHand', V(0.7 - 0.45 * sup, -0.3 - 0.5 * sup, -0.3 - 0.25 * sup), f);
@@ -279,6 +289,21 @@ export function makeRigged(o = {}) {
       }
       aim('Spine', 'Spine1', V(0, 1, 0.45), b);
     }
+    // sitting (benches, café chairs) and driving: thighs forward, shins down, hands on lap or on the wheel
+    st.sit = lerp(st.sit || 0, op.sit || op.drive ? 1 : 0, k(10));
+    if (st.sit > 0.01) {
+      const s = st.sit;
+      for (const [sd, x] of [['Left', 1], ['Right', -1]]) {
+        aim(sd + 'UpLeg', sd + 'Leg', V(x * 0.14, -0.08, 1), s);
+        aim(sd + 'Leg', sd + 'Foot', V(x * 0.03, op.drive ? -0.7 : -1, op.drive ? 0.7 : 0.12), s);
+        if (op.drive) { aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.2, -0.3, 1), s); aim(sd + 'ForeArm', sd + 'Hand', V(-x * 0.25 + x * (op.steer || 0) * 0.3, 0.2 - x * (op.steer || 0) * 0.4, 1), s); }
+        else if (!op.phone) { aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.25, -1, 0.35), s * 0.9); aim(sd + 'ForeArm', sd + 'Hand', V(-x * 0.2, -0.25, 1), s * 0.9); }
+      }
+      aim('Spine', 'Spine1', V(0, 1, op.drive ? -0.18 : -0.05), s * 0.8);
+    }
+    // looking at a phone
+    st.phone = lerp(st.phone || 0, op.phone ? 1 : 0, k(8));
+    if (st.phone > 0.01) { aim('RightArm', 'RightForeArm', V(-0.3, -0.9, 0.35), st.phone); aim('RightForeArm', 'RightHand', V(0.35, 0.7, 0.7), st.phone); aim('Neck', 'Head', V(0, 0.75, 0.6), st.phone * 0.7); }
     // parcel: arms forward under the box
     if (st.parcel > 0.01 && st.bike < 0.5 && f < 0.5) for (const [sd, x] of [['Left', 1], ['Right', -1]]) { aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.25, -0.6, 0.75), st.parcel); aim(sd + 'ForeArm', sd + 'Hand', V(-x * 0.25, 0.15, 1), st.parcel); }
     // umbrella overhead (right arm)
@@ -295,7 +320,7 @@ export function makeRigged(o = {}) {
     st.land = Math.max(0, st.land - dt * 4.5);
     const sq = st.land * 0.16 * Math.sin(st.land * Math.PI) - st.jump * 0.1 + (air > 0.5 && !op.flip ? -0.04 : 0);
     body.scale.set(1 + sq * 0.6, 1 - sq, 1 + sq * 0.6);
-    body.position.y = 0.95 + (op.bike ? 0.1 : 0) - st.land * 0.05;
+    body.position.y = 0.95 + (op.bike ? 0.1 : 0) - st.land * 0.05 - (st.sit || 0) * (op.drive ? 0.42 : 0.4);
     // wings with follow-through (they lag the body's motion)
     wings.g.visible = !!op.wings; if (op.wings) { const fl = op.flap ?? 1; const a2 = 0.2 + Math.sin(st.t * (6 + fl * 6)) * (0.15 + 0.5 * fl); wings.L.rotation.set(0, -0.35, a2); wings.R.rotation.set(0, 0.35, -a2); }
     parcel.visible = st.parcel > 0.5; umb.visible = st.umb > 0.5;

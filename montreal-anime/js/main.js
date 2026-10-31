@@ -1,6 +1,6 @@
 // main.js — Plateau · Montréal: boot, camera, input, interactions, the living-world systems and HUD.
 import * as THREE from 'three';
-import { h, U, whereIs, PARK, PLAZA, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, alleyX, ALLEY_HW } from './layout.js';
+import { h, U, whereIs, PARK, PLAZA, WATER_Y, RIVER_Z, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, alleyX, ALLEY_HW } from './layout.js';
 import { Pipeline, makeSky, LAYER_FX } from './toon.js';
 import { buildWorld } from './world.js';
 import { makeCharacter, Player, Neighbours, Traffic, Pigeons, makeCat, Bagels, bikeModel } from './actors.js';
@@ -9,6 +9,11 @@ import { Net, Offline, randomCode } from './net.js';
 import { loadRigs, MODELS } from './rig.js';
 import { Missions, COLORS, KINDS } from './missions.js';
 import { findRoofs, roofProps, makeClouds, Trail } from './sky.js';
+import { buildDowntown } from './downtown.js';
+import { Props } from './physics.js';
+import { Vehicle } from './vehicle.js';
+import { Crowd } from './crowd.js';
+import { carDrivable } from './cars.js';
 
 const $c = {};
 const $ = (s) => $c[s] || ($c[s] = document.querySelector(s));   // HUD elements are looked up once
@@ -44,6 +49,9 @@ async function boot() {
   const roofs = app.roofs = findRoofs(world);
   roofProps(scene, world, roofs);
   const clouds = makeClouds(scene);
+  $('#loadMsg').textContent = 'Le centre-ville, le Stade, le fleuve…';
+  await new Promise((r) => setTimeout(r, 20));
+  const downtown = app.downtown = buildDowntown(scene, world);
   const pipe = app.pipe = new Pipeline(renderer, scene, camera);
   if (touch) pipe.aoOn = false;
 
@@ -58,7 +66,38 @@ async function boot() {
   const player = app.player = new Player(world, hero);
   const npcs = app.npcs = new Neighbours(scene, world);
   const traffic = app.traffic = new Traffic(scene, world, world.glows);
-  player.carBlock = (x, z) => traffic.blocks(x, z);
+  player.carBlock = (x, z) => traffic.blocks(x, z) || app.vehicles.some((v) => v.hitCircle(x, z, 0.3));
+  world.glows.commit();   // traffic head/tail-light glows were added after the world was built
+  // ---- physics props, the crowd, and cars you can drive
+  const props = app.props = new Props(scene, world);
+  const crowd = app.crowd = new Crowd(scene, world);
+  const vehicles = app.vehicles = [];
+  traffic.vehicles = vehicles;
+  const spawnCar = (kind, col, x, z, yaw) => { const v = new Vehicle(scene, world, kind, col, x, z, yaw); for (let i = 0; i < 12 && v.blockedAt(v.pos.x, v.pos.z, v.yaw, vehicles); i++) { v.pos.x += 1.5; v.place(); } vehicles.push(v); return v; };
+  { const px = (PLAZA.x0 + PLAZA.x1) / 2, pz = PLAZA.z0 + 18;
+    spawnCar('sport', '#d0312d', px - 4, pz, 0); spawnCar('suv', '#2f3a44', px + 4, pz + 2, 0);
+    spawnCar('sedan', '#2f7fbf', PARK.x1 - 4, PARK.z0 - 10, Math.PI / 2);
+    if (world.pvmBeacon) spawnCar('sport', '#f2b43c', world.pvmBeacon.x + 52, world.pvmBeacon.z + 8, 0); }
+  let car = null, carView = 'chase', carCam = { yaw: 0, look: 0 };
+  function enterCar(v) {
+    if (player.bike) player.dismount();
+    player.flying = false; car = v; v.driver = hero; player.driving = true; player.vel.set(0, 0, 0);
+    carCam.yaw = v.yaw + Math.PI; cam.yaw = carCam.yaw; sfx.door(); closeSay(); areaToast(v.kind === 'sport' ? '🏎️ En route!' : '🚗 En route!');
+    $('#drive').classList.add('show'); ach.unlock('driver');
+  }
+  function exitCar() {
+    if (!car) return;
+    const v = car; car = null; v.driver = null; player.driving = false; sfx.door();
+    const d = v.doorPos(); player.pos.set(d.x, world.colliders.ground(d.x, d.z, v.pos.y + 1.5, 0.15), d.z); player.visY = player.pos.y; player.grounded = true; player.vy = 0;
+    player.unstick(); hero.root.position.copy(player.pos); player.yaw = v.yaw;
+    $('#drive').classList.remove('show');
+  }
+  function takeTraffic(c) {
+    traffic.take(c);
+    const yaw = c.L.axis === 'z' ? (c.L.dir > 0 ? 0 : Math.PI) : (c.L.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+    const v = new Vehicle(scene, world, c.kind, c.col, c.x, c.z, yaw); vehicles.push(v);
+    say('Conducteur', 'Hé! Ma voiture! … Bon, fais attention à elle.', 2); enterCar(v);
+  }
   const pigeons = new Pigeons(scene, world);
   const catSpot = world.spots.balcony.filter((s) => s.street === -1).sort((a, b) => Math.abs(a.z - 20) - Math.abs(b.z - 20))[0] || { x: -80, y: h(20) + 0.2, z: 20 };
   const cat = makeCat(scene, catSpot.x, catSpot.y, catSpot.z - 0.8);
@@ -83,6 +122,9 @@ async function boot() {
   const ctxNow = () => ({ hour: clockH, rain: weather.precip === 'rain', season, delivery: deliveries.job?.short, bagels: bagels.count });
   const talkables = () => {
     const out = [];
+    if (car) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Sortir de la voiture', act: exitCar }); return out; }
+    for (const v of vehicles) { const d = v.doorPos(); out.push({ x: d.x, z: d.z, y: v.pos.y, label: v.kind === 'sport' ? '🏎️ Conduire' : '🚗 Conduire', act: () => enterCar(v) }); }
+    { const tc = traffic.nearest(player.pos.x, player.pos.z); if (tc) out.push({ x: tc.x, z: tc.z, y: player.pos.y, label: '🚕 Prendre cette voiture', act: () => takeTraffic(tc) }); }
     if (player.bike) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Descendre du vélo', act: () => { player.dismount(); sfx.blip(); } }); return out; }
     for (const n of npcs.list) if (n.out) out.push({ x: n.pos.x, z: n.pos.z, y: n.pos.y, label: `Parler à ${n.name}`, act: () => talkTo(n) });
     for (const s of world.shops) out.push({ x: s.x, z: s.z, y: h(s.z), label: shopLabel(s), act: () => shopAct(s) });
@@ -128,6 +170,8 @@ async function boot() {
   const cam = app.cam = { yaw: 0, pitch: 0.28, dist: 5.2, cur: 5.2, lastInput: -10, target: new THREE.Vector3(), fov: 52, flyK: 0 };
   const pitchMin = () => (player.flying ? -0.9 : -0.25);
   function updateCamera(dt, t) {
+    if (car) return carCamera(dt, t);
+    if (camera.near < 0.2) { camera.near = 0.25; camera.updateProjectionMatrix(); }
     const p = hero.root.position;
     cam.target.lerp(new THREE.Vector3(p.x, p.y + (player.bike ? 1.65 : player.flying ? 1.3 : 1.45), p.z), 1 - Math.exp(-dt * (player.flying ? 8 : 12)));
     if (!photoMode && !player.flying && t - cam.lastInput > 2.2 && player.speed > 1.2) {
@@ -147,6 +191,35 @@ async function boot() {
     const fovT = 52 + Math.min(12, Math.max(0, player.speed - 5) * 1.6) + (player.dashT > 0 ? 6 : 0);
     cam.fov += (fovT - cam.fov) * (1 - Math.exp(-dt * 5));
     if (Math.abs(camera.fov - cam.fov) > 0.01) { camera.fov = cam.fov; camera.updateProjectionMatrix(); }
+  }
+
+  function carCamera(dt, t) {
+    const f = car.forward();
+    if (carView === 'cabin') {
+      const eye = car.eyePos(); camera.position.copy(eye);
+      carCam.look += (0 - carCam.look) * (t - cam.lastInput > 1.5 ? 1 - Math.exp(-dt * 2) : 0);
+      const yaw = car.yaw + carCam.look - (cam.yaw - carCam.yaw0 || 0) * 0;
+      const tgt = eye.clone().add(new THREE.Vector3(Math.sin(yaw), -0.08 - car.pitch, Math.cos(yaw)).multiplyScalar(10));
+      camera.up.set(Math.sin(car.roll) * Math.cos(car.yaw), 1, -Math.sin(car.roll) * Math.sin(car.yaw)).normalize();
+      camera.lookAt(tgt); camera.up.set(0, 1, 0);
+      if (Math.abs(camera.fov - 72) > 0.01 || camera.near > 0.06) { camera.fov = 72; camera.near = 0.05; camera.updateProjectionMatrix(); }
+      return;
+    }
+    if (camera.near < 0.2) { camera.near = 0.25; camera.updateProjectionMatrix(); }
+    // chase cam: swings behind the car, pulls back and widens with speed, shakes on impacts
+    if (t - cam.lastInput > 1.2) { let d = (car.yaw + Math.PI) - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * (1 - Math.exp(-dt * (2 + car.speed * 0.08))); }
+    const tgt = car.pos.clone().add(new THREE.Vector3(0, 1.35, 0)).addScaledVector(f, Math.min(4, car.speed * 0.12));
+    cam.target.lerp(tgt, 1 - Math.exp(-dt * 10));
+    const pitch = Math.max(0.08, Math.min(0.9, cam.pitch * 0.6 + 0.06)), dist = 6.8 + Math.min(4, car.speed * 0.09);
+    const dir = new THREE.Vector3(Math.sin(cam.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(cam.yaw) * Math.cos(pitch));
+    let free = dist;
+    for (let s2 = 1; s2 <= dist; s2 += 0.4) { const q = cam.target.clone().addScaledVector(dir, s2); if (world.colliders.solid(q.x, q.y, q.z)) { free = Math.max(1.5, s2 - 0.4); break; } }
+    camera.position.copy(cam.target).addScaledVector(dir, free);
+    cam.shake = Math.max(0, (cam.shake || 0) - dt * 2.5);
+    if (cam.shake > 0) camera.position.add(new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(cam.shake * 0.35));
+    camera.lookAt(cam.target);
+    const fovT = 56 + Math.min(16, car.speed * 0.35);
+    cam.fov += (fovT - cam.fov) * (1 - Math.exp(-dt * 4)); if (Math.abs(camera.fov - cam.fov) > 0.01) { camera.fov = cam.fov; camera.updateProjectionMatrix(); }
   }
 
   // ---- input
@@ -171,7 +244,8 @@ async function boot() {
     if (e.code === 'KeyT') cycleTime();
     if (e.code === 'KeyY') cycleSeason();
     if (e.code === 'KeyR') { weather.cycle(); updateButtons(); sfx.blip(); }
-    if (e.code === 'KeyB') sfx.bell(player.bike ? 2 : 1);
+    if (e.code === 'KeyB') { if (car) sfx.horn(); else sfx.bell(player.bike ? 2 : 1); }
+    if (e.code === 'KeyX' && car) { carView = carView === 'chase' ? 'cabin' : 'chase'; carCam.look = 0; }
     if (e.code === 'KeyM') toggleSound();
     if (e.code === 'KeyJ') $('#journal').classList.toggle('show'), drawJournal();
     if (e.code === 'KeyH' || e.code === 'Slash') $('#help').classList.toggle('show');
@@ -291,7 +365,7 @@ async function boot() {
     const su = sky.material.uniforms;
     su.uZen.value.copy(mixG(look.zen, 0.8)); su.uHor.value.copy(mixG(look.hor, 0.7)); su.uSunCol.value.copy(look.sunC).multiplyScalar(dim); su.uSun.value.copy(look.sunDir);
     su.uCloudCol.value.copy(mixG(look.cloud, 0.6)); su.uCloudShade.value.copy(mixG(look.shade, 0.8)); su.uCloud.value = weather.cover;
-    scene.fog.color.copy(mixG(look.fog, 0.75)); const altF = Math.max(0, player.pos.y - h(player.pos.z)); scene.fog.near = (ws === 'rain' ? 60 : 150) + altF * 1.2; scene.fog.far = (ws === 'rain' ? 420 : 720) + altF * 2.5;
+    scene.fog.color.copy(mixG(look.fog, 0.75)); const altF = Math.max(0, player.pos.y - h(player.pos.z)); scene.fog.near = (ws === 'rain' ? 60 : 180) + altF * 1.5; scene.fog.far = (ws === 'rain' ? 450 : 1150) + altF * 3;
     U.uNight.value = look.night;
     pipe.U.uInk.value.copy(look.ink); pipe.U.uSun.value.copy(look.lightDir); pipe.U.uCloud.value = (1 - look.night) * dim * (ws === 'cloudy' ? 1.3 : 1);
     const k = 1 - Math.exp(-dt * 2.2);
@@ -380,7 +454,7 @@ async function boot() {
     const b = r.tag.querySelector('b'); b.textContent = p.name; b.style.background = COLORS[p.color | 0];
     return r;
   }
-  function dropRemote(id) { const r = remotes.get(id); if (!r) return; scene.remove(r.ch.root); for (const t of r.trails) scene.remove(t.mesh); r.tag.remove(); remotes.delete(id); }
+  function dropRemote(id) { const r = remotes.get(id); if (!r) return; scene.remove(r.ch.root); if (r.car) scene.remove(r.car.g); for (const t of r.trails) scene.remove(t.mesh); r.tag.remove(); remotes.delete(id); }
   const DELAY = 150;
   function updateRemotes(dt) {
     const now = performance.now() - DELAY;
@@ -393,7 +467,20 @@ async function boot() {
       let dy = b.r - a.r; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); r.yaw = a.r + dy * Math.min(1, k);
       r.flags = b.f; r.speed = a.s + (b.s - a.s) * Math.min(1, k);
       const ch = r.ch; ch.root.position.copy(r.pos); ch.root.rotation.y = r.yaw;
-      const fly = !!(r.flags & 2), bike = !!(r.flags & 4);
+      const fly = !!(r.flags & 2), bike = !!(r.flags & 4), drv = !!(r.flags & 64);
+      // a friend driving: show their car with them in the driver's seat
+      if (drv && r.vk && (!r.car || r.carKey !== r.vk + r.vc)) { if (r.car) scene.remove(r.car.g); r.car = carDrivable(r.vc || '#d0312d', r.vk); r.carKey = r.vk + r.vc; scene.add(r.car.g); }
+      if (!drv && r.car) { scene.remove(r.car.g); r.car = null; }
+      if (r.car) {
+        r.car.g.position.copy(r.pos); r.car.g.rotation.set(0, r.yaw, 0); r.car.wheel.rotation.z = -(r.vst || 0) * 5.5;
+        for (const w of r.car.wheels) { w.spin.rotation.x += r.speed * dt / r.car.S.wr; if (w.front) w.g.rotation.y = r.vst || 0; }
+        const seat = r.car.seat.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), r.yaw).add(r.pos);
+        ch.root.position.set(seat.x, seat.y - 0.47, seat.z); ch.root.rotation.y = r.yaw;
+        ch.animate(dt, 0, true, 0, { drive: true, steer: r.vst || 0 });
+        ch.root.visible = r.pos.distanceTo(camera.position) < 420; r.car.g.visible = ch.root.visible;
+        wingTrails(r.trails, ch, r.yaw, false, dt);
+        continue;
+      }
       if (bike && !r.bike) { r.bike = bikeModel(); ch.root.add(r.bike.g); } else if (!bike && r.bike) { ch.root.remove(r.bike.g); r.bike = null; }
       if (r.bike) r.bike.spin(r.speed * dt);
       r.wave = Math.max(0, r.wave - dt);
@@ -451,7 +538,7 @@ async function boot() {
     n.on('join', (p) => { if (n !== net) return; chatLine('', `${p.name} a rejoint la partie! 👋`); sfx.mission('join'); ach.unlock('online'); updRoom(); sendState(); if (n.isHost && !missions.active) setTimeout(() => chatLine('', 'Tu es l\'hôte: appuie sur N (ou ⚑) pour lancer une mission!'), 1200); });
     n.on('status', () => { if (n === net) updRoom(); });
     n.on('leave', (p) => { if (n !== net) return; dropRemote(p.id); chatLine('', `${p.name} est parti.`); updRoom(); });
-    n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); if (r.buf.length > 30) r.buf.shift(); });
+    n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); r.vk = m.vk; r.vc = m.vc; r.vst = m.st || 0; if (r.buf.length > 30) r.buf.shift(); });
     n.on('chat', (m, p) => { if (n !== net) return; const t = String(m.text || '').slice(0, 120); chatLine(p.name, t, COLORS[p.color | 0]); bubble(p.id, t); sfx.blip(); });
     n.on('emo', (m, p) => { if (n !== net) return; const i = (m.i | 0) % 4; bubble(p.id, EMO[i], true); const r = remotes.get(p.id); if (r && i === 0) r.wave = 2.5; else r?.ch.gesture?.(GEST[i], i === 3 ? 5 : 2.2); });
   }
@@ -501,7 +588,8 @@ async function boot() {
   function sendState() {
     if (!multi || !net.peers.size) return;
     const p = hero.root.position;
-    const f = (player.grounded ? 1 : 0) | (player.flying ? 2 : 0) | (player.bike ? 4 : 0) | (player.parcel ? 8 : 0) | ((inp.rain || player.gliding) && !player.bike && !player.flying ? 16 : 0) | (player.flying && inp.run ? 32 : 0);
+    const f = (player.grounded ? 1 : 0) | (player.flying ? 2 : 0) | (player.bike ? 4 : 0) | (player.parcel ? 8 : 0) | ((inp.rain || player.gliding) && !player.bike && !player.flying && !car ? 16 : 0) | (player.flying && inp.run ? 32 : 0) | (car ? 64 : 0);
+    if (car) { const c = car.pos; net.send({ t: 'st', x: +c.x.toFixed(2), y: +c.y.toFixed(2), z: +c.z.toFixed(2), r: +car.yaw.toFixed(3), s: +car.speed.toFixed(2), f, o: save.outfit, md: save.model, vk: car.kind, vc: car.color, st: +car.steer.toFixed(2) }); return; }
     net.send({ t: 'st', x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +player.yaw.toFixed(3), s: +player.speed.toFixed(2), f, o: save.outfit, md: save.model });
   }
 
@@ -580,7 +668,29 @@ async function boot() {
     weather.update(dt, season);
     readInput();
     if (!started || photoMode) { inp.x = inp.y = 0; inp.jump = false; inp.dash = false; if (!started) cam.yaw += dt * 0.05; }
-    const stepped = player.update(dt, inp, cam.yaw);
+    let stepped = false;
+    const vctx = { vehicles, traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list], night: look.night, clock: fmtHour(clockH) };
+    if (car) {
+      inp.fly = false; inp.dash = false;
+      car.update(dt, started && !photoMode ? inp : null, vctx);
+      player.pos.copy(car.pos); player.yaw = car.yaw; player.speed = car.speed; player.vel.set(Math.sin(car.yaw) * car.vF, 0, Math.cos(car.yaw) * car.vF); player.grounded = true; player.flying = false;
+      const seat = car.seatPos(); hero.root.position.set(seat.x, seat.y - 0.47, seat.z); hero.root.rotation.y = car.yaw;
+      hero.animate(dt, 0, true, 0, { drive: true, steer: car.steer });
+      if (car.impact > 3.5) { sfx.crash(Math.min(1, car.impact / 18)); cam.shake = Math.min(1, car.impact / 15); puffs.ring(car.pos.clone().setY(car.pos.y + 0.4), 0xd9cdb8); if (car.impact > 12) ach.unlock('crash'); }
+      car.impact = 0;
+      sfx.engine(car.rpm, Math.max(0, inp.y), car.speed);
+      $('#driveSpd').textContent = Math.round(car.speed * 3.6); $('#driveGear').textContent = car.gear;
+    } else { stepped = player.update(dt, inp, cam.yaw); sfx.engine(0, 0, 0); }
+    for (const v of vehicles) if (v !== car) { if (v.speed > 0.05) v.update(dt, null, vctx); else v.place(0, vctx); }
+    for (const v of vehicles) v.m.lod(v === car ? 0 : v.pos.distanceTo(camera.position));
+    // fell into the St. Lawrence: splash, swim back to the quay
+    if (!car && !player.flying && player.pos.z > RIVER_Z - 6 && player.pos.y < WATER_Y + 0.2) {
+      puffs.ring(player.pos.clone().setY(WATER_Y), 0xbfe3ff); sfx.land(); areaToast('Plouf! Le fleuve Saint-Laurent');
+      const z = RIVER_Z - 12; player.pos.set(player.pos.x, world.colliders.ground(player.pos.x, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vy = 0; player.grounded = true; player.unstick();
+    }
+    if (!car && player.speed > 0.5) props.push(player.pos.x, player.pos.z, player.pos.y, player.pos.y + 1.7, player.bike ? 0.55 : 0.35, player.vel.x, player.vel.z, player.bike ? 95 : 70);
+    props.update(dt);
+    crowd.update(dt, player, camera.position);
     if (photoMode && pose) hero.animate(0, 0, true, 1, { parcel: player.parcel });
     if (stepped) { sfx.step(season === 'winter' ? 'snow' : weather.wet > 0.5 ? 'wet' : 'dry'); if (player.speed > 4 || season === 'winter' || weather.wet > 0.5) puffs.at(player.pos, season === 'winter' ? 0xf2f6ff : weather.wet > 0.5 ? 0xbfd8ff : 0xd9cdb8, 3); }
     if (player.jumped) { sfx.jump(); player.jumped = false; }
@@ -597,6 +707,7 @@ async function boot() {
     document.body.classList.toggle('flying', player.flying); document.body.classList.toggle('tired', !player.flying && player.energy < 99);
     $('#energy').style.width = player.energy + '%'; $('#energy').classList.toggle('low', player.energy < 25); $('#alt').textContent = Math.max(0, Math.round(alt)) + ' m';
     clouds.update(dt, look);
+    downtown.update(t, look.night);
     missions.update(rawDt, player, t);   // real seconds, so every player's countdown agrees
     updateRemotes(dt);
     stT += dt; if (stT > 1 / 12) { stT = 0; sendState(); }
@@ -636,7 +747,7 @@ async function boot() {
     updateLook(dt);
     updateCamera(dt, t);
     // speed lines + flash
-    const sp = Math.max(player.dashT > 0 ? 1 : 0, Math.min(1, Math.max(0, (player.speed - 6.5) / 4)));
+    const sp = car ? Math.min(1, Math.max(0, (car.speed - 16) / 14)) : Math.max(player.dashT > 0 ? 1 : 0, Math.min(1, Math.max(0, (player.speed - 6.5) / 4)));
     pipe.U.uSpeed.value += (sp - pipe.U.uSpeed.value) * (1 - Math.exp(-dt * 8));
     pipe.U.uFlash.value = Math.max(0, pipe.U.uFlash.value - dt * 3);
     // nearest interactable
@@ -667,7 +778,7 @@ async function boot() {
     const cp = camera.position;
     for (const n of npcs.list) if (n.out) n.ch.root.visible = n.ch.root.position.distanceTo(cp) < 150;
     for (const c of traffic.cars) c.m.g.visible = c.m.g.position.distanceTo(cp) < 260;
-    for (const ch of world.city.children) { const s = ch.geometry.boundingSphere; ch.visible = Math.hypot(s.center.x - cp.x, s.center.z - cp.z) - s.radius < 760; }
+    for (const ch of world.city.children) { const s = ch.geometry.boundingSphere; ch.visible = Math.hypot(s.center.x - cp.x, s.center.z - cp.z) - s.radius < 1200; }
     // parked cars: a few pixels tall past ~260 m (and in the fog) — skip those chunks in every pass
     const carR = 260 + Math.max(0, cp.y - 30) * 1.5;
     for (const ch of world.parkedCars.children) { const s = ch.geometry.boundingSphere; ch.visible = Math.hypot(s.center.x - cp.x, s.center.z - cp.z) - s.radius < carR; }
@@ -675,6 +786,7 @@ async function boot() {
   app.frame = frame;
   Object.assign(app, { say, interact, inp, setTime: (h2) => { clockH = typeof h2 === 'number' ? h2 : { day: 13, golden: 18.4, night: 22.5, dawn: 6.5, dusk: 19.8 }[h2]; }, setSeason: (s) => { season = s; updateButtons(); }, setWeather: (s) => { weather.set(s); weather.wet = s === 'rain' && season !== 'winter' ? 1 : 0; updateButtons(); }, near: () => near, talkables, togglePhoto, cycleFilter, keys, setOutfit });
   app.flyTo = (x, y, z) => { player.takeOff(); player.pos.set(x, y, z); };
+  Object.assign(app, { makeBike: bikeModel, enterCar, exitCar, setCarView: (v) => { carView = v; } }); Object.defineProperty(app, 'car', { get: () => car });
   app.stats = () => ({ flying: player.flying, energy: +player.energy.toFixed(1), alt: +(player.pos.y - h(player.pos.z)).toFixed(1), peers: net.count, mission: missions.cur && { kind: missions.cur.kind, phase: missions.cur.phase, step: missions.cur.step, awarded: missions.cur.awarded.size }, pts: missions.pts, calls: renderer.info.render.calls, colliders: world.colliders.list.length, bagels: bagels.list.length, hour: +clockH.toFixed(2), money: save.money });
   $('#loader').classList.add('done'); setTimeout(() => $('#loader').remove(), 900);
   window.__ready = true;
@@ -822,7 +934,7 @@ function makeAudio() {
     arp.forEach((n, j) => { if (Math.random() < 0.85) tone(mf(n), t + j * beat / 2, 0.5, 0.018, 'sine', music); });
   }
   function schedule() { let i = 0, t = A.currentTime + 0.1; const loop = () => { while (t < A.currentTime + 2) { bar(i++, t); t += 4 * 60 / 76; } }; loop(); musicT = setInterval(loop, 500); }
-  let drums = null, drumT = null, level = 0, rainG = null, windG = null, windF = null;
+  let drums = null, drumT = null, level = 0, rainG = null, windG = null, windF = null, eng = null, eng2 = null, engF = null, engG = null;
   function drumLoop() {
     const beat = 60 / 76 / 2; let t = A.currentTime + 0.05, i = 0;
     drumT = setInterval(() => { while (t < A.currentTime + 0.6) { if (level > 0) { if (i % 4 === 0) { const o = A.createOscillator(), g = A.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); env(g, t, 0.003, 0.18, 0.12 * level); o.connect(g).connect(drums); o.start(t); o.stop(t + 0.25); } if (i % 2 === 1 || level > 1) noiseTo(drums, t, 0.03, 0.025 * level, 8000); } t += beat; i++; } }, 150);
@@ -843,6 +955,16 @@ function makeAudio() {
     bell(kind = 0) { if (!A || !on) return; const t = A.currentTime; if (kind) { for (let i = 0; i < kind; i++) { tone(2100, t + i * 0.16, 0.5, 0.05); tone(2650, t + i * 0.16, 0.4, 0.03); } return; } for (const [f, a] of [[196, 0.12], [392, 0.06], [494, 0.04], [588, 0.03]]) tone(f, t, 4, a); },
     meow() { if (!A || !on) return; const t = A.currentTime, o = A.createOscillator(), g = A.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(620, t); o.frequency.linearRampToValueAtTime(880, t + 0.15); o.frequency.linearRampToValueAtTime(520, t + 0.45); const fl = A.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = 1400; fl.Q.value = 3; env(g, t, 0.05, 0.45, 0.06); o.connect(fl).connect(g).connect(master); o.start(t); o.stop(t + 0.6); },
     flap() { if (!A || !on) return; for (let i = 0; i < 6; i++) noise(A.currentTime + i * 0.05, 0.05, 0.05, 700, 0.6); },
+    engine(rpm, thr, speed) {
+      if (!A) return;
+      if (!eng) { eng = A.createOscillator(); eng.type = 'sawtooth'; eng2 = A.createOscillator(); eng2.type = 'square'; const lp = A.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; engF = lp; engG = A.createGain(); engG.gain.value = 0; eng.connect(lp); eng2.connect(lp); lp.connect(engG).connect(master); eng.start(); eng2.start(); }
+      const t = A.currentTime, f = 28 + rpm / 60 * 1.2;
+      eng.frequency.setTargetAtTime(f, t, 0.05); eng2.frequency.setTargetAtTime(f * 0.5, t, 0.05); engF.frequency.setTargetAtTime(380 + thr * 900 + rpm * 0.08, t, 0.08);
+      engG.gain.setTargetAtTime(on && rpm > 0 ? 0.035 + thr * 0.04 : 0, t, 0.1);
+    },
+    horn() { if (!A || !on) return; const t = A.currentTime; for (const f of [392, 494]) tone(f, t, 0.5, 0.07, 'square'); },
+    crash(v = 1) { if (!A || !on) return; noise(A.currentTime, 0.35, 0.3 * v, 220, 0.5); noise(A.currentTime + 0.03, 0.25, 0.18 * v, 1800, 0.8); },
+    door() { if (!A || !on) return; noise(A.currentTime, 0.08, 0.2, 500, 1.2); noise(A.currentTime + 0.09, 0.05, 0.12, 900, 1.2); },
     whoosh() { if (!A || !on) return; noise(A.currentTime, 0.45, 0.16, 700, 0.4); noise(A.currentTime + 0.1, 0.35, 0.1, 1500, 0.6); },
     wind(v) { if (!A) return; if (!windG) { const len = A.sampleRate * 2, buf = A.createBuffer(1, len, A.sampleRate), ch = buf.getChannelData(0); let l = 0; for (let i = 0; i < len; i++) { l = l * 0.97 + (Math.random() * 2 - 1) * 0.03; ch[i] = l * 6; } const s = A.createBufferSource(); s.buffer = buf; s.loop = true; windF = A.createBiquadFilter(); windF.type = 'bandpass'; windF.Q.value = 0.7; windF.frequency.value = 500; windG = A.createGain(); windG.gain.value = 0; s.connect(windF).connect(windG).connect(master); s.start(); } windG.gain.setTargetAtTime(on ? v * 0.18 : 0, A.currentTime, 0.3); windF.frequency.setTargetAtTime(400 + v * 900, A.currentTime, 0.3); },
     mission(k, n = 0) {

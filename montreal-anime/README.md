@@ -1,6 +1,6 @@
 # Plateau · Montréal
 
-A small anime-style walking game in Three.js, set in Montreal's Plateau-Mont-Royal.
+An anime-style multiplayer adventure in Three.js, set in Montreal's Plateau-Mont-Royal. Fly over the rooftops and race your friends through missions.
 
 **Play:** https://irk15.github.io/3D-/montreal-anime/
 
@@ -44,6 +44,24 @@ Tips: the **Café Lumière** gives you a 30-second speed boost, a croissant from
 - **Photo mode (P)**: free camera, a pose, and Manga screentone and Film filters.
 - **Music** gains a beat while you're on a delivery and speeds up when time runs short.
 
+## Version 3 — wings and friends
+
+- **Flying**: press **V** (or jump a third time in the air) to open paper wings. The camera sets your direction, Space climbs, C dives, Shift is a turbo. The wings get tired, so land on a roof or the street to recharge. Clouds float above the city and you can fly through them.
+- **Play with friends, wherever they are**: *Créer une partie* gives you a 5-letter code and a link. Friends open the link (or type the code) and appear in your Plateau with their name and colour. No account and no game server: browsers find each other through public Nostr relays and then connect directly with WebRTC. Two tabs in the same browser also see each other.
+- **Missions, first one wins**: the host presses **N** and everyone gets the same challenge, with a countdown:
+  - ⭐ *Pluie d'étoiles*: 18 stars on balconies, roofs and in the sky. Each one goes to whoever touches it first.
+  - 💫 *Course des anneaux*: 8 rings in order, low over the streets and high in the air.
+  - 🔍 *Chasse au trésor*: one hidden object, a hot/cold meter and a search circle on the map.
+  - 👑 *Roi du toit*: the first to spend 15 seconds on the golden roof wins.
+  - 📦 *Livraison éclair*: grab a parcel at a shop and deliver it across the Plateau.
+
+  Points carry over between rounds, a podium shows after each round, and the next round starts by itself. In solo, the same missions are time trials with personal records.
+- **Social**: Enter opens the chat, 1–4 send emotes (👋 ❤️ 😂 🏆), speech bubbles appear over heads, and friends show on the minimap.
+- **New interface**: a lobby with name and colour, a mission card with timer, a scoreboard, an arrow toward your objective, a wing-energy and altitude meter, and an invite card with copy and share buttons.
+- **More world**: chimneys, AC units, skylights and a few rooftop terraces (all solid, so you can land on them), 3D toon clouds, wing ribbons, wind sound, and fog that opens up with altitude.
+
+**Connection caveat**: peer-to-peer usually works between home networks and phones. Some school, office or carrier networks block WebRTC; without a TURN relay those players won't be able to connect.
+
 ## How it looks the way it does
 
 - **Toon shading**: three-band light ramp, blue-violet ambient shadows, painted sky with flat two-tone clouds.
@@ -53,6 +71,6 @@ Tips: the **Café Lumière** gives you a 30-second speed boost, a croissant from
 
 ## Files
 
-`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap).
+`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
 
 The neighbourhood is a stylised impression of the Plateau, not a survey-accurate map; street names are real, but the shops and characters are invented.

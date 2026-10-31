@@ -81,6 +81,16 @@ export function makeCharacter(o = {}) {
   const canopyCol = c.umbrella || pick(['#e4402b', '#2f7fbf', '#f2b43c', '#7b4fb0', '#3f9a6a', '#e79cb4'], Math.random);
   const can = mesh(new THREE.ConeGeometry(0.62, 0.3, 10, 1, true), toon(canopyCol, { side: THREE.DoubleSide }), umb, 0, -0.92, 0); can.rotation.x = Math.PI;
   const parcel = new THREE.Group(); torso.add(parcel); parcel.visible = false;
+  // paper-crane wings for flying: three soft feathers per side, tipped with the tuque colour
+  const wings = new THREE.Group(); wings.position.set(0, 0.36, -0.2); torso.add(wings); wings.visible = false;
+  const wingL = new THREE.Group(), wingR = new THREE.Group(); wings.add(wingL, wingR);
+  const fW = toon('#fbf7ef'), fT = toon(c.hatCol);
+  for (const [w, s2] of [[wingL, 1], [wingR, -1]]) {
+    [[0.34, 0.11, 0.0, 0.62], [0.28, 0.1, -0.12, 0.5], [0.22, 0.09, -0.22, 0.38]].forEach(([len, wd, dy, out], i) => {
+      const f = mesh(G.sph, i === 0 ? fW : fW, w, s2 * out * 0.62, dy, -0.02 * i, len, wd, 0.025); f.rotation.z = s2 * (0.25 + i * 0.22);
+      const tip = mesh(G.sph, fT, w, s2 * out * 1.12, dy - 0.04 - i * 0.03, -0.02 * i - 0.005, len * 0.28, wd * 0.8, 0.02); tip.rotation.z = s2 * (0.3 + i * 0.22);
+    });
+  }
   mesh(new THREE.BoxGeometry(0.36, 0.28, 0.26), toon('#c89a5e'), parcel, 0, 0.5, -0.24);
   mesh(new THREE.BoxGeometry(0.37, 0.05, 0.27), toon('#e4402b'), parcel, 0, 0.5, -0.24);
   root.scale.setScalar(c.scale);
@@ -107,11 +117,28 @@ export function makeCharacter(o = {}) {
       ar.sh.rotation.z = lerp(s * (0.1 + 0.05 * (1 - m)), s * 0.5, a);
       ar.el.rotation.x = lerp(-(0.18 + 1.0 * r) * m - 0.1, -0.4, a);
     }
+    body.position.y = 0.8 - Math.abs(Math.cos(ph)) * 0.035 * m + 0.02 * a - st.land * 0.08;
+    torso.rotation.x = 0.04 * m + 0.2 * r + 0.08 * a;
+    body.rotation.y = Math.sin(ph) * 0.07 * m; torso.rotation.y = -Math.sin(ph) * 0.1 * m;
+    torso.scale.y = 1 + Math.sin(st.t * 2.2) * 0.012 * (1 - m);
+    head.rotation.y = lerp(head.rotation.y, st.look, k * 0.5) + Math.sin(st.t * 0.7) * 0.05 * (1 - m);
+    head.rotation.x = -0.04 * r;
     if (wave > 0) { L.arm[1].sh.rotation.x = -2.7; L.arm[1].sh.rotation.z = -0.4 + Math.sin(st.t * 10) * 0.25 * wave; L.arm[1].el.rotation.x = -0.3; }
     // umbrella: right arm up holding it overhead
     umb.visible = !!o.umbrella;
     if (o.umbrella) { L.arm[1].sh.rotation.x = Math.PI - 0.15; L.arm[1].sh.rotation.z = -0.15; L.arm[1].el.rotation.x = 0.05; }
     parcel.visible = !!o.parcel;
+    wings.visible = !!o.wings;
+    if (o.wings) { const fl = o.flap ?? 1; const a2 = 0.25 + Math.sin(st.t * (6 + fl * 6)) * (0.15 + 0.45 * fl); wingL.rotation.set(0, -0.35, a2); wingR.rotation.set(0, 0.35, -a2); }
+    if (o.fly) {
+      const fw = o.fly;   // 0 hover … 1 full speed
+      st.fly = lerp(st.fly || 0, fw, k * 0.3);
+      const f2 = st.fly;
+      torso.rotation.x = 0.1; torso.rotation.y = 0; body.rotation.y = 0; head.rotation.x = -0.9 * f2;
+      for (let i = 0; i < 2; i++) { const s2 = i ? -1 : 1; L.leg[i].hp.rotation.x = 0.1 + Math.sin(st.t * 3 + i * 2) * 0.12; L.leg[i].kn.rotation.x = 0.25 + 0.4 * (1 - f2) + Math.sin(st.t * 3 + i * 2) * 0.1; L.arm[i].sh.rotation.x = 0.35 + 0.6 * f2; L.arm[i].sh.rotation.z = s2 * (0.25 + 0.15 * f2); L.arm[i].el.rotation.x = -0.15; }
+      if (f2 > 0.7) { L.arm[1].sh.rotation.x = -2.9; L.arm[1].sh.rotation.z = -0.1; L.arm[1].el.rotation.x = 0; }   // super-héros!
+      body.position.y = 0.8;
+    } else st.fly = 0;
     // on a bike: pedal, hands on the bars, lean forward
     if (o.bike) {
       const p2 = st.ph * 0.9;
@@ -119,19 +146,13 @@ export function makeCharacter(o = {}) {
       torso.rotation.x = 0.32; body.position.y = 0.98; body.rotation.y = 0;
     }
     // double-jump flip
-    body.rotation.x = o.flip ? -o.flip * Math.PI * 2 : 0;
+    body.rotation.x = o.fly ? 0.15 + 1.2 * st.fly : o.flip ? -o.flip * Math.PI * 2 : 0;
     // blink + talking mouth
     blinkT -= dt; if (blinkT < 0) { blink = 0.14; blinkT = 2 + Math.random() * 4; }
     blink = Math.max(0, blink - dt);
     const ey = blink > 0 ? 0.15 : 1;
     eyes[0].scale.y = 0.036 * ey; eyes[2].scale.y = 0.036 * ey; eyes[1].visible = eyes[3].visible = blink <= 0;
     mouth.scale.y = o.talk ? 0.006 + Math.abs(Math.sin(st.t * 16)) * 0.016 : 0.006;
-    body.position.y = 0.8 - Math.abs(Math.cos(ph)) * 0.035 * m + 0.02 * a - st.land * 0.08;
-    torso.rotation.x = 0.04 * m + 0.2 * r + 0.08 * a;
-    body.rotation.y = Math.sin(ph) * 0.07 * m; torso.rotation.y = -Math.sin(ph) * 0.1 * m;
-    torso.scale.y = 1 + Math.sin(st.t * 2.2) * 0.012 * (1 - m);
-    head.rotation.y = lerp(head.rotation.y, st.look, k * 0.5) + Math.sin(st.t * 0.7) * 0.05 * (1 - m);
-    head.rotation.x = -0.04 * r;
     st.land = Math.max(0, st.land - dt * 4);
     return step;
   }
@@ -145,12 +166,52 @@ export class Player {
     this.w = world; this.c = char; this.pos = new THREE.Vector3(9, 0, 112); this.pos.y = world.colliders.ground(this.pos.x, this.pos.z, 99);
     this.vel = new THREE.Vector3(); this.vy = 0; this.grounded = true; this.coyote = 0; this.jumpBuf = 0; this.yaw = Math.PI; this.visY = this.pos.y;
     this.boost = 0; this.jumpBoost = 0; this.speed = 0; this.r = 0.3; this.jumps = 0; this.flip = 0; this.gliding = false; this.dashT = 0; this.dashCD = 0; this.airDash = true;
-    this.bike = null; this.parcel = false; this.fx = { dashed: false, doubled: false, glide: false };
+    this.bike = null; this.parcel = false; this.fx = { dashed: false, doubled: false, glide: false, takeoff: false };
+    this.flying = false; this.energy = 100; this.flyVel = new THREE.Vector3();
     char.root.position.copy(this.pos); char.root.rotation.y = this.yaw;
+  }
+  takeOff() { this.flying = true; this.grounded = false; this.flip = 0; this.gliding = false; this.flyVel.set(this.vel.x, Math.max(6, this.vy), this.vel.z); this.flyT = 0; this.fx.takeoff = true; }
+  updateFly(dt, inp, camYaw) {
+    const C = this.w.colliders, p = this.pos; inp.jump = false; inp.dash = false; this.jumpBuf = 0;
+    const pitch = inp.camPitch ?? 0.28, cp = Math.cos(pitch);
+    const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
+    const boosting = inp.run && this.energy > 0 && (inp.x || inp.y);
+    const sp = this.energy > 0 ? (boosting ? 20 : 10) : 6;
+    const climb = (inp.jumpHeld ? 7 : 0) - (inp.down ? 7 : 0) - (pitch - 0.28) * inp.y * 9;
+    const tx = (fx * inp.y + rx * inp.x) * sp, tz = (fz * inp.y + rz * inp.x) * sp;
+    this.flyT = (this.flyT || 0) + dt;
+    let ty = this.energy > 0 ? climb + Math.sin(this.c.st.t * 2) * 0.3 + (this.flyT < 0.9 ? 6 : 0) : -3;
+    const k = 1 - Math.exp(-dt * (boosting ? 2.2 : 3.2));
+    this.flyVel.x += (tx - this.flyVel.x) * k; this.flyVel.z += (tz - this.flyVel.z) * k; this.flyVel.y += (ty - this.flyVel.y) * (1 - Math.exp(-dt * 3));
+    this.energy = Math.max(0, this.energy - dt * (boosting ? 12 : 3.2));
+    // horizontal with collisions
+    const tryMove = (dx, dz) => {
+      const nx = p.x + dx, nz = p.z + dz;
+      if (nx < BOUNDS.x0 - 60 || nx > BOUNDS.x1 + 60 || nz < BOUNDS.z0 - 60 || nz > BOUNDS.z1 + 60) return false;
+      if (C.blocked(nx, nz, 0.35, p.y, 0.3, p.y + 1.5)) return false;
+      p.x = nx; p.z = nz; return true;
+    };
+    const dx = this.flyVel.x * dt, dz = this.flyVel.z * dt;
+    if (!tryMove(dx, dz)) { if (!tryMove(dx, 0)) this.flyVel.x *= -0.3; if (!tryMove(0, dz)) this.flyVel.z *= -0.3; }
+    // vertical
+    let ny = Math.min(160, p.y + this.flyVel.y * dt);
+    if (this.flyVel.y > 0 && C.blocked(p.x, p.z, 0.25, ny + 1.4, 0.0, ny + 1.75) && !C.blocked(p.x, p.z, 0.25, p.y, 0.0, p.y + 1.4)) { ny = p.y; this.flyVel.y = 0; }
+    const g = C.ground(p.x, p.z, p.y + 0.3, 0.2);
+    if (ny <= g) { ny = g; if (this.flyVel.y <= 0.5 && this.flyT > 0.9) { this.flying = false; this.grounded = true; this.vy = 0; this.jumps = 0; this.c.land(); this.landed = true; } }
+    p.y = ny;
+    const hs = Math.hypot(this.flyVel.x, this.flyVel.z);
+    if (hs > 0.8) { const ty2 = Math.atan2(this.flyVel.x, this.flyVel.z); let d = ty2 - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 6)); }
+    this.vel.set(this.flyVel.x, 0, this.flyVel.z); this.speed = hs; this.visY = p.y;
+    this.c.root.position.set(p.x, p.y, p.z); this.c.root.rotation.y = this.yaw;
+    this.c.animate(dt, 0, false, 0, { wings: true, fly: Math.min(1, hs / 14), flap: this.energy > 0 ? (boosting ? 2 : 1) : 0.15, parcel: this.parcel });
+    return false;
   }
   mountBike(model) { this.bike = model; this.c.root.add(model.g); model.g.position.set(0, 0, 0); this.r = 0.45; }
   dismount() { if (!this.bike) return; this.c.root.remove(this.bike.g); this.bike = null; this.r = 0.3; }
   update(dt, inp, camYaw) {
+    if (inp.fly) { inp.fly = false; if (this.flying) this.flying = false; else if (!this.bike && this.energy > 12) this.takeOff(); }
+    if (this.flying) return this.updateFly(dt, inp, camYaw);
+    if (this.grounded) this.energy = Math.min(100, this.energy + dt * 28);
     const C = this.w.colliders, p = this.pos, bike = !!this.bike;
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
     let mx = fx * inp.y + rx * inp.x, mz = fz * inp.y + rz * inp.x;
@@ -202,6 +263,7 @@ export class Player {
     if (this.jumpBuf > 0) {
       if (this.grounded || this.coyote > 0) { this.vy = bike ? 4.8 : this.jumpBoost > 0 ? 7.6 : 6.0; this.grounded = false; this.coyote = 0; this.jumpBuf = 0; this.jumps = 1; this.jumped = true; }
       else if (!bike && this.jumps < 2 && this.vy < 4) { this.vy = this.jumpBoost > 0 ? 7 : 5.6; this.jumps = 2; this.jumpBuf = 0; this.flip = 0.0001; this.fx.doubled = true; }
+      else if (!bike && this.jumps >= 2 && this.flip === 0 && this.energy > 12) { this.jumpBuf = 0; this.takeOff(); return this.updateFly(dt, inp, camYaw); }   // third press: wings!
     }
     this.gliding = false;
     if (!this.grounded) {

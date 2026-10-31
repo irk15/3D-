@@ -60,7 +60,7 @@ export class Weather {
 // ================================================================= save
 const KEY = 'plateau-montreal-v2';
 export function loadSave() {
-  const d = { bagels: [], money: 0, deliveries: 0, best: 0, met: {}, ach: {}, outfit: 0, owned: [0], voice: true, bike: 0, hour: 9 };
+  const d = { bagels: [], money: 0, deliveries: 0, best: 0, met: {}, ach: {}, outfit: 0, owned: [0], voice: true, bike: 0, hour: 9, name: '', color: 0 };
   try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) Object.assign(d, s); } catch (e) { /* private mode */ }
   return d;
 }
@@ -82,6 +82,11 @@ export const ACH = {
   cat: ['🐈', 'Ami des chats', 'Flatte le chat'],
   rich: ['💰', 'Économe', 'Accumule 200 $'],
   style: ['🧢', 'Le style', 'Achète une nouvelle tenue'],
+  fly: ['🕊️', 'Premier envol', 'Déploie tes ailes et vole'],
+  cloud: ['☁️', 'Dans les nuages', 'Traverse un nuage en volant'],
+  summit: ['⛰️', 'Plus haut que la croix', 'Vole à plus de 100 m'],
+  mwin: ['🏅', 'Champion du Plateau', 'Gagne une mission'],
+  online: ['🌐', 'Entre amis', 'Joue avec quelqu\'un en ligne'],
 };
 export class Achievements {
   constructor(save, toast) { this.s = save; this.toast = toast; }

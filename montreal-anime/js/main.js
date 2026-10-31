@@ -5,6 +5,9 @@ import { Pipeline, makeSky, LAYER_FX } from './toon.js';
 import { buildWorld } from './world.js';
 import { makeCharacter, Player, Neighbours, Traffic, Pigeons, makeCat, Bagels, bikeModel } from './actors.js';
 import { lookAt, fmtHour, Weather, loadSave, writeSave, Achievements, ACH, Voice, dialogue, Deliveries, OUTFITS } from './systems.js';
+import { Net, Offline, randomCode } from './net.js';
+import { Missions, COLORS, KINDS } from './missions.js';
+import { findRoofs, roofProps, makeClouds, Trail } from './sky.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -36,11 +39,15 @@ async function boot() {
   $('#loadMsg').textContent = 'On construit le Plateau…';
   await new Promise((r) => setTimeout(r, 30));
   const world = app.world = buildWorld(scene);
+  const roofs = app.roofs = findRoofs(world);
+  roofProps(scene, world, roofs);
+  const clouds = makeClouds(scene);
   const pipe = app.pipe = new Pipeline(renderer, scene, camera);
   if (touch) pipe.aoOn = false;
 
   // ---- characters
-  let hero = makeCharacter(OUTFITS[save.outfit]?.o || {}); scene.add(hero.root);
+  const optsFor = (outfit, color) => { const o = { ...(OUTFITS[outfit]?.o || {}) }; const c = COLORS[color | 0] || COLORS[0]; o.pack = c; if (o.scarf !== null) o.scarf = c; return o; };
+  let hero = makeCharacter(optsFor(save.outfit, save.color)); scene.add(hero.root);
   const player = app.player = new Player(world, hero);
   const npcs = app.npcs = new Neighbours(scene, world);
   const traffic = app.traffic = new Traffic(scene, world, world.glows);
@@ -60,7 +67,7 @@ async function boot() {
   function setOutfit(i) {
     const keep = hero.root.position.clone(), y = hero.root.rotation.y;
     scene.remove(hero.root);
-    hero = makeCharacter(OUTFITS[i].o); scene.add(hero.root); hero.root.position.copy(keep); hero.root.rotation.y = y;
+    hero = makeCharacter(optsFor(i, save.color)); scene.add(hero.root); hero.root.position.copy(keep); hero.root.rotation.y = y;
     if (player.bike) { const b = player.bike; player.dismount(); player.c = hero; player.mountBike(b); } else player.c = hero;
     save.outfit = i; writeSave(save);
   }
@@ -111,16 +118,19 @@ async function boot() {
   }
 
   // ---- camera rig
-  const cam = app.cam = { yaw: 0, pitch: 0.28, dist: 5.2, cur: 5.2, lastInput: -10, target: new THREE.Vector3(), fov: 52 };
+  const cam = app.cam = { yaw: 0, pitch: 0.28, dist: 5.2, cur: 5.2, lastInput: -10, target: new THREE.Vector3(), fov: 52, flyK: 0 };
+  const pitchMin = () => (player.flying ? -0.9 : -0.25);
   function updateCamera(dt, t) {
     const p = hero.root.position;
-    cam.target.lerp(new THREE.Vector3(p.x, p.y + (player.bike ? 1.65 : 1.45), p.z), 1 - Math.exp(-dt * 12));
-    if (!photoMode && t - cam.lastInput > 2.2 && player.speed > 1.2) {
+    cam.target.lerp(new THREE.Vector3(p.x, p.y + (player.bike ? 1.65 : player.flying ? 1.3 : 1.45), p.z), 1 - Math.exp(-dt * (player.flying ? 8 : 12)));
+    if (!photoMode && !player.flying && t - cam.lastInput > 2.2 && player.speed > 1.2) {
       let d = (player.yaw + Math.PI) - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
       cam.yaw += d * (1 - Math.exp(-dt * (player.bike ? 2.2 : 0.9)));
     }
+    if (!player.flying && cam.pitch < -0.25) cam.pitch += (-0.25 - cam.pitch) * (1 - Math.exp(-dt * 4));
     const dir = new THREE.Vector3(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
-    const want = cam.dist * (player.bike ? 1.25 : 1);
+    cam.flyK += ((player.flying ? 1 : 0) - cam.flyK) * (1 - Math.exp(-dt * 2.5));
+    const want = cam.dist * (player.bike ? 1.25 : 1) * (1 + cam.flyK * (0.55 + Math.min(0.5, player.speed / 40)));
     let free = want;
     for (let s = 0.4; s <= want; s += 0.2) { const q = cam.target.clone().addScaledVector(dir, s); if (world.colliders.solid(q.x, q.y, q.z)) { free = Math.max(0.6, s - 0.35); break; } }
     cam.cur += (free - cam.cur) * (free < cam.cur ? 1 - Math.exp(-dt * 25) : 1 - Math.exp(-dt * 3));
@@ -136,6 +146,7 @@ async function boot() {
   const keys = new Set(), inp = { x: 0, y: 0, run: false, jump: false, jumpHeld: false, dash: false, rain: false };
   addEventListener('keydown', (e) => {
     if (!started) return;
+    if (document.activeElement === $('#chatIn')) return;
     if (e.repeat && e.code !== 'Space') { keys.add(e.code); return; }
     keys.add(e.code);
     if (photoMode) {
@@ -143,8 +154,12 @@ async function boot() {
       if (e.code === 'KeyG') pose = !pose; e.preventDefault(); return;
     }
     if (e.code === 'Space') { if (!e.repeat) inp.jump = true; e.preventDefault(); }
-    if (e.code === 'KeyF' || e.code === 'KeyC') inp.dash = true;
-    if (e.code === 'KeyE' || e.code === 'Enter') interact();
+    if (e.code === 'KeyF' || (e.code === 'KeyC' && !player.flying)) inp.dash = true;
+    if (e.code === 'KeyV') inp.fly = true;
+    if (e.code === 'KeyE') interact();
+    if (e.code === 'Enter') { if (multi) { openChat(); e.preventDefault(); } else interact(); }
+    if (e.code === 'KeyN') missionButton();
+    if (/^Digit[1-4]$/.test(e.code)) emote(+e.code.slice(5) - 1);
     if (e.code === 'KeyP') togglePhoto();
     if (e.code === 'KeyT') cycleTime();
     if (e.code === 'KeyY') cycleSeason();
@@ -153,14 +168,14 @@ async function boot() {
     if (e.code === 'KeyM') toggleSound();
     if (e.code === 'KeyJ') $('#journal').classList.toggle('show'), drawJournal();
     if (e.code === 'KeyH' || e.code === 'Slash') $('#help').classList.toggle('show');
-    if (e.code === 'Escape') { $('#help').classList.remove('show'); $('#journal').classList.remove('show'); closeSay(); }
+    if (e.code === 'Escape') { $('#invite').classList.remove('show'); $('#results').classList.remove('show'); $('#help').classList.remove('show'); $('#journal').classList.remove('show'); closeSay(); }
   });
   addEventListener('keyup', (e) => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
   const cv = renderer.domElement;
   let drag = null;
   cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
-  cv.addEventListener('pointermove', (e) => { if (!drag) return; cam.yaw -= (e.clientX - drag.x) * 0.006; cam.pitch = Math.min(1.25, Math.max(-0.25, cam.pitch + (e.clientY - drag.y) * 0.005)); drag = { x: e.clientX, y: e.clientY }; cam.lastInput = clock.elapsedTime; });
+  cv.addEventListener('pointermove', (e) => { if (!drag) return; cam.yaw -= (e.clientX - drag.x) * 0.006; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + (e.clientY - drag.y) * 0.005)); drag = { x: e.clientX, y: e.clientY }; cam.lastInput = clock.elapsedTime; });
   cv.addEventListener('pointerup', () => { drag = null; });
   cv.addEventListener('wheel', (e) => { cam.dist = Math.min(photoMode ? 16 : 10, Math.max(photoMode ? 1.2 : 2.4, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); e.preventDefault(); }, { passive: false });
   const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, lookT = { id: null, x: 0, y: 0 };
@@ -174,7 +189,7 @@ async function boot() {
   cv.addEventListener('touchmove', (e) => {
     for (const t of e.changedTouches) {
       if (t.identifier === joy.id) { let dx = t.clientX - joy.ox, dy = t.clientY - joy.oy; const l = Math.hypot(dx, dy), m = 55; if (l > m) { dx *= m / l; dy *= m / l; } joy.x = dx / m; joy.y = -dy / m; $('#joyKnob').style.transform = `translate(${dx}px,${dy}px)`; }
-      if (t.identifier === lookT.id) { cam.yaw -= (t.clientX - lookT.x) * 0.008; cam.pitch = Math.min(1.25, Math.max(-0.25, cam.pitch + (t.clientY - lookT.y) * 0.006)); lookT.x = t.clientX; lookT.y = t.clientY; cam.lastInput = clock.elapsedTime; }
+      if (t.identifier === lookT.id) { cam.yaw -= (t.clientX - lookT.x) * 0.008; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + (t.clientY - lookT.y) * 0.006)); lookT.x = t.clientX; lookT.y = t.clientY; cam.lastInput = clock.elapsedTime; }
     }
     e.preventDefault();
   }, { passive: false });
@@ -186,6 +201,9 @@ async function boot() {
   $('#tRun').addEventListener('touchstart', (e) => { touchRun = !touchRun; e.currentTarget.classList.toggle('on', touchRun); e.preventDefault(); });
   $('#tTalk').addEventListener('touchstart', (e) => { interact(); e.preventDefault(); });
   $('#tDash').addEventListener('touchstart', (e) => { inp.dash = true; e.preventDefault(); });
+  $('#tFly').addEventListener('touchstart', (e) => { inp.fly = true; e.preventDefault(); });
+  $('#tChat').addEventListener('click', () => openChat());
+  let emoI = 0; $('#tEmo').addEventListener('click', () => { emote(emoI); emoI = (emoI + 1) % 4; $('#tEmo').textContent = ['👋', '❤️', '😂', '🏆'][emoI]; });
   let gpPrev = [];
   function readInput() {
     let x = 0, y = 0;
@@ -200,15 +218,16 @@ async function boot() {
     if (gp) {
       const dz = (v) => (Math.abs(v) < 0.15 ? 0 : v);
       x += dz(gp.axes[0]); y -= dz(gp.axes[1]);
-      if (Math.abs(dz(gp.axes[2])) + Math.abs(dz(gp.axes[3])) > 0) { cam.yaw -= dz(gp.axes[2]) * 0.05; cam.pitch = Math.min(1.25, Math.max(-0.25, cam.pitch + dz(gp.axes[3]) * 0.04)); cam.lastInput = clock.elapsedTime; }
+      if (Math.abs(dz(gp.axes[2])) + Math.abs(dz(gp.axes[3])) > 0) { cam.yaw -= dz(gp.axes[2]) * 0.05; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + dz(gp.axes[3]) * 0.04)); cam.lastInput = clock.elapsedTime; }
       const pressed = (i) => gp.buttons[i]?.pressed && !gpPrev[i];
       if (pressed(0)) inp.jump = true; held = held || gp.buttons[0]?.pressed;
-      if (pressed(2)) interact(); if (pressed(3)) inp.dash = true; if (pressed(1) && player.bike) sfx.bell(2);
+      if (pressed(2)) interact(); if (pressed(3)) inp.dash = true; if (pressed(4)) inp.fly = true; if (pressed(1) && player.bike) sfx.bell(2);
       run = run || gp.buttons[7]?.value > 0.4 || gp.buttons[5]?.pressed;
       gpPrev = gp.buttons.map((b) => b.pressed);
     }
     const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
     inp.x = x; inp.y = y; inp.run = run; inp.jumpHeld = held; inp.rain = weather.precip === 'rain';
+    inp.down = keys.has('KeyC') || keys.has('ControlLeft') || (gp && gp.buttons[6]?.value > 0.4); inp.camPitch = cam.pitch;
   }
 
   // ---- dialog, prompts, toasts
@@ -265,7 +284,7 @@ async function boot() {
     const su = sky.material.uniforms;
     su.uZen.value.copy(mixG(look.zen, 0.8)); su.uHor.value.copy(mixG(look.hor, 0.7)); su.uSunCol.value.copy(look.sunC).multiplyScalar(dim); su.uSun.value.copy(look.sunDir);
     su.uCloudCol.value.copy(mixG(look.cloud, 0.6)); su.uCloudShade.value.copy(mixG(look.shade, 0.8)); su.uCloud.value = weather.cover;
-    scene.fog.color.copy(mixG(look.fog, 0.75)); scene.fog.near = ws === 'rain' ? 60 : 150; scene.fog.far = ws === 'rain' ? 420 : 720;
+    scene.fog.color.copy(mixG(look.fog, 0.75)); const altF = Math.max(0, player.pos.y - h(player.pos.z)); scene.fog.near = (ws === 'rain' ? 60 : 150) + altF * 1.2; scene.fog.far = (ws === 'rain' ? 420 : 720) + altF * 2.5;
     U.uNight.value = look.night;
     pipe.U.uInk.value.copy(look.ink); pipe.U.uSun.value.copy(look.lightDir); pipe.U.uCloud.value = (1 - look.night) * dim * (ws === 'cloudy' ? 1.3 : 1);
     const k = 1 - Math.exp(-dt * 2.2);
@@ -317,12 +336,182 @@ async function boot() {
   function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); pipe.setSize(innerWidth, innerHeight, renderer.getPixelRatio()); }
   addEventListener('resize', resize); resize();
 
-  // ---- start screen
+  // ================================================================ v3: friends, rooms and missions
+  let multi = false, roomCode = null;
+  let net = app.net = new Offline({ name: '', color: 0 });
+  const myName = () => save.name || 'Moi';
+  const EMO = ['👋', '❤️', '😂', '🏆'];
+  const missions = app.missions = new Missions(scene, world, roofs, net, {
+    myName, myColor: () => COLORS[save.color | 0], player,
+    sfx: (k, n) => sfx.mission(k, n), burst: (p) => burst.at(p), float: (t) => floatText(t), toast: (t) => areaToast(t),
+    onBegin: (c) => { closeSay(); $('#marr span').textContent = ''; },
+    onEnd: (c, m) => { if (c.kind === 'courier' && !deliveries.job) player.parcel = false; if (m.winner === net.id) { ach.unlock('mwin'); burst.at(player.pos.clone().setY(player.pos.y + 1.2)); } },
+  });
+  function missionButton() {
+    if (!started) return;
+    if (missions.active) { if (!multi) { missions.stop(); floatText('Mission annulée'); } return; }
+    if (net.isHost) { $('#results').classList.remove('show'); missions.auto = true; missions.nextAt = 0; missions.start(); }
+    else chatLine('', 'Seul l\'hôte peut lancer une mission.');
+  }
+  $('#btnMission').onclick = missionButton;
+  $('#resNext').onclick = () => { $('#results').classList.remove('show'); if (net.isHost) { missions.nextAt = 0; missions.auto = true; missions.start(); } };
+  $('#resClose').onclick = () => { $('#results').classList.remove('show'); if (!multi) missions.auto = false; };
+
+  // ---- other players: interpolated avatars with name tags and speech bubbles
+  const remotes = app.remotes = new Map();
+  const meTag = document.createElement('div'); meTag.className = 'tag'; $('#tags').appendChild(meTag);
+  function remoteFor(p, m) {
+    let r = remotes.get(p.id);
+    const outfit = (m?.o ?? p.outfit ?? 0) % OUTFITS.length;
+    if (r && (r.outfit !== outfit || r.color !== (p.color | 0))) { dropRemote(p.id); r = null; }
+    if (!r) {
+      const ch = makeCharacter(optsFor(outfit, p.color)); scene.add(ch.root);
+      const tag = document.createElement('div'); tag.className = 'tag'; tag.innerHTML = '<b></b>'; $('#tags').appendChild(tag);
+      r = { id: p.id, ch, buf: [], tag, outfit, color: p.color | 0, wave: 0, bike: null, pos: new THREE.Vector3(), yaw: 0, flags: 0, speed: 0, trails: [new Trail(scene, COLORS[p.color | 0]), new Trail(scene, COLORS[p.color | 0])] };
+      remotes.set(p.id, r);
+    }
+    const b = r.tag.querySelector('b'); b.textContent = p.name; b.style.background = COLORS[p.color | 0];
+    return r;
+  }
+  function dropRemote(id) { const r = remotes.get(id); if (!r) return; scene.remove(r.ch.root); for (const t of r.trails) scene.remove(t.mesh); r.tag.remove(); remotes.delete(id); }
+  const DELAY = 150;
+  function updateRemotes(dt) {
+    const now = performance.now() - DELAY;
+    for (const r of remotes.values()) {
+      const B = r.buf; if (!B.length) continue;
+      let a = B[B.length - 1], b = a;
+      for (let i = B.length - 1; i > 0; i--) if (B[i - 1].t <= now) { a = B[i - 1]; b = B[i]; break; }
+      const k = b.t === a.t ? 1 : Math.max(0, Math.min(1.4, (now - a.t) / (b.t - a.t)));
+      r.pos.set(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k);
+      let dy = b.r - a.r; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); r.yaw = a.r + dy * Math.min(1, k);
+      r.flags = b.f; r.speed = a.s + (b.s - a.s) * Math.min(1, k);
+      const ch = r.ch; ch.root.position.copy(r.pos); ch.root.rotation.y = r.yaw;
+      const fly = !!(r.flags & 2), bike = !!(r.flags & 4);
+      if (bike && !r.bike) { r.bike = bikeModel(); ch.root.add(r.bike.g); } else if (!bike && r.bike) { ch.root.remove(r.bike.g); r.bike = null; }
+      if (r.bike) r.bike.spin(r.speed * dt);
+      r.wave = Math.max(0, r.wave - dt);
+      ch.animate(dt, fly ? 0 : bike ? r.speed * 0.45 : r.speed, !!(r.flags & 1) || bike, r.wave > 0 ? 1 : 0, { wings: fly, fly: fly ? Math.min(1, r.speed / 14) : 0, flap: (r.flags & 32) ? 2 : 1, bike, parcel: !!(r.flags & 8), umbrella: !!(r.flags & 16) });
+      ch.root.visible = r.pos.distanceTo(camera.position) < 420;
+      wingTrails(r.trails, ch, r.yaw, fly && r.speed > 4, dt);
+      if (performance.now() - B[B.length - 1].t > 4000) ch.root.visible = false;   // stale (tab in background)
+    }
+  }
+  const tagV = new THREE.Vector3();
+  function placeTag(el, pos, hgt) {
+    tagV.copy(pos); tagV.y += hgt; const d = tagV.distanceTo(camera.position); tagV.project(camera);
+    if (tagV.z > 1 || d > 260 || Math.abs(tagV.x) > 1.15 || Math.abs(tagV.y) > 1.15) { el.style.display = 'none'; return; }
+    el.style.display = ''; const sc = Math.max(0.6, Math.min(1, 12 / d + 0.45));
+    el.style.transform = `translate(${(tagV.x * 0.5 + 0.5) * innerWidth}px,${(-tagV.y * 0.5 + 0.5) * innerHeight}px) translate(-50%,-100%) scale(${sc})`;
+  }
+  function bubble(id, text, emo = false) {
+    const el = id === 'me' ? meTag : remotes.get(id)?.tag; if (!el) return;
+    el.querySelector('.bub')?.remove();
+    const d = document.createElement('div'); d.className = 'bub' + (emo ? ' emo' : ''); d.textContent = text; el.prepend(d);
+    setTimeout(() => d.remove(), emo ? 2600 : 5000);
+  }
+  // ---- wing ribbons
+  const myTrails = [new Trail(scene, '#ffffff'), new Trail(scene, '#ffffff')];
+  const tipV = new THREE.Vector3(), upV = new THREE.Vector3(0, 1, 0);
+  function wingTrails(trails, ch, yaw, on, dt) {
+    const a = 0.15 + 1.2 * (ch.st.fly || 0), cy = Math.cos(yaw), sy = Math.sin(yaw);
+    trails.forEach((tr, i) => {
+      const x = i ? -0.8 : 0.8, y = 0.6 * Math.cos(a) + 0.2 * Math.sin(a) + 0.8, z = 0.6 * Math.sin(a) - 0.2 * Math.cos(a);
+      tipV.set(x * cy + z * sy, y, -x * sy + z * cy).add(ch.root.position);
+      tr.push(tipV, upV, on, dt);
+    });
+  }
+
+  // ---- chat + emotes
+  function chatLine(name, text, col) {
+    const d = document.createElement('div');
+    if (name) { const b = document.createElement('b'); b.style.color = col || '#ffe066'; b.textContent = name; d.appendChild(b); } else d.style.fontStyle = 'italic';
+    d.appendChild(document.createTextNode(text)); $('#chatLog').appendChild(d);
+    while ($('#chatLog').children.length > 6) $('#chatLog').firstChild.remove();
+    setTimeout(() => d.classList.add('old'), 9000); setTimeout(() => d.remove(), 10200);
+  }
+  function openChat() { document.body.classList.add('chatting'); const i = $('#chatIn'); i.value = ''; keys.clear(); setTimeout(() => i.focus(), 0); }
+  function closeChat() { document.body.classList.remove('chatting'); $('#chatIn').blur(); renderer.domElement.focus(); }
+  $('#chatIn').addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { const t = $('#chatIn').value.trim().slice(0, 120); if (t) { net.send({ t: 'chat', text: t }); chatLine(myName(), t, COLORS[save.color | 0]); bubble('me', t); } closeChat(); }
+    if (e.key === 'Escape') closeChat();
+  });
+  function emote(i) { net.send({ t: 'emo', i }); bubble('me', EMO[i], true); sfx.blip(); }
+
+  // ---- connecting
+  function bindNet(n) {
+    n.on('join', (p) => { if (n !== net) return; chatLine('', `${p.name} a rejoint la partie! 👋`); sfx.mission('join'); ach.unlock('online'); updRoom(); sendState(); if (n.isHost && !missions.active) setTimeout(() => chatLine('', 'Tu es l\'hôte: appuie sur N (ou ⚑) pour lancer une mission!'), 1200); });
+    n.on('status', () => { if (n === net) updRoom(); });
+    n.on('leave', (p) => { if (n !== net) return; dropRemote(p.id); chatLine('', `${p.name} est parti.`); updRoom(); });
+    n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); if (r.buf.length > 30) r.buf.shift(); });
+    n.on('chat', (m, p) => { if (n !== net) return; const t = String(m.text || '').slice(0, 120); chatLine(p.name, t, COLORS[p.color | 0]); bubble(p.id, t); sfx.blip(); });
+    n.on('emo', (m, p) => { if (n !== net) return; const i = (m.i | 0) % 4; bubble(p.id, EMO[i], true); const r = remotes.get(p.id); if (r && i === 0) r.wave = 2.5; });
+  }
+  function updRoom() {
+    const el = $('#room');
+    if (!multi) { el.innerHTML = ''; return; }
+    el.innerHTML = `<span class="dot"></span>${roomCode} · 👥 ${net.count}`;
+    el.classList.toggle('local', net.status !== 'en ligne');
+    $('#invNet').textContent = net.status === 'en ligne' ? 'Connexion directe entre joueurs (WebRTC, pair-à-pair), trouvée via des relais Nostr publics. Aucun serveur de jeu.' : 'Mode local: seuls les onglets de ce navigateur se voient (internet indisponible).';
+  }
+  async function goOnline(code) {
+    if (roomCode === code) return;
+    missions.stop(); net.leave?.();
+    for (const id of [...remotes.keys()]) dropRemote(id);
+    roomCode = code; multi = true; document.body.classList.add('multi');
+    net = app.net = new Net(code, { name: myName(), color: save.color | 0, outfit: save.outfit });
+    bindNet(net); missions.setNet(net); missions.pts = {}; missions.auto = true;
+    try { const u = new URL(location.href); u.searchParams.set('room', code); history.replaceState(null, '', u); } catch (e) { /* file:// */ }
+    updRoom(); chatLine('', `Salle ${code} · connexion…`);
+    await net.connect();
+    updRoom(); chatLine('', net.status === 'en ligne' ? 'En ligne! Partage le code à tes amis. Entrée pour discuter.' : 'Mode local seulement.');
+  }
+  const linkFor = (code) => `${location.origin}${location.pathname}?room=${code}`;
+  function showInvite() {
+    if (!multi) goOnline(randomCode());
+    $('#invCode').textContent = roomCode; $('#invLink').textContent = linkFor(roomCode);
+    $('#invShare').style.display = navigator.share ? '' : 'none';
+    $('#invite').classList.add('show'); updRoom();
+  }
+  $('#btnInvite').onclick = showInvite; $('#room').onclick = showInvite;
+  $('#invClose').onclick = () => $('#invite').classList.remove('show');
+  $('#invite').onclick = (e) => { if (e.target.id === 'invite') $('#invite').classList.remove('show'); };
+  $('#invCopy').onclick = () => { const l = linkFor(roomCode); (navigator.clipboard?.writeText(l) || Promise.reject()).then(() => { $('#invCopy').textContent = 'Copié ✓'; setTimeout(() => { $('#invCopy').textContent = 'Copier le lien'; }, 1800); }).catch(() => prompt('Copie ce lien:', l)); };
+  $('#invShare').onclick = () => navigator.share?.({ title: 'Plateau · Montréal', text: `Viens jouer avec moi! Code: ${roomCode}`, url: linkFor(roomCode) }).catch(() => {});
+  let stT = 0;
+  function sendState() {
+    if (!multi || !net.peers.size) return;
+    const p = hero.root.position;
+    const f = (player.grounded ? 1 : 0) | (player.flying ? 2 : 0) | (player.bike ? 4 : 0) | (player.parcel ? 8 : 0) | ((inp.rain || player.gliding) && !player.bike && !player.flying ? 16 : 0) | (player.flying && inp.run ? 32 : 0);
+    net.send({ t: 'st', x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +player.yaw.toFixed(3), s: +player.speed.toFixed(2), f, o: save.outfit });
+  }
+
+  // ---- lobby on the title screen
+  const NAMES = ['Écureuil', 'Raton', 'Huard', 'Castor', 'Orignal', 'Bernache', 'Mouffette', 'Harfang'];
+  const cols = $('#pCols');
+  COLORS.forEach((c, i) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Couleur ' + (i + 1)); b.onclick = () => { save.color = i; writeSave(save); updCols(); setOutfit(save.outfit); }; cols.appendChild(b); });
+  const updCols = () => [...cols.children].forEach((b, i) => b.classList.toggle('on', i === (save.color | 0)));
+  updCols();
+  $('#pName').value = save.name || '';
+  $('#pName').addEventListener('input', () => { save.name = $('#pName').value.trim().slice(0, 16); writeSave(save); });
+  const invited = (params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+  if (invited) { $('#pCode').value = invited; $('#lobby').classList.add('invited'); $('#join').textContent = 'Rejoindre ▸'; }
   let started = params.has('play');
-  const begin = () => { started = true; document.body.classList.add('playing'); sfx.start(); $('#btnSound').classList.remove('off'); setTimeout(() => areaToast('Rue Saint-Denis'), 600); if (!save.deliveries && !params.has('play')) setTimeout(() => say('Tutoriel', 'Bienvenue sur le Plateau! Entre dans un commerce (E) pour prendre une livraison, cherche les 12 bagels dorés, et prends un BIXI pour aller plus vite.'), 2500); };
-  $('#play').onclick = begin;
-  if (save.deliveries || save.bagels.length) $('#play').textContent = 'Continuer ▸';
+  const begin = (room) => {
+    if (!save.name) { save.name = NAMES[Math.floor(Math.random() * NAMES.length)] + ' ' + (10 + Math.floor(Math.random() * 89)); $('#pName').value = save.name; writeSave(save); }
+    started = true; document.body.classList.add('playing'); sfx.start(); $('#btnSound').classList.remove('off');
+    if (room) { goOnline(room); if (!invited) setTimeout(showInvite, 900); }
+    setTimeout(() => areaToast('Rue Saint-Denis'), 600);
+    if (!save.deliveries && !params.has('play')) setTimeout(() => say('Tutoriel', room ? 'Bienvenue! Quand tes amis sont là, l\'hôte lance une mission (N). Le premier qui réussit gagne! Appuie sur V (ou saute trois fois) pour voler.' : 'Bienvenue sur le Plateau! Appuie sur V (ou saute trois fois) pour voler. N lance une mission. Entre dans un commerce (E) pour une livraison, et cherche les 12 bagels dorés.'), 2500);
+  };
+  $('#play').onclick = () => begin();
+  $('#host').onclick = () => begin(randomCode());
+  $('#join').onclick = () => { const c = $('#pCode').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length < 4) { $('#pCode').focus(); $('#pCode').animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250); return; } begin(c); };
+  $('#pCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#join').click(); });
+  if (save.deliveries || save.bagels.length) $('#play').textContent = 'Continuer en solo ▸';
   if (started) document.body.classList.add('playing');
+  if (params.has('play') && params.get('room')) goOnline(invited);
+  app.goOnline = goOnline; app.emote = emote; app.chat = (t) => { net.send({ t: 'chat', text: t }); chatLine(myName(), t, COLORS[save.color | 0]); bubble('me', t); };
 
   // ---- loop
   const clock = new THREE.Clock();
@@ -337,8 +526,18 @@ async function boot() {
   $('#bCount').textContent = bagels.count;
   $('#winClose').onclick = () => $('#win').classList.remove('show');
   const arrowV = new THREE.Vector3();
+  let boardT = 0;
+  function pointArrow(a, target) {
+    arrowV.copy(target).setY(target.y + 1).project(camera);
+    const behind = arrowV.z > 1;
+    let ax = arrowV.x, ay = arrowV.y; if (behind) { ax = -ax; ay = -ay; }
+    const on = !behind && Math.abs(ax) < 0.92 && Math.abs(ay) < 0.88;
+    if (on) { a.style.transform = `translate(${(ax * 0.5 + 0.5) * innerWidth}px, ${(-ay * 0.5 + 0.5) * innerHeight}px) translate(-50%,-120%)`; a.classList.add('on'); }
+    else { const ang = Math.atan2(-ay, ax), m = Math.min(innerWidth, innerHeight) * 0.42; a.style.transform = `translate(${innerWidth / 2 + Math.cos(ang) * m * innerWidth / Math.min(innerWidth, innerHeight) * 0.9}px, ${innerHeight / 2 + Math.sin(ang) * m * (Math.sin(ang) < 0 ? 0.62 : 1)}px) translate(-50%,-50%) rotate(${ang + Math.PI / 2}rad)`; a.classList.remove('on'); }
+  }
   function frame(dtOverride) {
-    const dt = typeof dtOverride === 'number' ? dtOverride : Math.min(clock.getDelta(), 1 / 20);
+    const rawDt = typeof dtOverride === 'number' ? dtOverride : Math.min(clock.getDelta(), 1);
+    const dt = typeof dtOverride === 'number' ? dtOverride : Math.min(rawDt, 1 / 20);
     if (typeof dtOverride === 'number') clock.elapsedTime += dt;
     const t = clock.elapsedTime;
     U.uTime.value = t;
@@ -355,6 +554,18 @@ async function boot() {
     if (player.fx.dashed) { player.fx.dashed = false; sfx.dash(); }
     if (player.fx.glide) { player.fx.glide = false; ach.unlock('glide'); }
     if (player.bumped) { player.bumped = false; if (player.speed > 4) sfx.land(); }
+    if (player.fx.takeoff) { player.fx.takeoff = false; sfx.whoosh(); puffs.ring(player.pos, 0xffffff); ach.unlock('fly'); }
+    const alt = player.pos.y - h(player.pos.z);
+    if (player.flying) { if (alt > 100) ach.unlock('summit'); if (clouds.inside(camera.position)) { ach.unlock('cloud'); pipe.U.uFlash.value = Math.max(pipe.U.uFlash.value, 0.18); } }
+    sfx.wind(player.flying ? Math.min(1, player.speed / 20) : 0);
+    wingTrails(myTrails, hero, player.yaw, player.flying && player.speed > 4, dt);
+    document.body.classList.toggle('flying', player.flying); document.body.classList.toggle('tired', !player.flying && player.energy < 99);
+    $('#energy').style.width = player.energy + '%'; $('#energy').classList.toggle('low', player.energy < 25); $('#alt').textContent = Math.max(0, Math.round(alt)) + ' m';
+    clouds.update(dt, look);
+    missions.update(rawDt, player, t);   // real seconds, so every player's countdown agrees
+    updateRemotes(dt);
+    stT += dt; if (stT > 1 / 12) { stT = 0; sendState(); }
+    boardT -= dt; if (boardT < 0) { boardT = 0.25; if (multi || missions.cur) missions.drawBoard(); }
     npcs.update(dt, player, { hour: clockH, rain: weather.precip === 'rain' });
     traffic.update(dt, player, npcs.list.filter((n) => n.out));
     if (pigeons.update(dt, player)) sfx.flap();
@@ -380,14 +591,7 @@ async function boot() {
       $('#jobBar').classList.toggle('late', job.left < job.time * 0.25);
       const d = Math.hypot(job.target.x - player.pos.x, job.target.z - player.pos.z);
       $('#jobDist').textContent = d < 1000 ? `${Math.round(d)} m` : '';
-      // edge-of-screen arrow toward the drop-off
-      arrowV.copy(job.target).setY(job.target.y + 1).project(camera);
-      const behind = arrowV.z > 1;
-      let ax = arrowV.x, ay = arrowV.y; if (behind) { ax = -ax; ay = -ay; }
-      const on = !behind && Math.abs(ax) < 0.92 && Math.abs(ay) < 0.88;
-      const a = $('#arrow');
-      if (on) { a.style.transform = `translate(${(ax * 0.5 + 0.5) * innerWidth}px, ${(-ay * 0.5 + 0.5) * innerHeight}px) translate(-50%,-120%)`; a.classList.add('on'); }
-      else { const ang = Math.atan2(-ay, ax), m = Math.min(innerWidth, innerHeight) * 0.42; a.style.transform = `translate(${innerWidth / 2 + Math.cos(ang) * m * innerWidth / Math.min(innerWidth, innerHeight) * 0.9}px, ${innerHeight / 2 + Math.sin(ang) * m}px) translate(-50%,-50%) rotate(${ang + Math.PI / 2}rad)`; a.classList.remove('on'); }
+      pointArrow($('#arrow'), job.target);   // edge-of-screen arrow toward the drop-off
     }
     sfx.intensity(job ? (job.left < job.time * 0.25 ? 2 : 1) : 0);
     sfx.rain(weather.precip === 'rain' ? weather.wet : 0);
@@ -402,7 +606,7 @@ async function boot() {
     pipe.U.uFlash.value = Math.max(0, pipe.U.uFlash.value - dt * 3);
     // nearest interactable
     let best = null, bd = 2.6;
-    if (started && !photoMode) for (const o of talkables()) { const d = Math.hypot(o.x - player.pos.x, o.z - player.pos.z); if ((d < bd || o.label === 'Descendre du vélo') && Math.abs(o.y - player.pos.y) < 2.2) { bd = d; best = o; } }
+    if (started && !photoMode && !player.flying) for (const o of talkables()) { const d = Math.hypot(o.x - player.pos.x, o.z - player.pos.z); if ((d < bd || o.label === 'Descendre du vélo') && Math.abs(o.y - player.pos.y) < 2.2) { bd = d; best = o; } }
     near = best;
     const prm = $('#prompt');
     if (best && !$('#say').classList.contains('show')) { $('#promptText').textContent = best.label; prm.classList.add('show'); } else prm.classList.remove('show');
@@ -411,7 +615,12 @@ async function boot() {
     if (w.name && w.name !== lastArea && started) { lastArea = w.name; areaToast(w.name); }
     $('#boostCafe').classList.toggle('show', player.boost > 0); $('#boostJump').classList.toggle('show', player.jumpBoost > 0);
     $('#onBike').classList.toggle('show', !!player.bike);
-    mm.draw(player, cam.yaw, bagels.list, job?.target);
+    const mt = missions.target(), ma = $('#marr');
+    ma.classList.toggle('has', !!mt);
+    if (mt) { pointArrow(ma, mt); ma.querySelector('span').textContent = Math.round(mt.distanceTo(player.pos)) + ' m'; }
+    mm.draw(player, cam.yaw, bagels.list, job?.target, missions.marks(), [...remotes.values()].map((r) => ({ x: r.pos.x, z: r.pos.z, c: COLORS[r.color] })));
+    placeTag(meTag, hero.root.position, 2.2);
+    for (const r of remotes.values()) placeTag(r.tag, r.pos, 2.25);
     sfx.ambience(look.night, season, weather.precip);
     saveT += dt; if (saveT > 10) { saveT = 0; save.hour = clockH; writeSave(save); }
     cullFar();
@@ -426,7 +635,8 @@ async function boot() {
   }
   app.frame = frame;
   Object.assign(app, { say, interact, inp, setTime: (h2) => { clockH = typeof h2 === 'number' ? h2 : { day: 13, golden: 18.4, night: 22.5, dawn: 6.5, dusk: 19.8 }[h2]; }, setSeason: (s) => { season = s; updateButtons(); }, setWeather: (s) => { weather.set(s); weather.wet = s === 'rain' && season !== 'winter' ? 1 : 0; updateButtons(); }, near: () => near, talkables, togglePhoto, cycleFilter, keys, setOutfit });
-  app.stats = () => ({ calls: renderer.info.render.calls, colliders: world.colliders.list.length, bagels: bagels.list.length, hour: +clockH.toFixed(2), money: save.money });
+  app.flyTo = (x, y, z) => { player.takeOff(); player.pos.set(x, y, z); };
+  app.stats = () => ({ flying: player.flying, energy: +player.energy.toFixed(1), alt: +(player.pos.y - h(player.pos.z)).toFixed(1), peers: net.count, mission: missions.cur && { kind: missions.cur.kind, phase: missions.cur.phase, step: missions.cur.step, awarded: missions.cur.awarded.size }, pts: missions.pts, calls: renderer.info.render.calls, colliders: world.colliders.list.length, bagels: bagels.list.length, hour: +clockH.toFixed(2), money: save.money });
   $('#loader').classList.add('done'); setTimeout(() => $('#loader').remove(), 900);
   window.__ready = true;
   if (!params.has('manual')) renderer.setAnimationLoop(() => frame());
@@ -536,7 +746,7 @@ function makeMinimap(world) {
   for (const [a, c, z0, z1] of world.foot) R(a, c, z0, z1, '#eba98c');
   const W = cv.width, H = cv.height;
   return {
-    draw(player, yaw, bagels, target) {
+    draw(player, yaw, bagels, target, marks = [], others = []) {
       x.clearRect(0, 0, W, H);
       x.save(); x.beginPath(); x.arc(W / 2, H / 2, W / 2 - 3, 0, 7); x.clip();
       x.fillStyle = '#cfe6b6'; x.fillRect(0, 0, W, H);
@@ -544,6 +754,8 @@ function makeMinimap(world) {
       x.scale(sc / S, sc / S); x.translate(-(player.pos.x - X0) * S, -(player.pos.z - Z0) * S);
       x.drawImage(base, 0, 0);
       if (target) { const tx = (target.x - X0) * S, tz = (target.z - Z0) * S; x.strokeStyle = 'rgba(40,200,230,.9)'; x.lineWidth = 5; x.setLineDash([10, 8]); x.beginPath(); x.moveTo((player.pos.x - X0) * S, (player.pos.z - Z0) * S); x.lineTo(tx, tz); x.stroke(); x.setLineDash([]); x.fillStyle = '#2fd0ee'; x.strokeStyle = '#fff'; x.lineWidth = 4; x.beginPath(); x.arc(tx, tz, 11, 0, 7); x.fill(); x.stroke(); }
+      for (const m of marks) { x.beginPath(); x.arc((m.x - X0) * S, (m.z - Z0) * S, m.r, 0, 7); if (m.ring) { x.fillStyle = m.c; x.fill(); x.strokeStyle = 'rgba(230,140,20,.9)'; x.lineWidth = 4; x.setLineDash([8, 6]); x.stroke(); x.setLineDash([]); } else { x.fillStyle = m.c; x.strokeStyle = '#2b2550'; x.lineWidth = 3; x.fill(); x.stroke(); } }
+      for (const o of others) { x.beginPath(); x.arc((o.x - X0) * S, (o.z - Z0) * S, 10, 0, 7); x.fillStyle = o.c; x.strokeStyle = '#fff'; x.lineWidth = 4; x.fill(); x.stroke(); }
       for (const B of bagels) if (!B.got) { x.fillStyle = '#f2a93b'; x.strokeStyle = '#7a3d14'; x.lineWidth = 3; x.beginPath(); x.arc((B.g.position.x - X0) * S, (B.g.position.z - Z0) * S, 7, 0, 7); x.fill(); x.stroke(); }
       x.restore();
       x.save(); x.translate(W / 2, H / 2); x.rotate(yaw - player.yaw + Math.PI);
@@ -571,7 +783,7 @@ function makeAudio() {
     arp.forEach((n, j) => { if (Math.random() < 0.85) tone(mf(n), t + j * beat / 2, 0.5, 0.018, 'sine', music); });
   }
   function schedule() { let i = 0, t = A.currentTime + 0.1; const loop = () => { while (t < A.currentTime + 2) { bar(i++, t); t += 4 * 60 / 76; } }; loop(); musicT = setInterval(loop, 500); }
-  let drums = null, drumT = null, level = 0, rainG = null;
+  let drums = null, drumT = null, level = 0, rainG = null, windG = null, windF = null;
   function drumLoop() {
     const beat = 60 / 76 / 2; let t = A.currentTime + 0.05, i = 0;
     drumT = setInterval(() => { while (t < A.currentTime + 0.6) { if (level > 0) { if (i % 4 === 0) { const o = A.createOscillator(), g = A.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); env(g, t, 0.003, 0.18, 0.12 * level); o.connect(g).connect(drums); o.start(t); o.stop(t + 0.25); } if (i % 2 === 1 || level > 1) noiseTo(drums, t, 0.03, 0.025 * level, 8000); } t += beat; i++; } }, 150);
@@ -592,6 +804,18 @@ function makeAudio() {
     bell(kind = 0) { if (!A || !on) return; const t = A.currentTime; if (kind) { for (let i = 0; i < kind; i++) { tone(2100, t + i * 0.16, 0.5, 0.05); tone(2650, t + i * 0.16, 0.4, 0.03); } return; } for (const [f, a] of [[196, 0.12], [392, 0.06], [494, 0.04], [588, 0.03]]) tone(f, t, 4, a); },
     meow() { if (!A || !on) return; const t = A.currentTime, o = A.createOscillator(), g = A.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(620, t); o.frequency.linearRampToValueAtTime(880, t + 0.15); o.frequency.linearRampToValueAtTime(520, t + 0.45); const fl = A.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = 1400; fl.Q.value = 3; env(g, t, 0.05, 0.45, 0.06); o.connect(fl).connect(g).connect(master); o.start(t); o.stop(t + 0.6); },
     flap() { if (!A || !on) return; for (let i = 0; i < 6; i++) noise(A.currentTime + i * 0.05, 0.05, 0.05, 700, 0.6); },
+    whoosh() { if (!A || !on) return; noise(A.currentTime, 0.45, 0.16, 700, 0.4); noise(A.currentTime + 0.1, 0.35, 0.1, 1500, 0.6); },
+    wind(v) { if (!A) return; if (!windG) { const len = A.sampleRate * 2, buf = A.createBuffer(1, len, A.sampleRate), ch = buf.getChannelData(0); let l = 0; for (let i = 0; i < len; i++) { l = l * 0.97 + (Math.random() * 2 - 1) * 0.03; ch[i] = l * 6; } const s = A.createBufferSource(); s.buffer = buf; s.loop = true; windF = A.createBiquadFilter(); windF.type = 'bandpass'; windF.Q.value = 0.7; windF.frequency.value = 500; windG = A.createGain(); windG.gain.value = 0; s.connect(windF).connect(windG).connect(master); s.start(); } windG.gain.setTargetAtTime(on ? v * 0.18 : 0, A.currentTime, 0.3); windF.frequency.setTargetAtTime(400 + v * 900, A.currentTime, 0.3); },
+    mission(k, n = 0) {
+      if (!A || !on) return; const t = A.currentTime;
+      if (k === 'tick') tone(660, t, 0.15, 0.08, 'square');
+      if (k === 'go') { tone(990, t, 0.4, 0.09, 'square'); tone(1320, t + 0.05, 0.4, 0.05, 'triangle'); }
+      if (k === 'ring') { tone(mf(72 + n * 2), t, 0.25, 0.08, 'triangle'); tone(mf(79 + n * 2), t + 0.06, 0.3, 0.06, 'triangle'); }
+      if (k === 'star') [0, 7, 12].forEach((s2, i) => tone(mf(79 + s2 + Math.min(n, 12)), t + i * 0.05, 0.25, 0.06, 'triangle'));
+      if (k === 'win') [0, 4, 7, 12, 16, 19, 24].forEach((s2, i) => tone(mf(64 + s2), t + i * 0.09, 0.6, 0.08, 'triangle'));
+      if (k === 'lose') [7, 4, 0, -5].forEach((s2, i) => tone(mf(64 + s2), t + i * 0.16, 0.4, 0.06, 'triangle'));
+      if (k === 'join') [0, 7].forEach((s2, i) => tone(mf(76 + s2), t + i * 0.1, 0.3, 0.06, 'sine'));
+    },
     shutter() { if (!A || !on) return; noise(A.currentTime, 0.05, 0.2, 3000, 0.5); noise(A.currentTime + 0.08, 0.05, 0.15, 2000, 0.5); },
     ambience(night, season, precip) {
       if (!A || !on || precip) return;

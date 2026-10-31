@@ -32,8 +32,8 @@ body.playing .hud{opacity:1}
 .boost{display:none;background:var(--ink);color:#fff;font-weight:600;font-size:13px;padding:5px 12px;border-radius:999px}
 .boost.show{display:block;animation:pop .4s}
 /* right column icons (like a phone game) */
-.icons{position:absolute;right:max(16px,env(safe-area-inset-right));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px}
-.ic{width:48px;height:48px;border-radius:14px;background:var(--paper);box-shadow:var(--shadow);display:grid;place-items:center;transition:transform .15s}
+.icons{position:absolute;right:max(16px,env(safe-area-inset-right));top:50%;transform:translateY(-46%);display:flex;flex-direction:column;gap:9px}
+.ic{width:46px;height:46px;border-radius:14px;background:var(--paper);box-shadow:var(--shadow);display:grid;place-items:center;transition:transform .15s}
 .ic:hover{transform:translateY(-2px)}
 .ic:active{transform:translateY(2px)}
 .ic svg{width:26px;height:26px;stroke:var(--ink);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -147,6 +147,106 @@ body.photo .hud{opacity:0;pointer-events:none}
 .set{padding:8px 14px;border-radius:999px;background:#efe7d8;font-weight:600;font-size:14px;border:2px solid transparent}
 .set.on{background:var(--ink);color:#fff}
 @media (max-width:700px){#jobCard{min-width:0;max-width:calc(100vw - 150px);left:auto;right:12px;transform:translate(0,-160%);top:70px;padding:8px 12px}body.onjob #jobCard{transform:none}.counters .chip{font-size:14px;padding:8px 12px}#jAch{grid-template-columns:1fr}#jStats{grid-template-columns:1fr 1fr}#onBike{top:180px}}
+
+/* ---- v3: flight, multiplayer, missions ---- */
+#wingsHud{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));transform:translate(-50%,30px);opacity:0;transition:all .35s cubic-bezier(.3,1.4,.5,1);display:flex;gap:10px;align-items:center;background:var(--paper);padding:7px 14px 7px 10px;border-radius:999px;box-shadow:var(--shadow);font-weight:700;font-size:14px;pointer-events:none}
+body.flying #wingsHud,body.tired #wingsHud{opacity:1;transform:translate(-50%,0)}
+#wingsHud .bar{width:150px;margin:0;height:10px}
+#energy{height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#7fd3ff,#c58bff);transition:width .15s}
+#energy.low{background:linear-gradient(90deg,#e4402b,#f2a93b);animation:blink .4s infinite alternate}
+#alt{font-variant-numeric:tabular-nums;color:var(--ink2);min-width:54px;text-align:right}
+#room{cursor:pointer;background:var(--ink);color:#fff}
+#room:empty{display:none}
+#room .dot{width:8px;height:8px;border-radius:50%;background:#5ff08a;box-shadow:0 0 0 3px rgba(95,240,138,.25)}
+#room.local .dot{background:var(--gold)}
+#board{position:absolute;left:max(16px,env(safe-area-inset-left));top:220px;list-style:none;margin:0;padding:6px;display:none;flex-direction:column;gap:4px;background:rgba(255,250,241,.92);border-radius:16px;box-shadow:var(--shadow);min-width:190px;max-width:240px}
+body.multi #board,body.mission #board{display:flex}
+#board li{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:10px;font-size:14px}
+#board li.me{background:#f3ead8}
+#board i,#resList i{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:0 0 0 2px #fff,0 0 0 3px var(--line)}
+#board b{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#board b small{font-size:10px;background:var(--ink);color:#fff;border-radius:6px;padding:0 5px;vertical-align:2px}
+#board span{font-size:12px;color:var(--ink2);font-weight:600}
+#board em{font-style:normal;font-weight:700;min-width:22px;text-align:right}
+body.multi #onBike,body.mission #onBike{top:auto;bottom:210px}
+#misCard{position:absolute;left:50%;top:max(14px,env(safe-area-inset-top));transform:translate(-50%,-160%);transition:transform .5s cubic-bezier(.3,1.4,.5,1);background:var(--ink);color:#fff;border-radius:20px;box-shadow:0 8px 0 rgba(0,0,0,.18),0 14px 34px rgba(43,37,80,.35);padding:10px 18px 12px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:2px 12px;align-items:center;min-width:min(420px,calc(100vw - 32px));max-width:calc(100vw - 32px)}
+body.mission #misCard{transform:translate(-50%,0)}
+body.mission.onjob #jobCard{top:104px}
+#misIc{grid-row:span 2;font-size:30px;width:50px;height:50px;display:grid;place-items:center;background:rgba(255,255,255,.12);border-radius:14px}
+#misName{font-weight:700;font-size:17px;letter-spacing:.01em}
+#misTime{font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;grid-row:span 2;background:rgba(255,255,255,.12);padding:6px 12px;border-radius:12px}
+#misTime.late{background:var(--red);animation:blink .5s infinite alternate}
+#misGoal{font-size:13.5px;color:#d7d2f5;font-weight:500}
+#misCard .bar{grid-column:1/-1;background:rgba(255,255,255,.15);margin-top:6px;height:6px}
+#misBar{height:100%;background:linear-gradient(90deg,var(--gold),#ffe066);border-radius:99px;transition:width .25s linear}
+#misHeat{grid-column:1/-1;display:none;gap:10px;align-items:center;margin-top:6px;font-weight:700;font-size:14px}
+#misHeat .bar{flex:1;margin:0;height:10px;grid-column:auto}
+#heatBar{height:100%;border-radius:99px;transition:all .4s}
+#count{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.4);opacity:0;font-size:min(30vw,190px);font-weight:700;color:#fff;-webkit-text-stroke:6px var(--ink);paint-order:stroke fill;pointer-events:none;z-index:9;text-shadow:0 10px 0 rgba(43,37,80,.35)}
+#count.show{animation:cnt .9s cubic-bezier(.2,1.6,.4,1) forwards}
+#count.go{color:var(--gold)}
+@keyframes cnt{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+#results,#invite{position:fixed;inset:0;display:none;place-items:center;z-index:11;background:rgba(43,37,80,.35);backdrop-filter:blur(3px)}
+#results.show,#invite.show{display:grid}
+#results .card{text-align:center;min-width:min(420px,calc(100vw - 32px));animation:pop .5s}
+#resTitle{font-size:38px;margin:0}#resTitle.win{color:var(--red)}
+#resSub{color:var(--ink2);margin:4px 0 14px;font-weight:600}
+#resList{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:6px;text-align:left}
+#resList li{display:flex;align-items:center;gap:10px;background:#f3ead8;border-radius:14px;padding:8px 14px;font-size:16px}
+#resList li.me{outline:3px solid var(--ink)}
+#resList .rk{width:28px;font-size:20px;text-align:center}#resList b{flex:1}#resList small{color:var(--ink2)}#resList em{font-style:normal;font-weight:700}
+.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{font-weight:700;font-size:17px;padding:12px 22px;border-radius:999px;background:#efe7d8;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);transition:transform .1s,box-shadow .1s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn.red{background:var(--red);color:#fff}.btn.gold{background:var(--gold)}.btn.blue{background:var(--sky);color:#fff}
+.btn:disabled{opacity:.55;pointer-events:none}
+#invite .card{text-align:center;max-width:min(460px,calc(100vw - 32px))}
+.code{font-size:44px;font-weight:700;letter-spacing:.18em;background:#f3ead8;border-radius:16px;padding:6px 10px 6px 18px;margin:6px 0 10px;border:3px dashed var(--ink2)}
+.link{font-size:13px;color:var(--ink2);word-break:break-all;margin-bottom:14px}
+#chat{position:absolute;left:max(16px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:min(360px,calc(100vw - 32px));display:none;flex-direction:column;gap:4px;pointer-events:none}
+body.multi #chat{display:flex}
+#chatLog{display:flex;flex-direction:column;gap:4px}
+#chatLog div{align-self:flex-start;background:rgba(43,37,80,.78);color:#fff;padding:5px 12px;border-radius:12px;font-size:14px;animation:achIn .3s;transition:opacity 1s;max-width:100%;overflow-wrap:anywhere}
+#chatLog div.old{opacity:0}
+#chatLog b{margin-right:6px}
+#chatIn{pointer-events:auto;display:none;font:500 15px var(--f);padding:10px 14px;border-radius:14px;border:3px solid var(--ink);background:var(--paper);color:var(--ink);outline:none}
+body.chatting #chatIn{display:block}
+.chatHint{font-size:12px;color:#fff;text-shadow:0 1px 0 var(--ink);font-weight:600}
+body.chatting .chatHint{display:none}
+#tags{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+.tag{position:absolute;left:0;top:0;transform-origin:50% 100%;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:4px;will-change:transform}
+.tag b{font-size:14px;font-weight:700;color:#fff;padding:2px 10px;border-radius:999px;border:2px solid #fff;box-shadow:0 3px 0 rgba(43,37,80,.3)}
+.tag .bub{background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:14px;padding:4px 12px;font-weight:600;font-size:15px;max-width:240px;white-space:normal;text-align:center;animation:pop .35s}
+.tag .bub.emo{font-size:30px;padding:0 8px;border-radius:50%}
+#marr{position:absolute;left:0;top:0;width:46px;height:46px;display:none;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(43,37,80,.4))}
+body.mission.playing:not(.photo) #marr.has{display:block}
+#marr::before{content:"";position:absolute;inset:0;background:var(--gold);clip-path:polygon(50% 0,100% 80%,50% 62%,0 80%)}
+#marr.on::before{clip-path:polygon(50% 100%,100% 20%,50% 38%,0 20%)}
+#marr span{position:absolute;left:50%;top:100%;transform:translateX(-50%);font-weight:700;font-size:12px;color:#fff;-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;white-space:nowrap}
+.tb.mp{display:none;width:52px;height:52px;font-size:22px}body.multi .tb.mp{display:block}
+@media (pointer:fine){.icons{top:84px;transform:none}}
+@media (pointer:fine) and (max-height:700px){.ic{width:40px;height:40px;border-radius:12px}.ic svg{width:22px;height:22px}.icons{gap:6px;top:76px}}
+@media (pointer:fine) and (max-height:560px){.ic{width:34px;height:34px}.ic svg{width:19px;height:19px}.icons{gap:4px;top:70px}}
+.logo p{padding:0 16px}
+/* lobby on the title screen */
+.lobby{margin:0 auto;display:grid;gap:12px;background:rgba(255,250,241,.95);color:var(--ink);text-shadow:none;border:3px solid var(--ink);border-radius:24px;box-shadow:0 8px 0 var(--ink);padding:16px 18px;width:min(520px,calc(100vw - 32px));text-align:left}
+.lobby label{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink2)}
+.lobby input{font:600 18px var(--f);padding:9px 14px;border-radius:14px;border:3px solid var(--ink);background:#fff;color:var(--ink);width:100%;outline:none}
+.lobby input:focus{box-shadow:0 0 0 4px rgba(60,155,232,.35)}
+.row2{display:flex;gap:10px;align-items:center}
+#pCols{display:flex;gap:8px;flex-wrap:wrap}
+#pCols button{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line);transition:transform .15s}
+#pCols button.on{box-shadow:0 0 0 3px var(--ink);transform:scale(1.12)}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modes .btn{width:100%}
+#pCode{text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:700}
+.lobby .or{font-size:12px;color:var(--ink2);text-align:center;font-weight:600}
+.lobby.invited #joinRow{background:#fff3cf;border-radius:16px;padding:8px;outline:3px solid var(--gold)}
+.logo{max-height:100vh;overflow:auto;padding:16px 0}
+.logo h1{font-size:clamp(54px,11vw,130px)}
+.logo p{margin:6px 0 14px}
+#play{font-size:18px;padding:12px 18px;border-radius:999px;box-shadow:0 4px 0 var(--ink)}
+@media (max-width:700px){#board{top:170px;min-width:140px;max-width:170px}#board li{font-size:12px;padding:3px 6px}#misCard{top:auto;bottom:150px;min-width:0;width:calc(100vw - 24px)}body.mission #jobCard{top:70px}#wingsHud .bar{width:100px}#count{font-size:34vw}.code{font-size:32px}}
+@media (pointer:coarse){#chat{bottom:120px}#wingsHud{bottom:120px}}
 /* loader + flash */
 #loader{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:linear-gradient(180deg,#3c9be8,#c4e9ff);transition:opacity .8s;color:#fff;font-weight:600;font-size:18px;text-shadow:0 2px 0 var(--ink)}
 #loader.done{opacity:0;pointer-events:none}
@@ -158,12 +258,19 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
 <body>
 <canvas id="gl" tabindex="0"></canvas>
 <div class="hud">
-  <div class="map"><canvas id="mini" width="300" height="300"></canvas><div class="chips"><span class="chip" id="clock">09:00</span></div></div>
+  <div class="map"><canvas id="mini" width="300" height="300"></canvas><div class="chips"><span class="chip" id="clock">09:00</span><span class="chip" id="room" title="Inviter des amis"></span></div></div>
   <div class="counters"><div class="chip" id="money">0 $</div><div id="counter"><i></i><b id="bCount">0</b><span>/ <b id="bTotal">12</b></span></div></div>
   <div id="jobCard"><div class="row"><span id="jobWho">—</span><span id="jobTime">0 s</span></div><div class="row"><span id="jobAddr">—</span><span id="jobDist"></span></div><div class="bar"><div id="jobBar"></div></div></div>
+  <ul id="board"></ul>
+  <div id="misCard"><span id="misIc">⭐</span><b id="misName">Mission</b><span id="misTime">0:00</span><span id="misGoal">—</span><div class="bar"><div id="misBar"></div></div><div id="misHeat"><span id="heatTxt">Froid</span><div class="bar"><div id="heatBar"></div></div></div></div>
+  <div id="wingsHud"><span>🕊</span><div class="bar"><div id="energy"></div></div><span id="alt">0 m</span></div>
+  <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Écris un message… (Entrée)" autocomplete="off"><div class="chatHint">Entrée: discuter · 1–4: émotes</div></div>
+  <div id="marr"><span></span></div>
   <div id="arrow"></div><div id="achs"></div><div id="floats"></div><div id="onBike">🚲 BIXI · E pour descendre · B sonnette</div>
   <div class="boosts" style="top:84px"><div class="boost" id="boostCafe">☕ Caféine!</div><div class="boost" id="boostJump">🥐 Super saut!</div></div>
   <div class="icons">
+    <button class="ic" id="btnMission" title="Lancer une mission (N)"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
+    <button class="ic" id="btnInvite" title="Jouer avec des amis"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M17 8v6M14 11h6"/></svg></button>
     <button class="ic" id="btnHelp" title="Aide (H)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <button class="ic" id="btnTime" data-v="day" title="Moment de la journée (T)"><svg viewBox="0 0 24 24"><g class="sun"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g><g class="set"><path d="M3 17h18M6 17a6 6 0 0112 0M12 4v4M5 9l2 2M19 9l-2 2M8 21h8"/></g><g class="moon"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></g></svg></button>
     <button class="ic" id="btnWeather" data-v="clear" title="Météo (R)"><svg viewBox="0 0 24 24"><g class="wc"><circle cx="9" cy="9" r="3.5"/><path d="M9 2.5v1.5M2.5 9H4M4.4 4.4l1 1M13.6 4.4l-1 1M8 20h9a4 4 0 000-8 5 5 0 00-9.5 1.5A3.3 3.3 0 008 20z"/></g><g class="wn"><path d="M6 19h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 19z"/></g><g class="wr"><path d="M6 15h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></g></svg></button>
@@ -176,7 +283,7 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
   <div id="area"><small>LE PLATEAU-MONT-ROYAL</small><span id="areaName">Rue Saint-Denis</span></div>
   <div id="prompt"><kbd>E</kbd><span id="promptText">Parler</span></div>
   <div id="say"><span id="sayName">Nom</span><span id="sayHearts"></span><div id="sayText"></div></div>
-  <div class="tbtns"><button class="tb" id="tTalk">Parler</button><button class="tb" id="tDash">Élan</button><button class="tb" id="tRun">Courir</button><button class="tb big" id="tJump">Sauter</button></div>
+  <div class="tbtns"><button class="tb mp" id="tChat">💬</button><button class="tb mp" id="tEmo">👋</button><button class="tb" id="tFly">Voler</button><button class="tb" id="tTalk">Parler</button><button class="tb" id="tDash">Élan</button><button class="tb" id="tRun">Courir</button><button class="tb big" id="tJump">Sauter</button></div>
 </div>
 <div id="photoBar"><button id="pFilter">Filtre: <span id="pfName">Normal</span></button><button id="pPose">Pose ✌</button><button id="pSnap" title="Photo"></button><button id="pExit">Quitter</button></div>
 <div id="journal"><div class="card" style="max-width:min(640px,calc(100vw - 32px))"><h3>Mon carnet du Plateau</h3><div id="jStats"></div><ul id="jAch"></ul></div></div>
@@ -184,9 +291,15 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
 <div id="title"><div class="logo">
   <div class="k">MONTRÉAL · LE PLATEAU</div>
   <h1>PLATEAU<em>.</em></h1>
-  <p>coursier sur le Plateau · deliver, explore, find the 12 golden bagels</p>
-  <button id="play">Jouer ▸</button>
-  <div class="hint">Coursier, bagels, BIXI et voisins qui parlent · WASD + Espace + E · glisser pour la caméra · H pour l'aide</div>
+  <p>vole au-dessus du Plateau · missions entre amis · le premier qui gagne!</p>
+  <div class="lobby" id="lobby">
+    <div><label>TON NOM</label><div class="row2"><input id="pName" maxlength="16" placeholder="Ton nom" autocomplete="off"></div></div>
+    <div><label>TA COULEUR</label><div id="pCols"></div></div>
+    <div class="modes"><button class="btn red" id="play">Solo ▸</button><button class="btn gold" id="host">Créer une partie</button></div>
+    <div class="or">— ou rejoins tes amis avec un code —</div>
+    <div class="row2" id="joinRow"><input id="pCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn blue" id="join">Rejoindre</button></div>
+  </div>
+  <div class="hint">WASD + Espace · triple saut ou V pour voler · E interagir · N mission · H aide</div>
 </div></div>
 <div id="help"><div class="card">
   <h3>Comment jouer</h3>
@@ -194,6 +307,9 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
     <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Marcher · <kbd>Maj</kbd> courir</dd>
     <dt><kbd>Espace</kbd></dt><dd>Sauter · deux fois pour un salto · maintenir en l'air pour planer au parapluie</dd>
     <dt><kbd>F</kbd></dt><dd>Élan (dash), même en l'air</dd>
+    <dt><kbd>V</kbd></dt><dd>Voler! (ou 3e saut) · <kbd>Espace</kbd> monter · <kbd>C</kbd> descendre · <kbd>Maj</kbd> turbo · la caméra donne la direction. Les ailes se fatiguent: pose-toi pour les recharger.</dd>
+    <dt><kbd>N</kbd></dt><dd>Lancer une mission: étoiles, anneaux, trésor, roi du toit, livraison éclair. Le premier qui réussit gagne!</dd>
+    <dt><kbd>Entrée</kbd> <kbd>1</kbd>–<kbd>4</kbd></dt><dd>En ligne: discuter · émotes 👋 ❤️ 😂 🏆</dd>
     <dt><kbd>E</kbd></dt><dd>Parler, prendre une livraison dans un commerce, prendre un BIXI, flatter le chat</dd>
     <dt><kbd>B</kbd></dt><dd>Sonnette du vélo</dd>
     <dt><kbd>T</kbd> <kbd>R</kbd> <kbd>Y</kbd></dt><dd>Avancer l'heure · changer la météo · changer de saison</dd>
@@ -203,6 +319,10 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
   <div class="sets"><button class="set" id="setVoice">🗣 Voix des voisins</button><button class="set" id="setBloom">✨ Lueur</button><button class="set" id="setAO">🌓 Ombrage doux</button><button class="set" id="setFast">⏩ Temps rapide</button><button class="set" id="setFreeze">⏸ Figer l'heure</button><button class="set" id="setReset">↺ Recommencer</button></div>
 </div></div>
 <div id="win"><div class="card"><h3>Bravo!</h3><p style="font-size:19px;margin:0 0 6px">Tu as trouvé les 12 bagels dorés du Plateau.</p><p style="color:var(--ink2);margin:0 0 18px">Temps: <b id="winTime"></b></p><button id="winClose" class="tb big" style="width:auto;padding:0 28px;border-radius:999px;height:56px">Continuer la balade</button></div></div>
+<div id="results"><div class="card"><h3 id="resTitle">Victoire!</h3><div id="resSub"></div><ol id="resList"></ol><div class="btns"><button class="btn red" id="resNext">Mission suivante ▸</button><button class="btn" id="resClose">Explorer</button></div></div></div>
+<div id="invite"><div class="card"><h3>Joue avec tes amis</h3><p style="margin:0;color:var(--ink2)">Partage ce code ou ce lien. Tes amis peuvent être n'importe où dans le monde.</p><div class="code" id="invCode">—</div><div class="link" id="invLink"></div><div class="btns"><button class="btn gold" id="invCopy">Copier le lien</button><button class="btn" id="invShare">Partager…</button><button class="btn" id="invClose">Fermer</button></div><p id="invNet" style="font-size:13px;color:var(--ink2);margin:14px 0 0"></p></div></div>
+<div id="count"></div>
+<div id="tags"></div>
 <div id="loader"><div><b>PLATEAU.</b><span id="loadMsg">Chargement…</span></div></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module" src="js/main.js"></script>

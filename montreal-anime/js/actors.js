@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, PLAZA, PARK, rng, pick, U } from './layout.js';
 import { toon, LAYER_FX, gradient, Glows } from './toon.js';
+import { makeRigged, rigReady } from './rig.js';
+import { carModel, CAR_KINDS } from './cars.js';
 
 const basic = (hex) => new THREE.MeshBasicMaterial({ color: hex });
 const EYE = basic(0x231a3a), WHITE = basic(0xffffff), BLUSH = new THREE.MeshBasicMaterial({ color: 0xf28a96, transparent: true, opacity: 0.55, depthWrite: false });
@@ -17,6 +19,7 @@ const G = {
 
 // ================================================================= character
 export function makeCharacter(o = {}) {
+  if (rigReady() && !o.procedural) return makeRigged(o);
   const c = Object.assign({ skin: '#f6d2b8', hair: '#3a2a3a', top: '#2f8f8a', pants: '#2f3550', shoes: '#f4efe6', hat: 'tuque', hatCol: '#d8473f', scarf: '#f2b43c', pack: '#e9a23b', style: 'short', scale: 1 }, o);
   const root = new THREE.Group();
   const body = new THREE.Group(); body.position.y = 0.8; root.add(body);
@@ -206,9 +209,37 @@ export class Player {
     this.c.animate(dt, 0, false, 0, { wings: true, fly: Math.min(1, hs / 14), flap: this.energy > 0 ? (boosting ? 2 : 1) : 0.15, parcel: this.parcel });
     return false;
   }
-  mountBike(model) { this.bike = model; this.c.root.add(model.g); model.g.position.set(0, 0, 0); this.r = 0.45; }
+  mountBike(model) { this.bike = model; this.c.root.add(model.g); model.g.position.set(0, 0, 0); this.r = 0.45; this.unstick(); }
   dismount() { if (!this.bike) return; this.c.root.remove(this.bike.g); this.bike = null; this.r = 0.3; }
+  // Is this spot free for a body of radius r with feet at y? (walls, cars)
+  free(x, z, y, r = this.r) {
+    const C = this.w.colliders, step = this.bike ? 0.35 : 0.45;
+    if (C.blocked(x, z, r, y, step, y + 1.5)) return false;
+    if (!this.flying && this.carBlock && this.carBlock(x, z)) return false;
+    return true;
+  }
+  // If we ended up inside something (a car drove into us, a landing clipped a wall, the bike's wider
+  // radius, a stair edge), slide out to the nearest free spot instead of freezing in place.
+  unstick() {
+    const C = this.w.colliders, p = this.pos;
+    if (this.free(p.x, p.z, p.y)) { this.stuckT = 0; return false; }
+    this.stuckT = (this.stuckT || 0) + 1;
+    // first: is there a walkable top just above us (we sank into a step or a ledge)?
+    const up = C.ground(p.x, p.z, p.y + 2.2, 0.18);
+    if (up > p.y + 0.02 && this.free(p.x, p.z, up)) { p.y = up; return true; }
+    for (const rad of [0.25, 0.5, 0.8, 1.2, 1.7, 2.4, 3.2, 4.5]) {
+      for (let i = 0; i < 16; i++) {
+        const a = i / 16 * Math.PI * 2 + rad, x = p.x + Math.cos(a) * rad, z = p.z + Math.sin(a) * rad;
+        const y = this.flying ? p.y : C.ground(x, z, p.y + 0.6, 0.18);
+        if (Math.abs(y - p.y) > 1.2 && !this.flying) continue;
+        if (this.free(x, z, y)) { p.x = x; p.z = z; if (!this.flying) p.y = y; this.vel.multiplyScalar(0.3); return true; }
+      }
+    }
+    return false;
+  }
   update(dt, inp, camYaw) {
+    this.waveT = Math.max(0, (this.waveT || 0) - dt);
+    this.unstick();
     if (inp.fly) { inp.fly = false; if (this.flying) this.flying = false; else if (!this.bike && this.energy > 12) this.takeOff(); }
     if (this.flying) return this.updateFly(dt, inp, camYaw);
     if (this.grounded) this.energy = Math.min(100, this.energy + dt * 28);
@@ -261,7 +292,7 @@ export class Player {
       else { p.y = g; this.vy = 0; this.jumps = 0; this.airDash = true; }
     }
     if (this.jumpBuf > 0) {
-      if (this.grounded || this.coyote > 0) { this.vy = bike ? 4.8 : this.jumpBoost > 0 ? 7.6 : 6.0; this.grounded = false; this.coyote = 0; this.jumpBuf = 0; this.jumps = 1; this.jumped = true; }
+      if (this.grounded || this.coyote > 0) { this.vy = bike ? 4.8 : this.jumpBoost > 0 ? 7.6 : 6.0; this.grounded = false; this.coyote = 0; this.jumpBuf = 0; this.jumps = 1; this.jumped = true; this.c.jump?.(); }
       else if (!bike && this.jumps < 2 && this.vy < 4) { this.vy = this.jumpBoost > 0 ? 7 : 5.6; this.jumps = 2; this.jumpBuf = 0; this.flip = 0.0001; this.fx.doubled = true; }
       else if (!bike && this.jumps >= 2 && this.flip === 0 && this.energy > 12) { this.jumpBuf = 0; this.takeOff(); return this.updateFly(dt, inp, camYaw); }   // third press: wings!
     }
@@ -281,7 +312,7 @@ export class Player {
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.c.root.position.set(p.x, this.visY, p.z); this.c.root.rotation.y = this.yaw;
     if (bike) { this.bike.spin(this.speed * dt); this.c.root.rotation.z = 0; }
-    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel });
+    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel });
   }
 }
 export function bikeModel() {
@@ -336,7 +367,7 @@ export class Neighbours {
     for (const m of [-1, 1]) { const s = R() < 0.5 ? -1 : 1, z = ewZ(m) + s * (ewHW(m) + ewSW(m) * 0.55); paths.push({ axis: 'x', c: z, a0: -120, a1: 120 }); }
     paths.push({ axis: 'wander', rect: PARK, c: 0 }, { axis: 'wander', rect: PLAZA, c: 0 });
     paths.forEach((p, i) => {
-      const ch = makeCharacter(LOOKS[i % LOOKS.length]); scene.add(ch.root);
+      const ch = makeCharacter({ ...LOOKS[i % LOOKS.length], model: i % 3 === 1 ? 'michelle' : i % 5 === 4 ? 'soldier' : 'bot' }); scene.add(ch.root);
       const HOURS = [[7, 21], [8, 23], [9, 20], [6, 22], [10, 26], [7, 19], [11, 25], [8, 22], [9, 21], [8, 19], [16, 27], [6, 24], [9, 22], [7, 23]];
       const n = { id: i, hours: HOURS[i % HOURS.length], out: true, ch, p, name: LINES[i % LINES.length][0], line: LINES[i % LINES.length][1], s: p.a0 + R() * ((p.a1 || 1) - (p.a0 || 0)), dir: R() < 0.5 ? 1 : -1, speed: 1.05 + R() * 0.35, wait: 0, pos: new THREE.Vector3(), yaw: 0, talk: 0 };
       if (p.axis === 'wander') { const r = p.rect; n.pos.set(r.x0 + 6 + R() * (r.x1 - r.x0 - 12), 0, r.z0 + 6 + R() * (r.z1 - r.z0 - 12)); n.yaw = R() * 6.28; }
@@ -384,22 +415,6 @@ export class Neighbours {
 }
 
 // ================================================================= traffic
-function carModel(col) {
-  const g = new THREE.Group();
-  const body = toon(col), dark = toon('#1e1f24'), glassM = toon('#3d5f86'), chrome = toon('#d9dde2');
-  mesh(new THREE.BoxGeometry(1.8, 0.62, 4.3), body, g, 0, 0.62, 0);
-  mesh(new THREE.BoxGeometry(1.6, 0.56, 2.3), body, g, 0, 1.2, -0.15);
-  mesh(new THREE.BoxGeometry(1.66, 0.42, 2.0), glassM, g, 0, 1.2, -0.15);
-  mesh(new THREE.BoxGeometry(1.84, 0.16, 0.2), chrome, g, 0, 0.42, 2.12);
-  mesh(new THREE.BoxGeometry(1.84, 0.16, 0.2), chrome, g, 0, 0.42, -2.12);
-  const hl = new THREE.MeshToonMaterial({ color: 0xfff6dc, emissive: 0xfff2c8, emissiveIntensity: 0.2, gradientMap: gradient });
-  const tl = new THREE.MeshToonMaterial({ color: 0xc8262a, emissive: 0xff2a2a, emissiveIntensity: 0.2, gradientMap: gradient });
-  for (const s of [-1, 1]) { mesh(new THREE.BoxGeometry(0.36, 0.16, 0.06), hl, g, s * 0.6, 0.72, 2.16); mesh(new THREE.BoxGeometry(0.34, 0.14, 0.06), tl, g, s * 0.62, 0.72, -2.16); }
-  const wg = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 14); wg.rotateZ(Math.PI / 2);
-  const wheels = [];
-  for (const [x, z] of [[0.82, 1.35], [-0.82, 1.35], [0.82, -1.35], [-0.82, -1.35]]) wheels.push(mesh(wg, dark, g, x, 0.34, z));
-  return { g, wheels, hl, tl };
-}
 export class Traffic {
   constructor(scene, world, glows) {
     this.w = world; this.cars = []; this.glows = glows; this.t = 0;
@@ -413,7 +428,7 @@ export class Traffic {
     let i = 0;
     for (const L of lanes) for (let j = 0; j < L.n; j++) {
       const span = L.axis === 'z' ? [-470, 470] : [-380, 380];
-      const m = carModel(cols[i++ % cols.length]); scene.add(m.g);
+      const m = carModel(cols[i % cols.length], CAR_KINDS[(i * 3 + 1) % CAR_KINDS.length]); i++; scene.add(m.g);
       const car = { m, L, s: span[0] + (span[1] - span[0]) * (j + Math.random() * 0.5) / L.n, span, v: 8, vmax: L.k === 0 || L.m === -1 ? 11 : 8, stopT: 0, lastStop: null };
       car.gl = [glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35)];
       this.cars.push(car);
@@ -483,7 +498,7 @@ export class Traffic {
       g.position.set(x, h(z), z);
       g.rotation.set(0, L.axis === 'z' ? (L.dir > 0 ? 0 : Math.PI) : (L.dir > 0 ? Math.PI / 2 : -Math.PI / 2), 0, 'YXZ');
       if (L.axis === 'z') g.rotation.x = L.dir > 0 ? Math.atan(0.055) : -Math.atan(0.055);
-      for (const w of car.m.wheels) w.rotation.x += car.v * dt / 0.34;
+      for (const w of car.m.wheels) w.rotation.x += car.v * dt / 0.37;
       const braking = car.v < prev - 0.01 || car.v < 0.2;
       car.m.hl.emissiveIntensity = 0.2 + night * 2.5; car.m.tl.emissiveIntensity = 0.2 + night * 1.2 + (braking ? 2.2 : 0);
       // light glows (front pair, rear pair)

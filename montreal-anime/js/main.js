@@ -6,6 +6,7 @@ import { buildWorld } from './world.js';
 import { makeCharacter, Player, Neighbours, Traffic, Pigeons, makeCat, Bagels, bikeModel } from './actors.js';
 import { lookAt, fmtHour, Weather, loadSave, writeSave, Achievements, ACH, Voice, dialogue, Deliveries, OUTFITS } from './systems.js';
 import { Net, Offline, randomCode } from './net.js';
+import { loadRigs, MODELS } from './rig.js';
 import { Missions, COLORS, KINDS } from './missions.js';
 import { findRoofs, roofProps, makeClouds, Trail } from './sky.js';
 
@@ -45,9 +46,14 @@ async function boot() {
   const pipe = app.pipe = new Pipeline(renderer, scene, camera);
   if (touch) pipe.aoOn = false;
 
-  // ---- characters
-  const optsFor = (outfit, color) => { const o = { ...(OUTFITS[outfit]?.o || {}) }; const c = COLORS[color | 0] || COLORS[0]; o.pack = c; if (o.scarf !== null) o.scarf = c; return o; };
-  let hero = makeCharacter(optsFor(save.outfit, save.color)); scene.add(hero.root);
+  // ---- characters: Mixamo models (falls back to the procedural ones if the files can't load)
+  if (!params.has('procedural')) {
+    $('#loadMsg').textContent = 'Les personnages arrivent…';
+    try { await loadRigs('models/', (f) => { $('#loadMsg').textContent = `Les personnages arrivent… ${Math.round(f * 100)} %`; }); } catch (e) { console.warn('[rig] Mixamo models unavailable, using procedural characters', e); }
+  }
+  if (!MODELS[save.model]) save.model = 'bot';
+  const optsFor = (outfit, color, model = 'bot') => { const o = { ...(OUTFITS[outfit]?.o || {}) }; const c = COLORS[color | 0] || COLORS[0]; o.pack = c; if (o.scarf !== null) o.scarf = c; o.model = MODELS[model] ? model : 'bot'; o.top = c; o.pants = '#2b2550'; return o; };
+  let hero = makeCharacter(optsFor(save.outfit, save.color, save.model)); scene.add(hero.root);
   const player = app.player = new Player(world, hero);
   const npcs = app.npcs = new Neighbours(scene, world);
   const traffic = app.traffic = new Traffic(scene, world, world.glows);
@@ -67,7 +73,7 @@ async function boot() {
   function setOutfit(i) {
     const keep = hero.root.position.clone(), y = hero.root.rotation.y;
     scene.remove(hero.root);
-    hero = makeCharacter(optsFor(i, save.color)); scene.add(hero.root); hero.root.position.copy(keep); hero.root.rotation.y = y;
+    hero = makeCharacter(optsFor(i, save.color, save.model)); scene.add(hero.root); hero.root.position.copy(keep); hero.root.rotation.y = y;
     if (player.bike) { const b = player.bike; player.dismount(); player.c = hero; player.mountBike(b); } else player.c = hero;
     save.outfit = i; writeSave(save);
   }
@@ -345,7 +351,7 @@ async function boot() {
     myName, myColor: () => COLORS[save.color | 0], player,
     sfx: (k, n) => sfx.mission(k, n), burst: (p) => burst.at(p), float: (t) => floatText(t), toast: (t) => areaToast(t),
     onBegin: (c) => { closeSay(); $('#marr span').textContent = ''; },
-    onEnd: (c, m) => { if (c.kind === 'courier' && !deliveries.job) player.parcel = false; if (m.winner === net.id) { ach.unlock('mwin'); burst.at(player.pos.clone().setY(player.pos.y + 1.2)); } },
+    onEnd: (c, m) => { if (c.kind === 'courier' && !deliveries.job) player.parcel = false; if (m.winner === net.id) { ach.unlock('mwin'); burst.at(player.pos.clone().setY(player.pos.y + 1.2)); hero.gesture?.('dance', 5); } else hero.gesture?.('shake', 2.4); },
   });
   function missionButton() {
     if (!started) return;
@@ -362,12 +368,12 @@ async function boot() {
   const meTag = document.createElement('div'); meTag.className = 'tag'; $('#tags').appendChild(meTag);
   function remoteFor(p, m) {
     let r = remotes.get(p.id);
-    const outfit = (m?.o ?? p.outfit ?? 0) % OUTFITS.length;
-    if (r && (r.outfit !== outfit || r.color !== (p.color | 0))) { dropRemote(p.id); r = null; }
+    const outfit = (m?.o ?? p.outfit ?? 0) % OUTFITS.length, model = MODELS[m?.md ?? p.model] ? (m?.md ?? p.model) : 'bot';
+    if (r && (r.outfit !== outfit || r.color !== (p.color | 0) || r.model !== model)) { dropRemote(p.id); r = null; }
     if (!r) {
-      const ch = makeCharacter(optsFor(outfit, p.color)); scene.add(ch.root);
+      const ch = makeCharacter(optsFor(outfit, p.color, model)); scene.add(ch.root);
       const tag = document.createElement('div'); tag.className = 'tag'; tag.innerHTML = '<b></b>'; $('#tags').appendChild(tag);
-      r = { id: p.id, ch, buf: [], tag, outfit, color: p.color | 0, wave: 0, bike: null, pos: new THREE.Vector3(), yaw: 0, flags: 0, speed: 0, trails: [new Trail(scene, COLORS[p.color | 0]), new Trail(scene, COLORS[p.color | 0])] };
+      r = { id: p.id, ch, buf: [], tag, outfit, model, color: p.color | 0, wave: 0, bike: null, pos: new THREE.Vector3(), yaw: 0, flags: 0, speed: 0, trails: [new Trail(scene, COLORS[p.color | 0]), new Trail(scene, COLORS[p.color | 0])] };
       remotes.set(p.id, r);
     }
     const b = r.tag.querySelector('b'); b.textContent = p.name; b.style.background = COLORS[p.color | 0];
@@ -436,7 +442,8 @@ async function boot() {
     if (e.key === 'Enter') { const t = $('#chatIn').value.trim().slice(0, 120); if (t) { net.send({ t: 'chat', text: t }); chatLine(myName(), t, COLORS[save.color | 0]); bubble('me', t); } closeChat(); }
     if (e.key === 'Escape') closeChat();
   });
-  function emote(i) { net.send({ t: 'emo', i }); bubble('me', EMO[i], true); sfx.blip(); }
+  const GEST = [null, 'nod', 'shake', 'dance'];
+  function emote(i) { net.send({ t: 'emo', i }); bubble('me', EMO[i], true); sfx.blip(); if (i === 0) player.waveT = 2.5; else hero.gesture?.(GEST[i], i === 3 ? 5 : 2.2); }
 
   // ---- connecting
   function bindNet(n) {
@@ -445,21 +452,30 @@ async function boot() {
     n.on('leave', (p) => { if (n !== net) return; dropRemote(p.id); chatLine('', `${p.name} est parti.`); updRoom(); });
     n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); if (r.buf.length > 30) r.buf.shift(); });
     n.on('chat', (m, p) => { if (n !== net) return; const t = String(m.text || '').slice(0, 120); chatLine(p.name, t, COLORS[p.color | 0]); bubble(p.id, t); sfx.blip(); });
-    n.on('emo', (m, p) => { if (n !== net) return; const i = (m.i | 0) % 4; bubble(p.id, EMO[i], true); const r = remotes.get(p.id); if (r && i === 0) r.wave = 2.5; });
+    n.on('emo', (m, p) => { if (n !== net) return; const i = (m.i | 0) % 4; bubble(p.id, EMO[i], true); const r = remotes.get(p.id); if (r && i === 0) r.wave = 2.5; else r?.ch.gesture?.(GEST[i], i === 3 ? 5 : 2.2); });
   }
   function updRoom() {
     const el = $('#room');
     if (!multi) { el.innerHTML = ''; return; }
     el.innerHTML = `<span class="dot"></span>${roomCode} · 👥 ${net.count}`;
     el.classList.toggle('local', net.status !== 'en ligne');
-    $('#invNet').textContent = net.status === 'en ligne' ? 'Connexion directe entre joueurs (WebRTC, pair-à-pair), trouvée via des relais Nostr publics. Aucun serveur de jeu.' : 'Mode local: seuls les onglets de ce navigateur se voient (internet indisponible).';
+    const d = net.diag?.();
+    if (d) {
+      const via = { relais: 'relais', direct: 'direct', onglet: 'onglet' };
+      $('#invNet').innerHTML = `<b>Connexion</b> · relais ${d.brokers}/${d.brokerTotal} ${d.brokers ? '✅' : '❌'} · Nostr ${d.nostr ? '✅' : '❌'} · direct ${d.direct}` +
+        (d.peers.length ? `<br>${d.peers.map((p) => `${esc(p.name)} (${via[p.via] || p.via})`).join(' · ')}` : '<br>En attente d\'amis… partage le code!') +
+        (!d.brokers && !d.nostr ? '<br>⚠️ Aucun serveur public joignable depuis ce réseau (pare-feu?). Essaie un autre Wi-Fi ou les données mobiles.' : '');
+    }
   }
+  setInterval(() => { if (multi && ($('#invite').classList.contains('show') || net.status !== lastSt)) { lastSt = net.status; updRoom(); } }, 1000);
+  let lastSt = '';
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   async function goOnline(code) {
     if (roomCode === code) return;
     missions.stop(); net.leave?.();
     for (const id of [...remotes.keys()]) dropRemote(id);
     roomCode = code; multi = true; document.body.classList.add('multi');
-    net = app.net = new Net(code, { name: myName(), color: save.color | 0, outfit: save.outfit });
+    net = app.net = new Net(code, { name: myName(), color: save.color | 0, outfit: save.outfit, model: save.model });
     bindNet(net); missions.setNet(net); missions.pts = {}; missions.auto = true;
     try { const u = new URL(location.href); u.searchParams.set('room', code); history.replaceState(null, '', u); } catch (e) { /* file:// */ }
     updRoom(); chatLine('', `Salle ${code} · connexion…`);
@@ -483,7 +499,7 @@ async function boot() {
     if (!multi || !net.peers.size) return;
     const p = hero.root.position;
     const f = (player.grounded ? 1 : 0) | (player.flying ? 2 : 0) | (player.bike ? 4 : 0) | (player.parcel ? 8 : 0) | ((inp.rain || player.gliding) && !player.bike && !player.flying ? 16 : 0) | (player.flying && inp.run ? 32 : 0);
-    net.send({ t: 'st', x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +player.yaw.toFixed(3), s: +player.speed.toFixed(2), f, o: save.outfit });
+    net.send({ t: 'st', x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +player.yaw.toFixed(3), s: +player.speed.toFixed(2), f, o: save.outfit, md: save.model });
   }
 
   // ---- lobby on the title screen
@@ -492,6 +508,10 @@ async function boot() {
   COLORS.forEach((c, i) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Couleur ' + (i + 1)); b.onclick = () => { save.color = i; writeSave(save); updCols(); setOutfit(save.outfit); }; cols.appendChild(b); });
   const updCols = () => [...cols.children].forEach((b, i) => b.classList.toggle('on', i === (save.color | 0)));
   updCols();
+  const chars = [...document.querySelectorAll('#pChars button')];
+  const updChars = () => chars.forEach((b) => b.classList.toggle('on', b.dataset.m === save.model));
+  chars.forEach((b) => { b.onclick = () => { save.model = b.dataset.m; writeSave(save); updChars(); setOutfit(save.outfit); hero.gesture?.('dance', 2.5); }; });
+  updChars();
   $('#pName').value = save.name || '';
   $('#pName').addEventListener('input', () => { save.name = $('#pName').value.trim().slice(0, 16); writeSave(save); });
   const invited = (params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);

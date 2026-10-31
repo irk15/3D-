@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   h, SLOPE, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, alleyX, ALLEY_HW, DETAIL, PARK, PLAZA, CHURCH, GREEN_ALLEY, inRect, rng, pick, lin, U,
 } from './layout.js';
+import { carIntoBatch, CAR_KINDS } from './cars.js';
 import { batchMaterial, groundMaterial, toon, Glows, LAYER_FX, gradient } from './toon.js';
 
 const FH = 3.1;
@@ -662,7 +663,7 @@ export function buildWorld(scene) {
     }
   }
   const CAR_COLS = ['#e8e4dc', '#2f3a44', '#d8473f', '#7fb2d6', '#f2b43c', '#3f7a5a', '#b9b9c0', '#e79cb4', '#5a4a8f'];
-  for (const [x, z, ry] of parked) carStatic(B, C, x, z, ry, L(pick(CAR_COLS, R)));
+  for (const [x, z, ry] of parked) carStatic(B, C, x, z, ry, pick(CAR_COLS, R), pick(CAR_KINDS, R));
 
   // utility poles + wires along the alleys (the overhead tangle every Plateau alley has)
   const wireCol = L('#26262c');
@@ -920,19 +921,12 @@ function bike(B, x, z) {
   B.box(x - 0.03, x + 0.03, y + 0.34, y + 0.8, z - 0.5, z + 0.5, fr, 0);
   B.box(x - 0.15, x + 0.15, y + 0.85, y + 0.92, z + 0.25, z + 0.45, dk, 0);
 }
-export function carStatic(B, C, x, z, ry, col) {
+export function carStatic(B, C, x, z, ry, col, kind = 'sedan') {
   const y = h(z);
-  const c = Math.cos(ry), s = Math.sin(ry);
-  // body (lower + cabin), lights inside the body faces, wheels
-  B.boxM(x, y + 0.62, z, 1.78, 0.62, 4.3, 0, ry, 0, col, 0);
-  B.boxM(x - s * 0.15, y + 1.2, z - c * 0.15, 1.6, 0.56, 2.3, 0, ry, 0, col, 0);
-  B.boxM(x - s * 0.15, y + 1.2, z - c * 0.15, 1.66, 0.42, 2.0, 0, ry, 0, lin('#6f9ccc'), 5);
-  for (const [lx, lz] of [[0.82, 1.35], [-0.82, 1.35], [0.82, -1.35], [-0.82, -1.35]]) {
-    const wx = x + lx * c + lz * s, wz = z - lx * s + lz * c;
-    B.geo(new THREE.CylinderGeometry(0.34, 0.34, 0.24, 10).rotateZ(Math.PI / 2).rotateY(ry), new THREE.Matrix4().makeTranslation(wx, y + 0.34, wz), lin('#1e1f24'), 10);
-  }
-  const ex = Math.abs(c) * 0.95 + Math.abs(s) * 2.2, ez = Math.abs(s) * 0.95 + Math.abs(c) * 2.2;
-  C.add({ x0: x - ex, x1: x + ex, z0: z - ez, z1: z + ez, y0: y, y1: y + 1.5 });
+  const S = carIntoBatch(B, lin, x, y, z, ry, col, kind);
+  const c = Math.cos(ry), s = Math.sin(ry), hw = S.W / 2 + 0.05, hl = S.L / 2 + 0.05;
+  const ex = Math.abs(c) * hw + Math.abs(s) * hl, ez = Math.abs(s) * hw + Math.abs(c) * hl;
+  C.add({ x0: x - ex, x1: x + ex, z0: z - ez, z1: z + ez, y0: y, y1: y + S.roof });   // solid up to the roof: you can jump onto it
 }
 function foodTruck(B, C, S, atlas, x, z, SIDE, FONT) {
   const y = h(z), body = lin('#f2b43c');

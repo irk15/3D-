@@ -60,7 +60,16 @@ Tips: the **Café Lumière** gives you a 30-second speed boost, a croissant from
 - **New interface**: a lobby with name and colour, a mission card with timer, a scoreboard, an arrow toward your objective, a wing-energy and altitude meter, and an invite card with copy and share buttons.
 - **More world**: chimneys, AC units, skylights and a few rooftop terraces (all solid, so you can land on them), 3D toon clouds, wing ribbons, wind sound, and fog that opens up with altitude.
 
-**Connection caveat**: peer-to-peer usually works between home networks and phones. Some school, office or carrier networks block WebRTC; without a TURN relay those players won't be able to connect.
+**Connection caveat**: rooms need at least one public relay to be reachable. Networks that block them (some schools and offices) show ❌ in the invite card; mobile data or another Wi-Fi usually works.
+
+## Version 4 — Mixamo characters, better cars, reliable rooms
+
+- **Mixamo characters**: pick *X Bot*, *Michelle* or *Vanguard* in the lobby. They are rigged Mixamo models with motion-captured idle, walk and run that blend with your speed, plus nod, head-shake and samba gestures (emotes, wins and losses). A procedural layer bends the skeleton for jumps, the double-jump flip, flying (superhero arm), biking, waving, umbrella and parcel, with squash-and-stretch on jumps and landings and a lean into turns. Neighbours and your friends use them too. X Bot takes your colour.
+- **Cars**: six models (sedan, hatchback, SUV, taxi, pickup, delivery van) with rounded bodies, real wheel arches, glass cabins and pillars, grilles, head and brake lights, mirrors, door seams and handles, plates, and tyres with spoked rims. Parked cars are solid up to the roof, so you can jump on them.
+- **Connecting with friends**: rooms now go through public MQTT relays (three brokers at once) as well as direct WebRTC, so a friend on another network or on mobile data can join with the code. The invite card shows which connections are up.
+- **No more getting stuck**: if the player ends up inside something (a car pulling up, a landing on a ledge, the wider bike), it slides out to the nearest free spot.
+
+Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) characters as published in the three.js examples, compressed with meshopt (1.7 MB for all three).
 
 ## How it looks the way it does
 
@@ -71,6 +80,6 @@ Tips: the **Café Lumière** gives you a 30-second speed boost, a croissant from
 
 ## Files
 
-`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
+`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/rig.js` (Mixamo characters, animation blending, procedural poses) · `js/cars.js` (car models) · `models/` (compressed Mixamo glTF) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
 
 The neighbourhood is a stylised impression of the Plateau, not a survey-accurate map; street names are real, but the shops and characters are invented.

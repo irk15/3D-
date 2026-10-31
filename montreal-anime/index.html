@@ -228,6 +228,7 @@ body.mission.playing:not(.photo) #marr.has{display:block}
 @media (pointer:fine) and (max-height:560px){.ic{width:34px;height:34px}.ic svg{width:19px;height:19px}.icons{gap:4px;top:70px}}
 .logo p{padding:0 16px}
 /* lobby on the title screen */
+#pChars{display:flex;gap:8px;flex-wrap:wrap}#pChars button{font-weight:700;font-size:15px;padding:8px 14px;border-radius:999px;background:#efe7d8;border:3px solid transparent}#pChars button.on{border-color:var(--ink);background:#fff3cf}
 .lobby{margin:0 auto;display:grid;gap:12px;background:rgba(255,250,241,.95);color:var(--ink);text-shadow:none;border:3px solid var(--ink);border-radius:24px;box-shadow:0 8px 0 var(--ink);padding:16px 18px;width:min(520px,calc(100vw - 32px));text-align:left}
 .lobby label{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink2)}
 .lobby input{font:600 18px var(--f);padding:9px 14px;border-radius:14px;border:3px solid var(--ink);background:#fff;color:var(--ink);width:100%;outline:none}
@@ -295,6 +296,7 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fl
   <div class="lobby" id="lobby">
     <div><label>TON NOM</label><div class="row2"><input id="pName" maxlength="16" placeholder="Ton nom" autocomplete="off"></div></div>
     <div><label>TA COULEUR</label><div id="pCols"></div></div>
+    <div><label>TON PERSONNAGE · MIXAMO</label><div id="pChars"><button data-m="bot">🤖 X Bot</button><button data-m="michelle">💃 Michelle</button><button data-m="soldier">🪖 Vanguard</button></div></div>
     <div class="modes"><button class="btn red" id="play">Solo ▸</button><button class="btn gold" id="host">Créer une partie</button></div>
     <div class="or">— ou rejoins tes amis avec un code —</div>
     <div class="row2" id="joinRow"><input id="pCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn blue" id="join">Rejoindre</button></div>

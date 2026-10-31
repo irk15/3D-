@@ -214,6 +214,7 @@ body.chatting #chatIn{display:block}
 body.chatting .chatHint{display:none}
 #tags{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1}
 .tag{position:absolute;left:0;top:0;transform-origin:50% 100%;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:4px;will-change:transform}
+.tag.idle b{opacity:.55}.tag.idle b::after{content:' · absent'}
 .tag b{font-size:14px;font-weight:700;color:#fff;padding:2px 10px;border-radius:999px;border:2px solid #fff;box-shadow:0 3px 0 rgba(43,37,80,.3)}
 .tag .bub{background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:14px;padding:4px 12px;font-weight:600;font-size:15px;max-width:240px;white-space:normal;text-align:center;animation:pop .35s}
 .tag .bub.emo{font-size:30px;padding:0 8px;border-radius:50%}

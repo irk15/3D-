@@ -10,7 +10,8 @@ import { loadRigs, MODELS } from './rig.js';
 import { Missions, COLORS, KINDS } from './missions.js';
 import { findRoofs, roofProps, makeClouds, Trail } from './sky.js';
 
-const $ = (s) => document.querySelector(s);
+const $c = {};
+const $ = (s) => $c[s] || ($c[s] = document.querySelector(s));   // HUD elements are looked up once
 const params = new URLSearchParams(location.search);
 const touch = matchMedia('(pointer: coarse)').matches;
 const SEASONS = ['summer', 'autumn', 'winter'];
@@ -399,7 +400,7 @@ async function boot() {
       ch.animate(dt, fly ? 0 : bike ? r.speed * 0.45 : r.speed, !!(r.flags & 1) || bike, r.wave > 0 ? 1 : 0, { wings: fly, fly: fly ? Math.min(1, r.speed / 14) : 0, flap: (r.flags & 32) ? 2 : 1, bike, parcel: !!(r.flags & 8), umbrella: !!(r.flags & 16) });
       ch.root.visible = r.pos.distanceTo(camera.position) < 420;
       wingTrails(r.trails, ch, r.yaw, fly && r.speed > 4, dt);
-      if (performance.now() - B[B.length - 1].t > 4000) ch.root.visible = false;   // stale (tab in background)
+      r.tag.classList.toggle('idle', performance.now() - B[B.length - 1].t > 5000);   // their tab is in the background: keep them visible, dim the name
     }
   }
   const tagV = new THREE.Vector3();
@@ -495,6 +496,8 @@ async function boot() {
   $('#invCopy').onclick = () => { const l = linkFor(roomCode); (navigator.clipboard?.writeText(l) || Promise.reject()).then(() => { $('#invCopy').textContent = 'Copié ✓'; setTimeout(() => { $('#invCopy').textContent = 'Copier le lien'; }, 1800); }).catch(() => prompt('Copie ce lien:', l)); };
   $('#invShare').onclick = () => navigator.share?.({ title: 'Plateau · Montréal', text: `Viens jouer avec moi! Code: ${roomCode}`, url: linkFor(roomCode) }).catch(() => {});
   let stT = 0;
+  // a hidden tab stops animating, so keep reporting our position from a timer as well
+  setInterval(() => { if (document.hidden) sendState(); }, 1000);
   function sendState() {
     if (!multi || !net.peers.size) return;
     const p = hero.root.position;
@@ -546,7 +549,19 @@ async function boot() {
   $('#bCount').textContent = bagels.count;
   $('#winClose').onclick = () => $('#win').classList.remove('show');
   const arrowV = new THREE.Vector3();
-  let boardT = 0;
+  let boardT = 0, mmT = 0;
+  // dynamic resolution: only when the GPU can't keep up, the render scale steps down a little
+  // (never below 1.0 on desktop), and it climbs back to full sharpness as soon as there is headroom
+  const prMax = renderer.getPixelRatio(), prMin = Math.min(prMax, touch ? 0.85 : 1);
+  let frameAvg = 1 / 60, slowT = 0, fastT = 0;
+  function adaptResolution(raw) {
+    if (params.has('manual')) return;
+    frameAvg += (raw - frameAvg) * 0.05;
+    const pr = renderer.getPixelRatio();
+    if (frameAvg > 1 / 48) { slowT += raw; fastT = 0; } else if (frameAvg < 1 / 58) { fastT += raw; slowT = 0; } else { slowT = fastT = 0; }
+    if (slowT > 1.2 && pr > prMin + 0.01) { renderer.setPixelRatio(Math.max(prMin, pr - 0.15)); resize(); slowT = 0; }
+    if (fastT > 4 && pr < prMax - 0.01) { renderer.setPixelRatio(Math.min(prMax, pr + 0.1)); resize(); fastT = 0; }
+  }
   function pointArrow(a, target) {
     arrowV.copy(target).setY(target.y + 1).project(camera);
     const behind = arrowV.z > 1;
@@ -638,13 +653,14 @@ async function boot() {
     const mt = missions.target(), ma = $('#marr');
     ma.classList.toggle('has', !!mt);
     if (mt) { pointArrow(ma, mt); ma.querySelector('span').textContent = Math.round(mt.distanceTo(player.pos)) + ' m'; }
-    mm.draw(player, cam.yaw, bagels.list, job?.target, missions.marks(), [...remotes.values()].map((r) => ({ x: r.pos.x, z: r.pos.z, c: COLORS[r.color] })));
+    if ((mmT = (mmT + 1) % 2) === 0) mm.draw(player, cam.yaw, bagels.list, job?.target, missions.marks(), [...remotes.values()].map((r) => ({ x: r.pos.x, z: r.pos.z, c: COLORS[r.color] })));
     placeTag(meTag, hero.root.position, 2.2);
     for (const r of remotes.values()) placeTag(r.tag, r.pos, 2.25);
     sfx.ambience(look.night, season, weather.precip);
     saveT += dt; if (saveT > 10) { saveT = 0; save.hour = clockH; writeSave(save); }
     cullFar();
     pipe.render();
+    adaptResolution(rawDt);
     if (shot) { shot = false; const a = document.createElement('a'); a.download = `plateau-montreal-${Date.now()}.png`; a.href = renderer.domElement.toDataURL('image/png'); a.click(); }
   }
   function cullFar() {
@@ -652,6 +668,9 @@ async function boot() {
     for (const n of npcs.list) if (n.out) n.ch.root.visible = n.ch.root.position.distanceTo(cp) < 150;
     for (const c of traffic.cars) c.m.g.visible = c.m.g.position.distanceTo(cp) < 260;
     for (const ch of world.city.children) { const s = ch.geometry.boundingSphere; ch.visible = Math.hypot(s.center.x - cp.x, s.center.z - cp.z) - s.radius < 760; }
+    // parked cars: a few pixels tall past ~260 m (and in the fog) — skip those chunks in every pass
+    const carR = 260 + Math.max(0, cp.y - 30) * 1.5;
+    for (const ch of world.parkedCars.children) { const s = ch.geometry.boundingSphere; ch.visible = Math.hypot(s.center.x - cp.x, s.center.z - cp.z) - s.radius < carR; }
   }
   app.frame = frame;
   Object.assign(app, { say, interact, inp, setTime: (h2) => { clockH = typeof h2 === 'number' ? h2 : { day: 13, golden: 18.4, night: 22.5, dawn: 6.5, dusk: 19.8 }[h2]; }, setSeason: (s) => { season = s; updateButtons(); }, setWeather: (s) => { weather.set(s); weather.wet = s === 'rain' && season !== 'winter' ? 1 : 0; updateButtons(); }, near: () => near, talkables, togglePhoto, cycleFilter, keys, setOutfit });

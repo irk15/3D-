@@ -1,8 +1,9 @@
 // sky.js — things you only notice once you can fly: 3D toon cloud banks, rooftop clutter
 // (AC units, chimneys, skylights, terraces) with colliders, and ribbon trails off the wings.
 import * as THREE from 'three';
-import { h, rng, U } from './layout.js';
-import { toon, LAYER_FX } from './toon.js';
+import { h, rng, U, lin } from './layout.js';
+import { toon, LAYER_FX, batchMaterial } from './toon.js';
+import { Batch } from './world.js';
 
 // ---------------------------------------------------------------- roofs: every tall, flat building top
 export function findRoofs(world) {
@@ -35,6 +36,7 @@ export function roofProps(scene, world, roofs) {
     if (col) C.add({ x0: x - sx / 2, x1: x + sx / 2, z0: z - sz / 2, z1: z + sz / 2, y0: y - 0.05, y1: y + sy - 0.04 });
   };
   for (const r of roofs) {
+    if (r.x < -200 || r.x > 200 || r.z < -330 || r.z > 340) continue;   // nobody can see props on far-off roofs
     const w = r.x1 - r.x0, d = r.z1 - r.z0;
     const rx = () => r.x0 + 1.2 + R() * (w - 2.4), rz = () => r.z0 + 1.2 + R() * (d - 2.4);
     // a chimney stack on most Plateau roofs, near a party wall
@@ -50,12 +52,10 @@ export function roofProps(scene, world, roofs) {
     }
   }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3();
-  for (const k of Object.values(kinds)) {
-    if (!k.list.length) continue;
-    const im = new THREE.InstancedMesh(k.g, k.m, k.list.length);
-    k.list.forEach(([x, y, z, sx, sy, sz], i) => im.setMatrixAt(i, m4.compose(v.set(x, y, z), q, s.set(sx, sy, sz))));
-    im.castShadow = true; im.receiveShadow = true; scene.add(im);
-  }
+  // static, so they're baked into a few big merged chunks (vertex colours, same shader as the city)
+  const B = new Batch(160), cols = { ac: '#c9ccd2', fan: '#8b919c', chim: '#a0533b', sky: '#9fd6f2', deck: '#b98a55', pot: '#5f9e4a', umb: '#e4402b' }, kinds2 = { sky: 6, deck: 3 };
+  for (const [name, k] of Object.entries(kinds)) for (const [x, y, z, sx, sy, sz] of k.list) B.geo(k.g, m4.compose(v.set(x, y, z), q, s.set(sx, sy, sz)), lin(cols[name]), kinds2[name] || 0);
+  scene.add(B.build(batchMaterial(), 'roofProps'));
   return Object.values(kinds).reduce((a, k) => a + k.list.length, 0);
 }
 
@@ -73,11 +73,16 @@ export function makeClouds(scene) {
   }
   const m = toon('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.35 });
   const mat = m.clone(); mat.fog = true;
-  const im = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 10), mat, puffs.length);
+  // clouds in 375 m tiles (frustum-culled per tile); the whole group drifts with the wind
+  const g = new THREE.Group(), geo = new THREE.SphereGeometry(1, 16, 10), tiles = new Map();
+  for (const p of puffs) { const key = Math.floor(p[0] / 375) + ',' + Math.floor(p[2] / 375); if (!tiles.has(key)) tiles.set(key, []); tiles.get(key).push(p); }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3();
-  puffs.forEach(([x, y, z, a, b, c], i) => im.setMatrixAt(i, m4.compose(v.set(x, y, z), q, s.set(a, b, c))));
-  im.castShadow = false; im.receiveShadow = false; im.frustumCulled = false;
-  const g = new THREE.Group(); g.add(im); scene.add(g);
+  for (const list of tiles.values()) {
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach(([x, y, z, a, b, c], i) => im.setMatrixAt(i, m4.compose(v.set(x, y, z), q, s.set(a, b, c))));
+    im.computeBoundingSphere(); im.castShadow = false; im.receiveShadow = false; g.add(im);
+  }
+  scene.add(g);
   const night = new THREE.Color('#5b6390'), day = new THREE.Color('#ffffff'), dusk = new THREE.Color('#ffc6a8');
   return {
     puffs,

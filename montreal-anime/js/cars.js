@@ -123,26 +123,44 @@ export function carParts(kind) {
   return (CACHE[kind] = out);
 }
 
-// ---- a moving car: meshes with their own light materials (headlights / brake lights react)
-const MAT = {};
-const M = (k, c, o) => (MAT[k + c] ||= new THREE.MeshToonMaterial(Object.assign({ color: c, gradientMap: gradient }, o)));
+// ---- a moving car: ONE vertex-coloured body mesh + head/brake light meshes (their glow changes),
+// and wheels drawn for every car at once by a shared instanced mesh (see WheelSet)
+const bodyCache = new Map();
+const colored = (geo, hex) => { const g = toNI(geo).clone(); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) a.set([c.r, c.g, c.b], i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
+function bodyGeo(kind, paint) {
+  const key = kind + paint; if (bodyCache.has(key)) return bodyCache.get(key);
+  const p = carParts(kind), list = [];
+  for (const [part, hex] of [['paint', kind === 'taxi' ? '#f2b43c' : paint], ['glass', '#41678f'], ['dark', '#24262c'], ['chrome', '#d9dde2'], ['light', '#fff6dc'], ['plate', '#f4f1e8'], ['trim', kind === 'taxi' ? '#2b2550' : '#e4402b']]) if (p[part]) list.push(colored(p[part], hex));
+  const g = mergeGeometries(list); g.computeBoundingSphere(); bodyCache.set(key, g); return g;
+}
+const bodyMat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
 export function carModel(col, kind = 'sedan') {
   const p = carParts(kind), g = new THREE.Group();
-  const add = (geo, mat) => { if (!geo) return null; const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
-  const paint = kind === 'taxi' ? '#f2b43c' : col;
-  add(p.paint, toon(paint)); add(p.glass, M('glass', '#41678f', {})); add(p.dark, toon('#24262c')); add(p.chrome, toon('#d9dde2'));
-  add(p.light, M('lt', '#fff6dc', { emissive: 0xfff2c8, emissiveIntensity: 0.25 })); add(p.plate, toon('#f4f1e8')); add(p.trim, toon(kind === 'taxi' ? '#2b2550' : '#e4402b'));
+  const body = new THREE.Mesh(bodyGeo(kind, col), bodyMat); body.castShadow = true; body.receiveShadow = true; g.add(body);
   const hl = new THREE.MeshToonMaterial({ color: 0xfff6dc, emissive: 0xfff2c8, emissiveIntensity: 0.2, gradientMap: gradient });
   const tl = new THREE.MeshToonMaterial({ color: 0xc8262a, emissive: 0xff2a2a, emissiveIntensity: 0.2, gradientMap: gradient });
-  add(p.hl, hl); add(p.tl, tl);
-  const wheels = [];
-  for (const [x, z] of p.wheels) {
-    const w = new THREE.Group(); w.position.set(x, p.S.wr, z); g.add(w);
-    const t = new THREE.Mesh(p.tyre, toon('#1d1e22')); t.castShadow = true; w.add(t);
-    w.add(new THREE.Mesh(p.rim, toon('#c9ced6')), new THREE.Mesh(p.hub, toon('#8b919c')));
-    wheels.push(w);
-  }
+  g.add(new THREE.Mesh(p.hl, hl), new THREE.Mesh(p.tl, tl));
+  const wheels = p.wheels.map(([x, z]) => { const w = new THREE.Object3D(); w.position.set(x, p.S.wr, z); w.userData.wr = p.S.wr; g.add(w); return w; });
   return { g, wheels, hl, tl };
+}
+// every traffic wheel in one draw call
+export class WheelSet {
+  constructor(scene, max) {
+    const R = 0.36, tyre = new THREE.CylinderGeometry(R, R, 0.26, 18).rotateZ(Math.PI / 2), rim = new THREE.CylinderGeometry(R * 0.62, R * 0.62, 0.275, 12).rotateZ(Math.PI / 2), hub = new THREE.CylinderGeometry(R * 0.18, R * 0.18, 0.29, 8).rotateZ(Math.PI / 2);
+    const spokes = []; for (let i = 0; i < 5; i++) spokes.push(colored(new THREE.BoxGeometry(0.28, R * 1.05, 0.06).rotateX(i / 5 * Math.PI), '#c9ced6'));
+    const geo = mergeGeometries([colored(tyre, '#1d1e22'), colored(rim, '#c9ced6'), colored(hub, '#8b919c'), ...spokes]);
+    this.im = new THREE.InstancedMesh(geo, bodyMat, max); this.im.castShadow = true; this.im.frustumCulled = false; this.im.count = 0; scene.add(this.im);
+    this.m = new THREE.Matrix4(); this.s = new THREE.Matrix4(); this.R = R;
+  }
+  sync(cars) {
+    let n = 0;
+    for (const car of cars) {
+      if (!car.m.g.visible) continue;
+      car.m.g.updateMatrixWorld(true);
+      for (const w of car.m.wheels) { const k = w.userData.wr / this.R; this.m.multiplyMatrices(w.matrixWorld, this.s.makeScale(1, k, k)); this.im.setMatrixAt(n++, this.m); }
+    }
+    this.im.count = n; this.im.instanceMatrix.needsUpdate = true;
+  }
 }
 
 // ---- a parked car baked into the world batch (B.geo) — same geometry, vertex colours + batch kinds

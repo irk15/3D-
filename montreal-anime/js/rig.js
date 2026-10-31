@@ -155,7 +155,7 @@ function makeUmbrella(col) {
   const g = new THREE.Group();
   const c = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.32, 10, 1, true), toon(col, { side: THREE.DoubleSide })); c.position.y = 0.95; g.add(c);
   const p = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.0, 6), toon('#2b2550')); p.position.y = 0.45; g.add(p);
-  g.position.set(0.2, 1.55, 0.05); g.visible = false; return g;
+  g.visible = false; return g;
 }
 
 // ---------------------------------------------------------------- the character
@@ -181,9 +181,23 @@ export function makeRigged(o = {}) {
   const act = {};
   for (const [n, clip] of Object.entries(L.set)) { const a = mixer.clipAction(clip); a.enabled = true; a.setEffectiveWeight(0); a.play(); act[n] = a; if (n === 'nod' || n === 'shake' || n === 'dance') a.setLoop(THREE.LoopRepeat); }
   for (const n of ['idle', 'walk', 'run']) act[n]?.setEffectiveWeight(n === 'idle' ? 1 : 0);
-  const wings = makeWings(o.hatCol || o.scarf || '#e4402b'); body.add(wings.g);
+  // props: the wings ride on the upper spine (so they stay on the back whatever the pose);
+  // the umbrella and the parcel are placed at the hands every frame
+  root.updateMatrixWorld(true);
+  const wings = makeWings(o.hatCol || o.scarf || '#e4402b');
+  const spineB = bones.Spine2 || bones.Spine1 || bones.Spine;
+  if (spineB) {
+    const bp = new THREE.Vector3(), bq = new THREE.Quaternion(), bs = new THREE.Vector3(), q0 = new THREE.Quaternion();
+    spineB.matrixWorld.decompose(bp, bq, bs);
+    const wp = new THREE.Vector3(0, 0.06, -0.17).applyQuaternion(body.getWorldQuaternion(q0)).add(bp);
+    spineB.add(wings.g); wings.g.scale.setScalar(1 / bs.x);
+    wings.g.quaternion.copy(bq.clone().invert().multiply(q0));
+    spineB.worldToLocal(wp); wings.g.position.copy(wp);
+  } else { wings.g.position.set(0, 0.42, -0.17); body.add(wings.g); }
   const parcel = makeParcel(); body.add(parcel);
-  const umb = makeUmbrella(o.hatCol || '#e4402b'); root.add(umb);
+  const umb = makeUmbrella(o.hatCol || '#e4402b'); body.add(umb);
+  const _h1 = new THREE.Vector3(), _h2 = new THREE.Vector3();
+  const atHand = (name, out) => { const b = bones[name]; if (!b) return null; b.updateWorldMatrix(true, false); out.setFromMatrixPosition(b.matrixWorld); return body.worldToLocal(out); };
   const st = { t: Math.random() * 10, air: 0, fly: 0, bike: 0, wave: 0, umb: 0, parcel: 0, land: 0, jump: 0, gest: null, gestT: 0, gestW: 0, lean: 0, prevYaw: 0, ph: 0, w: { idle: 1, walk: 0, run: 0 } };
   const walkD = act.walk?.getClip().duration || 1, runD = act.run?.getClip().duration || 0.7;
   const WALK = kind === 'soldier' ? 1.5 : 1.6, RUN = kind === 'soldier' ? 4.2 : 4.6;   // native clip speeds (m/s)
@@ -245,10 +259,11 @@ export function makeRigged(o = {}) {
     if (f > 0.01) {
       const sup = Math.min(1, Math.max(0, (op.fly - 0.6) * 3)) * f;
       aim('Spine', 'Spine1', V(0, 1, 0.12), f * 0.6);
-      aim('LeftArm', 'LeftForeArm', V(0.35, -0.75, -0.55), f);
-      aim('LeftForeArm', 'LeftHand', V(0.2, -0.8, -0.55), f);
-      aim('RightArm', 'RightForeArm', V(-0.35 + 0.3 * sup, -0.75 + 1.75 * sup, -0.55 + 0.75 * sup), f);
-      aim('RightForeArm', 'RightHand', V(-0.2 + 0.2 * sup, -0.8 + 1.8 * sup, -0.55 + 0.75 * sup), f);
+      aim('LeftArm', 'LeftForeArm', V(0.75 - 0.35 * sup, -0.35 - 0.4 * sup, -0.35 - 0.2 * sup), f);
+      aim('LeftForeArm', 'LeftHand', V(0.7 - 0.45 * sup, -0.3 - 0.5 * sup, -0.3 - 0.25 * sup), f);
+      // slow / falling: both arms spread like a glider (both always in view); fast: right fist out front-right
+      aim('RightArm', 'RightForeArm', V(-0.75 + 0.3 * sup, -0.35 + 1.2 * sup, -0.35 + 0.5 * sup), f);
+      aim('RightForeArm', 'RightHand', V(-0.7 + 0.35 * sup, -0.3 + 1.25 * sup, -0.3 + 0.45 * sup), f);
       const kick = Math.sin(st.t * 3) * 0.12;
       aim('LeftUpLeg', 'LeftLeg', V(0.08, -1, -0.08 + kick), f); aim('LeftLeg', 'LeftFoot', V(0.05, -1, -0.25 + kick), f);
       aim('RightUpLeg', 'RightLeg', V(-0.08, -1, -0.08 - kick), f); aim('RightLeg', 'RightFoot', V(-0.05, -1, -0.45 - kick), f);
@@ -284,6 +299,8 @@ export function makeRigged(o = {}) {
     // wings with follow-through (they lag the body's motion)
     wings.g.visible = !!op.wings; if (op.wings) { const fl = op.flap ?? 1; const a2 = 0.2 + Math.sin(st.t * (6 + fl * 6)) * (0.15 + 0.5 * fl); wings.L.rotation.set(0, -0.35, a2); wings.R.rotation.set(0, 0.35, -a2); }
     parcel.visible = st.parcel > 0.5; umb.visible = st.umb > 0.5;
+    if (umb.visible && atHand('RightHand', _h1)) umb.position.copy(_h1).add(_h2.set(0, -0.08, 0));
+    if (parcel.visible && atHand('LeftHand', _h1) && atHand('RightHand', _h2)) parcel.position.copy(_h1).add(_h2).multiplyScalar(0.5).add(_h2.set(0, 0.12, 0.04));
     return step;
   }
   return {

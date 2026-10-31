@@ -102,10 +102,14 @@ export class Colliders {
     if (c.t === 'ramp') { const s = c.axis === 'z' ? (z - c.a0) / (c.a1 - c.a0) : (x - c.a0) / (c.a1 - c.a0); return c.r0 + (c.r1 - c.r0) * Math.min(1, Math.max(0, s)); }
     return c.y1;
   }
+  // ids of colliders in the cells around (x,z); reuses one array + a stamp per collider (no allocations,
+  // this runs dozens of times per frame)
   near(x, z, r) {
-    const out = new Set();
+    const out = this._out || (this._out = []); out.length = 0;
+    if (!this._mark || this._mark.length < this.list.length) this._mark = new Uint32Array(this.list.length + 1024);
+    const mark = this._mark, st = this._stamp = ((this._stamp || 0) + 1) >>> 0;
     for (let i = Math.floor((x - r) / this.cell); i <= Math.floor((x + r) / this.cell); i++)
-      for (let j = Math.floor((z - r) / this.cell); j <= Math.floor((z + r) / this.cell); j++) { const a = this.grid.get(i * 100000 + j); if (a) for (const id of a) out.add(id); }
+      for (let j = Math.floor((z - r) / this.cell); j <= Math.floor((z + r) / this.cell); j++) { const a = this.grid.get(i * 100000 + j); if (a) for (const id of a) if (mark[id] !== st) { mark[id] = st; out.push(id); } }
     return out;
   }
   // highest walkable surface under (x,z) not above maxY
@@ -663,7 +667,8 @@ export function buildWorld(scene) {
     }
   }
   const CAR_COLS = ['#e8e4dc', '#2f3a44', '#d8473f', '#7fb2d6', '#f2b43c', '#3f7a5a', '#b9b9c0', '#e79cb4', '#5a4a8f'];
-  for (const [x, z, ry] of parked) carStatic(B, C, x, z, ry, pick(CAR_COLS, R), pick(CAR_KINDS, R));
+  const PB = new Batch(96);   // parked cars get their own small chunks so far-away ones can be skipped
+  for (const [x, z, ry] of parked) carStatic(PB, C, x, z, ry, pick(CAR_COLS, R), pick(CAR_KINDS, R));
 
   // utility poles + wires along the alleys (the overhead tangle every Plateau alley has)
   const wireCol = L('#26262c');
@@ -882,8 +887,10 @@ export function buildWorld(scene) {
   ground.receiveShadow = true; ground.matrixAutoUpdate = false;
   scene.add(ground);
 
-  const city = B.build(batchMaterial(), 'city');
+  const bmat = batchMaterial();
+  const city = B.build(bmat, 'city');
   scene.add(city);
+  const parkedCars = PB.build(bmat, 'parked'); scene.add(parkedCars);
   // trees (instanced) — canopies change with the seasons
   const treesObj = buildTrees(scene, trees, C);
   const signs = S.build(); scene.add(signs);
@@ -891,7 +898,7 @@ export function buildWorld(scene) {
   const backdrop = buildBackdrop(scene, glows);
   glows.commit();
 
-  return { city, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot, docks };
+  return { city, parkedCars, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot, docks };
 }
 function await0(o, k, f) { if (!o[k]) o[k] = f(); return o[k]; }
 const nameNS = (k) => ({ '-1': 'Rue Drolet', 0: 'Rue Saint-Denis', 1: 'Rue Saint-Hubert' }[k] || 'Rue');
@@ -971,21 +978,35 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.94, 0.96, 1.0), uSnow * smoothst
   const pineM = new THREE.MeshToonMaterial({ color: 0x2f6b4a, gradientMap: gradient });
   pineM.onBeforeCompile = (sh) => { sh.uniforms.uSnow = U.uSnow; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vUp;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvUp = normal.y;'); sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uSnow; varying float vUp;').replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.94,0.96,1.0), uSnow * smoothstep(0.2,0.6,vUp));'); };
   pineM.customProgramCacheKey = () => 'pine';
-  const trunks = new THREE.InstancedMesh(trunkG, trunkM, n), crowns = new THREE.InstancedMesh(crownG, crownM, n), pines = new THREE.InstancedMesh(pineG, pineM, n), branches = new THREE.InstancedMesh(branchG, trunkM, n);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+  // trees are split into 120 m tiles, so each pass (colour, outline normals, shadows) only draws the
+  // tiles the camera / sun frustum actually touches instead of every tree in the city
+  const TILE = 200, tiles = new Map(), R = rng(77);
   const greens = ['#5aa04a', '#4f9a44', '#6bb054', '#3f8a46', '#7ab85a'];
-  let nc = 0, np = 0;
-  const R = rng(77);
-  list.forEach(([x, z, s, type], i) => {
-    m4.compose(new THREE.Vector3(x, h(z) - 0.1, z), q.setFromAxisAngle(up, R() * 6.28), new THREE.Vector3(s, s * (0.9 + R() * 0.2), s));
-    trunks.setMatrixAt(i, m4); branches.setMatrixAt(i, m4);
-    if (type === 1) pines.setMatrixAt(np++, m4); else { crowns.setMatrixAt(nc, m4); crowns.setColorAt(nc++, col.set(pick(greens, R))); }
+  const recs = list.map(([x, z, s, type]) => {
+    const rot = R() * 6.28, sy = s * (0.9 + R() * 0.2), g = type === 1 ? null : pick(greens, R);
     C.add({ x0: x - 0.25 * s, x1: x + 0.25 * s, z0: z - 0.25 * s, z1: z + 0.25 * s, y0: h(z) - 0.2, y1: h(z) + 4 * s });
+    const k = Math.floor(x / TILE) + ',' + Math.floor(z / TILE); if (!tiles.has(k)) tiles.set(k, []); tiles.get(k).push({ x, z, s, sy, rot, type, g });
+    return null;
   });
-  crowns.count = nc; pines.count = np;
-  for (const m of [trunks, crowns, pines, branches]) { m.castShadow = true; m.receiveShadow = true; m.computeBoundingSphere(); m.frustumCulled = false; scene.add(m); }
-  branches.visible = false;
-  return { trunks, crowns, pines, branches, setWinter(w) { crowns.visible = !w; branches.visible = w; } };
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+  const all = { trunks: [], crowns: [], pines: [], branches: [] };
+  for (const arr of tiles.values()) {
+    const nb = arr.length, nPine = arr.filter((t) => t.type === 1).length, nCrown = nb - nPine;
+    const trunks = new THREE.InstancedMesh(trunkG, trunkM, nb), branches = new THREE.InstancedMesh(branchG, trunkM, nb);
+    const crowns = nCrown ? new THREE.InstancedMesh(crownG, crownM, nCrown) : null, pines = nPine ? new THREE.InstancedMesh(pineG, pineM, nPine) : null;
+    let nc = 0, np = 0;
+    arr.forEach((t, i) => {
+      m4.compose(new THREE.Vector3(t.x, h(t.z) - 0.1, t.z), q.setFromAxisAngle(up, t.rot), new THREE.Vector3(t.s, t.sy, t.s));
+      trunks.setMatrixAt(i, m4); branches.setMatrixAt(i, m4);
+      if (t.type === 1) pines.setMatrixAt(np++, m4); else { crowns.setMatrixAt(nc, m4); crowns.setColorAt(nc++, col.set(t.g)); }
+    });
+    for (const [key, m] of [['trunks', trunks], ['crowns', crowns], ['pines', pines], ['branches', branches]]) {
+      if (!m) continue;
+      m.castShadow = true; m.receiveShadow = true; m.computeBoundingSphere(); m.boundingSphere.radius += 3; m.frustumCulled = true; scene.add(m); all[key].push(m);
+    }
+    branches.visible = false;
+  }
+  return { tiles: tiles.size, setWinter(w) { for (const m of all.crowns) m.visible = !w; for (const m of all.branches) m.visible = w; } };
 }
 
 // ================================================================= backdrop: Mount Royal with its cross, downtown towers

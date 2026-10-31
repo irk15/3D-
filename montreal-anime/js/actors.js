@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, PLAZA, PARK, rng, pick, U } from './layout.js';
 import { toon, LAYER_FX, gradient, Glows } from './toon.js';
 import { makeRigged, rigReady } from './rig.js';
-import { carModel, CAR_KINDS } from './cars.js';
+import { carModel, CAR_KINDS, WheelSet } from './cars.js';
 
 const basic = (hex) => new THREE.MeshBasicMaterial({ color: hex });
 const EYE = basic(0x231a3a), WHITE = basic(0xffffff), BLUSH = new THREE.MeshBasicMaterial({ color: 0xf28a96, transparent: true, opacity: 0.55, depthWrite: false });
@@ -227,15 +227,22 @@ export class Player {
     // first: is there a walkable top just above us (we sank into a step or a ledge)?
     const up = C.ground(p.x, p.z, p.y + 2.2, 0.18);
     if (up > p.y + 0.02 && this.free(p.x, p.z, up)) { p.y = up; return true; }
-    for (const rad of [0.25, 0.5, 0.8, 1.2, 1.7, 2.4, 3.2, 4.5]) {
-      for (let i = 0; i < 16; i++) {
-        const a = i / 16 * Math.PI * 2 + rad, x = p.x + Math.cos(a) * rad, z = p.z + Math.sin(a) * rad;
+    for (const rad of [0.25, 0.5, 0.8, 1.2, 1.7, 2.4, 3.2, 4.5, 6, 8, 10, 13]) {
+      const n = rad < 3 ? 16 : 28;
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2 + rad, x = p.x + Math.cos(a) * rad, z = p.z + Math.sin(a) * rad;
         const y = this.flying ? p.y : C.ground(x, z, p.y + 0.6, 0.18);
         if (Math.abs(y - p.y) > 1.2 && !this.flying) continue;
-        if (this.free(x, z, y)) { p.x = x; p.z = z; if (!this.flying) p.y = y; this.vel.multiplyScalar(0.3); return true; }
+        if (this.free(x, z, y)) { this.placeAt(x, y, z); return true; }
       }
+      // deep inside a building: its roof may be closer than any door
+      if (rad === 4.5) { const top = C.ground(p.x, p.z, p.y + 80, 0.18); if (top > p.y + 0.02 && this.free(p.x, p.z, top)) { this.placeAt(p.x, top, p.z); return true; } }
     }
     return false;
+  }
+  placeAt(x, y, z) {
+    const p = this.pos; p.set(x, y, z); this.visY = y; this.vel.multiplyScalar(0.3);
+    if (this.flying) { this.flyVel.multiplyScalar(0.3); } else { this.vy = 0; this.grounded = true; }
   }
   update(dt, inp, camYaw) {
     this.waveT = Math.max(0, (this.waveT || 0) - dt);
@@ -301,8 +308,12 @@ export class Player {
       this.vy -= 15 * dt;
       if (!bike && inp.jumpHeld && this.vy < -1.0 && this.jumps >= 1 && this.flip === 0) { this.vy = Math.max(this.vy, -1.7); this.gliding = true; this.fx.glide = true; }
       if (this.dashT > 0) this.vy = Math.max(this.vy, 0);
+      this.vy = Math.max(this.vy, -38);
+      const prevY = p.y;
       p.y += this.vy * dt;
-      const g2 = C.ground(p.x, p.z, p.y + 0.05, 0.18);
+      // continuous landing test: any surface between where we were and where we are now
+      // (a long fall covers more than a roof's thickness in one frame and used to tunnel into buildings)
+      const g2 = C.ground(p.x, p.z, Math.max(prevY, p.y) + 0.05, 0.18);
       if (p.y <= g2 && this.vy <= 0) { p.y = g2; this.grounded = true; if (this.vy < -4) { this.c.land(); this.landed = true; } this.vy = 0; this.flip = 0; }
       if (this.vy > 0 && C.blocked(p.x, p.z, 0.2, p.y + 1.5, 0.05, p.y + 1.7) && !C.blocked(p.x, p.z, 0.2, p.y, 0.05, p.y + 1.2)) this.vy = 0;
     }
@@ -409,7 +420,12 @@ export class Neighbours {
       let d = yaw - n.ch.root.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
       n.ch.root.rotation.y += d * (1 - Math.exp(-dt * 6));
       n.ch.root.position.copy(n.pos);
-      n.ch.animate(dt, moving ? n.speed : 0, true, n.talk > 0 && !ctx.rain ? Math.min(1, n.talk) : 0, { umbrella: ctx.rain, talk: n.talk > 2.5 });
+      // animation level of detail: neighbours far from you update their skeleton less often
+      const far = n.pos.distanceToSquared(player.pos);
+      const every = far > 120 * 120 ? 4 : far > 45 * 45 ? 2 : 1;
+      n.adt = (n.adt || 0) + dt; this.fr = (this.fr || 0) + (n === this.list[0] ? 1 : 0);
+      if (!n.ch.root.visible) { n.adt = 0; continue; }
+      if ((this.fr + n.id) % every === 0) { n.ch.animate(n.adt, moving ? n.speed : 0, true, n.talk > 0 && !ctx.rain ? Math.min(1, n.talk) : 0, { umbrella: ctx.rain, talk: n.talk > 2.5 }); n.adt = 0; }
     }
   }
 }
@@ -433,6 +449,7 @@ export class Traffic {
       car.gl = [glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35)];
       this.cars.push(car);
     }
+    this.wheelSet = new WheelSet(scene, this.cars.length * 4);
     // traffic lights at Saint-Denis × Mont-Royal and × Rachel
     this.mats = { ns: this.lightMats(), ew: this.lightMats() };
     for (const m of [-1, 1]) this.signal(scene, ewZ(m), m);
@@ -508,6 +525,7 @@ export class Traffic {
       car.x = x; car.z = z;
     }
     this.glows.g.attributes.iPos.needsUpdate = true;
+    this.wheelSet.sync(this.cars);
   }
   // block the player from walking into a car
   blocks(px, pz) {
@@ -572,6 +590,7 @@ export class Bagels {
     const bm = new THREE.MeshToonMaterial({ color: 0xe0a24e, emissive: 0xffb84a, emissiveIntensity: 0.25, gradientMap: gradient });
     const seedG = new THREE.SphereGeometry(0.02, 4, 3); seedG.scale(1, 0.6, 1.6);
     const seedM = toon('#fff6dc');
+    const seedsG = mergeGeometries(Array.from({ length: 14 }, (_, j) => { const a = j / 14 * Math.PI * 2; return seedG.clone().rotateZ(a).translate(Math.cos(a) * 0.26, Math.sin(a) * 0.26, 0.11); }));
     const beamM = new THREE.ShaderMaterial({
       uniforms: { uTime: U.uTime }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       vertexShader: 'varying vec2 vUv; varying float vF; void main(){ vUv = uv; vec3 o = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz; vF = smoothstep(4.0, 12.0, distance(o.xz, cameraPosition.xz)); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -580,7 +599,7 @@ export class Bagels {
     spots.forEach((s, i) => {
       const g = new THREE.Group();
       const b = mesh(tor, bm, g, 0, 0, 0); b.rotation.x = Math.PI / 2 - 0.35;
-      for (let j = 0; j < 14; j++) { const a = j / 14 * Math.PI * 2; const sd = mesh(seedG, seedM, b, Math.cos(a) * 0.26, Math.sin(a) * 0.26, 0.11); sd.rotation.z = a; sd.castShadow = false; }
+      const sd = new THREE.Mesh(seedsG, seedM); sd.castShadow = false; b.add(sd);   // all 14 seeds in one mesh
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.5, 7, 16, 1, true), beamM); beam.position.y = 3.6; beam.layers.set(LAYER_FX); g.add(beam);
       g.position.set(s.x, s.y + 0.85, s.z); scene.add(g);
       this.list.push({ g, b, s, got: false, t: i });

@@ -69,6 +69,8 @@ Tips: the **Café Lumière** gives you a 30-second speed boost, a croissant from
 - **Connecting with friends**: rooms now go through public MQTT relays (three brokers at once) as well as direct WebRTC, so a friend on another network or on mobile data can join with the code. The invite card shows which connections are up.
 - **No more getting stuck**: if the player ends up inside something (a car pulling up, a landing on a ledge, the wider bike), it slides out to the nearest free spot.
 
+**4.1 fixes and speed**: wings ride on the character's back and follow the spine, both arms stay visible while flying and falling, the umbrella and parcel sit in the hands, friends' characters always show under their name (dimmed "absent" when their tab is in the background), and long falls can no longer tunnel through a roof into a building. Faster without lowering quality: moving cars are one mesh each with all wheels in a single instanced draw, trees, clouds and rooftop props are tiled so off-screen parts are skipped in every pass, distant parked cars and far neighbours' animation are culled or updated less often, collision queries no longer allocate, and the render scale adapts only when the GPU falls behind (−40 % draw calls, −16 % triangles, −45 % script time per frame).
+
 Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) characters as published in the three.js examples, compressed with meshopt (1.7 MB for all three).
 
 ## How it looks the way it does

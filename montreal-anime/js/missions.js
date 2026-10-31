@@ -17,7 +17,8 @@ export const KINDS = {
 const ORDER = ['stars', 'race', 'hunt', 'king', 'courier'];
 const TREASURES = ['la tuque dorée', 'le bagel de cristal', 'la clé de la croix', 'le chat en porcelaine de Mme Tremblay', 'le BIXI miniature en or', 'la cuillère à sirop d\'érable'];
 const KING_T = 15, RINGS = 8, STARS = 18;
-const $ = (s) => document.querySelector(s);
+const $c = {};
+const $ = (s) => $c[s] || ($c[s] = document.querySelector(s));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ---------------------------------------------------------------- shared visuals

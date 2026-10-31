@@ -334,7 +334,7 @@ async function boot() {
   for (const [id, l] of Object.entries(LBL)) $('#' + id)?.setAttribute('data-l', l);
   $('#tMenu').addEventListener('click', () => { B.classList.toggle('menu'); buzz(); });
   document.querySelector('.icons').addEventListener('click', (e) => { if (isTouch && e.target.closest('.ic') && e.target.closest('.ic').id !== 'btnSound') setTimeout(() => B.classList.remove('menu'), 120); });
-  addEventListener('pointerdown', (e) => { if (e.target === B || e.target === document.documentElement) B.classList.remove('menu'); });
+  addEventListener('pointerdown', (e) => { if (e.target === B || e.target === document.documentElement || e.target.classList?.contains('hud')) B.classList.remove('menu'); });
   const goFull = () => { const d = document.documentElement; if (document.fullscreenElement || document.webkitFullscreenElement) return; try { const r = (d.requestFullscreen || d.webkitRequestFullscreen)?.call(d, { navigationUI: 'hide' }); r?.catch?.(() => {}); } catch (e) { /* iPhone Safari has no fullscreen for pages */ } };
   $('#btnFull').addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen?.(); else goFull(); });
   for (const id of ['play', 'host', 'join']) $('#' + id)?.addEventListener('click', () => {

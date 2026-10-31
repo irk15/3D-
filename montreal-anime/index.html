@@ -311,7 +311,7 @@ body.touch.menu .icons{transform:none}
 body.touch .icons .ic{width:auto;height:74px;border-radius:16px;display:flex;flex-direction:column;gap:5px;box-shadow:none;background:#f1e9da}
 body.touch .icons .ic::after{content:attr(data-l);font-size:12px;font-weight:600;color:var(--ink)}
 body.touch .icons .ic:hover{transform:none}
-body.touch.menu::after{content:"";position:fixed;inset:0;background:rgba(43,37,80,.3);z-index:7}
+body.touch.menu .hud::before{content:"";position:fixed;inset:0;background:rgba(43,37,80,.3);z-index:7;pointer-events:auto}
 body.touch .icons::before{content:"";position:absolute;left:50%;top:7px;width:44px;height:5px;margin-left:-22px;border-radius:9px;background:var(--line)}
 /* move things out of the thumbs' way */
 body.touch .chatHint,body.touch #drive span,body.touch .hint{display:none}

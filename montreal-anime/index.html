@@ -338,8 +338,10 @@ body.touch #title{display:block;overflow-y:auto}body.touch #title .logo{min-heig
   body.touch #area{top:30%}
   body.touch #say{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 230px);width:calc(100vw - 24px);transform:translate(-50%,20px)}
 }
-#rotate{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 150px);transform:translateX(-50%);gap:10px;align-items:center;white-space:nowrap;background:var(--ink);color:#fff;font-weight:600;font-size:13px;padding:7px 8px 7px 14px;border-radius:999px;box-shadow:var(--shadow)}
+#rotate{position:absolute;left:50%;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 250px);transform:translateX(-50%);gap:10px;align-items:center;white-space:nowrap;background:var(--ink);color:#fff;font-weight:600;font-size:13px;padding:7px 8px 7px 14px;border-radius:999px;box-shadow:var(--shadow)}
 #rotate button{background:var(--paper);color:var(--ink);border-radius:999px;padding:3px 12px;font-weight:700}
+body.touch #misCard{top:calc(max(14px,env(safe-area-inset-top)) + 70px);bottom:auto;width:min(420px,calc(100vw - 24px));transform:translate(-50%,-400%);opacity:0;pointer-events:none}
+body.touch.mission #misCard{transform:translate(-50%,0);opacity:1;pointer-events:auto}
 /* landscape phone: low height, shrink the top HUD */
 @media (max-height:520px){
   body.touch #mini{width:86px;height:86px;border-width:3px}

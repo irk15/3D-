@@ -15,6 +15,7 @@ const SPEC = {
   suv:    { L: 4.7, W: 1.94, y0: 0.42, belt: 1.18, roof: 1.84, nose: 1.0, tail: 1.12, cf: 0.95, cb: -2.25, wb: 1.48, wr: 0.42, hatch: true, rack: true },
   pickup: { L: 5.2, W: 1.96, y0: 0.44, belt: 1.16, roof: 1.86, nose: 1.0, tail: 0.86, cf: 1.15, cb: -0.25, wb: 1.7, wr: 0.43, bed: true },
   sport:  { L: 4.45, W: 1.92, y0: 0.24, belt: 0.84, roof: 1.24, nose: 0.62, tail: 0.86, cf: 0.55, cb: -1.25, wb: 1.36, wr: 0.36 },
+  bus:    { L: 12, W: 2.55, y0: 0.34, belt: 1.25, roof: 3.05, nose: 1.15, tail: 2.95, cf: 5.4, cb: -5.8, wb: 4.0, wr: 0.5, van: true, bus: true },
   van:    { L: 5.1, W: 1.98, y0: 0.38, belt: 1.12, roof: 2.35, nose: 1.0, tail: 2.25, cf: 1.45, cb: -2.5, wb: 1.7, wr: 0.38, van: true },
 };
 
@@ -74,8 +75,13 @@ export function carParts(kind) {
     const au = fz - 0.8, av = S.roof - 0.08, bu = fz - 0.32, bv = S.belt + 0.38, du = bu - au, dv = bv - av, l = Math.hypot(du, dv);
     const nu = -dv / l, nv = du / l;   // outward normal (front/up)
     P.glass.push(box(S.W - 0.34, l * 0.92, 0.03, 0, (av + bv) / 2 + nv * 0.018, (au + bu) / 2 + nu * 0.018, 0, Math.atan2(du, dv)));
-    for (const s of [-1, 1]) P.glass.push(box(0.03, 0.5, 0.75, s * (hw + 0.006), S.roof - 0.48, fz - 1.15));
-    P.trim.push(...[-1, 1].map((s) => box(0.02, 0.5, 3.2, s * (hw + 0.012), S.tail + 0.55, -0.6)));     // livery band
+    if (S.bus) {   // STM: long rows of windows, the blue band, a lit destination sign
+      for (let z = bz + 0.9; z < fz - 1.6; z += 1.5) for (const s of [-1, 1]) P.glass.push(box(0.03, S.roof - S.belt - 0.55, 1.3, s * (hw + 0.006), (S.roof + S.belt) / 2 - 0.05, z + 0.65));
+      for (const s of [-1, 1]) P.trim.push(box(0.02, 0.32, S.L - 0.6, s * (hw + 0.012), S.belt - 0.35, 0));
+      P.light.push(box(1.6, 0.28, 0.04, 0, S.roof - 0.25, fz - 0.62 + 0.03));
+      P.dark.push(box(0.02, S.belt + 0.4, 1.0, hw + 0.012, (S.belt + S.y0 + 0.9) / 2 + 0.1, fz - 1.9), box(0.02, S.belt + 0.4, 1.0, hw + 0.012, (S.belt + S.y0 + 0.9) / 2 + 0.1, -0.6));   // doors
+    } else for (const s of [-1, 1]) P.glass.push(box(0.03, 0.5, 0.75, s * (hw + 0.006), S.roof - 0.48, fz - 1.15));
+    if (!S.bus) P.trim.push(...[-1, 1].map((s) => box(0.02, 0.5, 3.2, s * (hw + 0.012), S.tail + 0.55, -0.6)));     // livery band
     P.dark.push(box(0.02, S.roof - S.belt - 0.15, 0.03, hw + 0.012, (S.roof + S.belt) / 2, -0.6));    // sliding door seam
   }
   // ---- pickup bed walls
@@ -131,7 +137,7 @@ const colored = (geo, hex) => { const g = toNI(geo).clone(); for (const k of Obj
 function bodyGeo(kind, paint, noGlass = false, extra = []) {
   const key = kind + paint + noGlass; if (bodyCache.has(key) && !extra.length) return bodyCache.get(key);
   const p = carParts(kind), list = [...extra];
-  for (const [part, hex] of [['paint', kind === 'taxi' ? '#f2b43c' : paint], ['glass', noGlass ? null : '#41678f'], ['dark', '#24262c'], ['chrome', '#d9dde2'], ['light', '#fff6dc'], ['plate', '#f4f1e8'], ['trim', kind === 'taxi' ? '#2b2550' : '#e4402b']]) if (p[part] && hex) list.push(colored(p[part], hex));
+  for (const [part, hex] of [['paint', kind === 'taxi' ? '#f2b43c' : paint], ['glass', noGlass ? null : '#41678f'], ['dark', '#24262c'], ['chrome', '#d9dde2'], ['light', '#fff6dc'], ['plate', '#f4f1e8'], ['trim', kind === 'taxi' ? '#2b2550' : kind === 'bus' ? '#1f5fa8' : '#e4402b']]) if (p[part] && hex) list.push(colored(p[part], hex));
   const g = mergeGeometries(list); g.computeBoundingSphere(); if (!extra.length) bodyCache.set(key, g); return g;
 }
 const bodyMat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
@@ -182,6 +188,7 @@ export function carIntoBatch(B, lin, x, y, z, ry, col, kind) {
 // ================================================================ drivable cars: same exterior, see-through glass and a full cabin
 // (dashboard with live gauges, infotainment screen, steering wheel, seats, door cards, pedals, mirror)
 function roundedBox(w, hgt, d, r = 0.04) { const s = new THREE.Shape(); const x = w / 2 - r, y = hgt / 2 - r; s.moveTo(-x, -hgt / 2); s.lineTo(x, -hgt / 2); s.quadraticCurveTo(w / 2, -hgt / 2, w / 2, -y); s.lineTo(w / 2, y); s.quadraticCurveTo(w / 2, hgt / 2, x, hgt / 2); s.lineTo(-x, hgt / 2); s.quadraticCurveTo(-w / 2, hgt / 2, -w / 2, y); s.lineTo(-w / 2, -y); s.quadraticCurveTo(-w / 2, -hgt / 2, -x, -hgt / 2); const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: true, bevelThickness: r, bevelSize: r, bevelOffset: -r, bevelSegments: 2, curveSegments: 3 }); g.translate(0, 0, -d / 2); return g; }
+const drvZ = (S, dz) => S.bus ? dz - 0.95 : (dz + S.cb) / 2 + 0.05;   // a bus driver sits right behind the windscreen
 function cabin(S) {
   const P = { leather: [], trim: [], dark: [], metal: [], carpet: [] }, hw = S.W / 2;
   const fl = S.y0 + 0.12, seatY = S.y0 + 0.36, dashZ = S.cf - 0.2, dashY = S.belt - 0.06;
@@ -201,7 +208,7 @@ function cabin(S) {
     const hr = roundedBox(w * 0.55, 0.16, 0.1, 0.04); hr.translate(x, seatY + 0.72, z - 0.38); P.leather.push(hr);
     P.metal.push(box(0.02, 0.1, 0.02, x - w * 0.15, seatY + 0.63, z - 0.37), box(0.02, 0.1, 0.02, x + w * 0.15, seatY + 0.63, z - 0.37));
   };
-  const fz = (dashZ + S.cb) / 2 + 0.05;
+  const fz = drvZ(S, dashZ);
   seat(hw - 0.55, fz, 0.5); seat(-(hw - 0.55), fz, 0.5);
   if (S.cb < -1.0 && !S.bed) seat(0, Math.max(S.cb + 0.45, fz - 0.95), S.W - 0.5);
   // door cards with armrests and handles
@@ -279,7 +286,7 @@ export function carDrivable(col, kind = 'sedan') {
   let gT = 0;
   return {
     g, wheels, hl, tl, wheel, S, body,
-    lod(d) { const near = d < 90; for (const o of detail) o.visible = near; glass.visible = d < 250; }, seat: new THREE.Vector3(S.W / 2 - 0.55, S.y0 + 0.36, (cb.dash.z + S.cb) / 2 + 0.05), eye: new THREE.Vector3(S.W / 2 - 0.55, Math.min(S.y0 + 1.0, S.roof - 0.16), (cb.dash.z + S.cb) / 2 - 0.12),
+    lod(d) { const near = d < 90; for (const o of detail) o.visible = near; glass.visible = d < 250; }, seat: new THREE.Vector3(S.W / 2 - 0.55, S.y0 + 0.36, drvZ(S, cb.dash.z)), eye: new THREE.Vector3(S.W / 2 - 0.55, Math.min(S.y0 + (S.bus ? 1.3 : 1.0), S.roof - 0.16), drvZ(S, cb.dash.z) - (S.bus ? -0.08 : 0.17)),
     updateGauges(dt, kmh, rpm, gear, night, clock) { gT -= dt; if (gT > 0) return; gT = 0.1; drawGauges(gauges, kmh, rpm, gear, night); drawScreen(screen, clock, 'CHOM 97.7'); },
   };
 }

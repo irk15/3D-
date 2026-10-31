@@ -5,7 +5,9 @@
 import * as THREE from 'three';
 import { h, rng, pick, lin, nsX, ewZ, nsHW, ewHW, U } from './layout.js';
 import { batchMaterial, gradient, LAYER_FX } from './toon.js';
-import { Batch } from './world.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+const mergeGeo = (list) => mergeGeometries(list.map((g) => { const n = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'normal') n.deleteAttribute(k); return n; }));
+import { Batch, cityArea } from './world.js';
 
 import { DOWNTOWN, RIVER_Z, WATER_Y } from './layout.js';
 
@@ -71,7 +73,7 @@ export function buildDowntown(scene, world) {
     // street trees along the block edges
     for (let x = x0 + 6; x < x1 - 4; x += 14) for (const z of [z0 + 1.6, z1 - 1.6]) world.extraTrees?.push([x, z]);
   }
-  const LANDMARK = new Set(['-4,7', '-5,8', '-6,7', '-3,6', '-3,9']);
+  const LANDMARK = new Set(['-4,7', '-5,8', '-6,7', '-3,6', '-3,9', '-7,6']);
   // height falls off from the centre of downtown (Place Ville Marie) like the real skyline
   const centre = { x: -320, z: 780 };
   for (const b of blocks) {
@@ -216,6 +218,100 @@ export function buildDowntown(scene, world) {
     }
   }
 
+  // Sun Life Building — the white granite giant on Dorchester Square, colonnades and a stepped crown
+  { const b = at(-7, 6), x = b.cx, z = b.cz, g0 = h(z + 30) - 1.2, base = h(z), stone = '#e6e1d6';
+    box(x - 34, x + 34, g0, base + 52, z - 30, z + 30, stone, 12);
+    box(x - 26, x + 26, base + 52, base + 78, z - 22, z + 22, stone, 12);
+    box(x - 16, x + 16, base + 78, base + 96, z - 13, z + 13, stone, 12);
+    box(x - 35, x + 35, base + 51, base + 53, z - 31, z + 31, '#cfc8bb', 0, false);
+    for (let i = -6; i <= 6; i++) for (const s of [-1, 1]) {   // colonnades on the east and west faces
+      geo(new THREE.CylinderGeometry(0.9, 1.0, 14, 12), M(x + s * 34.9, base + 24, z + i * 4.4), stone, 0);
+      geo(new THREE.CylinderGeometry(0.9, 1.0, 14, 12), M(x + i * 5, base + 24, z + s * 30.9), stone, 0);
+    }
+    box(x - 36, x + 36, base + 31, base + 33, z - 32, z + 32, '#d6d0c4', 0, false);
+    geo(new THREE.ConeGeometry(11, 7, 4).rotateY(Math.PI / 4), M(x, base + 99.5, z), '#7f8a86', 0);
+  }
+
+  // Chinatown gates (paifang) on Saint-Laurent
+  for (const gz of [640, 905]) {
+    const gx = nsX(-2), y = h(gz), red = '#c8312a', jade = '#2f7a5a', gold = '#e8b84a', span = 12;
+    for (const s of [-1, 1]) { box(gx + s * span / 2 - 0.6, gx + s * span / 2 + 0.6, y, y + 8.5, gz - 0.6, gz + 0.6, red, 0); box(gx + s * span / 2 - 1, gx + s * span / 2 + 1, y, y + 0.8, gz - 1, gz + 1, '#b9b0a2', 2); }
+    for (const [yy, w2] of [[8.5, span + 4], [10.8, span - 1]]) {
+      box(gx - w2 / 2, gx + w2 / 2, y + yy, y + yy + 0.9, gz - 0.7, gz + 0.7, red, 0, false);
+      geo(new THREE.CylinderGeometry(0.01, 1, 1, 4, 1).rotateY(Math.PI / 4).scale(w2 / 1.3, 1.4, 2.6), M(gx, y + yy + 1.6, gz), jade, 0);
+    }
+    box(gx - 2.6, gx + 2.6, y + 9.4, y + 10.6, gz - 0.75, gz + 0.75, gold, 0, false);
+    C.add({ x0: gx - 9, x1: gx + 9, z0: gz - 1.3, z1: gz + 1.3, y0: y + 8.4, y1: y + 12.4 });
+  }
+
+  // Old Port: the Clock Tower and La Grande roue (it turns)
+  const wheelG = new THREE.Group();
+  { const cx = 60, cz = RIVER_Z - 14, y = h(cz), stone = '#d8cfbf';
+    box(cx - 4, cx + 4, y - 1, y + 38, cz - 4, cz + 4, stone, 2);
+    box(cx - 4.6, cx + 4.6, y + 30, y + 31, cz - 4.6, cz + 4.6, '#c4b9a6', 0, false);
+    geo(new THREE.ConeGeometry(4.6, 9, 4).rotateY(Math.PI / 4), M(cx, y + 42.5, cz), '#6f8a86', 0);
+    for (const [dx, dz, ry] of [[0, 4.05, 0], [0, -4.05, Math.PI], [4.05, 0, Math.PI / 2], [-4.05, 0, -Math.PI / 2]]) {
+      geo(new THREE.CylinderGeometry(2.2, 2.2, 0.2, 24).rotateX(Math.PI / 2), M(cx + dx, y + 34, cz + dz, ry), '#f4efe6', 6);
+      geo(new THREE.BoxGeometry(0.18, 1.7, 0.1), M(cx + dx * 1.03, y + 34.6, cz + dz * 1.03, ry, 1, 1, 1, 0, 0.2), '#2b2550', 0);
+      geo(new THREE.BoxGeometry(0.15, 1.2, 0.1), M(cx + dx * 1.03, y + 34.3, cz + dz * 1.03, ry, 1, 1, 1, 0, 1.7), '#2b2550', 0);
+    }
+    // the wheel: A-frame legs in the batch, the rim with its 42 gondolas as a turning group
+    const wx = -140, wz = RIVER_Z - 22, wy = h(wz) + 33, R = 27;
+    for (const s of [-1, 1]) for (const sz of [-1, 1]) geo(new THREE.BoxGeometry(1.2, 36, 1.2), M(wx + s * 9, wy - 16, wz + sz * 3, 0, 1, 1, 1, sz * -0.12, s * 0.28), '#e8ecf0', 10);
+    wheelG.position.set(wx, wy, wz); scene.add(wheelG);
+    const white = new THREE.MeshToonMaterial({ color: 0xf2f4f6, gradientMap: gradient }), parts = [];
+    for (const zz of [-1.6, 1.6]) parts.push(new THREE.TorusGeometry(R, 0.45, 8, 96).translate(0, 0, zz));
+    for (let i = 0; i < 21; i++) { const a = i / 21 * Math.PI; parts.push(new THREE.BoxGeometry(0.3, R * 2, 0.3).rotateZ(a)); }
+    parts.push(new THREE.CylinderGeometry(1.4, 1.4, 4.5, 16).rotateX(Math.PI / 2));
+    const rim = new THREE.Mesh(mergeGeo(parts), white); rim.castShadow = true; wheelG.add(rim);
+    const gond = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 2.6, 2.4), new THREE.MeshToonMaterial({ color: 0x9fd6f2, emissive: 0x5aa0d0, emissiveIntensity: 0.15, gradientMap: gradient }), 42);
+    gond.castShadow = true; gond.frustumCulled = false; scene.add(gond);
+    world.ferris = { g: wheelG, gond, R, n: 42 };
+    C.add({ x0: wx - 12, x1: wx + 12, z0: wz - 4, z1: wz + 4, y0: h(wz), y1: h(wz) + 4 });
+  }
+
+  // Saint Joseph's Oratory on the mountain's west slope: the great dome over its stone basilica
+  { const ox = -880, oz = -340, gy = h(oz) + 18, stone = '#cdc3b0';
+    box(ox - 60, ox + 60, h(oz) - 2, gy, oz - 50, oz + 70, '#8fbf74', 0);                     // the hill terrace
+    for (let i = 0; i < 6; i++) box(ox - 20 + i, ox + 20 - i, gy, gy + 0.6 * (i + 1), oz + 46 - i * 2.4, oz + 50 - i * 2.4, '#c8bfae', 2, false);   // the great stairs
+    box(ox - 26, ox + 26, gy, gy + 30, oz - 36, oz + 34, stone, 2);
+    for (let i = -4; i <= 4; i++) geo(new THREE.CylinderGeometry(1.1, 1.2, 20, 12), M(ox + i * 5.2, gy + 10, oz + 35), stone, 2);
+    geo(new THREE.ConeGeometry(30, 10, 4).rotateY(Math.PI / 4).scale(1, 1, 0.3), M(ox, gy + 35, oz + 34), stone, 2);
+    geo(new THREE.CylinderGeometry(19, 19, 18, 40), M(ox, gy + 39, oz - 2), stone, 2);
+    for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; geo(new THREE.CylinderGeometry(0.8, 0.8, 14, 8), M(ox + Math.cos(a) * 19.6, gy + 38, oz - 2 + Math.sin(a) * 19.6), '#e2dacb', 2); }
+    geo(new THREE.SphereGeometry(19, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 1.25, 1), M(ox, gy + 48, oz - 2), '#5f8f7e', 0);
+    geo(new THREE.CylinderGeometry(3, 3.6, 8, 16), M(ox, gy + 75, oz - 2), stone, 2);
+    box(ox - 0.4, ox + 0.4, gy + 79, gy + 86, oz - 2.4, oz - 1.6, '#e8d9a6', 7, false); box(ox - 2, ox + 2, gy + 83, gy + 84, oz - 2.4, oz - 1.6, '#e8d9a6', 7, false);
+    C.add({ x0: ox - 26, x1: ox + 26, z0: oz - 36, z1: oz + 34, y0: gy, y1: gy + 30 });
+  }
+
+  // the Village: Sainte-Catherine under its canopy of pink balls (thousands of them, strung across the street)
+  { const sz = ewZ(5), x0 = 110, x1 = 470, n = 2600, R = rng(18);
+    const balls = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 2), new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradient }), n);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s = new THREE.Vector3(), col = new THREE.Color();
+    const pinks = ['#ff6fa8', '#ff8cc0', '#ff4f93', '#ffa3cc', '#f26cb0'];
+    for (let i = 0; i < n; i++) {
+      const x = x0 + R() * (x1 - x0), z = sz + (R() - 0.5) * 9, r = 0.12 + R() * 0.2;
+      const sag = Math.sin(((z - sz) / 9 + 0.5) * Math.PI);   // strings sag across the street
+      balls.setMatrixAt(i, m4.compose(v.set(x, h(z) + 7.6 - sag * 0.9 + R() * 0.5, z), q, s.set(r, r, r))); balls.setColorAt(i, col.set(pinks[i % pinks.length]));
+    }
+    balls.computeBoundingSphere(); balls.castShadow = true; scene.add(balls);
+  }
+
+  // fire hydrants on the street corners (Montréal red with a yellow bonnet)
+  { const col = (geo, hex) => { const n = geo.index ? geo.toNonIndexed() : geo; for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'normal') n.deleteAttribute(k); const c = new THREE.Color(hex), arr = new Float32Array(n.attributes.position.count * 3); for (let i = 0; i < arr.length; i += 3) arr.set([c.r, c.g, c.b], i); n.setAttribute('color', new THREE.BufferAttribute(arr, 3)); return n; };
+    const hg = mergeGeometries([col(new THREE.CylinderGeometry(0.16, 0.19, 0.62, 12).translate(0, 0.31, 0), '#c8312a'), col(new THREE.SphereGeometry(0.17, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.62, 0), '#f2c12e'), col(new THREE.CylinderGeometry(0.06, 0.06, 0.42, 8).rotateZ(Math.PI / 2).translate(0, 0.42, 0), '#c8312a'), col(new THREE.CylinderGeometry(0.07, 0.07, 0.12, 8).rotateX(Math.PI / 2).translate(0, 0.4, 0.17), '#f2c12e'), col(new THREE.CylinderGeometry(0.23, 0.23, 0.05, 12).translate(0, 0.02, 0), '#7a1f1a')]);
+    const spots = [];
+    for (let k = -9; k <= 9; k++) for (let m = -5; m <= 9; m++) {
+      const sx = R() < 0.5 ? -1 : 1, sz = R() < 0.5 ? -1 : 1, x = nsX(k) + sx * (nsHW(k) + 1.1), z = ewZ(m) + sz * (ewHW(m) + 3.2);
+      if (!cityArea(x, z) && !(x > DOWNTOWN.x0 && x < DOWNTOWN.x1 && z > DOWNTOWN.z0 && z < DOWNTOWN.z1)) continue;
+      spots.push([x, C.ground(x, z, h(z) + 1, 0), z]);
+    }
+    const im = new THREE.InstancedMesh(hg, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient }), spots.length), m4 = new THREE.Matrix4();
+    spots.forEach(([x, y, z], i) => { im.setMatrixAt(i, m4.makeTranslation(x, y, z)); C.add({ x0: x - 0.2, x1: x + 0.2, z0: z - 0.2, z1: z + 0.2, y0: y, y1: y + 0.7, nowalk: true }); });
+    im.castShadow = true; im.computeBoundingSphere(); scene.add(im);
+  }
+
   const g = B.build(batchMaterial(), 'downtown'); scene.add(g);
   glows.commit();
   // the PVM searchlight: a sweeping additive beam
@@ -225,6 +321,13 @@ export function buildDowntown(scene, world) {
     group: g, water, beacons,
     update(t, night) {
       beam.visible = night > 0.35; beam.rotation.y = t * 0.6; beam.rotation.x = -0.25;
+      const F = world.ferris;
+      if (F) {   // the Grande roue turns slowly; gondolas hang level
+        const a0 = t * 0.05, m4 = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1);
+        F.g.rotation.z = a0;
+        for (let i = 0; i < F.n; i++) { const a = a0 + i / F.n * Math.PI * 2; p.set(F.g.position.x + Math.cos(a) * F.R, F.g.position.y + Math.sin(a) * F.R - 1.8, F.g.position.z); F.gond.setMatrixAt(i, m4.compose(p, q, s)); }
+        F.gond.instanceMatrix.needsUpdate = true; F.gond.material.emissiveIntensity = 0.15 + night * 1.6;
+      }
       water.material.uniforms.uTime.value = t;
     },
   };

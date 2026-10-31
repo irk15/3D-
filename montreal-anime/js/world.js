@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   h, SLOPE, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, alleyX, ALLEY_HW, DETAIL, PARK, PLAZA, CHURCH, GREEN_ALLEY, inRect, rng, pick, lin, U,
+  DOWNTOWN,
 } from './layout.js';
 import { carIntoBatch, CAR_KINDS } from './cars.js';
 import { batchMaterial, groundMaterial, toon, Glows, LAYER_FX, gradient } from './toon.js';
@@ -117,7 +118,7 @@ export class Colliders {
     let g = h(z);
     for (const id of this.near(x, z, r + 0.01)) {
       const c = this.list[id];
-      if (c.thin || c.nowalk) continue;   // railings, poles, trunks: solid, but nothing you can stand on
+      if (c.thin || c.nowalk || c.dead) continue;   // railings, poles, trunks: solid, but nothing you can stand on
       const ex = c.x1 - c.x0 < 0.6 || c.z1 - c.z0 < 0.6 ? 0 : r;   // no edge grace on slim things
       if (x < c.x0 - ex || x > c.x1 + ex || z < c.z0 - ex || z > c.z1 + ex) continue;
       const t = this.top(c, Math.min(c.x1, Math.max(c.x0, x)), Math.min(c.z1, Math.max(c.z0, z)));
@@ -129,7 +130,7 @@ export class Colliders {
   blocked(x, z, r, feet, step, head) {
     for (const id of this.near(x, z, r)) {
       const c = this.list[id];
-      if (x < c.x0 - r || x > c.x1 + r || z < c.z0 - r || z > c.z1 + r) continue;
+      if (c.dead || x < c.x0 - r || x > c.x1 + r || z < c.z0 - r || z > c.z1 + r) continue;
       const cx = Math.min(c.x1, Math.max(c.x0, x)), cz = Math.min(c.z1, Math.max(c.z0, z));
       if ((x - cx) ** 2 + (z - cz) ** 2 > r * r) continue;
       if (c.y0 > head) continue;
@@ -143,11 +144,22 @@ export class Colliders {
     if (y < h(z) + 0.25) return true;
     for (const id of this.near(x, z, 0)) {
       const c = this.list[id];
-      if (c.thin) continue;
+      if (c.thin || c.dead) continue;
       if (x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1 && y > c.y0 && y < this.top(c, x, z)) return true;
     }
     return false;
   }
+}
+
+// where the row-house neighbourhoods go: the Plateau plus Mile End / Rosemont / Centre-Sud around it,
+// leaving room for downtown, the Olympic Park, Old Montréal, the bridge approach and the Oratory
+export function cityArea(x, z) {
+  if (Math.abs(x) > 880 || z < -540 || z > 1090) return false;
+  if (x > DOWNTOWN.x0 - 14 && x < DOWNTOWN.x1 + 14 && z > DOWNTOWN.z0 - 14 && z < DOWNTOWN.z1 + 14) return false;
+  if (x > 590 && x < 990 && z > -240 && z < 100) return false;    // Olympic Park
+  if (x > 140 && x < 360 && z > 1030) return false;                // Jacques-Cartier approach
+  if (x < -780 && z < -180) return false;                           // Saint Joseph's Oratory
+  return true;
 }
 
 // ================================================================= texture atlas (signs, awnings, murals, plates)
@@ -254,9 +266,9 @@ export function buildWorld(scene) {
     B.boxM(c.x, c.y, c.z, x1 - x0, T, (z1 - z0) / Math.cos(SLOPE_A), SLOPE_A, 0, 0, L('#cfc8bd'), 0);
     C.add({ x0, x1, z0, z1, y0: h(z0) - 1, t: 'h', off: CURB });
   };
-  for (let k = -5; k < 5; k++) for (let m = -4; m < 4; m++) {
+  for (let k = -10; k < 10; k++) for (let m = -5; m < 10; m++) {
     const xa = nsX(k) + nsHW(k), xb = nsX(k + 1) - nsHW(k + 1), za = ewZ(m) + ewHW(m), zb = ewZ(m + 1) - ewHW(m + 1);
-    if (xb < -470 || xa > 470 || zb < -520 || za > 520) continue;
+    if (!cityArea((xa + xb) / 2, (za + zb) / 2)) continue;
     const swa = nsSW(k), swb = nsSW(k + 1), swn = ewSW(m), sws = ewSW(m + 1);
     sidewalk(xa, xa + swa, za, zb); sidewalk(xb - swb, xb, za, zb);
     sidewalk(xa + swa, xb - swb, za, za + swn); sidewalk(xa + swa, xb - swb, zb - sws, zb);
@@ -537,7 +549,7 @@ export function buildWorld(scene) {
   // ---------------------------------------------------------- rows of buildings
   const DET = (x, z) => x > DETAIL.x0 && x < DETAIL.x1 && z > DETAIL.z0 && z < DETAIL.z1;
   let muralN = 0;
-  for (let k = -4; k < 4; k++) for (let m = -4; m < 4; m++) {
+  for (let k = -9; k < 9; k++) for (let m = -5; m < 10; m++) {
     const sxa = nsX(k), sxb = nsX(k + 1), ax = alleyX(k);
     const za = ewZ(m) + ewHW(m) + ewSW(m), zb = ewZ(m + 1) - ewHW(m + 1) - ewSW(m + 1);
     const blockCx = (sxa + sxb) / 2, blockCz = (za + zb) / 2;
@@ -551,7 +563,7 @@ export function buildWorld(scene) {
       const depthAvail = Math.abs(frontEdge - backEdge);
       const rowX = (frontEdge + backEdge) / 2;
       const detail = DET(rowX, blockCz);
-      if (Math.abs(rowX) > 400 || blockCz < -500 || blockCz > 500) continue;
+      if (!cityArea(rowX, blockCz)) continue;
       const fx = -f;   // facade normal points from the row toward its street: street is at smaller x for side 0
       const commercialStreet = streetK === 0;
       const lots = [];
@@ -668,9 +680,23 @@ export function buildWorld(scene) {
       parked.push([x, sz + s * lane, s > 0 ? -Math.PI / 2 : Math.PI / 2]);
     }
   }
+  // downtown curbs
+  for (let k = -8; k <= -2; k++) {
+    const sx = nsX(k), lane = nsHW(k) - 1.2;
+    for (const s of [-1, 1]) for (let z = 600; z < 1050; z += 6.4) {
+      const m = Math.round((z + 160) / 110) - 1; if (Math.abs(z - ewZ(m)) < ewHW(m) + 8 || R() < 0.45) continue;
+      parked.push([sx + s * lane, z, s > 0 ? 0 : Math.PI]);
+    }
+  }
   const CAR_COLS = ['#e8e4dc', '#2f3a44', '#d8473f', '#7fb2d6', '#f2b43c', '#3f7a5a', '#b9b9c0', '#e79cb4', '#5a4a8f'];
-  const PB = new Batch(96);   // parked cars get their own small chunks so far-away ones can be skipped
-  for (const [x, z, ry] of parked) carStatic(PB, C, x, z, ry, pick(CAR_COLS, R), pick(CAR_KINDS, R));
+  // every parked car is drivable: each 96 m chunk is its own mesh, rebuilt without a car when you take it
+  const parkedList = [], parkedChunks = new Map();
+  for (const [x, z, ry] of parked) {
+    const rec = { x, z, ry, col: pick(CAR_COLS, R), kind: pick(CAR_KINDS, R), key: Math.floor(x / 96) + ',' + Math.floor(z / 96), taken: false };
+    const tmp = { geo() {}, box() {}, quad() {} };
+    rec.colls = carStatic(tmp, C, x, z, ry, rec.col, rec.kind);
+    parkedList.push(rec); if (!parkedChunks.has(rec.key)) parkedChunks.set(rec.key, { recs: [], mesh: null }); parkedChunks.get(rec.key).recs.push(rec);
+  }
 
   // utility poles + wires along the alleys (the overhead tangle every Plateau alley has)
   const wireCol = L('#26262c');
@@ -892,7 +918,19 @@ export function buildWorld(scene) {
   const bmat = batchMaterial();
   const city = B.build(bmat, 'city');
   scene.add(city);
-  const parkedCars = PB.build(bmat, 'parked'); scene.add(parkedCars);
+  const parkedCars = new THREE.Group(); parkedCars.name = 'parked'; scene.add(parkedCars);
+  const buildChunk = (ch) => {
+    if (ch.mesh) { parkedCars.remove(ch.mesh); ch.mesh.geometry.dispose(); ch.mesh = null; }
+    const PB = new Batch(1e6);
+    for (const r of ch.recs) if (!r.taken) carIntoBatch(PB, lin, r.x, h(r.z), r.z, r.ry, r.col, r.kind);
+    const g = PB.build(bmat, 'chunk'); const m = g.children[0]; if (m) { parkedCars.add(m); ch.mesh = m; }
+  };
+  for (const ch of parkedChunks.values()) buildChunk(ch);
+  const parkedApi = {
+    list: parkedList,
+    nearest(x, z, maxD = 3.2) { let best = null, bd = maxD; for (const r of parkedList) { if (r.taken) continue; const d = Math.hypot(r.x - x, r.z - z); if (d < bd) { bd = d; best = r; } } return best; },
+    take(r) { r.taken = true; for (const c of r.colls) c.dead = true; buildChunk(parkedChunks.get(r.key)); },
+  };
   // trees (instanced) — canopies change with the seasons
   const treesObj = buildTrees(scene, trees, C);
   const signs = S.build(); scene.add(signs);
@@ -900,7 +938,7 @@ export function buildWorld(scene) {
   const backdrop = buildBackdrop(scene, glows);
   glows.commit();
 
-  return { city, parkedCars, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot, docks };
+  return { city, parkedCars, parked: parkedApi, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot, docks };
 }
 function await0(o, k, f) { if (!o[k]) o[k] = f(); return o[k]; }
 const nameNS = (k) => ({ '-1': 'Rue Drolet', 0: 'Rue Saint-Denis', 1: 'Rue Saint-Hubert' }[k] || 'Rue');
@@ -935,9 +973,10 @@ export function carStatic(B, C, x, z, ry, col, kind = 'sedan') {
   const S = carIntoBatch(B, lin, x, y, z, ry, col, kind);
   // two boxes that follow the real shape: the body (hood / trunk height) and the cabin up to the roof
   const c = Math.cos(ry), s = Math.sin(ry);
-  const box = (hw, z0, z1, top) => { const zc = (z0 + z1) / 2, hl = (z1 - z0) / 2, cx = x + s * zc, cz = z + c * zc; const ex = Math.abs(c) * hw + Math.abs(s) * hl, ez = Math.abs(s) * hw + Math.abs(c) * hl; C.add({ x0: cx - ex, x1: cx + ex, z0: cz - ez, z1: cz + ez, y0: y, y1: y + top }); };
-  box(S.W / 2, -S.L / 2, S.L / 2, S.van ? S.roof : S.belt);
-  if (!S.van) box(S.W / 2 - 0.12, S.cb + 0.05, S.cf - 0.1, S.roof);
+  const box = (hw, z0, z1, top) => { const zc = (z0 + z1) / 2, hl = (z1 - z0) / 2, cx = x + s * zc, cz = z + c * zc; const ex = Math.abs(c) * hw + Math.abs(s) * hl, ez = Math.abs(s) * hw + Math.abs(c) * hl; return C.add({ x0: cx - ex, x1: cx + ex, z0: cz - ez, z1: cz + ez, y0: y, y1: y + top }); };
+  const out = [box(S.W / 2, -S.L / 2, S.L / 2, S.van ? S.roof : S.belt)];
+  if (!S.van) out.push(box(S.W / 2 - 0.12, S.cb + 0.05, S.cf - 0.1, S.roof));
+  return out;
 }
 function foodTruck(B, C, S, atlas, x, z, SIDE, FONT) {
   const y = h(z), body = lin('#f2b43c');

@@ -494,8 +494,16 @@ export class Traffic {
       const span = L.axis === 'z' ? [-470, 470] : [-380, 380];
       const col = cols[i % cols.length], kind = CAR_KINDS[(i * 3 + 1) % CAR_KINDS.length];
       const m = carModel(col, kind); i++; scene.add(m.g);
-      const car = { m, col, kind, isTrafficCar: true, knock: 0, bumped(vx, vz) { this.v = 0; this.knock = 2.5; }, L, s: span[0] + (span[1] - span[0]) * (j + Math.random() * 0.5) / L.n, span, v: 8, vmax: L.k === 0 || L.m === -1 ? 11 : 8, stopT: 0, lastStop: null };
+      const car = { m, col, kind, len: 4.6, isTrafficCar: true, knock: 0, bumped(vx, vz) { this.v = 0; this.knock = 2.5; }, L, s: span[0] + (span[1] - span[0]) * (j + Math.random() * 0.5) / L.n, span, v: 8, vmax: L.k === 0 || L.m === -1 ? 11 : 8, stopT: 0, lastStop: null };
       car.gl = [glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35)];
+      this.cars.push(car);
+    }
+    // two STM buses on Saint-Denis and Mont-Royal
+    for (const [li, s0] of [[0, 120], [3, -200]]) {
+      const L = lanes[li], m = carModel('#f4f4f0', 'bus'); scene.add(m.g);
+      const span = L.axis === 'z' ? [-470, 470] : [-380, 380];
+      const car = { m, col: '#f4f4f0', kind: 'bus', len: 12, isTrafficCar: true, knock: 0, bumped(vx, vz) { this.v = 0; this.knock = 2.5; }, L, s: s0, span, v: 6, vmax: 8.5, stopT: 0, lastStop: null };
+      car.gl = [glows.add(0, 0, 0, 1, 0.95, 0.8, 0.6), glows.add(0, 0, 0, 1, 0.95, 0.8, 0.6), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.4), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.4)];
       this.cars.push(car);
     }
     this.wheelSet = new WheelSet(scene, this.cars.length * 4);
@@ -537,7 +545,7 @@ export class Traffic {
       let vT = car.vmax;
       if (car.knock > 0) { car.knock -= dt; vT = 0; }
       // car ahead in the same lane
-      for (const o of this.cars) if (o !== car && !o.taken && o.L === L) { const d = (o.s - car.s) * L.dir; if (d > 0 && d < 10) vT = Math.min(vT, (d - 6) * 1.2); }
+      for (const o of this.cars) if (o !== car && !o.taken && o.L === L) { const d = (o.s - car.s) * L.dir, gap = (o.len + car.len) / 2 + 1.5; if (d > 0 && d < gap + 6) vT = Math.min(vT, (d - gap) * 1.2); }
       // people in front
       const ahead = (px, pz) => { const along = (L.axis === 'z' ? pz - car.s : px - car.s) * L.dir, lat = Math.abs(L.axis === 'z' ? px - L.c : pz - L.c); return along > 0 && along < 9 && lat < 1.6 ? along : null; };
       const pa = ahead(player.pos.x, player.pos.z); if (pa !== null) vT = Math.min(vT, (pa - (player.driving ? 6.5 : 3.5)) * 1.5);
@@ -572,8 +580,9 @@ export class Traffic {
       car.m.hl.emissiveIntensity = 0.2 + night * 2.5; car.m.tl.emissiveIntensity = 0.2 + night * 1.2 + (braking ? 2.2 : 0);
       // light glows (front pair, rear pair)
       const fx = L.axis === 'z' ? 0 : L.dir, fz = L.axis === 'z' ? L.dir : 0, sx = -fz, sz = fx, y = h(z) + 0.72;
-      this.glows.set(car.gl[0], x + fx * 2.25 + sx * 0.6, y, z + fz * 2.25 + sz * 0.6); this.glows.set(car.gl[1], x + fx * 2.25 - sx * 0.6, y, z + fz * 2.25 - sz * 0.6);
-      this.glows.set(car.gl[2], x - fx * 2.25 + sx * 0.62, y, z - fz * 2.25 + sz * 0.62); this.glows.set(car.gl[3], x - fx * 2.25 - sx * 0.62, y, z - fz * 2.25 - sz * 0.62);
+      const hl = car.len / 2 + 0.05;
+      this.glows.set(car.gl[0], x + fx * hl + sx * 0.6, y, z + fz * hl + sz * 0.6); this.glows.set(car.gl[1], x + fx * hl - sx * 0.6, y, z + fz * hl - sz * 0.6);
+      this.glows.set(car.gl[2], x - fx * hl + sx * 0.62, y, z - fz * hl + sz * 0.62); this.glows.set(car.gl[3], x - fx * hl - sx * 0.62, y, z - fz * hl - sz * 0.62);
       car.x = x; car.z = z;
     }
     this.glows.g.attributes.iPos.needsUpdate = true;
@@ -583,19 +592,19 @@ export class Traffic {
   hitCar(x, z, r) {
     for (const c of this.cars) {
       if (c.taken || c.x === undefined) continue;
-      const ex = (c.L.axis === 'z' ? 0.95 : 2.3) + r, ez = (c.L.axis === 'z' ? 2.3 : 0.95) + r;
+      const ex = (c.L.axis === 'z' ? 1.1 : c.len / 2) + r, ez = (c.L.axis === 'z' ? c.len / 2 : 1.1) + r;
       if (Math.abs(x - c.x) < ex && Math.abs(z - c.z) < ez) return c;
     }
     return null;
   }
   // the nearest stopped (or slow) car you could climb into
-  nearest(x, z, maxD = 3.4) { let best = null, bd = maxD; for (const c of this.cars) { if (c.taken || c.x === undefined || c.v > 2.5) continue; const d = Math.hypot(c.x - x, c.z - z); if (d < bd) { bd = d; best = c; } } return best; }
+  nearest(x, z, maxD = 3.4) { let best = null, bd = maxD; for (const c of this.cars) { if (c.taken || c.x === undefined || c.v > 9) continue; const d = Math.hypot(c.x - x, c.z - z); if (d < bd) { bd = d; best = c; } } return best; }
   take(c) { c.taken = true; c.m.g.visible = false; for (const gi of c.gl) this.glows.set(gi, 0, -9999, 0); this.glows.g.attributes.iPos.needsUpdate = true; }
   // block the player from walking into a car
   blocks(px, pz) {
     for (const c of this.cars) {
       if (c.taken) continue;
-      const L = c.L, ex = L.axis === 'z' ? 1.2 : 2.5, ez = L.axis === 'z' ? 2.5 : 1.2;
+      const L = c.L, hl = c.len / 2 + 0.2, ex = L.axis === 'z' ? 1.3 : hl, ez = L.axis === 'z' ? hl : 1.3;
       if (Math.abs(px - c.x) < ex && Math.abs(pz - c.z) < ez) return true;
     }
     return false;

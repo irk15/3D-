@@ -92,10 +92,14 @@ async function boot() {
     player.unstick(); hero.root.position.copy(player.pos); player.yaw = v.yaw;
     $('#drive').classList.remove('show');
   }
+  function takeParked(r) {
+    world.parked.take(r);
+    const v = new Vehicle(scene, world, r.kind, r.col, r.x, r.z, r.ry); vehicles.push(v); enterCar(v);
+  }
   function takeTraffic(c) {
     traffic.take(c);
     const yaw = c.L.axis === 'z' ? (c.L.dir > 0 ? 0 : Math.PI) : (c.L.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
-    const v = new Vehicle(scene, world, c.kind, c.col, c.x, c.z, yaw); vehicles.push(v);
+    const v = new Vehicle(scene, world, c.kind, c.col, c.x, c.z, yaw); v.vF = c.v || 0; vehicles.push(v);
     say('Conducteur', 'Hé! Ma voiture! … Bon, fais attention à elle.', 2); enterCar(v);
   }
   const pigeons = new Pigeons(scene, world);
@@ -125,6 +129,7 @@ async function boot() {
     if (car) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Sortir de la voiture', act: exitCar }); return out; }
     for (const v of vehicles) { const d = v.doorPos(); out.push({ x: d.x, z: d.z, y: v.pos.y, label: v.kind === 'sport' ? '🏎️ Conduire' : '🚗 Conduire', act: () => enterCar(v) }); }
     { const tc = traffic.nearest(player.pos.x, player.pos.z); if (tc) out.push({ x: tc.x, z: tc.z, y: player.pos.y, label: '🚕 Prendre cette voiture', act: () => takeTraffic(tc) }); }
+    { const pc = world.parked.nearest(player.pos.x, player.pos.z); if (pc) out.push({ x: pc.x, z: pc.z, y: player.pos.y, label: '🚙 Conduire cette voiture', act: () => takeParked(pc) }); }
     if (player.bike) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Descendre du vélo', act: () => { player.dismount(); sfx.blip(); } }); return out; }
     for (const n of npcs.list) if (n.out) out.push({ x: n.pos.x, z: n.pos.z, y: n.pos.y, label: `Parler à ${n.name}`, act: () => talkTo(n) });
     for (const s of world.shops) out.push({ x: s.x, z: s.z, y: h(s.z), label: shopLabel(s), act: () => shopAct(s) });
@@ -208,9 +213,10 @@ async function boot() {
     if (camera.near < 0.2) { camera.near = 0.25; camera.updateProjectionMatrix(); }
     // chase cam: swings behind the car, pulls back and widens with speed, shakes on impacts
     if (t - cam.lastInput > 1.2) { let d = (car.yaw + Math.PI) - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * (1 - Math.exp(-dt * (2 + car.speed * 0.08))); }
-    const tgt = car.pos.clone().add(new THREE.Vector3(0, 1.35, 0)).addScaledVector(f, Math.min(4, car.speed * 0.12));
+    const big = Math.max(0, ((car.m?.S?.L) || 4.5) - 4.5), roofH = (car.m?.S?.roof) || 1.5;   // buses and trucks: frame the whole vehicle
+    const tgt = car.pos.clone().add(new THREE.Vector3(0, Math.max(1.35, roofH * 0.75), 0)).addScaledVector(f, Math.min(4, car.speed * 0.12));
     cam.target.lerp(tgt, 1 - Math.exp(-dt * 10));
-    const pitch = Math.max(0.08, Math.min(0.9, cam.pitch * 0.6 + 0.06)), dist = 6.8 + Math.min(4, car.speed * 0.09);
+    const pitch = Math.max(0.08, Math.min(0.9, cam.pitch * 0.6 + 0.06)), dist = 6.8 + big * 1.05 + Math.min(4, car.speed * 0.09);
     const dir = new THREE.Vector3(Math.sin(cam.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(cam.yaw) * Math.cos(pitch));
     let free = dist;
     for (let s2 = 1; s2 <= dist; s2 += 0.4) { const q = cam.target.clone().addScaledVector(dir, s2); if (world.colliders.solid(q.x, q.y, q.z)) { free = Math.max(1.5, s2 - 0.4); break; } }
@@ -637,7 +643,7 @@ async function boot() {
   $('#bCount').textContent = bagels.count;
   $('#winClose').onclick = () => $('#win').classList.remove('show');
   const arrowV = new THREE.Vector3();
-  let boardT = 0, mmT = 0;
+  let boardT = 0, mmT = 0; const amb = { siren: 40, gull: 2, metro: false, hour: undefined };
   // dynamic resolution: only when the GPU can't keep up, the render scale steps down a little
   // (never below 1.0 on desktop), and it climbs back to full sharpness as soon as there is headroom
   const prMax = renderer.getPixelRatio(), prMin = Math.min(prMax, touch ? 0.85 : 1);
@@ -768,6 +774,14 @@ async function boot() {
     placeTag(meTag, hero.root.position, 2.2);
     for (const r of remotes.values()) placeTag(r.tag, r.pos, 2.25);
     sfx.ambience(look.night, season, weather.precip);
+    // city ambience: hum louder near busy streets, sirens now and then, gulls by the river, metro chime, church bells on the hour
+    { const P = player.pos; let near = 0; for (const c of traffic.cars) if (!c.taken && c.x !== undefined) near += Math.max(0, 1 - Math.hypot(c.x - P.x, c.z - P.z) / 60);
+      sfx.city(Math.min(1, 0.3 + near * 0.25) * (started ? 1 : 0));
+      amb.siren -= dt; if (amb.siren < 0) { amb.siren = 70 + Math.random() * 90; sfx.siren(0.6 + Math.random() * 0.4); }
+      if (P.z > 950) { amb.gull -= dt; if (amb.gull < 0) { amb.gull = 3 + Math.random() * 6; sfx.gull(); } }
+      const inMetro = P.x > PLAZA.x0 && P.x < PLAZA.x1 && P.z > PLAZA.z0 && P.z < PLAZA.z1;
+      if (inMetro && !amb.metro) sfx.metro(); amb.metro = inMetro;
+      const hr = Math.floor(clockH); if (amb.hour !== undefined && hr !== amb.hour && Math.hypot(P.x - 26, P.z + 14) < 320) for (let i = 0; i < Math.min(3, (hr % 12) || 12); i++) setTimeout(() => sfx.bell(), i * 1300); amb.hour = hr; }
     saveT += dt; if (saveT > 10) { saveT = 0; save.hour = clockH; writeSave(save); }
     cullFar();
     pipe.render();
@@ -777,7 +791,7 @@ async function boot() {
   function cullFar() {
     const cp = camera.position;
     for (const n of npcs.list) if (n.out) n.ch.root.visible = n.ch.root.position.distanceTo(cp) < 150;
-    for (const c of traffic.cars) c.m.g.visible = c.m.g.position.distanceTo(cp) < 260;
+    for (const c of traffic.cars) c.m.g.visible = !c.taken && c.m.g.position.distanceTo(cp) < 260;   // a car you took stays hidden (it used to reappear: the "duplicate")
     for (const ch of world.city.children) { const s = ch.geometry.boundingSphere; ch.visible = Math.hypot(s.center.x - cp.x, s.center.z - cp.z) - s.radius < 1200; }
     // parked cars: a few pixels tall past ~260 m (and in the fog) — skip those chunks in every pass
     const carR = 260 + Math.max(0, cp.y - 30) * 1.5;
@@ -934,7 +948,7 @@ function makeAudio() {
     arp.forEach((n, j) => { if (Math.random() < 0.85) tone(mf(n), t + j * beat / 2, 0.5, 0.018, 'sine', music); });
   }
   function schedule() { let i = 0, t = A.currentTime + 0.1; const loop = () => { while (t < A.currentTime + 2) { bar(i++, t); t += 4 * 60 / 76; } }; loop(); musicT = setInterval(loop, 500); }
-  let drums = null, drumT = null, level = 0, rainG = null, windG = null, windF = null, eng = null, eng2 = null, engF = null, engG = null;
+  let cityG = null, drums = null, drumT = null, level = 0, rainG = null, windG = null, windF = null, eng = null, eng2 = null, engF = null, engG = null;
   function drumLoop() {
     const beat = 60 / 76 / 2; let t = A.currentTime + 0.05, i = 0;
     drumT = setInterval(() => { while (t < A.currentTime + 0.6) { if (level > 0) { if (i % 4 === 0) { const o = A.createOscillator(), g = A.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); env(g, t, 0.003, 0.18, 0.12 * level); o.connect(g).connect(drums); o.start(t); o.stop(t + 0.25); } if (i % 2 === 1 || level > 1) noiseTo(drums, t, 0.03, 0.025 * level, 8000); } t += beat; i++; } }, 150);
@@ -962,6 +976,15 @@ function makeAudio() {
       eng.frequency.setTargetAtTime(f, t, 0.05); eng2.frequency.setTargetAtTime(f * 0.5, t, 0.05); engF.frequency.setTargetAtTime(380 + thr * 900 + rpm * 0.08, t, 0.08);
       engG.gain.setTargetAtTime(on && rpm > 0 ? 0.035 + thr * 0.04 : 0, t, 0.1);
     },
+    // the city itself: a low traffic hum, far-off sirens, gulls by the river, the STM metro chime
+    city(v) {
+      if (!A) return;
+      if (!cityG) { const len = A.sampleRate * 3, buf = A.createBuffer(1, len, A.sampleRate), ch = buf.getChannelData(0); let l = 0; for (let i = 0; i < len; i++) { l = l * 0.995 + (Math.random() * 2 - 1) * 0.005; ch[i] = l * 9; } const src = A.createBufferSource(); src.buffer = buf; src.loop = true; const lp = A.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260; cityG = A.createGain(); cityG.gain.value = 0; src.connect(lp).connect(cityG).connect(master); src.start(); }
+      cityG.gain.setTargetAtTime(on ? v * 0.11 : 0, A.currentTime, 0.8);
+    },
+    siren(far = 1) { if (!A || !on) return; const t = A.currentTime, o = A.createOscillator(), g = A.createGain(), lp = A.createBiquadFilter(); o.type = 'triangle'; lp.type = 'lowpass'; lp.frequency.value = 1400; for (let i = 0; i < 6; i++) { o.frequency.setValueAtTime(700, t + i * 1.1); o.frequency.linearRampToValueAtTime(1150, t + i * 1.1 + 0.55); o.frequency.linearRampToValueAtTime(700, t + i * 1.1 + 1.1); } g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.03 * far, t + 2); g.gain.linearRampToValueAtTime(0.0001, t + 6.6); o.connect(lp).connect(g).connect(master); o.start(t); o.stop(t + 6.8); },
+    gull() { if (!A || !on) return; const t = A.currentTime; for (let i = 0; i < 3; i++) { const o = A.createOscillator(), g = A.createGain(); o.type = 'sawtooth'; const b = 1500 + Math.random() * 400; o.frequency.setValueAtTime(b, t + i * 0.22); o.frequency.exponentialRampToValueAtTime(b * 0.62, t + i * 0.22 + 0.18); const bp = A.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 4; env(g, t + i * 0.22, 0.02, 0.18, 0.025); o.connect(bp).connect(g).connect(master); o.start(t + i * 0.22); o.stop(t + i * 0.22 + 0.25); } },
+    metro() { if (!A || !on) return; const t = A.currentTime; [[0, 523.25], [0.32, 659.25], [0.64, 783.99]].forEach(([d, f]) => tone(f, t + d, 0.6, 0.06, 'sine')); },
     horn() { if (!A || !on) return; const t = A.currentTime; for (const f of [392, 494]) tone(f, t, 0.5, 0.07, 'square'); },
     crash(v = 1) { if (!A || !on) return; noise(A.currentTime, 0.35, 0.3 * v, 220, 0.5); noise(A.currentTime + 0.03, 0.25, 0.18 * v, 1800, 0.8); },
     door() { if (!A || !on) return; noise(A.currentTime, 0.08, 0.2, 500, 1.2); noise(A.currentTime + 0.09, 0.05, 0.12, 900, 1.2); },

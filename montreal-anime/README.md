@@ -83,6 +83,14 @@ Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) charac
 - **More people**: shopkeepers in their doorways who wave as you pass, customers on café terraces, people waiting at the bus shelter on their phones, sitters on the park benches and the fountain, a queue at the poutine truck, friends chatting on the plaza, office workers downtown.
 - **Fixed**: arms vanishing as you fall after flying.
 
+## Version 5.1 — every car, a bigger Montréal
+
+- **Every car is drivable**: any parked car on the Plateau or downtown (press **E** beside it) and any traffic car, moving or not (you keep its speed). Two STM buses run on Saint-Denis and Mont-Royal, and you can take those too.
+- **Fixed**: the car you took no longer stays behind as a ghost copy; flying no longer rolls the character onto its side.
+- **Bigger city**: the row-house neighbourhoods now spread east and west of the Plateau and down to downtown (Mile End, Rosemont, Centre-Sud), around 4× the built area.
+- **More landmarks**: the Sun Life Building with its colonnades on Dorchester Square, the Chinatown gates on Saint-Laurent, the Village's canopy of pink balls over Sainte-Catherine, the Old Port's Clock Tower and the turning Grande roue (gondolas light up at night), and Saint Joseph's Oratory with its great dome on the mountain's west slope.
+- **City ambience**: a traffic hum that swells near busy streets, distant sirens, gulls by the river, the STM metro chime at Mont-Royal station, church bells on the hour, Montréal's red-and-yellow fire hydrants on the corners.
+
 ## How it looks the way it does
 
 - **Toon shading**: three-band light ramp, blue-violet ambient shadows, painted sky with flat two-tone clouds.

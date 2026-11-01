@@ -2,7 +2,7 @@
 
 Interactive Three.js creations, each with its own folder and URL.
 
-- [Las Vegas · Infinite Brick City](https://irk15.github.io/3D-/pagoda-of-the-floating-garden/): unofficial LEGO-inspired procedural Vegas. Features physical studs, molded brick seams, 11 landmark camera stops (Sphere, Paris tower, Bellagio fountains, Luxor, High Roller, Venetian, New York–New York, STRAT, Caesars Palace, MGM Grand, Excalibur), minifigure-style pedestrians and deterministic streamed districts. WASD / arrow buttons travel; Shift boosts; Explore city cruises forward; Return to Strip returns home. Only nearby generated districts stay loaded. One HTML file, pinned Three.js CDN, no external model or image assets.
+- [Las Vegas · Brick City Adventure](https://irk15.github.io/3D-/pagoda-of-the-floating-garden/): playable unofficial LEGO-inspired city with an articulated minifigure, outfit changes, third-person camera, jetpack, 109 enterable vehicles, collisions, minimap and 11 discoverable landmarks. WASD moves or drives; Shift sprints/boosts; Space jumps/ascends or brakes in a car; Ctrl descends/brakes; F toggles flight; E enters/exits nearby cars; R respawns. Stop before exiting a car. City camera switches back to scenic exploration; touch buttons provide movement and flight controls. Districts stream deterministically around you. Single HTML file, pinned Three.js CDN, no external models or image assets.
 
 Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root) → Save.
 

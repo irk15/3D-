@@ -1,0 +1,4 @@
+robot.glb - "RobotExpressive" by Tomas Laulhe (Quaternius-style low-poly robot), CC0 / public domain.
+Source: three.js examples (examples/models/gltf/RobotExpressive). Modifications for the project: none.
+To use your own character: replace robot.glb with any rigged .glb that has animations named like
+Idle, Walking, Sitting, Dance, Wave, ThumbsUp, Yes (extras are ignored, missing ones are skipped).

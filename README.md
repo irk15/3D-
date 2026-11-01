@@ -2,6 +2,8 @@
 
 Interactive Three.js creations, each with its own folder and URL.
 
+- [Pagoda of the Floating Garden](https://irk15.github.io/3D-/pagoda-of-the-floating-garden/): a procedural voxel sanctuary with a five-tier pagoda, sakura, koi, birds, floating satellite islands, waterfall, animated day/night lighting, cinematic camera views, and optional synthesized ambience. Single HTML file; Three.js loads from a pinned CDN.
+
 Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root) → Save.
 
 - [Sofa On The Tracks](https://irk15.github.io/3D-/sofa-on-the-tracks/): looping pixel-art diorama — two movers drop a red sofa on the streetcar tracks in the first snow; locked camera, 64-colour palette snap, deterministic timeline (space pauses, arrows scrub, `?t=12.9` freezes a frame).

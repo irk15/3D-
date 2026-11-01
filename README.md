@@ -2,7 +2,7 @@
 
 Interactive Three.js creations, each with its own folder and URL.
 
-- [Las Vegas · Afterlight](https://irk15.github.io/3D-/pagoda-of-the-floating-garden/): an imagined Las Vegas district on a broad, flat street grid. Includes 54 detailed pool villas, hotel towers, an animated LED sphere, observation tower, choreographed fountains, 70 moving cars, pedestrians, day/night lighting, and cinematic camera destinations. Single HTML file; Three.js loads from a pinned CDN. Replaces the earlier Floating Garden scene at its existing URL.
+- [Las Vegas · Infinite Brick City](https://irk15.github.io/3D-/pagoda-of-the-floating-garden/): unofficial LEGO-inspired procedural Vegas. Features physical studs, molded brick seams, 11 landmark camera stops (Sphere, Paris tower, Bellagio fountains, Luxor, High Roller, Venetian, New York–New York, STRAT, Caesars Palace, MGM Grand, Excalibur), minifigure-style pedestrians and deterministic streamed districts. WASD / arrow buttons travel; Shift boosts; Explore city cruises forward; Return to Strip returns home. Only nearby generated districts stay loaded. One HTML file, pinned Three.js CDN, no external model or image assets.
 
 Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root) → Save.
 

@@ -16,7 +16,7 @@
 <header><div class="glass"><div class="eyebrow">A sanctuary above the clouds</div><h1>Pagoda of the<br>Floating Garden</h1><p>五重塔 &nbsp; / &nbsp; THE GARDEN OF FIVE SKIES<span class="edition">A world suspended between earth and sky.</span></p></div></header>
 <div class="vignette"></div><div class="signature">浮遊庭園 &nbsp; — &nbsp; A LIVING MINIATURE</div><aside class="views" aria-label="Cinematic camera views"><button data-view="0"><small>01 / THE ISLAND</small>Grand panorama</button><button data-view="1"><small>02 / THE GARDEN</small>Koi &amp; blossoms</button><button data-view="2"><small>03 / THE TEMPLE</small>Roof garden</button><button id="golden">Golden hour</button><button id="night">Blue night</button></aside><div id="stats"><span id="phase">Morning</span><span id="fps">— FPS</span></div>
 <div class="hint">DRAG TO EXPLORE &nbsp; · &nbsp; SCROLL TO APPROACH</div>
-<nav class="glass" aria-label="Garden controls"><div class="time"><label for="time">Time of day</label><input id="time" type="range" min="0" max="1" step="0.001" value="0.64"><button id="autoTime" aria-pressed="true">Auto</button></div><button id="petals" aria-pressed="true">Petals</button><button id="flies" aria-pressed="true">Fireflies</button><button id="orbit" aria-pressed="true">Auto-orbit</button><button id="reset">Reset camera</button><button id="sound" aria-pressed="false">Sound</button><button id="fullscreen">Full screen</button></nav>
+<nav class="glass" aria-label="Garden controls"><div class="time"><label for="time">Time of day</label><input id="time" type="range" min="0" max="1" step="0.001" value="0.64"><button id="autoTime" aria-pressed="true">Auto</button></div><button id="petals" aria-pressed="true">Petals</button><button id="flies" aria-pressed="true">Fireflies</button><button id="orbit" aria-pressed="true">Auto-orbit</button><button id="tour" aria-pressed="false">Cinematic tour</button><button id="reset">Reset camera</button><button id="sound" aria-pressed="false">Sound</button><button id="fullscreen">Full screen</button></nav>
 <button class="photo-toggle" id="photo" aria-label="Hide interface" title="Hide interface">◈</button>
 <script type="module">
 import * as THREE from 'three';
@@ -24,6 +24,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
@@ -39,7 +40,9 @@ const camera=new THREE.PerspectiveCamera(39,innerWidth/innerHeight,.2,600);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;
+// Procedural studio illumination gives lacquer, water and gold real reflections.
+const environmentScene=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer);const environmentTarget=pmrem.fromScene(environmentScene,.04);scene.environment=environmentTarget.texture;scene.environmentIntensity=.38;environmentScene.dispose();pmrem.dispose();
 document.body.prepend(renderer.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.045;controls.enablePan=false;controls.minDistance=14;controls.maxDistance=125;controls.minPolarAngle=.28;controls.maxPolarAngle=1.6;controls.autoRotateSpeed=.45;
 function resetCamera(){camera.position.set(51,32,58);controls.target.set(0,11,0);controls.update();}
@@ -55,12 +58,12 @@ const finish=new ShaderPass({uniforms:{tDiffuse:{value:null}},vertexShader:'vary
 // Batch thousands of differently colored cubes into a handful of draw calls.
 const box=new THREE.BoxGeometry(1,1,1),softBox=new RoundedBoxGeometry(1,1,1,1,.06),matrix=new THREE.Matrix4(),dummy=new THREE.Object3D(),color=new THREE.Color();
 const batches={};
-function voxel(x,y,z,sx,sy,sz,hex,type='solid',variation=.065){
+function voxel(x,y,z,sx,sy,sz,hex,type='solid',variation=.065,rotation=0){
  if(!batches[type])batches[type]=[];
  color.set(hex).multiplyScalar(1+range(-variation,variation));
- batches[type].push([x,y,z,sx,sy,sz,color.clone()]);
+ batches[type].push([x,y,z,sx,sy,sz,color.clone(),rotation]);
 }
-const materials={leaves:new THREE.MeshStandardMaterial({roughness:.93}),stone:new THREE.MeshStandardMaterial({roughness:.95}),solid:new THREE.MeshStandardMaterial({roughness:.91}),roof:new THREE.MeshStandardMaterial({roughness:.47,metalness:.26}),gold:new THREE.MeshStandardMaterial({roughness:.3,metalness:.65}),glow:new THREE.MeshStandardMaterial({color:0xffcd83,emissive:0xff9d35,emissiveIntensity:0,roughness:.8}),water:new THREE.MeshStandardMaterial({color:0x75dadc,roughness:.23,metalness:.28,transparent:true,opacity:.73}),cloud:new THREE.MeshStandardMaterial({roughness:1,transparent:true,opacity:.78})};
+const materials={lacquer:new THREE.MeshPhysicalMaterial({roughness:.36,metalness:.07,clearcoat:.55,clearcoatRoughness:.3}),leaves:new THREE.MeshStandardMaterial({roughness:.93}),stone:new THREE.MeshStandardMaterial({roughness:.95}),solid:new THREE.MeshStandardMaterial({roughness:.91}),roof:new THREE.MeshStandardMaterial({roughness:.47,metalness:.26}),gold:new THREE.MeshStandardMaterial({roughness:.3,metalness:.65}),glow:new THREE.MeshStandardMaterial({color:0xffcd83,emissive:0xff9d35,emissiveIntensity:0,roughness:.8}),water:new THREE.MeshStandardMaterial({color:0x75dadc,roughness:.23,metalness:.28,transparent:true,opacity:.73}),cloud:new THREE.MeshStandardMaterial({roughness:1,transparent:true,opacity:.78})};
 const waterTime={value:0};
 materials.water.onBeforeCompile=shader=>{
  shader.uniforms.uFlow=waterTime;
@@ -69,8 +72,19 @@ materials.water.onBeforeCompile=shader=>{
  shader.fragmentShader='uniform float uFlow;varying vec3 vWater;\n'+shader.fragmentShader;
  shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nfloat rip=sin(vWater.x*5.0+uFlow*1.8+sin(vWater.z*4.0-uFlow))*sin(vWater.z*8.0+uFlow*.9);diffuseColor.rgb*=.87+.15*rip;diffuseColor.rgb+=vec3(.12,.18,.16)*pow(max(0.0,rip),12.0);');
 };
+// Fine procedural grain replaces flat material colors without bitmap textures.
+function surfaceGrain(mat,strength,wood=false){
+ mat.onBeforeCompile=shader=>{
+ shader.vertexShader='varying vec3 vCraft;\n'+shader.vertexShader;
+ shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvec4 craft=vec4(position,1.);\n#ifdef USE_INSTANCING\ncraft=instanceMatrix*craft;\n#endif\nvCraft=(modelMatrix*craft).xyz;');
+ shader.fragmentShader='varying vec3 vCraft;\n'+shader.fragmentShader;
+ const pattern=wood?'sin(vCraft.y*65.+sin(vCraft.x*13.+vCraft.z*11.)*2.)':'sin(vCraft.x*37.+vCraft.z*17.)*sin(vCraft.y*41.-vCraft.z*25.)';
+ shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb*=1.+'+strength.toFixed(3)+'*('+pattern+');');
+ };
+}
+surfaceGrain(materials.solid,.025);surfaceGrain(materials.lacquer,.04,true);surfaceGrain(materials.stone,.055);surfaceGrain(materials.roof,.035);
 const meshes={};
-function flush(){for(const [type,blocks] of Object.entries(batches)){const m=new THREE.InstancedMesh(['roof','gold','leaves','stone'].includes(type)?softBox:box,materials[type],blocks.length);blocks.forEach((b,i)=>{dummy.position.set(b[0],b[1],b[2]);dummy.scale.set(b[3],b[4],b[5]);dummy.rotation.set(0,0,0);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);m.setColorAt(i,b[6]);});m.castShadow=!['water','glow','cloud'].includes(type);m.receiveShadow=type!=='glow';m.computeBoundingSphere();scene.add(m);meshes[type]=m;}}
+function flush(){for(const [type,blocks] of Object.entries(batches)){const m=new THREE.InstancedMesh(['roof','gold','stone','lacquer'].includes(type)?softBox:box,materials[type],blocks.length);blocks.forEach((b,i)=>{dummy.position.set(b[0],b[1],b[2]);dummy.scale.set(b[3],b[4],b[5]);dummy.rotation.set(0,b[7]||0,0);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);m.setColorAt(i,b[6]);});m.castShadow=!['water','glow','cloud'].includes(type);m.receiveShadow=type!=='glow';m.computeBoundingSphere();scene.add(m);meshes[type]=m;}}
 
 // Irregular 40 x 40 plateau. Only exposed underground blocks are emitted.
 const heights=new Map();
@@ -99,7 +113,7 @@ for(let i=0;i<3;i++)voxel(0,.15+i*.2,6.9-i*.45,4.2,.3,.65,0xb7b6a2);
 const red=0xad382f,darkRed=0x702b27,wood=0x533c32,gold=0xdab66b;
 for(let tier=0;tier<5;tier++){
  const base=1.15+tier*4.45,half=4.4-tier*.63,wall=half-.65;
- voxel(0,base+1.5,0,wall*2,2.8,wall*2,red);
+ voxel(0,base+1.5,0,wall*2,2.8,wall*2,red,'lacquer');
  voxel(0,base+.1,0,half*2+.6,.25,half*2+.6,wood);
  for(const side of [-1,1])for(let p=-1;p<=1;p++){
   const pos=p*wall*.62;
@@ -242,6 +256,20 @@ for(let i=0;i<90;i++){
 }
 // Decorative bridge feet, caps and stepped parapet joinery.
 for(let i=0;i<=16;i++){const z=5.2+i*.43,y=.35+Math.sin(i/16*Math.PI)*1.05;for(const x of [-10.12,-7.88]){voxel(x,y+.52,z,.09,.09,.43,0x9c4835);if(i%3===0){voxel(x,y+.99,z,.26,.16,.26,0xd0aa61,'gold');voxel(x,y+.15,z,.3,.13,.3,0x5c4034);}}}
+// A lotus pond, hand-cut retaining stones and ornamental garden fences.
+for(let i=0;i<14;i++){
+ const a=i*2.4,r=1.3+(i%3)*.42,x=-9+Math.cos(a)*r,z=9+Math.sin(a)*r;
+ voxel(x,.22,z,.48,.045,.38,0x56866a,'leaves',.04,a);
+ if(i%3===0){for(let j=0;j<7;j++){const t=j*6.28/7;voxel(x+Math.cos(t)*.15,.29,z+Math.sin(t)*.15,.12,.09,.25,j%2?0xf1c9cf:0xe2a7b8,'leaves',.02,-t);}voxel(x,.35,z,.1,.09,.1,0xe9ca79,'gold');}
+}
+for(let i=0;i<42;i++){const a=i/42*Math.PI*2,x=-9+Math.cos(a)*4.55,z=9+Math.sin(a)*3.55;if(Math.abs(x+9)<1.4)continue;voxel(x,.22,z,.52,.33,.42,0x929e8b,'stone',.055,a);}
+for(let i=0;i<11;i++){const x=7.5+i*.6,z=-8.2;voxel(x,.8,z,.09,1.5,.09,0x5a7654);for(const y of [.5,1.1])voxel(x,y,z,.65,.08,.1,0x819966);}
+// Small votive tablets and a bell under the first roof, carved block by block.
+for(let i=0;i<7;i++){const x=(i-3)*.4;voxel(x,2.9,4.1,.025,.4,.025,0xdbc99a);voxel(x,2.6,4.1,.28,.3,.06,0xb18b5a);voxel(x,2.62,4.14,.025,.16,.015,0x694933);}
+voxel(0,3.2,4.7,.025,.65,.025,0xe7d2a3);
+for(let j=0;j<3;j++)voxel(0,2.85-j*.11,4.7,.18+j*.09,.12,.18+j*.09,0xc9a65b,'gold');
+// A shaded water basin beside the approach, with bamboo spout and little cups.
+voxel(5,.4,7,1.15,.8,1,0x78857b,'stone');voxel(5,.82,7,.85,.05,.7,0x80aead,'water');voxel(5.5,1.2,7,.13,1,.13,0x77975f);voxel(5.2,1.63,7,.7,.1,.1,0x9daa70);voxel(4.8,1.3,7,.025,.55,.025,0xb8e1d8,'water');
 flush();
 
 // Warm local lighting makes the illuminated paper cast light onto nearby stone.
@@ -305,6 +333,22 @@ function updateAtmosphere(t){
  ribbons.forEach((m,i)=>{const pos=m.geometry.attributes.position;for(let j=0;j<pos.count;j++){const y=pos.getY(j);pos.setZ(j,Math.sin(y*2.1+t*3+i)*.05+Math.sin(y*.9+t*2)*.06);}pos.needsUpdate=true;});
 }
 
+// A restrained lantern procession follows the valley beyond the roof silhouette.
+const festival=new THREE.InstancedMesh(softBox,new THREE.MeshStandardMaterial({color:0xffe0aa,emissive:0xffab4c,emissiveIntensity:0,roughness:.8}),32*7);festival.frustumCulled=false;scene.add(festival);
+const lanternSeeds=Array.from({length:32},()=>({a:range(0,6.28),r:range(20,37),y:range(4,28),speed:range(.04,.09),scale:range(.45,.85)}));
+const lanternParts=[[0,0,0,.62,.78,.62],[0,.42,0,.57,.08,.57],[0,-.42,0,.5,.09,.5],[-.28,0,-.28,.035,.84,.035],[.28,0,-.28,.035,.84,.035],[-.28,0,.28,.035,.84,.035],[.28,0,.28,.035,.84,.035]];
+for(let i=0;i<32*7;i++)festival.setColorAt(i,new THREE.Color(i%7===0?0xffdcac:0x6e4029));
+const butterflies=new THREE.InstancedMesh(box,new THREE.MeshStandardMaterial({roughness:.8,side:THREE.DoubleSide}),24);butterflies.frustumCulled=false;scene.add(butterflies);
+for(let i=0;i<24;i++)butterflies.setColorAt(i,new THREE.Color(i%4===0?0x493b45:i%3?0xffd58a:0xc9b4e6));
+// Two small garden foxes have separate legs, ears, muzzle and a swishing tail.
+const foxParts=[[0,.47,0,.36,.34,.72,0xc4814c],[0,.71,.36,.37,.36,.35,0xce8e57],[0,.63,.57,.25,.16,.23,0xf2dcc0],[-.13,.94,.36,.12,.25,.13,0xb37548],[.13,.94,.36,.12,.25,.13,0xb37548],[-.18,.75,.48,.035,.055,.045,0x292f32],[.18,.75,.48,.035,.055,.045,0x292f32],[-.13,.2,.25,.1,.4,.11,0x584137],[.13,.2,.25,.1,.4,.11,0x584137],[-.13,.2,-.25,.1,.4,.11,0x584137],[.13,.2,-.25,.1,.4,.11,0x584137],[0,.55,-.6,.22,.22,.55,0xc78a51],[0,.55,-.91,.2,.19,.18,0xf5dfbe]];
+const foxes=new THREE.InstancedMesh(softBox,new THREE.MeshStandardMaterial({roughness:.9}),foxParts.length*2);foxes.castShadow=true;foxes.frustumCulled=false;scene.add(foxes);foxParts.forEach((p,j)=>{for(let k=0;k<2;k++)foxes.setColorAt(k*foxParts.length+j,new THREE.Color(p[6]));});
+function updateStory(t){
+ lanternSeeds.forEach((b,i)=>{const a=b.a+t*b.speed*.12,x=Math.cos(a)*b.r,z=Math.sin(a)*b.r,y=b.y+Math.sin(t*.25+b.a)*.5;lanternParts.forEach((p,j)=>{dummy.position.set(x+p[0]*b.scale,y+p[1]*b.scale,z+p[2]*b.scale);dummy.scale.set(p[3]*b.scale,p[4]*b.scale,p[5]*b.scale);dummy.rotation.set(0,a,Math.sin(t*.35+b.a)*.04);dummy.updateMatrix();festival.setMatrixAt(i*7+j,dummy.matrix);});});festival.instanceMatrix.needsUpdate=true;
+ for(let i=0;i<8;i++){const a=t*.25+i*2.4,x=-12+Math.sin(a)*2,y=1.5+Math.sin(t*.9+i)*.5,z=4+Math.cos(a)*2;for(let j=0;j<3;j++){const side=j-1;dummy.position.set(x+side*.1,y,z);dummy.scale.set(side?.18:.035,.025,side?.2:.18);dummy.rotation.set(0,a,side*Math.sin(t*12+i)*.9);dummy.updateMatrix();butterflies.setMatrixAt(i*3+j,dummy.matrix);}}butterflies.instanceMatrix.needsUpdate=true;
+ for(let k=0;k<2;k++){const pace=(t*.12+k*2)%6.28,x=6+Math.sin(pace)*.8,z=12.8+k*1.7+Math.cos(pace)*.4,heading=Math.atan2(Math.cos(pace)*.8,-Math.sin(pace)*.4);foxParts.forEach((p,j)=>{const leg=j>=7&&j<=10,tail=j>=11;const lx=p[0]+(tail?Math.sin(t*1.3+k)*.13:0),lz=p[2];dummy.position.set(x+Math.cos(heading)*lx+Math.sin(heading)*lz,.1+p[1]+(leg?Math.sin(t*2+j)*.035:Math.sin(t*2)*.012),z-Math.sin(heading)*lx+Math.cos(heading)*lz);dummy.scale.set(p[3],p[4],p[5]);dummy.rotation.set(leg?Math.sin(t*2+j)*.14:0,heading,0);dummy.updateMatrix();foxes.setMatrixAt(k*foxParts.length+j,dummy.matrix);});}foxes.instanceMatrix.needsUpdate=true;
+}
+
 // A procedural world-space gradient dome. Sun and moon remain distant in sky.
 const skyMaterial=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{top:{value:new THREE.Color()},bottom:{value:new THREE.Color()}},vertexShader:'varying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec3 v;uniform vec3 top;uniform vec3 bottom;void main(){float h=smoothstep(-.15,.8,normalize(v).y);gl_FragColor=vec4(mix(bottom,top,h),1.);#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}'});
 // Shader preprocessor directives must begin on their own line.
@@ -330,19 +374,20 @@ function updateDay(){let k=0;while(k<keys.length-2&&time>keys[k+1].t)k++;const a
  const angle=(time-.25)*Math.PI*2;sun.position.set(Math.cos(angle)*65,Math.sin(angle)*75,25);sun.intensity=Math.max(0,Math.sin(angle))*3.3;sun.color.setHSL(.045+.075*Math.max(0,Math.sin(angle)),.5,.82);sunDisc.position.copy(sun.position).normalize().multiplyScalar(205);sunDisc.lookAt(camera.position);sunDisc.visible=time>.23&&time<.79;
  moonDisc.position.copy(sunDisc.position).negate();moonDisc.lookAt(camera.position);moonDisc.visible=night>.2;moonLight.position.copy(moonDisc.position);moonLight.intensity=night*.65;rim.intensity=.45+night*.3;
  hemi.intensity=.35+light*1.85;hemi.color.set(night>.5?0x849ad3:0xd5eff4);materials.glow.emissiveIntensity=.15+night*3.8;gardenLights.forEach(l=>l.intensity=night*7);bloom.strength=.16+night*.5;
- flies.mesh.visible=showFlies&&night>.15;flies.mesh.material.color.setRGB(4*night,2.7*night,.65*night);starData.mesh.visible=night>.5;
+ flies.mesh.visible=showFlies&&night>.15;flies.mesh.material.color.setRGB(4*night,2.7*night,.65*night);starData.mesh.visible=night>.5;festival.material.emissiveIntensity=.1+night*2;scene.environmentIntensity=.12+light*.32;
  $('phase').textContent=time<.23||time>.83?'Blue night':time<.44?'Morning':time<.64?'Daylight':time<.73?'Golden hour':time<.8?'Sunset':'Blue hour';
 }
 function toggle(id,get,set){$(id).addEventListener('click',()=>{const value=!get();set(value);$(id).setAttribute('aria-pressed',String(value));});}
 toggle('autoTime',()=>autoTime,v=>autoTime=v);toggle('petals',()=>showPetals,v=>{showPetals=v;petals.mesh.visible=v;});toggle('flies',()=>showFlies,v=>showFlies=v);toggle('orbit',()=>autoOrbit,v=>autoOrbit=v);
 $('time').addEventListener('input',e=>{time=Number(e.target.value);autoTime=false;$('autoTime').setAttribute('aria-pressed','false');});
-$('reset').addEventListener('click',()=>{cameraMove=null;resetCamera();lastInteraction=performance.now();});
-controls.addEventListener('start',()=>{cameraMove=null;dragging=true;lastInteraction=performance.now();});controls.addEventListener('end',()=>{dragging=false;lastInteraction=performance.now();});renderer.domElement.addEventListener('wheel',()=>lastInteraction=performance.now(),{passive:true});
+$('reset').addEventListener('click',()=>{cameraMove=null;tourOn=false;$('tour').setAttribute('aria-pressed','false');resetCamera();lastInteraction=performance.now();});
+controls.addEventListener('start',()=>{cameraMove=null;tourOn=false;$('tour').setAttribute('aria-pressed','false');dragging=true;lastInteraction=performance.now();});controls.addEventListener('end',()=>{dragging=false;lastInteraction=performance.now();});renderer.domElement.addEventListener('wheel',()=>lastInteraction=performance.now(),{passive:true});
 // Camera transitions are interrupted immediately by a manual drag.
-let cameraMove=null;
-const views=[{p:[51,32,58],t:[0,9,0]},{p:[-24,13,27],t:[-7,3,6]},{p:[25,29,28],t:[0,18,0]}];
-document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('selected'));button.classList.add('selected');const v=views[Number(button.dataset.view)];cameraMove={start:performance.now(),from:camera.position.clone(),target:controls.target.clone(),to:new THREE.Vector3(...v.p),look:new THREE.Vector3(...v.t)};lastInteraction=performance.now()+2500;}));
+let cameraMove=null,tourOn=false,tourNext=0,tourIndex=0;
+const views=[{p:[51,32,58],t:[0,9,0]},{p:[-24,13,27],t:[-7,3,6]},{p:[25,29,28],t:[0,18,0]},{p:[-22,12,-19],t:[-7,4,-5]}];
+document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('selected'));button.classList.add('selected');tourOn=false;$('tour').setAttribute('aria-pressed','false');const v=views[Number(button.dataset.view)];cameraMove={start:performance.now(),from:camera.position.clone(),target:controls.target.clone(),to:new THREE.Vector3(...v.p),look:new THREE.Vector3(...v.t)};lastInteraction=performance.now()+2500;}));
 function setTime(v){time=v;autoTime=false;$('time').value=v;$('autoTime').setAttribute('aria-pressed','false');}
+$('tour').addEventListener('click',()=>{tourOn=!tourOn;tourNext=0;$('tour').setAttribute('aria-pressed',String(tourOn));});
 $('photo').addEventListener('click',()=>{const hidden=document.body.classList.toggle('clean');$('photo').setAttribute('aria-label',hidden?'Show interface':'Hide interface');});
 $('golden').addEventListener('click',()=>setTime(.68));$('night').addEventListener('click',()=>setTime(.94));
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('fullscreen').textContent='Unavailable';}});
@@ -365,12 +410,13 @@ function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMa
 addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{if(audioContext&&soundOn){if(document.hidden)audioContext.suspend();else audioContext.resume();}last=performance.now();fpsStart=last;frames=0;});
 function animate(now){requestAnimationFrame(animate);if(document.hidden)return;const dt=Math.min((now-last)/1000,.05);last=now;elapsed+=dt;if(autoTime){time=(time+dt/180)%1;$('time').value=time;}
- if(cameraMove){const f=Math.min(1,(now-cameraMove.start)/2500),e=f*f*(3-2*f);camera.position.lerpVectors(cameraMove.from,cameraMove.to,e);controls.target.lerpVectors(cameraMove.target,cameraMove.look,e);if(f===1)cameraMove=null;}
+ if(tourOn&&now>tourNext){const v=views[tourIndex++%views.length];cameraMove={start:now,from:camera.position.clone(),target:controls.target.clone(),to:new THREE.Vector3(...v.p),look:new THREE.Vector3(...v.t),duration:6500};tourNext=now+11000;lastInteraction=now+11000;}
+ if(cameraMove){const f=Math.min(1,(now-cameraMove.start)/(cameraMove.duration||2500)),e=f*f*(3-2*f);camera.position.lerpVectors(cameraMove.from,cameraMove.to,e);controls.target.lerpVectors(cameraMove.target,cameraMove.look,e);if(f===1)cameraMove=null;}
  controls.autoRotate=autoOrbit&&!cameraMove&&!dragging&&now-lastInteraction>3000;if(controls.autoRotate)camera.position.y+=Math.cos(elapsed*.24)*dt*.05;controls.update(dt);
- updateDay();waterTime.value=elapsed;updateAtmosphere(elapsed);updateLivingWorld(elapsed);updateClouds(dt);updateFall(elapsed);if(showPetals)updateParticles(petals,elapsed);if(flies.mesh.visible)updateParticles(flies,elapsed,true);composer.render();
- frames++;if(now-fpsStart>1500){const fps=frames*1000/(now-fpsStart);$('fps').textContent=Math.round(fps)+' FPS';if(fps<48&&++qualityCounter>=2){const ratio=Math.max(.75,renderer.getPixelRatio()-.15);renderer.setPixelRatio(ratio);composer.setPixelRatio(ratio);resize();qualityCounter=0;}else if(fps>=48)qualityCounter=0;frames=0;fpsStart=now;}
+ updateDay();waterTime.value=elapsed;updateAtmosphere(elapsed);updateStory(elapsed);updateLivingWorld(elapsed);updateClouds(dt);updateFall(elapsed);if(showPetals)updateParticles(petals,elapsed);if(flies.mesh.visible)updateParticles(flies,elapsed,true);composer.render();
+ frames++;if(now-fpsStart>1500){const fps=frames*1000/(now-fpsStart);$('fps').textContent=Math.round(fps)+' FPS';if(fps<48&&++qualityCounter>=2){if(renderTarget.samples>0){renderTarget.samples=0;composer.renderTarget1.samples=0;composer.renderTarget2.samples=0;composer.renderTarget1.dispose();composer.renderTarget2.dispose();}const ratio=Math.max(.75,renderer.getPixelRatio()-.15);renderer.setPixelRatio(ratio);composer.setPixelRatio(ratio);resize();qualityCounter=0;}else if(fps>=48)qualityCounter=0;frames=0;fpsStart=now;}
 }
-updateDay();updateAtmosphere(0);updateLivingWorld(0);updateClouds(0);updateFall(0);composer.render();$('loading').style.opacity=0;setTimeout(()=>$('loading').remove(),650);requestAnimationFrame(animate);
+updateDay();updateAtmosphere(0);updateStory(0);updateLivingWorld(0);updateClouds(0);updateFall(0);composer.render();$('loading').style.opacity=0;setTimeout(()=>$('loading').remove(),650);requestAnimationFrame(animate);
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();const message=document.createElement('div');message.id='loading';message.textContent='Graphics context lost. Reload to return to the garden.';document.body.append(message);});
 } catch(error){console.error(error);$('loading').textContent='Unable to start the garden. Please enable WebGL and reload.';}
 </script>

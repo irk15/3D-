@@ -2,7 +2,7 @@
 
 Interactive Three.js creations, each with its own folder and URL.
 
-- [Pagoda of the Floating Garden](https://irk15.github.io/3D-/pagoda-of-the-floating-garden/): a procedural voxel sanctuary with a five-tier pagoda, sakura, koi, birds, floating satellite islands, waterfall, animated day/night lighting, cinematic camera views, and optional synthesized ambience. Single HTML file; Three.js loads from a pinned CDN.
+- [Las Vegas · Afterlight](https://irk15.github.io/3D-/pagoda-of-the-floating-garden/): an imagined Las Vegas district on a broad, flat street grid. Includes 54 detailed pool villas, hotel towers, an animated LED sphere, observation tower, choreographed fountains, 70 moving cars, pedestrians, day/night lighting, and cinematic camera destinations. Single HTML file; Three.js loads from a pinned CDN. Replaces the earlier Floating Garden scene at its existing URL.
 
 Enable GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root) → Save.
 

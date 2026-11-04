@@ -25,6 +25,7 @@ export class Crowd {
       p.scare = (x, z) => { if (p.rag || p.mode === 'sit') return; p.flee = 5 + Math.random() * 3; p.fleeFrom = { x, z }; };
       this.list.push(p); return p;
     };
+    this.add = add;
     const face = (x, z, tx, tz) => Math.atan2(tx - x, tz - z);
     // shopkeepers at their doors, facing the street
     world.shops.forEach((s, i) => {
@@ -74,8 +75,16 @@ export class Crowd {
         p.yaw = Math.atan2(fx, fz);
       }
       // dodging cars
-      if (p.dodgeT > 0) { p.dodgeT -= dt; p.pos.addScaledVector(p.dv, dt); }
-      else if (!running && p.pos.distanceToSquared(p.home) > 0.01 && p.mode !== 'sit') p.pos.lerp(p.home, 1 - Math.exp(-dt * 0.6));
+      const px0 = p.pos.x, pz0 = p.pos.z;
+      if (p.dodgeT > 0) { p.dodgeT -= dt; const nx = p.pos.x + p.dv.x * dt, nz = p.pos.z + p.dv.z * dt; if (!this.w.colliders.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5)) { p.pos.x = nx; p.pos.z = nz; } }
+      else if (!running && p.mode !== 'sit') {
+        // walk (not slide) back to their spot
+        const hx = p.home.x - p.pos.x, hz = p.home.z - p.pos.z, hd = Math.hypot(hx, hz);
+        if (hd > 0.08) { const st = Math.min(hd, 1.25 * dt); p.pos.x += hx / hd * st; p.pos.z += hz / hd * st; p.pos.y += (p.home.y - p.pos.y) * Math.min(1, dt * 6); }
+      }
+      const mvx = (p.pos.x - px0) / Math.max(dt, 1e-3), mvz = (p.pos.z - pz0) / Math.max(dt, 1e-3), ms = Math.min(7, Math.hypot(mvx, mvz));
+      p.vs = (p.vs || 0) + (ms - (p.vs || 0)) * (1 - Math.exp(-dt * 10));
+      const walking = ms > 0.3; if (walking) p.walkYaw = Math.atan2(mvx, mvz);
       // little lives: shopkeepers wave at you, chatting friends nod and shake, queue shuffles
       let wave = 0;
       const dp = Math.hypot(player.pos.x - p.pos.x, player.pos.z - p.pos.z);
@@ -83,12 +92,12 @@ export class Crowd {
       if (p.mode === 'chat' && p.t > 3.2) { p.t = 0; p.ch.gesture?.(Math.random() < 0.6 ? 'nod' : 'shake', 2); }
       if (p.mode === 'stand' && p.t > 6) { p.t = 0; if (Math.random() < 0.3) p.ch.gesture?.('nod', 1.6); }
       // face the player when they come close (people notice you)
-      let yaw = p.yaw;
-      if (!running && dp < 3.5 && p.mode !== 'sit') yaw = Math.atan2(player.pos.x - p.pos.x, player.pos.z - p.pos.z);
-      let dy = yaw - p.ch.root.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.ch.root.rotation.y += dy * (1 - Math.exp(-dt * 4));
+      let yaw = walking ? p.walkYaw : p.yaw;
+      if (!walking && dp < 3.5 && p.mode !== 'sit') yaw = Math.atan2(player.pos.x - p.pos.x, player.pos.z - p.pos.z);
+      let dy = yaw - p.ch.root.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.ch.root.rotation.y += dy * (1 - Math.exp(-dt * (walking ? 8 : 4)));
       const every = d2 > 70 * 70 ? 4 : d2 > 25 * 25 ? 2 : 1;
       if ((this.fr + p.id) % every === 0) {
-        p.ch.animate(p.adt, running ? 4.8 : 0, true, wave, { sit: p.mode === 'sit' && !running, phone: !running && (p.mode === 'phone' || p.phone) });
+        p.ch.animate(p.adt, p.vs < 0.2 ? 0 : p.vs, true, wave, { sit: p.mode === 'sit' && !walking, phone: !walking && (p.mode === 'phone' || p.phone) });
         p.adt = 0;
       }
     }

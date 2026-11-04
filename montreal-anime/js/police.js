@@ -21,6 +21,12 @@ export class Police {
     this.lightGeo = new THREE.BoxGeometry(0.5, 0.14, 0.34); this.red = M(0xff2a2a); this.blue = M(0x2a5bff); this.dark = M(0x1a1a28);
   }
   get wanted() { return this.stars > 0; }
+  marks(t) {
+    const out = [], on = Math.sin(t * 10) > 0;
+    for (const c of this.cars) out.push({ x: c.v.pos.x, z: c.v.pos.z, c: on ? '#ff3030' : '#3060ff', r: 11, s: '#000' });
+    for (const c of this.foot) if (!c.gone) out.push({ x: c.pos.x, z: c.pos.z, c: '#ff5050', r: 6, s: '#000' });
+    return out;
+  }
   crime(amount, kind, pos) {
     if (this.combat.down) return;
     const before = this.stars; this.heat += amount; this.calm = 0; if (pos) this.last.copy(pos);
@@ -86,12 +92,13 @@ export class Police {
     }
     // cop cars: keep the right number around
     const wantCars = this.stars ? Math.min(4, 1 + this.stars) : 0, wantFoot = this.stars >= 2 ? this.stars : 0;
-    let alive = this.cars.filter((c) => !c.leaving).length;
+    let alive = this.cars.filter((c) => !c.leaving && !c.v.wreck).length;
     if (!down && alive < wantCars && this.t - (this._sp || 0) > 3.5) { this._sp = this.t; if (this.spawnCar()) this.sfx.copSiren?.(0.6); }
     // cop cars drive at you
     const inp = { x: 0, y: 0, jumpHeld: false };
     for (const c of this.cars) {
       const v = c.v, dx = p.x - v.pos.x, dz = p.z - v.pos.z, d = Math.hypot(dx, dz);
+      if (v.wreck) { v.update(dt, null, this.vctx()); c.wreckT = (c.wreckT || 0) + dt; if (c.wreckT > 30) c.gone = true; continue; }
       if (c.leaving || down) { // cruise away and vanish when far
         inp.x = 0; inp.y = c.leaving ? 0.4 : 0; v.update(dt, inp, this.vctx()); if (d > 170 || (c.leaving && !c.gone && (c.leaveT = (c.leaveT || 0) + dt) > 12)) c.gone = true;
       } else {
@@ -145,7 +152,7 @@ export class Police {
     const lose = Math.round((this.ui.getMoney?.() || 0) * 0.1);
     this.ui.addMoney?.(-lose); this.sfx.wasted?.();
     const w = document.getElementById('wastedTxt'), el = document.getElementById('wasted');
-    if (w && el) { w.textContent = 'BUSTED'; el.className = 'show'; setTimeout(() => { el.className = ''; setTimeout(() => { w.textContent = 'WASTED'; }, 700); }, 1800); }
+    if (w && el) { w.textContent = 'busted'; el.className = 'show busted'; document.body.classList.add('dead'); setTimeout(() => { el.className = ''; document.body.classList.remove('dead'); setTimeout(() => { w.textContent = 'wasted'; }, 700); }, 2200); }
     this.combat.hp = 100;
     if (this.getCar()) this.ui.exitCar?.();
     this.clear(); this.ui.respawn?.(); this.ui.floatText?.(lose ? `-$${lose} fine` : 'Busted!');

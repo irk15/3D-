@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#3c9be8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=Anton&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#2b2550;--ink2:#5b5683;--paper:#fffaf1;--red:#e4402b;--gold:#f2a93b;--sky:#3c9be8;--line:rgba(43,37,80,.14);--shadow:0 6px 0 rgba(43,37,80,.18),0 12px 28px rgba(43,37,80,.18);--f:'Fredoka',system-ui,sans-serif}
 *{box-sizing:border-box}
@@ -392,12 +392,112 @@ body:not(.armed) #tc #tShoot,body:not(.armed) #tc #tReload,body:not(.armed) #tc 
 body.armed #tc #tFly,body.armed #tc #tDash{display:none!important}
 #tShoot{right:14px;bottom:100px;width:76px!important;height:76px!important;background:var(--red)!important;color:#fff!important}#tReload{right:100px;bottom:4px}#tSwap{right:86px;bottom:84px}#tDraw{right:180px;bottom:6px}
 @media (max-height:480px){#hpBar{top:calc(max(10px,env(safe-area-inset-top)) + 160px)}#weapBox{top:calc(max(10px,env(safe-area-inset-top)) + 184px)}#pvpTag{top:calc(max(10px,env(safe-area-inset-top)) + 214px)}}
+
+/* ================= GTA-style HUD skin (layered over the base styles) ================= */
+:root{--g:'Oswald',var(--f);--gd:'Anton','Oswald',sans-serif;--hudbg:rgba(10,12,16,.62);--hp:#5fbf5a;--ar:#4a9ee6}
+.hud{font-family:var(--g)}
+.gtxt{color:#fff;text-shadow:0 0 2px #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,2px 3px 4px rgba(0,0,0,.6)}
+/* radar */
+.map{left:max(22px,env(safe-area-inset-left));top:auto;bottom:max(26px,env(safe-area-inset-bottom));gap:0;align-items:flex-start}
+#mini{width:270px;height:174px;border-radius:5px;background:#2b3138;border:3px solid rgba(0,0,0,.72);box-shadow:0 4px 18px rgba(0,0,0,.45)}
+.map .chips{position:absolute;left:4px;top:-30px;margin:0}
+.map .chip{background:var(--hudbg);box-shadow:none;color:#fff;border-radius:4px;font:600 13px var(--g);letter-spacing:.04em;padding:3px 9px}
+#hpBar,#arBar{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(12px,calc(env(safe-area-inset-bottom) - 14px));width:136px;height:9px;border-radius:0;border:2px solid rgba(0,0,0,.75);background:rgba(20,50,20,.75);top:auto;overflow:hidden}
+#arBar{left:calc(max(22px,env(safe-area-inset-left)) + 140px);width:130px;background:rgba(15,35,60,.75)}
+#hpFill{background:var(--hp)}#arFill{display:block;height:100%;width:0;background:var(--ar);transition:width .2s}
+#hpBar span{display:none}
+#hpFill.low{background:#d23a2a}
+/* top right: money · weapon · stars */
+.counters{top:max(18px,env(safe-area-inset-top));right:max(22px,env(safe-area-inset-right));gap:12px}
+.counters .chip#money{background:none;box-shadow:none;padding:0;font:700 36px/1 var(--g);letter-spacing:.02em;color:#8ee27f;text-shadow:0 0 2px #000,2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,0 4px 8px rgba(0,0,0,.5)}
+#counter{background:var(--hudbg)!important;box-shadow:none!important;border-radius:6px!important;color:#fff;padding:4px 10px 4px 4px!important;font-family:var(--g)}
+#counter span{color:#bbb!important}#counter i{width:28px!important;height:28px!important}
+#tMenu{background:var(--hudbg)!important;box-shadow:none!important;border-radius:6px!important}#tMenu svg{stroke:#fff!important}
+#weapBox{left:auto;right:max(22px,env(safe-area-inset-right));top:calc(max(18px,env(safe-area-inset-top)) + 54px);background:var(--hudbg);border-radius:4px;padding:6px 12px;font:600 15px var(--g);letter-spacing:.03em;min-width:150px;justify-content:space-between}
+#weapBox #ammo{color:#fff;font:700 22px var(--g)}#weapBox #ammo small{color:#aaa;font-size:14px}
+#stars{top:calc(max(18px,env(safe-area-inset-top)) + 54px);gap:2px;font-size:28px;filter:none}
+body.armed #stars{top:calc(max(18px,env(safe-area-inset-top)) + 100px)}
+#stars i{color:#000;opacity:.35;-webkit-text-stroke:1.5px rgba(255,255,255,.4)}#stars i.on{opacity:1;color:#fff;-webkit-text-stroke:1.5px #000;text-shadow:0 0 8px rgba(255,255,255,.6)}
+#stars.flash i.on{animation:starflash .5s steps(2) infinite}@keyframes starflash{50%{color:#4a9ee6;text-shadow:0 0 12px #4a9ee6}}
+#feed{top:calc(max(18px,env(safe-area-inset-top)) + 150px)}
+#feed div{background:var(--hudbg);border-radius:3px;font:500 14px var(--g);letter-spacing:.02em}
+#cops{top:auto;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 214px);left:max(22px,env(safe-area-inset-left));transform:none;background:var(--hudbg);border-left:4px solid #e4402b;border-radius:3px;font:500 14px var(--g)}
+/* district + street, bottom right, italic like the game */
+#area{left:auto;right:max(28px,env(safe-area-inset-right));top:auto;bottom:max(30px,env(safe-area-inset-bottom));transform:translateX(12px);text-align:right}
+#area.show{transform:none}
+#area small{font:600 15px var(--g);letter-spacing:.06em;font-style:italic;text-transform:none;color:#fff;text-shadow:0 0 2px #000,1px 1px 0 #000,0 2px 6px rgba(0,0,0,.7)}
+#areaName{background:none;box-shadow:none;padding:0;margin-top:0;font:700 italic 34px/1.05 var(--g);letter-spacing:.01em;color:#fff;text-shadow:0 0 2px #000,2px 2px 0 #000,-1px -1px 0 #000,0 3px 10px rgba(0,0,0,.6)}
+body.driving #area{bottom:calc(max(30px,env(safe-area-inset-bottom)) + 70px)}
+/* help box (desktop) */
+body:not(.touch) #prompt{left:max(22px,env(safe-area-inset-left));top:max(22px,env(safe-area-inset-top));bottom:auto;transform:translateY(-6px);border-radius:4px;background:rgba(0,0,0,.78);color:#fff;box-shadow:none;font:500 16px var(--g);letter-spacing:.02em;padding:10px 16px 10px 10px}
+body:not(.touch) #prompt.show{transform:none}
+#prompt kbd{background:#fff;color:#000;border-radius:4px;font:700 14px var(--g)}
+/* objective card → GTA objective strip */
+#misCard{background:rgba(0,0,0,.72);border-radius:4px;box-shadow:none;font-family:var(--g)}
+#misCard b{font:700 18px var(--g);letter-spacing:.03em;text-transform:uppercase}
+#jobCard{background:rgba(0,0,0,.72);border:none;border-radius:4px;color:#fff;font-family:var(--g);box-shadow:none}
+#board{background:rgba(0,0,0,.65);color:#fff;border-radius:4px;box-shadow:none;top:max(22px,env(safe-area-inset-top));font-family:var(--g)}#board span{color:#bbb}#board li.me{background:rgba(255,255,255,.12)}
+#chat{bottom:calc(max(26px,env(safe-area-inset-bottom)) + 216px)}
+/* speedometer */
+#drive{left:auto;right:max(28px,env(safe-area-inset-right));transform:translateY(30px);background:none;box-shadow:none;padding:0;font-family:var(--g);gap:6px}
+#drive.show{transform:none}
+#drive b{font:700 54px/1 var(--g);color:#fff;text-shadow:0 0 2px #000,2px 2px 0 #000,0 3px 10px rgba(0,0,0,.6)}#drive small{color:#fff;font:600 16px var(--g);text-shadow:1px 1px 0 #000}
+#drive i{background:rgba(0,0,0,.7);color:#f2a93b;border-radius:4px;padding:1px 8px;font:700 18px var(--g);font-style:normal}#drive span{display:none}
+#radioName{position:absolute;left:50%;top:max(24px,env(safe-area-inset-top));transform:translateX(-50%);text-align:center;opacity:0;transition:opacity .4s;pointer-events:none}
+#radioName.show{opacity:1}#radioName b{display:block;font:700 26px var(--g);letter-spacing:.04em}#radioName small{font:500 14px var(--g);color:#ddd;letter-spacing:.2em}
+/* icon column: dark glass */
+.ic{background:var(--hudbg);box-shadow:none;border-radius:6px}.ic svg{stroke:#fff}
+.ic.off svg{stroke:#999}
+/* wasted / busted */
+#wasted{background:none!important}
+#wasted b{font:400 clamp(60px,13vw,140px)/1 var(--gd);letter-spacing:.04em;color:#c8231a;text-transform:lowercase;text-shadow:0 0 2px #000,3px 3px 0 #000,-2px -2px 0 #000,0 0 40px rgba(0,0,0,.6)}
+#wasted.busted b{color:#3d8be0}
+#wasted::before{content:"";position:absolute;left:0;right:0;top:50%;height:150px;transform:translateY(-50%);background:linear-gradient(transparent,rgba(0,0,0,.55) 30%,rgba(0,0,0,.55) 70%,transparent)}
+#wasted b{position:relative}
+/* floats → GTA reward text */
+.float{font-family:var(--g)!important;letter-spacing:.02em}
+/* crosshair: small dot like the game */
+#xhair{width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.7)}
+#xhair::before,#xhair::after{display:none}
+#xhair.hit{background:#e4402b;transform:scale(1.6)}
+#hitm{font-size:34px;color:#fff;text-shadow:0 0 3px #000}
+/* weapon wheel */
+#wheel{position:absolute;inset:0;display:none;place-items:center;background:radial-gradient(circle,rgba(0,0,0,.35),rgba(0,0,0,.6));pointer-events:auto;z-index:30}
+#wheel.show{display:grid}
+#wheel .ring{position:relative;width:min(340px,80vmin);height:min(340px,80vmin);border-radius:50%;border:2px solid rgba(255,255,255,.18);background:rgba(10,12,16,.55)}
+#wheel button{position:absolute;width:31%;height:31%;border-radius:50%;background:rgba(20,22,28,.85);border:2px solid rgba(255,255,255,.25);color:#fff;font:600 13px var(--g);letter-spacing:.03em;display:grid;place-items:center;align-content:center;gap:2px;transform:translate(-50%,-50%);cursor:pointer}
+#wheel button i{font-style:normal;font-size:30px;line-height:1}
+#wheel button.on,#wheel button:hover{background:#f2f2f2;color:#111;border-color:#fff}
+#wheel button small{color:#aaa;font-size:11px}#wheel button.on small,#wheel button:hover small{color:#555}
+#wheel .mid{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;color:#fff;font:700 18px var(--g);letter-spacing:.06em;pointer-events:none}
+/* pickups notice / mission passed banner */
+#passed{position:absolute;left:0;right:0;top:34%;text-align:center;opacity:0;transition:opacity .5s;pointer-events:none}
+#passed.show{opacity:1}#passed b{display:block;font:400 clamp(40px,7vw,78px)/1 var(--gd);color:#f2c13b;letter-spacing:.03em;text-shadow:0 0 2px #000,3px 3px 0 #000,0 0 30px rgba(0,0,0,.6)}#passed small{font:600 22px var(--g);color:#fff;text-shadow:1px 1px 0 #000,0 0 8px #000}
+/* touch: radar stays top-left (the joystick owns the bottom-left) */
+body.touch .map{top:max(12px,env(safe-area-inset-top));bottom:auto}
+body.touch #mini{width:176px;height:114px}
+body.touch .map .chips{top:auto;bottom:-24px}
+body.touch #hpBar,body.touch #arBar{top:calc(max(12px,env(safe-area-inset-top)) + 124px);bottom:auto;width:86px;height:7px}
+body.touch #arBar{left:calc(max(22px,env(safe-area-inset-left)) + 90px)}
+body.touch .map .chips{display:none}
+body.touch .counters .chip#money{font-size:24px}
+body.touch #area{right:auto;left:50%;bottom:auto;top:max(12px,env(safe-area-inset-top));transform:translate(-50%,-8px);text-align:center}body.touch #area.show{transform:translate(-50%,0)}
+body.touch #areaName{font-size:22px}body.touch #area small{font-size:12px}
+body.touch #weapBox,body.touch #stars{top:calc(max(12px,env(safe-area-inset-top)) + 40px)}
+body.touch.armed #stars{top:calc(max(12px,env(safe-area-inset-top)) + 80px)}
+body.touch #feed{top:calc(max(12px,env(safe-area-inset-top)) + 116px)}
+body.touch #cops{bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 140px)}
+body.touch #drive{right:auto;left:50%;transform:translateX(-50%)}body.touch #drive b{font-size:34px}
+body.touch #pvpTag{top:calc(max(12px,env(safe-area-inset-top)) + 140px)}
+#pvpTag{top:auto;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 184px);left:calc(max(22px,env(safe-area-inset-left)) + 4px);border-radius:4px;font-family:var(--g)}
+@media (max-height:480px){body.touch #mini{width:150px;height:96px}body.touch #hpBar,body.touch #arBar{top:calc(max(10px,env(safe-area-inset-top)) + 104px);width:73px}body.touch #arBar{left:calc(max(22px,env(safe-area-inset-left)) + 77px)}}
+#tRadio{right:180px;bottom:84px}
 </style>
 </head>
 <body>
 <canvas id="gl" tabindex="0"></canvas>
 <div class="hud">
-  <div class="map"><canvas id="mini" width="300" height="300"></canvas><div class="chips"><span class="chip" id="clock">09:00</span><span class="chip" id="room" title="Inviter des amis"></span></div></div>
+  <div class="map"><canvas id="mini" width="405" height="261"></canvas><div class="chips"><span class="chip" id="clock">09:00</span><span class="chip" id="room" title="Inviter des amis"></span></div></div>
   <div class="counters"><div class="chip" id="money">0 $</div><div id="counter"><i></i><b id="bCount">0</b><span>/ <b id="bTotal">12</b></span></div><button id="tMenu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div>
   <div id="jobCard"><div class="row"><span id="jobWho">—</span><span id="jobTime">0 s</span></div><div class="row"><span id="jobAddr">—</span><span id="jobDist"></span></div><div class="bar"><div id="jobBar"></div></div></div>
   <ul id="board"></ul>
@@ -424,7 +524,8 @@ body.armed #tc #tFly,body.armed #tc #tDash{display:none!important}
   <div id="area"><small>LE PLATEAU-MONT-ROYAL</small><span id="areaName">Rue Saint-Denis</span></div>
   <div id="prompt"><kbd>E</kbd><i class="hand">👆</i><span id="promptText">Parler</span></div>
   <div id="say"><span id="sayName">Nom</span><span id="sayHearts"></span><div id="sayText"></div></div>
-  <div id="hudC"><div id="hud2"></div><div id="hpBar"><i id="hpFill"></i><span>♥</span></div><div id="weapBox"><span id="weapName"></span><span id="ammo"></span><div class="rl"><i id="reloadBar"></i></div></div><span id="pvpTag"></span><div id="stars"></div><div id="cops"></div><div id="xhair"></div><div id="hitm">✕</div><div id="feed"></div><div id="hurt"></div><div id="wasted"><b id="wastedTxt">WASTED</b></div></div>
+  <div id="hudC"><div id="hud2"></div><div id="hpBar"><i id="hpFill"></i><span>♥</span></div><div id="arBar"><i id="arFill"></i></div><div id="radioName" class="gtxt"><small>RADIO</small><b id="radioTxt"></b></div><div id="passed"><b id="passedTxt">mission passed</b><small id="passedSub"></small></div><div id="weapBox"><span id="weapName"></span><span id="ammo"></span><div class="rl"><i id="reloadBar"></i></div></div><span id="pvpTag"></span><div id="stars"></div><div id="cops"></div><div id="xhair"></div><div id="hitm">✕</div><div id="feed"></div><div id="hurt"></div><div id="wasted"><b id="wastedTxt">WASTED</b></div></div>
+  <div id="wheel"><div class="ring"><button data-w="0" style="left:50%;top:16%"><i>✊</i>Fists<small>—</small></button><button data-w="1" style="left:84%;top:50%"><i>🔫</i>Pistol<small id="ww1"></small></button><button data-w="2" style="left:50%;top:84%"><i>🔫</i>SMG<small id="ww2"></small></button><button data-w="3" style="left:16%;top:50%"><i>🎯</i>Rifle<small id="ww3"></small></button><div class="mid">WEAPONS</div></div></div>
   <div id="tc">
     <button class="tb mp" id="tChat" data-m="walk bike">💬</button><button class="tb mp" id="tEmo" data-m="walk bike">👋</button>
     <div class="pad">
@@ -441,6 +542,7 @@ body.armed #tc #tFly,body.armed #tc #tDash{display:none!important}
       <button class="tb mid hold" id="tDown" data-m="fly"><i>▼</i><b>Down</b></button>
       <button class="tb big hold" id="tUp" data-m="fly"><i>▲</i><b>Up</b></button>
       <button class="tb sm" id="tView" data-m="car"><i>👁</i><b>View</b></button>
+      <button class="tb sm" id="tRadio" data-m="car"><i>📻</i><b>Radio</b></button>
       <button class="tb sm" id="tHorn" data-m="car"><i>📯</i><b>Horn</b></button>
       <button class="tb sm hold" id="tHand" data-m="car"><i>⟲</i><b>Handbrake</b></button>
       <button class="tb mid hold pedal" id="tBrake" data-m="car"><i>⏷</i><b>Brake</b></button>
@@ -476,12 +578,13 @@ body.armed #tc #tFly,body.armed #tc #tDash{display:none!important}
     <dt>🕊 Fly</dt><dd>▲ Up, ▼ Down, ⚡ Turbo (hold). The camera sets the direction. Wings get tired: land to recharge.</dd>
     <dt>👆 Bubble</dt><dd>When a bubble appears on the right (talk, drive, take a BIXI, deliver…), tap it.</dd>
     <dt>🚗 Car</dt><dd>Joystick: steer · ⏶ Gas · ⏷ Brake and reverse · ⟲ Handbrake to drift · 👁 interior view.</dd>
-    <dt>🔫 Gun</dt><dd>Tap Gun to draw · Fire (aim assist) · ⟳ reload · ⇄ switch pistol / SMG / rifle. Cars knock people over; the police notice.</dd>
+    <dt>🔫 Gun</dt><dd>Tap Gun to draw · Fire (aim assist) · ⟳ reload · ⇄ opens the weapon wheel. Cars knock people over; the police notice. Grab green ✚ health, blue armour, cash and ammo on the sidewalks. 📻 changes the radio in a car.</dd>
     <dt>☰ Menu</dt><dd>Missions, friends, time, weather, season, journal, photo, music, fullscreen.</dd>
     <dt>Goal</dt><dd>Deliver parcels on time, find the 12 golden bagels, win missions against your friends.</dd>
   </dl>
   <dl class="keyHelp">
     <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Walk · <kbd>Shift</kbd> run</dd>
+    <dt><kbd>Tab</kbd> <kbd>O</kbd></dt><dd>Weapon wheel (time slows) · change radio station</dd>
     <dt><kbd>G</kbd> <kbd>U</kbd> <kbd>R</kbd></dt><dd>Draw / holster the gun · switch weapon · reload · click to fire · right-click to zoom · <kbd>K</kbd> PvP on/off</dd>
     <dt><kbd>Space</kbd></dt><dd>Jump · twice for a flip · hold in the air to glide with the umbrella</dd>
     <dt><kbd>F</kbd></dt><dd>Dash, even in mid-air</dd>

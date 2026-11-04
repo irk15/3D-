@@ -247,7 +247,7 @@ export function makeRigged(o = {}) {
     // ---- locomotion weights
     const sp = op.fly ? 0 : speed;
     const tw = { idle: sp < 0.15 ? 1 : 0, walk: 0, run: 0 };
-    if (sp >= 0.15) { const r = Math.min(1, Math.max(0, (sp - 2.4) / 1.4)); tw.walk = 1 - r; tw.run = r; }
+    if (sp >= 0.15) { const r = Math.min(1, Math.max(0, (sp - 2.3) / 1.7)); tw.walk = 1 - r; tw.run = r; }
     st.gestT -= dt;
     const gestOn = st.gest && st.gestT > 0 && sp < 0.6 && grounded && !op.bike && !op.fly;
     st.gestW = lerp(st.gestW, gestOn ? 1 : 0, k(6));
@@ -330,6 +330,16 @@ export function makeRigged(o = {}) {
       aim('Neck', 'Head', V(0, 0.05 + ap * 0.6, 1), st.gun * 0.5);
     }
     if (st.gun > 0.01 && op.drive) { aim('RightArm', 'RightForeArm', V(-0.2, -0.05, 1), st.gun * 0.8); aim('RightForeArm', 'RightHand', V(-0.1, 0.1, 1), st.gun * 0.8); }
+    // knocked down: limp, sprawled limbs (flailing while airborne) instead of a stiff plank
+    st.ko = lerp(st.ko || 0, op.ko ? 1 : 0, k(op.ko ? 10 : 4));
+    if (st.ko > 0.01) {
+      const fl = op.ko === 2 ? Math.sin(st.t * 14) * 0.35 : 0, w = st.ko;
+      for (const [sd, x] of [['Left', 1], ['Right', -1]]) {
+        aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.95, 0.15 + fl * x, 0.25), w); aim(sd + 'ForeArm', sd + 'Hand', V(x * 0.75, 0.45 - fl, 0.35), w);
+        aim(sd + 'UpLeg', sd + 'Leg', V(x * 0.28, -0.85, x > 0 ? 0.4 + fl : 0.05 - fl), w); aim(sd + 'Leg', sd + 'Foot', V(x * 0.05, -1, x > 0 ? -0.55 : -0.15), w);
+      }
+      aim('Neck', 'Head', V(0.25, 1, 0.15), w * 0.6);
+    }
     // wave hello (right arm)
     if (st.wave > 0.01) { aim('RightArm', 'RightForeArm', V(-0.6, 0.85, 0.15), st.wave); aim('RightForeArm', 'RightHand', V(-0.15 + Math.sin(st.t * 11) * 0.45, 1, 0.25), st.wave); }
     // ---- whole-body: lean into turns, fly tilt, flip, squash & stretch

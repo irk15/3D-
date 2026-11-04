@@ -52,7 +52,7 @@ export function stepRag(a, dt, C) {
     const gr = C.ground(pos.x, pos.z, pos.y + 0.6, 0.1);
     if (pos.y <= gr && g.vy <= 0) { pos.y = gr; g.phase = 'lie'; g.t = 0; g.vx *= 0.3; g.vz *= 0.3; g.landed = true; }
     tilt = g.face * (Math.PI / 2) * ease(g.t / 0.45) + g.spin * Math.sin(Math.min(1, g.t / 0.5) * Math.PI) * 0.6;
-    a.ch.animate?.(dt, 0, false, 0, {});
+    a.ch.animate?.(dt, 0, false, 0, { ko: 2 });
   } else if (g.phase === 'lie') {
     const nx = pos.x + g.vx * dt, nz = pos.z + g.vz * dt;
     if (!C.blocked(nx, nz, 0.25, pos.y, 0.3, pos.y + 1)) { pos.x = nx; pos.z = nz; }
@@ -68,7 +68,7 @@ export function stepRag(a, dt, C) {
   const yaw = root.rotation.y, hx = Math.sin(yaw) * Math.sign(tilt || 1), hz = Math.cos(yaw) * Math.sign(tilt || 1);
   root.rotation.x = tilt;
   root.position.set(pos.x - hx * 0.8 * lie, pos.y + 0.1 * lie, pos.z - hz * 0.8 * lie);
-  if (g.phase === 'lie') a.ch.animate?.(dt, 0, true, 0, {});
+  if (g.phase !== 'fly') a.ch.animate?.(dt, 0, true, 0, { ko: g.phase === 'lie' ? 1 : 0 });
   return true;
 }
 
@@ -146,6 +146,7 @@ export class Combat {
     if (this.drawn) { this.sfx.reload?.(0.5); if (this.cam.pitch > 0.35) this.cam.pitch = 0.12; }
     this.ui.setArmed?.(this.drawn); this.refreshHud();
   }
+  select(i) { if (!i) { this.toggle(false); return; } this.cur = i; this.reload = 0; this.sfx.reload?.(0.4); if (!this.drawn) this.toggle(true); this.refreshHud(); }
   next(dir = 1) {
     this.cur = ((this.cur - 1 + dir + 3) % 3) + 1; this.reload = 0; this.sfx.reload?.(0.4);
     if (!this.drawn) this.toggle(true); this.refreshHud();
@@ -235,6 +236,7 @@ export class Combat {
       this.shootPed(hit.a, dmg, dir, hit.hs);
     } else if (hit.kind === 'car' || hit.kind === 'copcar') {
       this.puffs.at(end, 0xffe0a0, 4); this.sfx.ping?.();
+      if (hit.a?.forward) hit.a.dmg = Math.min(1, (hit.a.dmg || 0) + w.dmg / 900);
       if (hit.kind === 'copcar') this.police?.crime(0.5, 'copcar', this.player.pos);
       else if (hit.a.isTrafficCar) { hit.a.bumped?.(dir.x * 6, dir.z * 6); this.police?.crime(0.35, 'car', this.player.pos); }
     } else if (hit.kind === 'world') {
@@ -271,6 +273,7 @@ export class Combat {
   // ---------------------------------------------------------------- me: health, knockdown, death
   damage(n, by, vx = 0, vz = 0) {
     if (this.pd || this.inv > 0 || n <= 0) return;
+    const ab = Math.min(this.armour || 0, n * 0.8); this.armour = (this.armour || 0) - ab; n -= ab;
     this.hp = Math.max(0, this.hp - n); this.lastHurt = this.t; this.hurt = Math.min(1, 0.35 + n / 40); this.sfx.hurt?.();
     this.cam.shake = Math.max(this.cam.shake || 0, 0.25); this.ui.buzz?.(35);
     if (this.hp <= 0) this.die(by, vx, vz); this.refreshHud();
@@ -287,15 +290,15 @@ export class Combat {
     const p = this.player; this.deaths++;
     if (this.getCar()) this.ui.exitCar?.();
     this.drawn = false; this.ui.setArmed?.(false);
-    this.pd = { t: 0, ko: 3.6, face: Math.random() < 0.5 ? 1 : -1, dead: true, by }; p.vel.set(vx * 0.5, 0, vz * 0.5); p.vy = 2; p.grounded = false;
+    this.pd = { t: 0, ko: 2.4, face: Math.random() < 0.5 ? 1 : -1, dead: true, by }; p.vel.set(vx * 0.5, 0, vz * 0.5); p.vy = 2; p.grounded = false;
     this.getHero().root.rotation.order = 'YXZ'; this.sfx.thud?.(1);
-    if (this.el.wasted) { this.el.wastedTxt.textContent = this.police?.stars ? 'WASTED' : 'WASTED'; this.el.wasted.className = 'show'; }
+    if (this.el.wasted) { this.el.wastedTxt.textContent = 'wasted'; this.el.wasted.className = 'show'; } document.body.classList.add('dead'); this.sfx.wasted?.();
     if (by && by !== 'cop' && by !== 'self') this.net.send({ t: 'kill', vic: this.net.id, by });
     this.ui.updateMoney?.();
   }
   respawn() {
     const lose = Math.min(this.ui.getMoney?.() || 0, Math.round((this.ui.getMoney?.() || 0) * 0.1 + 5)); this.ui.addMoney?.(-lose);
-    this.hp = 100; this.pd = null; this.inv = 2.5; this.police?.clear();
+    this.hp = 100; this.armour = 0; this.pd = null; this.inv = 2.5; this.police?.clear(); document.body.classList.remove('dead');
     for (const k of [1, 2, 3]) { this.ammo[k].mag = WEAPONS[k].mag; this.ammo[k].res = WEAPONS[k].reserve; }
     const hero = this.getHero(); hero.root.rotation.x = 0;
     this.ui.respawn?.(); if (this.el.wasted) this.el.wasted.className = '';
@@ -305,14 +308,14 @@ export class Combat {
   // after Player.update: apply the lying-down pose to the hero
   afterPlayer(dt) {
     const hero = this.getHero(), root = hero.root, p = this.player;
-    if (!this.pd) { if (root.rotation.x !== 0 && !p.flying && !p.bike) root.rotation.x = 0; return; }
-    const d = this.pd; d.t += dt;
+    if (!this.pd) { p.ko = 0; if (root.rotation.x !== 0 && !p.flying && !p.bike) root.rotation.x = 0; return; }
+    const d = this.pd; d.t += dt; p.ko = d.t < d.ko ? (d.t < 0.45 ? 2 : 1) : 0;
     let tilt;
-    if (d.t < d.ko) tilt = d.face * (Math.PI / 2) * ease(d.t / 0.4);
+    if (d.t < d.ko || d.dead) tilt = d.face * (Math.PI / 2) * ease(d.t / 0.4);
     else tilt = d.face * (Math.PI / 2) * (1 - ease((d.t - d.ko) / 0.7));
     const lie = Math.min(1, Math.abs(tilt) / (Math.PI / 2)), yaw = root.rotation.y, s = Math.sign(tilt || 1);
     root.rotation.x = tilt; root.position.x -= Math.sin(yaw) * s * 0.8 * lie; root.position.z -= Math.cos(yaw) * s * 0.8 * lie; root.position.y += 0.1 * lie;
-    if (d.dead && d.t > d.ko + 0.1 && this.el.wasted) this.respawn();
+    if (d.dead && d.t > d.ko + 1.4 && this.el.wasted) this.respawn();
     else if (!d.dead && d.t > d.ko + 0.7) { this.pd = null; root.rotation.x = 0; }
     this.fx.dizzy({ ch: hero, pos: p.pos, rag: d.t < d.ko && !d.dead && d.t > 0.6 ? { phase: 'lie', face: d.face } : null, stars: this._meStars }, this.t);
   }
@@ -334,7 +337,7 @@ export class Combat {
   }
   refreshHud() {
     const e = this.el, w = this.weapon, a = this.ammo[this.cur];
-    if (e.weapName) { e.weapName.textContent = `${w.ic} ${w.name}`; e.ammo.textContent = this.reload > 0 ? 'reloading…' : `${a.mag} / ${a.res}`; }
+    if (e.weapName) { e.weapName.textContent = `${w.ic} ${w.name}`; e.ammo.innerHTML = this.reload > 0 ? '<small>reloading…</small>' : `${a.res} <small>${a.mag}</small>`; }
     this.dirtyHp = true;
   }
   hud(dt) {
@@ -342,7 +345,7 @@ export class Combat {
     const show = this.armed;
     document.body.classList.toggle('armed', show); e.xhair.classList.toggle('show', show); e.xhair.classList.toggle('hit', this.hitmark > 0);
     if (e.hitm) e.hitm.style.opacity = this.hitmark > 0 ? Math.min(1, this.hitmark * 5) : 0;
-    if (this.dirtyHp || (this.hpShown | 0) !== (this.hp | 0)) { this.hpShown = this.hp; this.dirtyHp = false; e.hpFill.style.width = this.hp + '%'; e.hpFill.classList.toggle('low', this.hp < 30); }
+    if (this.dirtyHp || (this.hpShown | 0) !== (this.hp | 0)) { this.hpShown = this.hp; this.dirtyHp = false; e.hpFill.style.width = this.hp + '%'; e.hpFill.classList.toggle('low', this.hp < 30); const af = document.getElementById('arFill'); if (af) af.style.width = (this.armour || 0) + '%'; }
     e.hurt.style.opacity = Math.min(0.9, (this.hurt || 0) + (this.hp < 30 ? 0.25 + Math.sin(this.t * 6) * 0.1 : 0));
     e.weapName.parentElement.classList.toggle('show', this.drawn);
     if (this.reload > 0 && e.reloadBar) { e.reloadBar.style.width = (1 - this.reload / 1.15) * 100 + '%'; e.reloadBar.parentElement.style.opacity = 1; } else if (e.reloadBar) e.reloadBar.parentElement.style.opacity = 0;

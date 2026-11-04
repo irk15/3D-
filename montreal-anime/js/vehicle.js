@@ -61,18 +61,30 @@ export class Vehicle {
     const f = this.forward(), r = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const vx = f.x * this.vF + r.x * this.vR, vz = f.z * this.vF + r.z * this.vR;
     const nx = this.pos.x + vx * dt, nz = this.pos.z + vz * dt;
-    let hit = this.blockedAt(nx, nz, this.yaw, ctx.vehicles);
-    if (!hit && ctx.traffic) for (const [cx, cz, cr] of this.circles(nx, nz, this.yaw)) { const t = ctx.traffic.hitCar(cx, cz, cr); if (t) { hit = t; break; } }
+    const hitAt = (x, z) => { const o = this.blockedAt(x, z, this.yaw, ctx.vehicles); if (o) return o; if (ctx.traffic) for (const [cx, cz, cr] of this.circles(x, z, this.yaw)) { const t = ctx.traffic.hitCar(cx, cz, cr); if (t) return t; } return false; };
+    const hit = hitAt(nx, nz);
     if (!hit) { this.pos.x = nx; this.pos.z = nz; }
     else {
-      const sp = Math.hypot(vx, vz);
-      if (!this.blockedAt(nx, this.pos.z, this.yaw, ctx.vehicles)) this.pos.x = nx; else if (!this.blockedAt(this.pos.x, nz, this.yaw, ctx.vehicles)) this.pos.z = nz;
-      if (this.blockedAt(this.pos.x, this.pos.z, this.yaw, ctx.vehicles)) this.yaw = prevYaw;
-      this.impact = Math.max(this.impact, sp);
+      // slide along what we hit (a wall, a parked car) instead of sticking to it; bounce only on a square hit
+      const okX = !hitAt(nx, this.pos.z), okZ = !hitAt(this.pos.x, nz), sp = Math.hypot(vx, vz);
+      let jolt;
+      if (okX && Math.abs(vx) > 0.05) { this.pos.x = nx; jolt = Math.abs(vz); const k = Math.abs(vx) / (sp || 1); this.vF *= 0.55 + 0.43 * k; this.vR *= 0.5; }
+      else if (okZ && Math.abs(vz) > 0.05) { this.pos.z = nz; jolt = Math.abs(vx); const k = Math.abs(vz) / (sp || 1); this.vF *= 0.55 + 0.43 * k; this.vR *= 0.5; }
+      else { jolt = sp; this.vF *= -0.22; this.vR *= 0.3; this.yawRate *= -0.3; }
+      this.impact = Math.max(this.impact, jolt);
+      this.dmg = Math.min(1, (this.dmg || 0) + Math.max(0, jolt - 6) * 0.014);
+      if (hitAt(this.pos.x, this.pos.z)) this.yaw = prevYaw;
       if (hit.isTrafficCar) hit.bumped(f.x * this.vF, f.z * this.vF);
-      if (hit instanceof Vehicle) { hit.vF += this.vF * 0.45; hit.vR += this.vR * 0.5; }
-      this.vF *= -0.28; this.vR *= 0.4; this.yawRate *= -0.3;
+      if (hit instanceof Vehicle) { hit.vF += this.vF * 0.45; hit.vR += this.vR * 0.5; hit.impact = Math.max(hit.impact, sp * 0.6); }
     }
+    // never stay inside something (traffic that drove into us, a spawn on a kerb): ease out to the nearest free spot
+    if (hitAt(this.pos.x, this.pos.z)) {
+      this.stuckT = (this.stuckT || 0) + dt;
+      if (this.stuckT > 0.15) out: for (const rr of [0.25, 0.5, 0.8, 1.2, 1.8, 2.6]) for (let i = 0; i < 12; i++) {
+        const a2 = i / 12 * Math.PI * 2, x = this.pos.x + Math.cos(a2) * rr, z = this.pos.z + Math.sin(a2) * rr;
+        if (!hitAt(x, z)) { this.pos.x += (x - this.pos.x) * Math.min(1, dt * 10); this.pos.z += (z - this.pos.z) * Math.min(1, dt * 10); break out; }
+      }
+    } else this.stuckT = 0;
     // loose props and people
     for (const [cx, cz, cr] of this.circles(this.pos.x, this.pos.z, this.yaw)) ctx.props?.push(cx, cz, this.pos.y, this.pos.y + 1.4, cr, vx, vz, 1300);
     if (ctx.peds && this.speed > 2.5) for (const n of ctx.peds) {

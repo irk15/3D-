@@ -257,7 +257,7 @@ export class Player {
     const mag = Math.min(1, Math.hypot(mx, mz));
     if (mag > 0.01) { const l = Math.hypot(mx, mz); mx /= l; mz /= l; }
     this.jumpBuf -= dt; this.coyote -= dt; this.boost -= dt; this.jumpBoost -= dt; this.dashCD -= dt; this.dashT -= dt;
-    let top = (inp.run ? 5.4 : 2.5) * (this.boost > 0 ? 1.4 : 1) * mag;
+    let top = (inp.run ? 5.6 : 2.1) * (this.boost > 0 ? 1.4 : 1) * mag;
     if (bike) top = (inp.run ? 11.5 : 8) * mag;
     if (this.gliding) top = Math.max(top, 4.2 * mag);
     // dash
@@ -287,8 +287,9 @@ export class Player {
     const tryMove = (dx, dz) => {
       const nx = p.x + dx, nz = p.z + dz;
       if (nx < WALK.x0 || nx > WALK.x1 || nz < WALK.z0 || nz > WALK.z1) return false;
-      if (C.blocked(nx, nz, this.r, p.y, step, head)) return false;
-      if (this.carBlock && this.carBlock(nx, nz)) return false;
+      // blocked only if the move goes INTO something; if we're already inside (a car drove onto us), let us walk out
+      if (C.blocked(nx, nz, this.r, p.y, step, head) && !C.blocked(p.x, p.z, this.r, p.y, step, head)) return false;
+      if (this.carBlock && this.carBlock(nx, nz) && !this.carBlock(p.x, p.z)) return false;
       p.x = nx; p.z = nz; return true;
     };
     const dx = this.vel.x * dt, dz = this.vel.z * dt;
@@ -326,7 +327,7 @@ export class Player {
     this.c.root.position.set(p.x, this.visY, p.z); this.c.root.rotation.y = this.yaw;
     if (bike) { this.bike.spin(this.speed * dt); this.c.root.rotation.z = 0; let dy = this.yaw - (this.prevYaw ?? this.yaw); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); this.bikeSteer = (this.bikeSteer || 0) + (Math.max(-0.5, Math.min(0.5, dy / Math.max(dt, 1e-3) * 0.25)) - (this.bikeSteer || 0)) * (1 - Math.exp(-dt * 8)); this.bike.steer?.(this.bikeSteer); }
     this.prevYaw = this.yaw;
-    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel, gun: bike ? null : this.gun, aimPitch: this.aimPitch });
+    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel, gun: bike || this.ko ? null : this.gun, aimPitch: this.aimPitch, ko: this.ko });
   }
 }
 // BIXI — Montréal's shared bike: step-through grey frame with the red accents, front rack and basket,
@@ -441,12 +442,13 @@ export class Neighbours {
       if (!n.out) { n.ch.root.visible = false; continue; }
       if (n.rag && stepRag(n, dt, C)) continue;
       if (n.ragEnded) { n.ragEnded = false; n.offX = n.pos.x - (n.p.axis === 'z' ? n.p.c : n.s); n.offZ = n.pos.z - (n.p.axis === 'z' ? n.s : n.p.c); if (n.p.axis === 'wander') { n.offX = n.offZ = 0; } }
+      const px0 = n.pos.x, pz0 = n.pos.z;
       const dp = Math.hypot(n.pos.x - player.pos.x, n.pos.z - player.pos.z);
       let moving = n.wait <= 0 && n.talk <= 0 && dp > 1.6;
       n.wait -= dt; n.talk -= dt;
       n.offX = n.offX || 0; n.offZ = n.offZ || 0;
       if (n.dodgeT > 0) { n.dodgeT -= dt; const ox = n.offX + n.dodgeV.x * dt, oz = n.offZ + n.dodgeV.z * dt; if (!this.w.colliders.blocked(n.pos.x + n.dodgeV.x * dt, n.pos.z + n.dodgeV.z * dt, 0.3, n.pos.y, 0.45, n.pos.y + 1.5)) { n.offX = ox; n.offZ = oz; } moving = false; }
-      else if (n.wait <= 0) { n.offX *= Math.exp(-dt * 0.8); n.offZ *= Math.exp(-dt * 0.8); }
+      else if (n.wait <= 0 && moving) { n.offX *= Math.exp(-dt * 0.35); n.offZ *= Math.exp(-dt * 0.35); }
       let running = false;
       if (n.flee > 0) {
         n.flee -= dt; running = true; moving = false; n.wait = 0;
@@ -476,18 +478,22 @@ export class Neighbours {
       }
       n.pos.y = C.ground(n.pos.x, n.pos.z, n.pos.y + 0.5 || 99, 0.1);
       if (!isFinite(n.pos.y)) n.pos.y = h(n.pos.z);
-      // face the player while talking or when they come close
+      // what they actually did this frame drives the legs and the facing, so feet never slide and nobody crab-walks
+      const mvx = (n.pos.x - px0) / Math.max(dt, 1e-3), mvz = (n.pos.z - pz0) / Math.max(dt, 1e-3), ms = Math.min(7, Math.hypot(mvx, mvz));
+      n.vs = (n.vs || 0) + (ms - (n.vs || 0)) * (1 - Math.exp(-dt * 10));
+      if (ms > 0.35) n.yaw = Math.atan2(mvx, mvz);
+      // face the player while talking or when they stand close
       let yaw = n.yaw;
-      if (!running && (n.talk > 0 || dp < 2.2)) { yaw = Math.atan2(player.pos.x - n.pos.x, player.pos.z - n.pos.z); }
+      if (!running && ms < 0.35 && (n.talk > 0 || dp < 2.2)) { yaw = Math.atan2(player.pos.x - n.pos.x, player.pos.z - n.pos.z); }
       let d = yaw - n.ch.root.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
-      n.ch.root.rotation.y += d * (1 - Math.exp(-dt * 6));
+      n.ch.root.rotation.y += d * (1 - Math.exp(-dt * (running ? 10 : 5)));
       n.ch.root.position.copy(n.pos);
       // animation level of detail: neighbours far from you update their skeleton less often
       const far = n.pos.distanceToSquared(player.pos);
       const every = far > 120 * 120 ? 4 : far > 45 * 45 ? 2 : 1;
       n.adt = (n.adt || 0) + dt; this.fr = (this.fr || 0) + (n === this.list[0] ? 1 : 0);
       if (!n.ch.root.visible) { n.adt = 0; continue; }
-      if ((this.fr + n.id) % every === 0) { n.ch.animate(n.adt, running ? 4.8 : moving ? n.speed : 0, true, n.talk > 0 && !ctx.rain ? Math.min(1, n.talk) : 0, { umbrella: ctx.rain, talk: n.talk > 2.5 }); n.adt = 0; }
+      if ((this.fr + n.id) % every === 0) { n.ch.animate(n.adt, n.vs < 0.2 ? 0 : n.vs, true, n.talk > 0 && !ctx.rain ? Math.min(1, n.talk) : 0, { umbrella: ctx.rain, talk: n.talk > 2.5 }); n.adt = 0; }
     }
   }
 }
@@ -564,6 +570,7 @@ export class Traffic {
       const ahead = (px, pz) => { const along = (L.axis === 'z' ? pz - car.s : px - car.s) * L.dir, lat = Math.abs(L.axis === 'z' ? px - L.c : pz - L.c); return along > 0 && along < 9 && lat < 1.6 ? along : null; };
       const pa = ahead(player.pos.x, player.pos.z); if (pa !== null) vT = Math.min(vT, (pa - (player.driving ? 6.5 : 3.5)) * 1.5);
       for (const vh of this.vehicles || []) { const va = ahead(vh.pos.x, vh.pos.z); if (va !== null) vT = Math.min(vT, (va - 6.5) * 1.5); }
+      for (const vh of this.extra || []) { const va = ahead(vh.pos.x, vh.pos.z); if (va !== null) vT = Math.min(vT, (va - 6.5) * 1.5); }
       for (const n of npcs) { const a = ahead(n.pos.x, n.pos.z); if (a !== null) vT = Math.min(vT, (a - 3.5) * 1.5); }
       // signals and stop signs at the next crossing
       if (L.axis === 'z') {

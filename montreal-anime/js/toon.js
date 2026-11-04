@@ -342,10 +342,10 @@ void main(){
       tC: { value: this.color.texture }, tN: { value: this.normal.texture }, tB: { value: this.b1.texture },
       uPx: { value: new THREE.Vector2() }, uLW: { value: 1 }, uInk: { value: new THREE.Color(0.10, 0.08, 0.20) }, uNight: U.uNight, uTime: U.uTime,
       uGrade: { value: new THREE.Vector3(1.08, 1, 0) }, uTan: { value: new THREE.Vector2(1, 1) }, uCamM: { value: new THREE.Matrix4() },
-      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 },
+      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 },
     };
     this.quad = pass(/* glsl */`
-uniform sampler2D tC, tN, tB; uniform vec2 uPx, uTan; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash; uniform vec3 uInk, uGrade, uSun; uniform mat4 uCamM; varying vec2 vUv;
+uniform sampler2D tC, tN, tB; uniform vec2 uPx, uTan; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash, uDesat, uHurt; uniform vec3 uInk, uGrade, uSun; uniform mat4 uCamM; varying vec2 vUv;
 ${GLSL_NOISE}
 float D(vec2 uv){ float a = texture2D(tN, uv).a; return a < 0.001 ? 1e4 : a; }
 void main(){
@@ -410,6 +410,9 @@ void main(){
     c = mix(vec3(l), c, uGrade.x);
   }
   vec2 v2 = vUv - 0.5; c *= 1.0 - dot(v2, v2) * (uFilter > 1.5 ? 0.9 : 0.35);
+  // wasted / busted: drain the colour like GTA's death screen; hurt: red at the edges
+  float lg = dot(c, vec3(0.299, 0.587, 0.114)); c = mix(c, vec3(lg) * vec3(1.02, 0.98, 0.95), uDesat); c *= 1.0 - uDesat * 0.18;
+  c = mix(c, c * vec3(1.25, 0.45, 0.4), uHurt * smoothstep(0.12, 0.5, length(v2)));
   c = mix(c, vec3(1.0), uFlash);
   gl_FragColor = vec4(c, 1.0);
   #include <colorspace_fragment>

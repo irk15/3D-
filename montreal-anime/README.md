@@ -10,13 +10,15 @@ Walk Rue Saint-Denis, climb the outdoor staircases onto the balconies, cut throu
 
 | | Desktop | Phone |
 |---|---|---|
-| Walk / run | WASD or arrows, Shift to run | Left thumb joystick, *Courir* |
-| Jump | Space | *Sauter* |
-| Talk / enter shops / pet the cat | E | *Parler* |
+| Walk / run | WASD or arrows, Shift to run | Left thumb joystick (push to the edge to run) |
+| Jump | Space | *Jump* |
+| Talk / enter shops / pet the cat | E | Tap the bubble |
 | Camera | Drag, scroll to zoom | Drag with the right thumb |
 | Time of day | T (day → golden hour → night) | Sun button |
 | Season | Y (summer → autumn → winter) | Leaf button |
 | Photo / music / help | P / M / H | Buttons on the right |
+| Gun | G draw · click fire · right-click zoom · R reload · Tab wheel | Gun · Fire · ⟳ · ⇄ |
+| Car | E enter/exit · W/S gas/brake · Space handbrake · X view · O radio | Pedals · ⟲ · 👁 · 📻 |
 
 A gamepad works too (left stick, right stick camera, A jump, B run, X talk).
 
@@ -91,6 +93,18 @@ Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) charac
 - **More landmarks**: the Sun Life Building with its colonnades on Dorchester Square, the Chinatown gates on Saint-Laurent, the Village's canopy of pink balls over Sainte-Catherine, the Old Port's Clock Tower and the turning Grande roue (gondolas light up at night), and Saint Joseph's Oratory with its great dome on the mountain's west slope.
 - **City ambience**: a traffic hum that swells near busy streets, distant sirens, gulls by the river, the STM metro chime at Mont-Royal station, church bells on the hour, Montréal's red-and-yellow fire hydrants on the corners.
 
+## Version 6 — the GTA update
+
+- **English** everywhere (menus, dialogue, signs, street names).
+- **Cars knock people down**: pedestrians fly, land limp with dizzy stars and get back up; everyone nearby panics and runs. Steal any traffic car and the driver is dragged out (*carjacked*).
+- **Weapons**: pistol, SMG and rifle with an over-the-shoulder aim camera, recoil, tracers, muzzle flashes and reloads. **Tab** (or ⇄ on a phone) opens a weapon wheel and slows time. Shoot your friends in multiplayer (PvP can be switched off with **K**); take-downs pay $100 and show in the kill feed.
+- **Wanted level**: knocking people over, shooting, carjacking and blowing things up add stars. Cop cars with flashing lights and sirens chase you, officers get out, and from three stars they shoot. Stay out of sight to lose them, or get **busted**. Health and armour; at zero you're **wasted** — the screen drains of colour in slow motion, then you wake up at the start.
+- **Car damage**: crashes and bullets wear a car down; it smokes, catches fire, then explodes, knocking over everything around it and leaving a burnt-out wreck.
+- **Pickups** on the sidewalks: health, body armour, cash and ammo (on the radar).
+- **Radio** (**O**, or 📻 in a car): *Plateau Lo-Fi 96.3*, *Neon 88 FM* (synthwave), *Mile End Beats* (boom-bap), or off. All synthesised in the browser.
+- **GTA-style HUD**: rectangular radar with health and armour bars, cash, weapon and ammo, wanted stars, district and street names in the corner, help box, speedometer, *mission passed* banners, *wasted* / *busted* screens.
+- **Fixes**: cars slide along walls instead of sticking and ease out if traffic drives into them; you can always walk out of something that drove onto you; traffic stops for cop cars and people in the road; pedestrians' legs now match how fast they really move (no more sliding or crab-walking), walkers turn toward where they go, and nobody walks through you.
+
 ## How it looks the way it does
 
 - **Toon shading**: three-band light ramp, blue-violet ambient shadows, painted sky with flat two-tone clouds.
@@ -100,6 +114,6 @@ Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) charac
 
 ## Files
 
-`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/rig.js` (Mixamo characters, animation blending, procedural poses) · `js/cars.js` (car models) · `js/vehicle.js` (driving physics) · `js/physics.js` (loose objects) · `js/crowd.js` (people around town) · `js/downtown.js` (downtown, landmarks, river) · `models/` (compressed Mixamo glTF, plus light crowd versions) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
+`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/rig.js` (Mixamo characters, animation blending, procedural poses) · `js/cars.js` (car models) · `js/vehicle.js` (driving physics) · `js/physics.js` (loose objects) · `js/crowd.js` (people around town) · `js/downtown.js` (downtown, landmarks, river) · `js/combat.js` (weapons, knock-downs, health, PvP) · `js/police.js` (wanted level, cops) · `js/pickups.js` (health, armour, cash, ammo) · `models/` (compressed Mixamo glTF, plus light crowd versions) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
 
 The neighbourhood is a stylised impression of the Plateau, not a survey-accurate map; street names are real, but the shops and characters are invented.

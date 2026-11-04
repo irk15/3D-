@@ -1,7 +1,7 @@
 // main.js — Plateau · Montréal: boot, camera, input, interactions, the living-world systems and HUD.
 import * as THREE from 'three';
 import { h, U, WATERS, whereIs, PARK, PLAZA, WATER_Y, RIVER_Z, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, alleyX, ALLEY_HW } from './layout.js';
-import { Pipeline, makeSky, LAYER_FX } from './toon.js';
+import { Pipeline, makeSky, LAYER_FX, REAL, realifyScene } from './toon.js';
 import { buildWorld } from './world.js';
 import { makeCharacter, Player, Neighbours, Traffic, Pigeons, makeCat, Bagels, bikeModel } from './actors.js';
 import { lookAt, fmtHour, Weather, loadSave, writeSave, Achievements, ACH, Voice, dialogue, Deliveries, OUTFITS } from './systems.js';
@@ -62,6 +62,10 @@ async function boot() {
   await new Promise((r) => setTimeout(r, 20));
   const cities = app.cities = buildCities(scene, world);
   const pipe = app.pipe = new Pipeline(renderer, scene, camera);
+  // realistic mode: a sky-only scene feeds the reflections (PMREM), refreshed as the day goes by
+  const pmrem = new THREE.PMREMGenerator(renderer), envScene = new THREE.Scene(), envSky = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), null);
+  envScene.add(envSky); let envRT = null, envT = 0, realFr = 0;
+  if (REAL) document.body.classList.add('real');
   if (touch) pipe.aoOn = false;
 
   // ---- characters: Mixamo models (falls back to the procedural ones if the files can't load)
@@ -85,6 +89,7 @@ async function boot() {
     for (const m of [-3, 0, 2]) ew(m, 2, ox);
     ew(-1, 2, ox, { bus: '#c8102e', vmax: 9 }); }
   const traffic = app.traffic = new Traffic(scene, world, world.glows, lanes);
+  { const L2 = []; for (const c of [CITIES.toronto, CITIES.ottawa]) for (let k = c.k0; k <= c.k1; k++) for (let m = c.m0; m <= c.m1; m++) L2.push({ x: nsX(k), z: ewZ(m), k, m }); traffic.cityLights(scene, L2); }
   player.carBlock = (x, z) => traffic.blocks(x, z) || app.vehicles.some((v) => v.hitCircle(x, z, 0.3));
   world.glows.commit();   // traffic head/tail-light glows were added after the world was built
   // ---- physics props, the crowd, and cars you can drive
@@ -92,6 +97,7 @@ async function boot() {
   const crowd = app.crowd = new Crowd(scene, world);
   const walkers = app.walkers = new Walkers(scene, world, params.has('fewpeople') ? 8 : touch ? 22 : 40);
   const vehicles = app.vehicles = [];
+  walkers.carNear = (x, z, r) => traffic.cars.some((c) => !c.taken && c.x !== undefined && Math.abs(c.x - x) < r && Math.abs(c.z - z) < r && c.v > 1) || vehicles.some((v) => v.speed > 1 && Math.abs(v.pos.x - x) < r && Math.abs(v.pos.z - z) < r);
   traffic.vehicles = vehicles;
   const spawnCar = (kind, col, x, z, yaw) => { const v = new Vehicle(scene, world, kind, col, x, z, yaw); for (let i = 0; i < 12 && v.blockedAt(v.pos.x, v.pos.z, v.yaw, vehicles); i++) { v.pos.x += 1.5; v.place(); } vehicles.push(v); return v; };
   { const px = (PLAZA.x0 + PLAZA.x1) / 2, pz = PLAZA.z0 + 18;
@@ -215,7 +221,8 @@ async function boot() {
     cam.armK = (cam.armK || 0) + ((combat?.armed ? 1 : 0) - (cam.armK || 0)) * (1 - Math.exp(-dt * 8));
     const want = Math.min(cam.dist * (player.bike ? 1.25 : 1) * (1 + cam.flyK * (0.55 + Math.min(0.5, player.speed / 40))), 6 - cam.armK * 2.6 - (combat?.aiming ? cam.armK * 1.1 : 0));
     let free = want;
-    for (let s = 0.4; s <= want; s += 0.2) { const q = cam.target.clone().addScaledVector(dir, s); if (world.colliders.solid(q.x, q.y, q.z)) { free = Math.max(0.6, s - 0.35); break; } }
+    const shX = Math.cos(cam.yaw) * 0.95 * (cam.armK || 0), shZ = -Math.sin(cam.yaw) * 0.95 * (cam.armK || 0);
+    for (let s = 0.4; s <= want; s += 0.2) { const q = cam.target.clone().addScaledVector(dir, s); q.x += shX * Math.min(1, s / 1.5); q.z += shZ * Math.min(1, s / 1.5); if (world.colliders.solid(q.x, q.y, q.z) || world.colliders.solid(q.x + dir.z * 0.25, q.y, q.z - dir.x * 0.25) || world.colliders.solid(q.x - dir.z * 0.25, q.y, q.z + dir.x * 0.25)) { free = Math.max(0.6, s - 0.4); break; } }
     cam.cur += (free - cam.cur) * (free < cam.cur ? 1 - Math.exp(-dt * 25) : 1 - Math.exp(-dt * 3));
     camera.position.copy(cam.target).addScaledVector(dir, cam.cur);
     if (cam.armK > 0.01) { const sh = (combat?.aiming ? 0.95 : 0.75) * cam.armK; camera.position.x += Math.cos(cam.yaw) * sh; camera.position.z -= Math.sin(cam.yaw) * sh; camera.lookAt(cam.target.x + Math.cos(cam.yaw) * sh, cam.target.y, cam.target.z - Math.sin(cam.yaw) * sh); } else camera.lookAt(cam.target);
@@ -478,8 +485,8 @@ async function boot() {
     const ws = weather.state, dim = ws === 'clear' ? 1 : ws === 'cloudy' ? 0.62 : 0.4;
     const grey = new THREE.Color(0x9aa6b8).multiplyScalar(0.35 + 0.65 * (1 - look.night));
     const mixG = (c, k) => c.clone().lerp(grey, k * (1 - dim));
-    sun.color.copy(look.sunC); sun.intensity = look.sunI * dim;
-    hemi.color.copy(mixG(look.sky, 0.6)); hemi.groundColor.copy(look.gnd); hemi.intensity = look.hemiI * (1 + (1 - dim) * 0.35);
+    sun.color.copy(look.sunC); sun.intensity = look.sunI * dim * (REAL ? 1.35 : 1);
+    hemi.color.copy(mixG(look.sky, 0.6)); hemi.groundColor.copy(look.gnd); hemi.intensity = look.hemiI * (1 + (1 - dim) * 0.35) * (REAL ? 0.32 : 1);
     const su = sky.material.uniforms;
     su.uZen.value.copy(mixG(look.zen, 0.8)); su.uHor.value.copy(mixG(look.hor, 0.7)); su.uSunCol.value.copy(look.sunC).multiplyScalar(dim); su.uSun.value.copy(look.sunDir);
     su.uCloudCol.value.copy(mixG(look.cloud, 0.6)); su.uCloudShade.value.copy(mixG(look.shade, 0.8)); su.uCloud.value = weather.cover;
@@ -970,6 +977,12 @@ async function boot() {
     if (started && season === 'winter' && player.speed > 1) ach.unlock('snow');
     updateLook(dt);
     combat.updateAim(dt); updateCamera(dt, t);
+    sky.position.copy(camera.position);   // the sky dome follows you (it's only 1.5 km across and the cities are far apart)
+    if (REAL) {
+      // PBR: convert any new toon materials, and re-light reflections from the current sky every few seconds
+      if ((++realFr) % 30 === 1) realifyScene(scene);
+      envT -= dt; if (envT <= 0) { envT = touch ? 12 : 5; envSky.material = sky.material; const rt = pmrem.fromScene(envScene, 0, 0.1, 200); if (envRT) envRT.dispose(); envRT = rt; scene.environment = rt.texture; }
+    }
     // speed lines + flash
     const sp = car ? Math.min(1, Math.max(0, (car.speed - 16) / 14)) : Math.max(player.dashT > 0 ? 1 : 0, Math.min(1, Math.max(0, (player.speed - 6.5) / 4)));
     pipe.U.uSpeed.value += (sp - pipe.U.uSpeed.value) * (1 - Math.exp(-dt * 8));

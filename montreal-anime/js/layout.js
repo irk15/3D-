@@ -15,7 +15,7 @@ export const nsHW = (k) => (k === 0 ? 7.5 : k === -1 ? 4.2 : k === -2 ? 8 : 5);
 export const nsSW = (k) => (k === 0 ? 4 : 3);
 export const ewHW = (m) => (m === -1 ? 7 : m === 1 ? 6 : m === 3 ? 8 : 5);
 export const ewSW = (m) => (m === -1 ? 4.5 : 3);
-export const NAMES = { ns: {}, ew: {} };   // other cities add their street names here (cities.js)
+export const NAMES = { ns: {}, ew: {}, spots: [] };   // other cities add their street names here (cities.js)
 export const nsName = (k) => NAMES.ns[k] || NS_NAMES[k] || (Math.abs(k) > 20 ? 'Street' : 'Plateau Street');
 export const ewName = (m, x = 0) => (Math.abs(x) > 2500 ? NAMES.ew[(x > 0 ? 'toronto:' : 'ottawa:') + m] || 'Street' : EW_NAMES[m] || 'Plateau Street');
 export const nsIdx = (x) => Math.round(x / 90);
@@ -50,10 +50,12 @@ export function inRect(r, x, z, pad = 0) { return x > r.x0 - pad && x < r.x1 + p
 export function whereIs(x, z) {
   const k = nsIdx(x), m = ewIdx(z);
   const dx = Math.abs(x - nsX(k)), dz = Math.abs(z - ewZ(m));
+  for (const r of NAMES.spots) if (inRect(r, x, z)) return { kind: 'spot', name: r.name };
   if (inRect(PARK, x, z)) return { kind: 'park', name: PARK.name };
   if (inRect(PLAZA, x, z)) return { kind: 'plaza', name: PLAZA.name };
   if (dx < nsHW(k) + nsSW(k) + 1) return { kind: 'ns', name: nsName(k), k };
   if (dz < ewHW(m) + ewSW(m) + 1) return { kind: 'ew', name: ewName(m, x), m };
+  if (Math.abs(x) > 2500) return { kind: 'block', name: null };
   const ka = Math.round((x - 45) / 90);
   if (Math.abs(x - alleyX(ka)) < ALLEY_HW + 0.5) {
     const green = Math.abs(x - GREEN_ALLEY.x) < 4 && z > GREEN_ALLEY.z0 && z < GREEN_ALLEY.z1;

@@ -16,7 +16,7 @@ export class Walkers {
   constructor(scene, world, n) {
     this.w = world; this.list = []; this.fr = 0; this.scene = scene;
     for (let i = 0; i < n; i++) {
-      const ch = makeCharacter({ model: i % 2 ? 'bot_lo' : 'michelle_lo', top: pick(TOPS), pants: pick(PANTS), tint: pick(TINTS), scale: 0.9 + Math.random() * 0.18 });
+      const ch = makeCharacter({ model: i % 3 === 0 ? 'bot_lo' : 'michelle_lo', top: pick(TOPS), pants: pick(PANTS), tint: pick(TINTS), scale: 0.9 + Math.random() * 0.18 });
       ch.root.visible = false; scene.add(ch.root);
       const p = { ch, pos: new THREE.Vector3(0, -999, 0), id: i, live: false, axis: 'z', dir: 1, c: 0, speed: 1.2, yaw: 0, adt: 0, vs: 0, hp: 60, phone: Math.random() < 0.2 };
       p.scare = (x, z) => { if (p.rag) return; p.flee = 5 + Math.random() * 3; p.fleeFrom = { x, z }; };
@@ -64,19 +64,32 @@ export class Walkers {
         if (!C.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5) && inWalk(nx, nz)) { p.pos.x = nx; p.pos.z = nz; } else p.fleeFrom = { x: p.pos.x - fz * 3, z: p.pos.z + fx * 3 };
         if (p.flee <= 0) { if (Math.abs(fx) > Math.abs(fz)) { p.axis = 'x'; p.dir = Math.sign(fx); p.c = p.pos.z; } else { p.axis = 'z'; p.dir = Math.sign(fz); p.c = p.pos.x; } }
       } else {
-        // walk the sidewalk line; drift back onto it; turn at corners now and then
-        const sx = p.axis === 'x' ? p.dir : 0, sz = p.axis === 'z' ? p.dir : 0;
+        // walk the sidewalk line; step around obstacles; cross at corners like real people
+        const sx = p.axis === 'x' ? p.dir : 0, sz = p.axis === 'z' ? p.dir : 0, lx = -sz, lz = sx;   // forward and left
+        p.side = (p.side || 0) * (p.sideT > 0 ? 1 : Math.exp(-dt * 0.8)); p.sideT = (p.sideT || 0) - dt;
+        const cx2 = p.axis === 'z' ? p.c + lx * p.side : null, cz2 = p.axis === 'x' ? p.c + lz * p.side : null;
         let nx = p.pos.x + sx * p.speed * dt, nz = p.pos.z + sz * p.speed * dt;
-        if (p.axis === 'z') nx += (p.c - p.pos.x) * Math.min(1, dt * 1.5); else nz += (p.c - p.pos.z) * Math.min(1, dt * 1.5);
-        // keep a little space from other walkers ahead
-        let blockedByPed = false;
-        for (const o of this.list) { if (o === p || !o.live) continue; const ox = o.pos.x - nx, oz = o.pos.z - nz; if (ox * ox + oz * oz < 0.5) { const ahead = ox * sx + oz * sz; if (ahead > 0) blockedByPed = true; else continue; nx += (sx ? 0 : 1) * (p.id % 2 ? 0.4 : -0.4) * dt; nz += (sz ? 0 : 1) * (p.id % 2 ? 0.4 : -0.4) * dt; } }
+        if (p.axis === 'z') nx += (cx2 - p.pos.x) * Math.min(1, dt * 2); else nz += (cz2 - p.pos.z) * Math.min(1, dt * 2);
+        // personal space: other walkers and you
+        let wait = false;
+        const avoid = (ox, oz, r) => { const dx = ox - nx, dz = oz - nz, ahead = dx * sx + dz * sz, lat = dx * lx + dz * lz; if (ahead > -0.2 && ahead < r + 0.8 && Math.abs(lat) < 0.7) { if (p.sideT <= 0) { p.side += lat > 0 ? -0.9 : 0.9; p.side = Math.max(-1.3, Math.min(1.3, p.side)); p.sideT = 1.2; } if (ahead < r) wait = true; } };
+        for (const o of this.list) if (o !== p && o.live) avoid(o.pos.x, o.pos.z, 0.6);
+        avoid(px, pz, 0.8);
+        const C2 = (x, z) => C.blocked(x, z, 0.3, p.pos.y, 0.45, p.pos.y + 1.5);
         const lift = C.ground(nx, nz, p.pos.y + 0.5, 0.1) - h(nz);
-        if (C.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5) || lift < 0.05 || !inWalk(nx, nz)) {
-          // end of the sidewalk (a corner): turn onto the cross street's sidewalk, or turn back
-          if (p.turnCD <= 0 && Math.random() < 0.6) { p.turnCD = 3; if (p.axis === 'z') { p.axis = 'x'; p.c = p.pos.z; p.dir = Math.random() < 0.5 ? 1 : -1; } else { p.axis = 'z'; p.c = p.pos.x; p.dir = Math.random() < 0.5 ? 1 : -1; } }
+        if (p.crossing) { p.crossT -= dt; if (lift > 0.05 || p.crossT < 0) p.crossing = false; }
+        if (!p.crossing && (C2(nx, nz) || !inWalk(nx, nz))) {
+          // something in the way (a pole, a tree, a bin): step around it, else turn back
+          const free = [0.9, -0.9].find((o) => !C2(nx + lx * o, nz + lz * o));
+          if (free !== undefined && p.sideT <= 0) { p.side += free; p.side = Math.max(-1.4, Math.min(1.4, p.side)); p.sideT = 1.5; }
+          else if (free === undefined) { p.dir *= -1; p.turnCD = 1.5; }
+        } else if (!p.crossing && lift < 0.05) {
+          // the kerb at a corner: cross the street if no car is coming, turn the corner, or head back
+          const r2 = Math.random();
+          if (r2 < 0.45 && !this.carNear?.(nx, nz, 14)) { p.crossing = true; p.crossT = 10; p.pos.x = nx; p.pos.z = nz; }
+          else if (r2 < 0.8 && p.turnCD <= 0) { p.turnCD = 3; if (p.axis === 'z') { p.axis = 'x'; p.c = p.pos.z; p.dir = Math.random() < 0.5 ? 1 : -1; } else { p.axis = 'z'; p.c = p.pos.x; p.dir = Math.random() < 0.5 ? 1 : -1; } p.side = 0; }
           else { p.dir *= -1; p.turnCD = 1.5; }
-        } else if (!blockedByPed) { p.pos.x = nx; p.pos.z = nz; }
+        } else if (!wait) { p.pos.x = nx; p.pos.z = nz; }
       }
       p.pos.y += (C.ground(p.pos.x, p.pos.z, p.pos.y + 0.5, 0.1) - p.pos.y) * Math.min(1, dt * 12);
       // legs and facing come from what they actually did

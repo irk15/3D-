@@ -20,6 +20,17 @@ float band(float x, float a, float b){ float w = fwidth(x) * 0.75 + 1e-5; return
 float vis(float s, float fw){ return 1.0 - smoothstep(0.3, 0.9, fw / s); }   // 1 if a feature of size s is resolvable
 `;
 
+// realistic mode (default): every toon material is turned into a PBR (MeshStandard) one in place, so all
+// the code that tweaks colours and glows keeps working; ?anime brings back the cel-shaded look
+export const REAL = typeof location === 'undefined' || !new URLSearchParams(location.search).has('anime');
+export function realify(m) {
+  if (!REAL || !m || !m.isMeshToonMaterial || m.__real) return;
+  m.__real = true; m.isMeshToonMaterial = false; m.isMeshStandardMaterial = true; m.type = 'MeshStandardMaterial';
+  m.roughness = m.userData.rough ?? (m.transparent ? 0.15 : 0.82); m.metalness = m.userData.metal ?? 0; m.roughnessMap = null; m.metalnessMap = null;
+  m.envMap = null; m.envMapIntensity = m.userData.env ?? 1; m.gradientMap = null; m.flatShading = m.flatShading || false;
+  m.defines = Object.assign({}, m.defines, { STANDARD: '' }); m.needsUpdate = true;
+}
+export function realifyScene(root) { if (!REAL) return; root.traverse((o) => { const mm = o.material; if (!mm) return; if (Array.isArray(mm)) mm.forEach(realify); else realify(mm); }); }
 const cache = new Map();
 export function toon(hex, opts = {}) {
   const key = hex + JSON.stringify(opts);
@@ -42,8 +53,10 @@ vKind = aKind; vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 uniform float uNight, uSnow, uTime, uWet; flat varying float vKind; varying vec3 vWP; varying vec3 vWN;
 ${GLSL_NOISE}
-vec3 gEmit;`).replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
-gEmit = vec3(0.0);
+vec3 gEmit; float gRough, gMetal; vec3 gBumpW;
+// window relief: the frame's inner faces catch the light like a real inset window
+vec3 inset(float fx, float fy, float x0, float x1, float y0, float y1, vec3 T){ float e = 0.06; return T * (step(x0, fx) * step(fx, x0 + e) - step(x1 - e, fx) * step(fx, x1)) * step(y0, fy) * step(fy, y1) * 0.9 + vec3(0.0, 1.0, 0.0) * (step(y0, fy) * step(fy, y0 + e) - step(y1 - e, fy) * step(fy, y1)) * step(x0, fx) * step(fx, x1) * 0.9; }`).replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
+gEmit = vec3(0.0); gRough = 0.88; gMetal = 0.0; gBumpW = vec3(0.0);
 {
   float k = vKind;
   vec3 c = diffuseColor.rgb;
@@ -51,6 +64,7 @@ gEmit = vec3(0.0);
   float u = abs(vWN.x) > 0.5 ? vWP.z : vWP.x;
   float fw = max(fwidth(u), fwidth(vWP.y));
   float gy = vWP.y + ${(0.055).toFixed(3)} * vWP.z;      // height above the street at this point
+  vec3 T = abs(vWN.x) > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
   if (k > 0.5 && k < 1.5 && side) {          // brick
     float row = floor(vWP.y / 0.28); float uu = u / 0.62 + 0.5 * mod(row, 2.0);
     float mortar = max(band(fract(vWP.y / 0.28), 0.0, 0.1), band(fract(uu), 0.0, 0.05)) * vis(0.05, fw);
@@ -74,18 +88,30 @@ gEmit = vec3(0.0);
     float lit = step(h21(vec2(col, fl) + floor(vWP.x * 0.03) * 7.1 + floor(vWP.z * 0.03) * 3.3), 0.42);
     c = mix(c, vec3(0.16, 0.25, 0.42), w * 0.85);
     gEmit += vec3(1.0, 0.72, 0.38) * mix(0.42 * 0.25, lit * win, vv) * uNight * 1.6;
+    #ifdef STANDARD
+    c = mix(c, vec3(0.05, 0.07, 0.10), w * 0.85); gRough = mix(0.86, 0.08, w); gBumpW = inset(fract(u / 2.4), fract(gy / 3.1), 0.25, 0.75, 0.32, 0.8, T) * vv;
+    float sill = band(fract(gy / 3.1), 0.27, 0.32) * band(fract(u / 2.4), 0.22, 0.78) * vv; c = mix(c, c * 1.35 + 0.05, sill); gBumpW.y += sill * 0.7;
+    #endif
   } else if (k > 4.5 && k < 6.5) {           // glass: sky reflection by day, warm windows at night
     float sky = 0.5 + 0.5 * vWN.y;
     vec3 day = mix(vec3(0.20, 0.36, 0.55), vec3(0.62, 0.82, 0.95), smoothstep(0.2, 0.9, fract(vWP.y * 0.37 + u * 0.21)) * 0.6);
     c = mix(day, vec3(0.05, 0.07, 0.14), uNight);
     float lit = k > 5.5 ? 1.0 : 0.0;
     gEmit += vec3(1.0, 0.74, 0.40) * lit * uNight * 1.25;
+    gRough = 0.05;
+    #ifdef STANDARD
+    c = mix(vec3(0.05, 0.08, 0.11), vec3(0.05, 0.07, 0.14), uNight);
+    #endif
     c = mix(c, vec3(0.9, 0.7, 0.4) * 0.3, lit * uNight);
   } else if (k > 6.5 && k < 7.5) {           // lamp heads
     gEmit += vec3(1.0, 0.86, 0.6) * uNight * 2.4;
   } else if (k > 7.5 && k < 8.5) {           // shop windows
     c = mix(vec3(0.42, 0.62, 0.72), vec3(0.95, 0.80, 0.55), uNight);
     gEmit += vec3(1.0, 0.82, 0.55) * uNight * 1.1;
+    gRough = 0.08;
+    #ifdef STANDARD
+    c = mix(vec3(0.12, 0.16, 0.18), vec3(0.95, 0.80, 0.55), uNight); gEmit += vec3(0.9, 0.85, 0.75) * 0.08 * (1.0 - uNight);
+    #endif
   } else if (k > 10.5 && k < 11.5 && side) { // downtown curtain wall: mullion grid, sky reflections, offices lit at night
     float cw = 1.6, fh = 3.9;
     float col = floor(u / cw), fl = floor(vWP.y / fh);
@@ -101,8 +127,12 @@ gEmit = vec3(0.0);
     float lit = step(h21(vec2(col, fl) + floor(vWP.x * 0.02) * 5.7 + floor(vWP.z * 0.02) * 2.3), 0.36);
     vec3 nightC = mix(vec3(0.04, 0.06, 0.12), vec3(1.0, 0.84, 0.58) * 0.32, lit);
     float nf = smoothstep(0.3, 0.85, uNight);   // offices only show once it's properly dark
+    #ifdef STANDARD
+    glassC = mix(c * 0.35, vec3(0.04, 0.06, 0.08), 0.35);   // the environment map does the reflecting
+    #endif
     c = mix(glassC, nightC, nf);
     c = mix(c, c * 0.45 + 0.07, mull);
+    gRough = mix(0.04, 0.45, mull); gMetal = mull * 0.7; gBumpW = T * (band(fract(u / cw), 0.0, 0.035) - band(fract(u / cw), 0.035, 0.07)) * 0.8 * vis(0.08, fw);
     gEmit += vec3(1.0, 0.82, 0.52) * lit * (1.0 - mull) * nf * 1.25;
   } else if (k > 11.5 && k < 12.5 && side) { // stone tower: punched windows
     float col = floor(u / 2.1), fl = floor(vWP.y / 3.7);
@@ -110,8 +140,14 @@ gEmit = vec3(0.0);
     float lit = step(h21(vec2(col, fl) + 3.1 + floor(vWP.x * 0.02)), 0.4);
     c = mix(c, mix(vec3(0.22, 0.32, 0.46), vec3(0.06, 0.08, 0.14), uNight), win * 0.9);
     gEmit += vec3(1.0, 0.78, 0.45) * lit * win * uNight * 1.4;
+    gRough = mix(0.86, 0.06, win);
+    #ifdef STANDARD
+    c = mix(c, vec3(0.04, 0.06, 0.09), win * 0.6 * (1.0 - uNight)); gBumpW = inset(fract(u / 2.1), fract(vWP.y / 3.7), 0.2, 0.8, 0.28, 0.86, T) * vis(0.5, fw);
+    #endif
   } else if (k > 8.5 && k < 9.5) {           // roofs
-    c *= 0.9 + 0.12 * vn(vWP.xz * 1.7);
+    c *= 0.9 + 0.12 * vn(vWP.xz * 1.7); gRough = 0.95;
+  } else if (k > 9.5 && k < 10.5) {          // metal
+    gRough = 0.38; gMetal = 0.75;
   }
   // contact shading at the foot of walls
   if (side && k < 4.5) c *= 0.8 + 0.2 * smoothstep(0.0, 1.1, gy);
@@ -119,8 +155,12 @@ gEmit = vec3(0.0);
   // snow on anything facing up (not glass or lamps)
   float up = smoothstep(0.55, 0.85, vWN.y);
   if (k < 4.5 || k > 8.5) c = mix(c, vec3(0.93, 0.95, 1.0), uSnow * up);
+  gRough = mix(gRough, gRough * 0.35, uWet * up * (1.0 - uSnow));
   diffuseColor.rgb = c;
-}`).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += gEmit;');
+}`).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += gEmit;')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = gRough;')
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = gMetal;')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n#ifdef STANDARD\nnormal = normalize(normal + (viewMatrix * vec4(gBumpW, 0.0)).xyz);\n#endif');
   };
   m.customProgramCacheKey = () => 'batch';
   return m;
@@ -137,7 +177,7 @@ export function groundMaterial() {
 uniform float uNight, uSnow, uAutumn, uWet, uTime; varying vec3 vWP;
 ${GLSL_NOISE}
 ${GLSL_STREETS}
-vec3 gE;`).replace('#include <color_fragment>', GROUND_GLSL)
+vec3 gE; float gRough;`).replace('#include <color_fragment>', GROUND_GLSL).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = gRough;')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += gE;');
   };
   m.customProgramCacheKey = () => 'ground';
@@ -155,7 +195,7 @@ float ka = floor((p.x - 45.0) / 90.0 + 0.5); float ax = p.x - (45.0 + 90.0 * ka)
 bool onAlley = abs(ax) < ALLEYHW && abs(dz) > hwz + ewSW(mm);
 float n1 = fbm(p * 0.08), n2 = vn(p * 0.9);
 vec3 col;
-gE = vec3(0.0);
+gE = vec3(0.0); gRough = 0.92;
 if (onNS || onEW) {
   col = mix(vec3(0.33, 0.35, 0.40), vec3(0.38, 0.40, 0.45), step(0.55, n1));        // two-tone asphalt
   col *= 0.96 + 0.06 * step(0.7, vn(p * 0.35));
@@ -222,7 +262,7 @@ col = mix(col, vec3(0.92, 0.94, 0.99) * (0.96 + 0.04 * n2), snowAmt * 0.95);
 // rain: darker ground, puddles that mirror the sky, rings where drops land
 float pud = 0.0;
 if (uWet > 0.01) {
-  col *= 1.0 - 0.28 * uWet * (1.0 - snowAmt);
+  col *= 1.0 - 0.28 * uWet * (1.0 - snowAmt); gRough = mix(gRough, 0.35, uWet * (1.0 - snowAmt));
   pud = smoothstep(0.56, 0.62, fbm(p * 0.13 + 7.0)) * uWet * (1.0 - snowAmt);
   #ifdef USE_FOG
   col = mix(col, fogColor * 0.85 + vec3(0.03), pud * 0.75);
@@ -231,6 +271,7 @@ if (uWet > 0.01) {
   float ph = fract(uTime * 0.9 + h21(cell + 7.7)), rr = length(p - ctr);
   float ring = band(rr, ph * 0.55, ph * 0.55 + 0.035) * (1.0 - ph) * vis(0.04, fw);
   col += vec3(0.5) * ring * pud;
+  gRough = mix(gRough, 0.04, pud);
 }
 // warm lamp pools at night (lamps every 30 m on both sidewalks, mirrored in world.js)
 if (uNight > 0.01) {
@@ -348,10 +389,11 @@ void main(){
       tC: { value: this.color.texture }, tN: { value: this.normal.texture }, tB: { value: this.b1.texture },
       uPx: { value: new THREE.Vector2() }, uLW: { value: 1 }, uInk: { value: new THREE.Color(0.10, 0.08, 0.20) }, uNight: U.uNight, uTime: U.uTime,
       uGrade: { value: new THREE.Vector3(1.08, 1, 0) }, uTan: { value: new THREE.Vector2(1, 1) }, uCamM: { value: new THREE.Matrix4() },
-      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 },
+      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 }, uReal: { value: REAL ? 1 : 0 }, uExpo: { value: 1 },
     };
     this.quad = pass(/* glsl */`
-uniform sampler2D tC, tN, tB; uniform vec2 uPx, uTan; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash, uDesat, uHurt; uniform vec3 uInk, uGrade, uSun; uniform mat4 uCamM; varying vec2 vUv;
+uniform sampler2D tC, tN, tB; uniform vec2 uPx, uTan; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash, uDesat, uHurt, uReal, uExpo;
+vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); } uniform vec3 uInk, uGrade, uSun; uniform mat4 uCamM; varying vec2 vUv;
 ${GLSL_NOISE}
 float D(vec2 uv){ float a = texture2D(tN, uv).a; return a < 0.001 ? 1e4 : a; }
 void main(){
@@ -370,7 +412,7 @@ void main(){
     ne = max(max(1.0 - dot(n0.xyz, s0), 1.0 - dot(n0.xyz, s1)), max(1.0 - dot(n0.xyz, s2), 1.0 - dot(n0.xyz, s3)));
   }
   float nearF = 1.0 - smoothstep(35.0, 140.0, dmin);
-  float edge = max(de, smoothstep(0.25, 0.5, ne) * nearF) * (1.0 - smoothstep(150.0, 520.0, dmin) * 0.85);
+  float edge = max(de, smoothstep(0.25, 0.5, ne) * nearF) * (1.0 - smoothstep(150.0, 520.0, dmin) * 0.85) * (1.0 - uReal);
   if (!sky) {
     // soft ambient occlusion from the depth image (8 taps, range-checked)
     float r = clamp(28.0 / d0, 1.5, 14.0), ao = 0.0;
@@ -392,11 +434,12 @@ void main(){
   ink = mix(ink, c * 0.55 + vec3(0.02, 0.02, 0.06), uNight * 0.5);
   c = mix(c, ink, edge * 0.92);
   // glow
-  c += texture2D(tB, vUv).rgb * uBloom;
+  c += texture2D(tB, vUv).rgb * uBloom * (uReal > 0.5 ? 0.6 : 1.0);
+  if (uReal > 0.5) { c = aces(c * uExpo); c = pow(c, vec3(1.0 / 1.04)); }   // filmic tone mapping
   // rain tint
   c = mix(c, c * vec3(0.86, 0.9, 1.0), uWet * 0.35);
   // anime speed lines when sprinting / dashing / biking
-  if (uSpeed > 0.01) {
+  if (uSpeed > 0.01 && uReal < 0.5) {
     vec2 v = vUv - 0.5; v.x *= uPx.y / uPx.x;
     float ang = atan(v.y, v.x), rr = length(v);
     float id = floor(ang * 70.0);

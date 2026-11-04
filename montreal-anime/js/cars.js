@@ -140,7 +140,7 @@ function bodyGeo(kind, paint, noGlass = false, extra = []) {
   for (const [part, hex] of [['paint', kind === 'taxi' ? '#f2b43c' : paint], ['glass', noGlass ? null : '#41678f'], ['dark', '#24262c'], ['chrome', '#d9dde2'], ['light', '#fff6dc'], ['plate', '#f4f1e8'], ['trim', kind === 'taxi' ? '#2b2550' : kind === 'bus' ? '#1f5fa8' : '#e4402b']]) if (p[part] && hex) list.push(colored(p[part], hex));
   const g = mergeGeometries(list); g.computeBoundingSphere(); if (!extra.length) bodyCache.set(key, g); return g;
 }
-const bodyMat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
+const bodyMat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient }); bodyMat.userData.rough = 0.3; bodyMat.userData.metal = 0.35;   // glossy car paint in realistic mode
 const MAT = {};
 const M = (k, col, o) => (MAT[k + col] ||= new THREE.MeshToonMaterial(Object.assign({ color: col, gradientMap: gradient }, o)));
 export function carModel(col, kind = 'sedan') {

@@ -2,7 +2,7 @@
 // cars with lights and stop signs, pigeons, a cat and the golden bagels.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, WALK, FLY, inWalk, inFly, PLAZA, PARK, rng, pick, U } from './layout.js';
+import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, nsIdx, ewIdx, BOUNDS, WALK, FLY, inWalk, inFly, PLAZA, PARK, rng, pick, U } from './layout.js';
 import { toon, LAYER_FX, gradient, Glows } from './toon.js';
 import { makeRigged, rigReady } from './rig.js';
 import { stepRag } from './combat.js';
@@ -543,6 +543,24 @@ export class Traffic {
     this.mats = { ns: this.lightMats(), ew: this.lightMats() };
     for (const m of [-1, 1]) this.signal(scene, ewZ(m), m);
   }
+  cityLights(scene, list) {
+    const n = list.length * 4, poleIM = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.09, 0.11, 5.6, 6).translate(0, 2.8, 0), toon('#2f343a'), n);
+    const boxIM = new THREE.InstancedMesh(new THREE.BoxGeometry(0.36, 1.1, 0.32).translate(0, 5.0, 0), toon('#23262b'), n);
+    const lampG = new THREE.SphereGeometry(0.11, 8, 6), lamps = {};
+    for (const set of ['ns', 'ew']) lamps[set] = this.mats[set].map((mat) => new THREE.InstancedMesh(lampG, mat, n / 2));
+    const m4 = new THREE.Matrix4(), cnt = { ns: 0, ew: 0 }; let i = 0;
+    for (const { x, z, k, m } of list) {
+      const ox = nsHW(k) + 0.7, oz = ewHW(m) + 0.7, y = h(z) + CURB;
+      for (const [sx, sz, set] of [[1, 1, 'ns'], [-1, -1, 'ns'], [1, -1, 'ew'], [-1, 1, 'ew']]) {
+        const px = x + sx * ox, pz = z + sz * oz;
+        m4.makeTranslation(px, y, pz); poleIM.setMatrixAt(i, m4); boxIM.setMatrixAt(i, m4); i++;
+        const j = cnt[set]++, fx = set === 'ew' ? -sx * 0.17 : 0, fz = set === 'ns' ? -sz * 0.17 : 0;
+        lamps[set].forEach((im, li) => { m4.makeTranslation(px + fx, y + 5.36 - li * 0.36, pz + fz); im.setMatrixAt(j, m4); });
+        this.w.colliders.add({ x0: px - 0.12, x1: px + 0.12, z0: pz - 0.12, z1: pz + 0.12, y0: y, y1: y + 5.6, thin: true });
+      }
+    }
+    for (const im of [poleIM, boxIM, ...lamps.ns, ...lamps.ew]) { im.computeBoundingSphere(); im.castShadow = im === poleIM || im === boxIM; scene.add(im); }
+  }
   lightMats() { return ['#ff3b30', '#ffcc00', '#34d058'].map((c) => new THREE.MeshToonMaterial({ color: c, emissive: c, emissiveIntensity: 0, gradientMap: gradient })); }
   signal(scene, z, m) {
     const pole = toon('#3d4650'), boxM = toon('#2a2e33');
@@ -602,6 +620,16 @@ export class Traffic {
         if (d > 2 && d < 22 && ph.ew !== 2) vT = Math.min(vT, (d - 0.5) * 0.9);
       }
       }
+      // other cities: every intersection has lights (one green wave for all), and nobody enters a busy crossing
+      if (!far && L.span) {
+        for (let o = -1; o <= 1; o++) {
+          const ns = L.axis === 'z', i = (ns ? ewIdx(car.s) : nsIdx(car.s)) + o, ic = ns ? ewZ(i) : nsX(i), hw = ns ? ewHW(i) + ewSW(i) : nsHW(i) + nsSW(i);
+          const d = ((ic - L.dir * (hw + 1.2)) - car.s) * L.dir; if (d < -1 || d > 26) continue;
+          if ((ns ? ph.ns : ph.ew) !== 2 && d > 1.5) vT = Math.min(vT, (d - 0.5) * 0.9);
+          const ix = ns ? L.c : ic, iz = ns ? ic : L.c, bx = ns ? nsHW(nsIdx(L.c)) + 1.5 : hw + 1.5, bz = ns ? hw + 1.5 : ewHW(ewIdx(L.c)) + 1.5;
+          if (d > 0.5) for (const oc of this.cars) if (oc !== car && !oc.taken && oc.L.axis !== L.axis && oc.x !== undefined && Math.abs(oc.x - ix) < (ns ? 12 : bx) && Math.abs(oc.z - iz) < (ns ? bz : 12)) { vT = Math.min(vT, (d - 0.5) * 0.9); break; }
+        }
+      }
       vT = Math.max(0, vT);
       const acc = vT > car.v ? 3 : 9;
       const prev = car.v;
@@ -610,6 +638,7 @@ export class Traffic {
       if (car.s > car.span[1]) { car.s = car.span[0]; car.lastStop = null; } if (car.s < car.span[0]) { car.s = car.span[1]; car.lastStop = null; }
       const x = L.axis === 'z' ? L.c : car.s, z = L.axis === 'z' ? car.s : L.c;
       const g = car.m.g;
+      if (L.span) g.visible = car.s - car.span[0] > 14 && car.span[1] - car.s > 14;
       g.position.set(x, h(z), z);
       g.rotation.set(0, L.axis === 'z' ? (L.dir > 0 ? 0 : Math.PI) : (L.dir > 0 ? Math.PI / 2 : -Math.PI / 2), 0, 'YXZ');
       if (L.axis === 'z') g.rotation.x = L.dir > 0 ? Math.atan(0.055) : -Math.atan(0.055);

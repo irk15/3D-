@@ -4,21 +4,21 @@
 // calls), with walkable roofs and solid walls, a sidewalk-and-plaza pad on every block, street trees and
 // lamps, landmarks, water you can splash into, traffic lanes, street names and a radar map.
 import * as THREE from 'three';
-import { h, rng, pick, lin, nsX, ewZ, nsHW, ewHW, nsSW, ewSW, CURB, REGIONS, WATERS, NAMES } from './layout.js';
+import { h, rng, pick, lin, nsX, ewZ, nsHW, ewHW, nsSW, ewSW, nsIdx, ewIdx, CURB, REGIONS, WATERS, NAMES } from './layout.js';
 import { batchMaterial, groundMaterial, gradient } from './toon.js';
-import { Batch } from './world.js';
+import { Batch, carStatic } from './world.js';
 import { waterMaterial } from './downtown.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const CITIES = {
   montreal: { key: 'montreal', name: 'Montréal', tag: 'Plateau-Mont-Royal', spawn: [9, 112], yaw: 0, x0: -950, x1: 1150, station: [30, -175] },
   toronto: {
-    key: 'toronto', name: 'Toronto', tag: 'Downtown Toronto', k0: 34, k1: 46, m0: -4, m1: 4, waterZ: 472, spawn: [3555, 38], yaw: Math.PI, station: [3645, 300],
+    key: 'toronto', name: 'Toronto', tag: 'Downtown Toronto', k0: 34, k1: 46, m0: -4, m1: 4, waterZ: 472, spawn: [3555, 47], yaw: Math.PI, station: [3645, 300],
     ns: ['Bathurst Street', 'Portland Street', 'Spadina Avenue', 'Peter Street', 'John Street', 'University Avenue', 'Bay Street', 'Yonge Street', 'Church Street', 'Jarvis Street', 'Sherbourne Street', 'Parliament Street', 'Cherry Street'],
     ew: ['Bloor Street', 'Wellesley Street', 'College Street', 'Gerrard Street', 'Dundas Street', 'Queen Street', 'King Street', 'Front Street', 'Lake Shore Blvd'],
   },
   ottawa: {
-    key: 'ottawa', name: 'Ottawa', tag: 'Centretown, Ottawa', k0: -46, k1: -34, m0: -4, m1: 3, waterZ: 398, spawn: [-3600, 300], yaw: Math.PI, station: [-3395, 255],
+    key: 'ottawa', name: 'Ottawa', tag: 'Centretown, Ottawa', k0: -46, k1: -34, m0: -4, m1: 3, waterZ: 398, spawn: [-3600, 262], yaw: 0, station: [-3395, 255],
     ns: ['Bronson Avenue', 'Bay Street', 'Lyon Street', 'Kent Street', 'Bank Street', "O'Connor Street", 'Metcalfe Street', 'Elgin Street', 'Waller Street', 'Cumberland Street', 'King Edward Avenue', 'Dalhousie Street', 'Nelson Street'],
     ew: ['Gladstone Avenue', 'Somerset Street', 'Nepean Street', 'Laurier Avenue', 'Slater Street', 'Queen Street', 'Sparks Street', 'Wellington Street'],
   },
@@ -82,6 +82,7 @@ function buildCity(scene, world, def) {
   // the band between the last street and the water: a paved waterfront promenade
   { const m = def.m1, z0 = ewZ(m) + ewHW(m), z1 = def.waterZ - 2; blocks.push({ k: 999, m, x0: r.x0 + 20, x1: r.x1 - 20, z0, z1, ix0: r.x0 + 20, ix1: r.x1 - 20, iz0: z0 + 3, iz1: z1, cx: (r.x0 + r.x1) / 2, cz: (z0 + z1) / 2, front: true }); }
   const at = (k, m) => blocks.find((b) => b.k === k && b.m === m);
+  const spot = (b, name) => { if (b) NAMES.spots.push({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, name }); };
   const special = new Map();   // "k,m" -> 'park' | 'landmark'
   const pad = (b, col = '#cfcac0') => {
     const off = CURB, P = (x, z) => [x, h(z) + off, z], { x0, x1, z0, z1 } = b;
@@ -92,9 +93,9 @@ function buildCity(scene, world, def) {
   };
   const trees = [], lamps = [];
   const parkInside = (b, col = '#6fa25a') => {   // grass with paths, raised a touch above the paving
-    const P = (x, z) => [x, h(z) + CURB + 0.03, z];
+    const P = (x, z) => [x, h(z) + CURB + 0.07, z];
     B.quad(P(b.ix0, b.iz0), P(b.ix1, b.iz0), P(b.ix1, b.iz1), P(b.ix0, b.iz1), [0, 1, 0], L(col), 0);
-    const Q = (x, z) => [x, h(z) + CURB + 0.05, z], cx = b.cx, cz = b.cz;
+    const Q = (x, z) => [x, h(z) + CURB + 0.12, z], cx = b.cx, cz = b.cz;
     B.quad(Q(cx - 1.6, b.iz0), Q(cx + 1.6, b.iz0), Q(cx + 1.6, b.iz1), Q(cx - 1.6, b.iz1), [0, 1, 0], L('#d8ccb2'), 0);
     B.quad(Q(b.ix0, cz - 1.6), Q(b.ix1, cz - 1.6), Q(b.ix1, cz + 1.6), Q(b.ix0, cz + 1.6), [0, 1, 0], L('#d8ccb2'), 0);
     for (let i = 0; i < 16; i++) { const x = b.ix0 + 4 + R() * (b.ix1 - b.ix0 - 8), z = b.iz0 + 4 + R() * (b.iz1 - b.iz0 - 8); if (Math.abs(x - cx) > 3 && Math.abs(z - cz) > 3) trees.push([x, z, 1 + R() * 0.5]); }
@@ -138,18 +139,39 @@ function buildCity(scene, world, def) {
       let a = a0;
       while (a < a1 - 4) {
         const len = Math.min(a1 - a, 12 + R() * 18), hh = hMin + R() * (hMax - hMin), col = pick(palette, R), kind = R() < 0.75 ? 4 : 12;
-        if (along === 'x') { const z0 = out < 0 ? fixed : fixed - depth, z1 = out < 0 ? fixed + depth : fixed, g0 = Math.min(h(z0), h(z1)) - 0.8; box(a, a + len, g0, h((z0 + z1) / 2) + CURB + hh, z0, z1, col, kind); B.box(a + 0.6, a + len - 0.6, h(fixed) + CURB, h(fixed) + CURB + 3.6, fixed + out * 0.08, fixed, L(R() < 0.5 ? '#7aa0b4' : '#c9a774'), 8); }
-        else { const x0 = out < 0 ? fixed : fixed - depth, x1 = out < 0 ? fixed + depth : fixed, g0 = Math.min(h(a), h(a + len)) - 0.8; box(x0, x1, g0, h(a + len / 2) + CURB + hh, a, a + len, col, kind); }
+        const trim = R() < 0.5 ? '#e6e1d6' : '#5b5550', pr = 0.45;
+        if (along === 'x') {
+          const z0 = out < 0 ? fixed : fixed - depth, z1 = out < 0 ? fixed + depth : fixed, g0 = Math.min(h(z0), h(z1)) - 0.8, top = h((z0 + z1) / 2) + CURB + hh;
+          box(a, a + len, g0, top, z0, z1, col, kind); B.box(a + 0.6, a + len - 0.6, h(fixed) + CURB, h(fixed) + CURB + 3.6, fixed + out * 0.08, fixed, L(R() < 0.5 ? '#7aa0b4' : '#c9a774'), 8);
+          B.box(a, a + len, top - 0.7, top + 0.15, fixed + out * pr, fixed - out * 0.2, L(trim), 0);                              // cornice
+          B.box(a + 0.3, a + len - 0.3, h(fixed) + CURB + 3.6, h(fixed) + CURB + 4.3, fixed + out * 0.32, fixed - out * 0.2, L('#3d3a40'), 0);   // sign band
+          if (hh > 9) B.box(a, a + len, h(fixed) + CURB + 4.3 + (hh - 4.3) * 0.5, h(fixed) + CURB + 4.6 + (hh - 4.3) * 0.5, fixed + out * 0.18, fixed - out * 0.2, L(trim), 0);  // string course
+          roofStuff(a, a + len, z0, z1, top);
+        } else {
+          const x0 = out < 0 ? fixed : fixed - depth, x1 = out < 0 ? fixed + depth : fixed, g0 = Math.min(h(a), h(a + len)) - 0.8, top = h(a + len / 2) + CURB + hh;
+          box(x0, x1, g0, top, a, a + len, col, kind);
+          B.box(fixed + out * pr, fixed - out * 0.2, top - 0.7, top + 0.15, a, a + len, L(trim), 0);
+          roofStuff(x0, x1, a, a + len, top);
+        }
         a += len;
       }
     };
     edge('x', b.ix0, b.ix1, b.iz0, -1); edge('x', b.ix0, b.ix1, b.iz1, 1);
     edge('z', b.iz0 + depth, b.iz1 - depth, b.ix0, -1); edge('z', b.iz0 + depth, b.iz1 - depth, b.ix1, 1);
   }
+  // rooftop clutter: AC units, stair bulkheads and the odd wooden water tank
+  function roofStuff(x0, x1, z0, z1, top) {
+    const r2 = R();
+    if (r2 < 0.35) { const x = x0 + 2 + R() * Math.max(0.5, x1 - x0 - 5), z = z0 + 2 + R() * Math.max(0.5, z1 - z0 - 5); box(x, x + 2.2, top, top + 1.4, z, z + 1.6, '#a7abb0', 10, true); }
+    else if (r2 < 0.5) { const x = (x0 + x1) / 2, z = (z0 + z1) / 2; box(x - 1.5, x + 1.5, top, top + 2.6, z - 1.5, z + 1.5, '#8f8a84', 12, true); }
+    else if (r2 < 0.58 && isTO) { const x = (x0 + x1) / 2, z = (z0 + z1) / 2; for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(x + lx * 1.3 - 0.08, x + lx * 1.3 + 0.08, top, top + 3, z + lz * 1.3 - 0.08, z + lz * 1.3 + 0.08, '#4a3f36', 10, false); geo(new THREE.CylinderGeometry(1.8, 1.8, 3.2, 12), M(x, top + 4.6, z), '#7a5a3c', 3); geo(new THREE.ConeGeometry(2, 1.4, 12), M(x, top + 6.9, z), '#5b4636', 0); C.add({ x0: x - 1.8, x1: x + 1.8, z0: z - 1.8, z1: z + 1.8, y0: top + 3, y1: top + 6.2 }); }
+  }
   const BRICK = ['#a65a45', '#b9735a', '#8f4a3c', '#c4a07a', '#d2c3a8', '#9a8f84', '#7d6f68', '#b8a48a'];
 
   // ------------------------------------------------------------- city-specific landmarks
   const isTO = def.key === 'toronto';
+  if (isTO) { spot(at(39, 0), 'Nathan Phillips Square'); spot(at(41, 0), 'Yonge–Dundas Square'); spot(at(38, 3), 'CN Tower'); spot(at(37, 3), 'Rogers Centre'); spot(at(40, 3), 'Union Station'); spot(at(39, -3), "Queen's Park"); spot(at(40, 2), 'Financial District'); spot(blocks.find((b) => b.front), 'Harbourfront'); }
+  else { NAMES.spots.push({ x0: nsX(-41), x1: nsX(-39), z0: ewZ(3) + ewHW(3), z1: def.waterZ, name: 'Parliament Hill' }, { x0: nsX(-39) + 34, x1: nsX(-39) + 56, z0: r.z0, z1: def.waterZ, name: 'Rideau Canal' }); spot(at(-38, 1), 'ByWard Market'); spot(at(-40, 2), 'Confederation Square'); }
   if (isTO) buildToronto(); else buildOttawa();
 
   // ------------------------------------------------------------- generic blocks (everything not taken by a landmark)
@@ -158,12 +180,13 @@ function buildCity(scene, world, def) {
     pad(b, b.front ? '#c9bfae' : '#cfcac0');
     const sp = special.get(b.k + ',' + b.m);
     if (b.front) { // waterfront: boardwalk, benches, trees
-      const P = (x, z) => [x, h(z) + CURB + 0.03, z]; B.quad(P(b.x0, b.z1 - 8), P(b.x1, b.z1 - 8), P(b.x1, b.z1), P(b.x0, b.z1), [0, 1, 0], L('#a87c52'), 3);
+      const P = (x, z) => [x, h(z) + CURB + 0.07, z]; B.quad(P(b.x0, b.z1 - 8), P(b.x1, b.z1 - 8), P(b.x1, b.z1), P(b.x0, b.z1), [0, 1, 0], L('#a87c52'), 3);
       for (let x = b.x0 + 8; x < b.x1; x += 16) trees.push([x, b.z1 - 12, 1.1]);
       continue;
     }
     // sidewalk trees and lamps (lamps sit where the ground shader paints the night pools)
-    for (let x = b.x0 + 7; x < b.x1 - 4; x += 15) { trees.push([x, b.z0 + 1.6, 0.9 + R() * 0.3]); trees.push([x + 7, b.z1 - 1.6, 0.9 + R() * 0.3]); }
+    for (let x = b.x0 + 7; x < b.x1 - 4; x += 15) { trees.push([x, b.z0 + 0.8, 0.9 + R() * 0.3]); trees.push([x + 7, b.z1 - 0.8, 0.9 + R() * 0.3]); }
+    for (let z = b.z0 + 9; z < b.z1 - 6; z += 18) { trees.push([b.x0 + 0.8, z, 0.85 + R() * 0.3]); trees.push([b.x1 - 0.8, z + 9, 0.85 + R() * 0.3]); }
     if (sp === 'landmark') continue;
     if (sp === 'park') { parkInside(b); continue; }
     const d = Math.hypot(b.cx - core.x, b.cz - core.z), tall = Math.max(0, 1 - d / core.r), rr = R();
@@ -184,6 +207,33 @@ function buildCity(scene, world, def) {
       } else if (tall > 0.15) { streetWall(b, 10, 26, BRICK.concat(['#d6ccb8', '#c9bda6']), 15); if (R() < 0.35) tower(b.cx, b.cz, 22, 26, 45 + R() * 30, { podium: 0, glass: false }); }
       else if (rr < 0.15) parkInside(b);
       else streetWall(b, 7, 14, BRICK, 12);
+    }
+  }
+  // parked cars along the kerbs of the side streets
+  const busy = isTO ? { ns: [36, 39, 40, 41, 43, 45, 42, 37], ew: [-4, 0, 1, 2, 3, 4, -2] } : { ns: [-43, -42, -40, -36, -45, -38, -35], ew: [-3, -1, 0, 2, 1] };   // traffic lanes and stunt ramps
+  const CARC = ['#e8e4dc', '#2f3a44', '#7fb2d6', '#d8473f', '#1d1d22', '#9aa3ad', '#3f7a5a', '#f2b43c', '#5a4a8f'], KINDS = ['sedan', 'sedan', 'hatch', 'suv', 'suv', 'van', 'taxi', 'pickup'];
+  for (let k = def.k0; k <= def.k1; k++) { if (busy.ns.includes(k)) continue; for (const sd of [-1, 1]) { const x = nsX(k) + sd * (nsHW(k) - 1.15); for (let z = r.z0 + 20; z < def.waterZ - 30; z += 6.4) { const m = ewIdx(z); if (Math.abs(z - ewZ(m)) < ewHW(m) + ewSW(m) + 5 || R() > 0.42) continue; carStatic(B, C, x, z, sd > 0 ? Math.PI : 0, pick(CARC, R), pick(KINDS, R)); } } }
+  for (let m = def.m0; m <= def.m1; m++) { if (busy.ew.includes(m)) continue; for (const sd of [-1, 1]) { const z = ewZ(m) + sd * (ewHW(m) - 1.15); for (let x = r.x0 + 20; x < r.x1 - 20; x += 6.4) { const k = nsIdx(x); if (Math.abs(x - nsX(k)) < nsHW(k) + nsSW(k) + 5 || R() > 0.42) continue; carStatic(B, C, x, z, sd > 0 ? -Math.PI / 2 : Math.PI / 2, pick(CARC, R), pick(KINDS, R)); } } }
+  // corner furniture: benches, bins, hydrants, newspaper boxes (instanced)
+  {
+    const parts = { bench: [], bin: [], hydrant: [], news: [] };
+    for (let k = def.k0; k <= def.k1; k++) for (let m = def.m0; m <= def.m1; m++) for (const [sx, sz] of [[1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      const x = nsX(k) + sx * (nsHW(k) + nsSW(k) - 0.6), z = ewZ(m) + sz * (ewHW(m) + ewSW(m) + 3 + R() * 6), y = h(z) + CURB, rr = R();
+      if (C.blocked(x, z, 0.5, y, 0.2, y + 1)) continue;
+      if (rr < 0.3) parts.bench.push([x, y, z, sx > 0 ? -Math.PI / 2 : Math.PI / 2]); else if (rr < 0.55) parts.bin.push([x, y, z, 0]); else if (rr < 0.75) parts.hydrant.push([x - sx * 1.4, y, z, 0]); else if (rr < 0.88) parts.news.push([x, y, z, sx > 0 ? -Math.PI / 2 : Math.PI / 2]);
+    }
+    const G = {
+      bench: [mergeGeometries([new THREE.BoxGeometry(1.8, 0.08, 0.5).translate(0, 0.45, 0), new THREE.BoxGeometry(1.8, 0.45, 0.06).translate(0, 0.75, -0.23), new THREE.BoxGeometry(0.08, 0.45, 0.45).translate(-0.8, 0.22, 0), new THREE.BoxGeometry(0.08, 0.45, 0.45).translate(0.8, 0.22, 0)]), '#5b4636'],
+      bin: [new THREE.CylinderGeometry(0.3, 0.27, 0.95, 12).translate(0, 0.48, 0), '#2f5a3a'],
+      hydrant: [mergeGeometries([new THREE.CylinderGeometry(0.15, 0.18, 0.6, 10).translate(0, 0.3, 0), new THREE.SphereGeometry(0.16, 10, 6).translate(0, 0.62, 0), new THREE.CylinderGeometry(0.06, 0.06, 0.42, 6).rotateZ(Math.PI / 2).translate(0, 0.4, 0)]), isTO ? '#d23a2a' : '#e6c23a'],
+      news: [new THREE.BoxGeometry(0.5, 1.0, 0.45).translate(0, 0.5, 0), isTO ? '#2f6db4' : '#c8102e'],
+    };
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
+    for (const [k, list] of Object.entries(parts)) {
+      if (!list.length) continue;
+      const im = new THREE.InstancedMesh(G[k][0], new THREE.MeshToonMaterial({ color: G[k][1], gradientMap: gradient }), list.length);
+      list.forEach(([x, y, z, ry], i) => { im.setMatrixAt(i, m4.compose(new THREE.Vector3(x, y, z), q.setFromAxisAngle(up, ry), one)); C.add({ x0: x - 0.35, x1: x + 0.35, z0: z - 0.35, z1: z + 0.35, y0: y, y1: y + 0.9, nowalk: true }); });
+      im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
     }
   }
   // lamp posts every 30 m on both sidewalks (matching the ground shader's lamp pools)
@@ -243,7 +293,7 @@ function buildCity(scene, world, def) {
       geo(new THREE.SphereGeometry(16, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2), M(cx, y + 8, cz, 0, 1, 0.38, 1), '#e8e4dc', 0);
       solid(cx - 12, cx + 12, cz - 12, cz + 12, y + 8, y + 14);
       // the square: reflecting pool (a skating rink in winter), three arches, the sign
-      const pz = cz + 46, P = (x, z) => [x, y + 0.06, z];
+      const pz = cz + 46, P = (x, z) => [x, h(z) + CURB + 0.08, z];
       B.quad(P(cx - 24, pz - 9), P(cx + 24, pz - 9), P(cx + 24, pz + 9), P(cx - 24, pz + 9), [0, 1, 0], L('#7fb3d0'), 5);
       for (const ax of [-16, 0, 16]) geo(new THREE.TorusGeometry(9, 0.45, 6, 20, Math.PI), M(cx + ax, y, pz), '#e8e4dc', 0);
       const FONT = { T: ['11111', '00100', '00100', '00100', '00100'], O: ['01110', '10001', '10001', '10001', '01110'], R: ['11110', '10001', '11110', '10010', '10001'], N: ['10001', '11001', '10101', '10011', '10001'] };
@@ -320,9 +370,9 @@ function buildCity(scene, world, def) {
       C.add({ x0: hx0, x1: hx1, z0: hz0, z1: hz1, y0: h(hz1) - 1, t: 'h', off: lift });
       // the walk up from Wellington Street
       const cx = (hx0 + hx1) / 2, rz1 = hz0 + 16;
-      B.quad([cx - 9, h(hz0) + CURB, hz0 - 0.1], [cx + 9, h(hz0) + CURB, hz0 - 0.1], [cx + 9, h(rz1) + lift + 0.02, rz1], [cx - 9, h(rz1) + lift + 0.02, rz1], [0, 1, 0], L('#d8ccb2'), 0);
+      B.quad([cx - 9, h(hz0) + CURB, hz0 - 0.1], [cx + 9, h(hz0) + CURB, hz0 - 0.1], [cx + 9, h(rz1) + lift + 0.08, rz1], [cx - 9, h(rz1) + lift + 0.08, rz1], [0, 1, 0], L('#d8ccb2'), 0);
       C.add({ x0: cx - 9, x1: cx + 9, z0: hz0 - 0.1, z1: rz1, y0: h(rz1) - 1, t: 'ramp', axis: 'z', a0: hz0, a1: rz1, r0: h(hz0) + CURB, r1: h(rz1) + lift });
-      const Q = (x, z) => [x, h(z) + lift + 0.03, z]; B.quad(Q(cx - 5, rz1), Q(cx + 5, rz1), Q(cx + 5, hz0 + 46), Q(cx - 5, hz0 + 46), [0, 1, 0], L('#d8ccb2'), 0);
+      const Q = (x, z) => [x, h(z) + lift + 0.08, z]; B.quad(Q(cx - 5, rz1), Q(cx + 5, rz1), Q(cx + 5, hz0 + 46), Q(cx - 5, hz0 + 46), [0, 1, 0], L('#d8ccb2'), 0);
       const yH = (z) => h(z) + lift;
       // Centre Block
       const cz0 = hz0 + 46, cz1 = cz0 + 30, yb = yH(cz1) - 0.5, top = yH(cz0) + 26;

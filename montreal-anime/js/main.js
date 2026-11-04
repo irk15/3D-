@@ -63,6 +63,7 @@ async function boot() {
   await new Promise((r) => setTimeout(r, 20));
   const cities = app.cities = buildCities(scene, world);
   const pipe = app.pipe = new Pipeline(renderer, scene, camera);
+  const _white = new THREE.Color(1, 0.98, 0.95), _warm = new THREE.Color(0.55, 0.5, 0.45);
   // realistic mode: a sky-only scene feeds the reflections (PMREM), refreshed as the day goes by
   const pmrem = new THREE.PMREMGenerator(renderer), envScene = new THREE.Scene(), envSky = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), null);
   envScene.add(envSky); let envRT = null, envT = 0, realFr = 0;
@@ -494,7 +495,7 @@ async function boot() {
     const grey = new THREE.Color(0x9aa6b8).multiplyScalar(0.35 + 0.65 * (1 - look.night));
     const mixG = (c, k) => c.clone().lerp(grey, k * (1 - dim));
     sun.color.copy(look.sunC); sun.intensity = look.sunI * dim * (REAL ? 1.05 : 1);
-    hemi.color.copy(mixG(look.sky, 0.6)); hemi.groundColor.copy(look.gnd); hemi.intensity = look.hemiI * (1 + (1 - dim) * 0.35) * (REAL ? 0.42 : 1);
+    hemi.color.copy(mixG(look.sky, 0.6)); hemi.groundColor.copy(look.gnd); hemi.intensity = look.hemiI * (1 + (1 - dim) * 0.35) * (REAL ? 0.42 : 1); if (REAL) { hemi.color.lerp(_white, 0.55); hemi.groundColor.lerp(_warm, 0.5); hemi.intensity *= 1.5; }
     const su = sky.material.uniforms;
     su.uZen.value.copy(mixG(look.zen, 0.8)); su.uHor.value.copy(mixG(look.hor, 0.7)); su.uSunCol.value.copy(look.sunC).multiplyScalar(dim); su.uSun.value.copy(look.sunDir);
     su.uCloudCol.value.copy(mixG(look.cloud, 0.6)); su.uCloudShade.value.copy(mixG(look.shade, 0.8)); su.uCloud.value = weather.cover;

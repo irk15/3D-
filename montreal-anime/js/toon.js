@@ -27,7 +27,7 @@ export function realify(m) {
   if (!REAL || !m || !m.isMeshToonMaterial || m.__real) return;
   m.__real = true; m.isMeshToonMaterial = false; m.isMeshStandardMaterial = true; m.type = 'MeshStandardMaterial';
   m.roughness = m.userData.rough ?? (m.transparent ? 0.15 : 0.82); m.metalness = m.userData.metal ?? 0; m.roughnessMap = null; m.metalnessMap = null;
-  m.envMap = null; m.envMapIntensity = m.userData.env ?? 1; m.gradientMap = null; m.flatShading = m.flatShading || false;
+  m.envMap = null; m.envMapIntensity = m.userData.env ?? 0.6; m.gradientMap = null; m.flatShading = m.flatShading || false;
   m.defines = Object.assign({}, m.defines, { STANDARD: '' }); m.needsUpdate = true;
 }
 export function realifyScene(root) { if (!REAL) return; root.traverse((o) => { const mm = o.material; if (!mm) return; if (Array.isArray(mm)) mm.forEach(realify); else realify(mm); }); }
@@ -44,7 +44,7 @@ export function toon(hex, opts = {}) {
 //        7 lamp, 8 shop window, 9 roof, 10 metal
 export function batchMaterial() {
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
-  m.userData.env = 0.6; m.userData.rough = 0.88;
+  m.userData.env = 0.38; m.userData.rough = 0.88;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uTime: U.uTime, uWet: U.uWet });
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
@@ -170,7 +170,7 @@ gEmit = vec3(0.0); gRough = 0.88; gMetal = 0.0; gBumpW = vec3(0.0);
 // ---------------------------------------------------------------- ground (one surface for roads, yards, park, plaza)
 export function groundMaterial() {
   const m = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradient });
-  m.userData.env = 0.25; m.userData.rough = 0.92;
+  m.userData.env = 0.12; m.userData.rough = 0.92;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uAutumn: U.uAutumn, uWet: U.uWet, uTime: U.uTime });
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;')

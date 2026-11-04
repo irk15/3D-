@@ -33,7 +33,7 @@ async function boot() {
   try { await Promise.race([document.fonts.load('600 40px Fredoka'), new Promise((r) => setTimeout(r, 2500))]); } catch (e) { /* offline font */ }
   const app = window.app = { THREE, U };
   const save = app.save = params.has('fresh') ? loadSave.call(null) && Object.assign(loadSave(), { bagels: [], money: 0, deliveries: 0, met: {}, ach: {}, outfit: 0, owned: [0] }) : loadSave();
-  const pr = Math.min(window.devicePixelRatio || 1, touch ? 1.5 : 1.75);
+  const pr = Math.min(window.devicePixelRatio || 1, touch ? 1.25 : 1.5);
   const renderer = new THREE.WebGLRenderer({ canvas: $('#gl'), antialias: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.NoToneMapping;
@@ -103,9 +103,10 @@ async function boot() {
     jet: (x, y, z, left) => { jetT -= 1 / 60; if (jetT > 0) return; jetT = 0.04; puffs.at(new THREE.Vector3(x + (Math.random() - 0.5) * 0.2, y + 0.6 + Math.random() * 1.6 * Math.min(1, left), z + (Math.random() - 0.5) * 0.2), 0xcfe8ff, 2); },
   });
   const crowd = app.crowd = new Crowd(scene, world);
-  const walkers = app.walkers = new Walkers(scene, world, params.has('fewpeople') ? 8 : touch ? 22 : 40);
+  const walkers = app.walkers = new Walkers(scene, world, params.has('fewpeople') ? 8 : touch ? 14 : 28);
   const vehicles = app.vehicles = [];
   let screamT = 0; walkers.onScream = (p) => { const now = performance.now(); if (now - screamT < 700 || Math.random() < 0.5) return; screamT = now; const d = Math.hypot(p.pos.x - player.pos.x, p.pos.z - player.pos.z); if (d < 45) sfx.scream?.(Math.max(0.2, 1 - d / 45)); };
+  walkers.carBlock = (x, z) => traffic.blocks(x, z) || vehicles.some((v) => v.hitCircle(x, z, 0.3));
   walkers.carNear = (x, z, r) => traffic.cars.some((c) => !c.taken && c.x !== undefined && Math.abs(c.x - x) < r && Math.abs(c.z - z) < r && c.v > 1) || vehicles.some((v) => v.speed > 1 && Math.abs(v.pos.x - x) < r && Math.abs(v.pos.z - z) < r);
   traffic.vehicles = vehicles;
   const spawnCar = (kind, col, x, z, yaw) => { const v = new Vehicle(scene, world, kind, col, x, z, yaw); for (let i = 0; i < 12 && v.blockedAt(v.pos.x, v.pos.z, v.yaw, vehicles); i++) { v.pos.x += 1.5; v.place(); } vehicles.push(v); return v; };
@@ -861,7 +862,7 @@ async function boot() {
   let boardT = 0, mmT = 0; const amb = { siren: 40, gull: 2, metro: false, hour: undefined };
   // dynamic resolution: only when the GPU can't keep up, the render scale steps down a little
   // (never below 1.0 on desktop), and it climbs back to full sharpness as soon as there is headroom
-  const prMax = renderer.getPixelRatio(), prMin = Math.min(prMax, touch ? 0.85 : 1);
+  const prMax = renderer.getPixelRatio(), prMin = Math.min(prMax, touch ? 0.7 : 0.8);
   let frameAvg = 1 / 60, slowT = 0, fastT = 0;
   function adaptResolution(raw) {
     if (params.has('manual')) return;
@@ -892,7 +893,7 @@ async function boot() {
     let stepped = false;
     combat.trigger = !!(tHeld.tShoot || mouseFire); if (car) combat.trigger = false;
     if (isTouch) combat.aiming = !!tHeld.tAim || !!tHeld.tShoot;
-    const vctx = { breakables, vehicles: police.carVs.length ? vehicles.concat(police.carVs) : vehicles, hitPed: (n, vx, vz, sp) => combat.hitByCar(n, vx, vz, sp), traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list, ...walkers.list.filter((p) => p.live)], night: look.night, clock: fmtHour(clockH) };
+    const vctx = { breakables, police, vehicles: police.carVs.length ? vehicles.concat(police.carVs) : vehicles, hitPed: (n, vx, vz, sp) => combat.hitByCar(n, vx, vz, sp), traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list, ...walkers.list.filter((p) => p.live), ...police.foot.filter((c) => !c.gone)], night: look.night, clock: fmtHour(clockH) };
     if (car) {
       inp.fly = false; inp.dash = false;
       car.update(dt, started && !photoMode ? inp : null, vctx);
@@ -992,8 +993,8 @@ async function boot() {
     sky.position.copy(camera.position);   // the sky dome follows you (it's only 1.5 km across and the cities are far apart)
     if (REAL) {
       // PBR: convert any new toon materials, and re-light reflections from the current sky every few seconds
-      if ((++realFr) % 30 === 1) realifyScene(scene);
-      envT -= dt; if (envT <= 0) { envT = touch ? 12 : 5; envSky.material = sky.material; const rt = pmrem.fromScene(envScene, 0, 0.1, 200); if (envRT) envRT.dispose(); envRT = rt; scene.environment = rt.texture; }
+      if ((++realFr) % 150 === 1) realifyScene(scene);
+      envT -= dt; if (envT <= 0) { envT = touch ? 45 : 20; envSky.material = sky.material; const rt = pmrem.fromScene(envScene, 0, 0.1, 200); if (envRT) envRT.dispose(); envRT = rt; scene.environment = rt.texture; }
     }
     // speed lines + flash
     const sp = car ? Math.min(1, Math.max(0, (car.speed - 16) / 14)) : Math.max(player.dashT > 0 ? 1 : 0, Math.min(1, Math.max(0, (player.speed - 6.5) / 4)));

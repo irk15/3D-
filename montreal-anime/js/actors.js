@@ -589,6 +589,9 @@ export class Traffic {
     const ph = this.phase();
     for (const set of ['ns', 'ew']) this.mats[set].forEach((m, i) => { m.emissiveIntensity = (2 - i) === ph[set] ? 2.2 : 0; });
     const night = U.uNight.value;
+    // cars bucketed by 30 m cells (for the intersection checks: no all-pairs loop)
+    const bk = this.bk || (this.bk = new Map()); for (const a of bk.values()) a.length = 0;
+    for (const c of this.cars) if (!c.taken && c.x !== undefined) { const key = Math.floor(c.x / 30) * 100000 + Math.floor(c.z / 30); let a = bk.get(key); if (!a) bk.set(key, a = []); a.push(c); }
     for (const car of this.cars) {
       if (car.taken) continue;
       const L = car.L;
@@ -627,7 +630,7 @@ export class Traffic {
           const d = ((ic - L.dir * (hw + 1.2)) - car.s) * L.dir; if (d < -1 || d > 26) continue;
           if ((ns ? ph.ns : ph.ew) !== 2 && d > 1.5) vT = Math.min(vT, (d - 0.5) * 0.9);
           const ix = ns ? L.c : ic, iz = ns ? ic : L.c, bx = ns ? nsHW(nsIdx(L.c)) + 1.5 : hw + 1.5, bz = ns ? hw + 1.5 : ewHW(ewIdx(L.c)) + 1.5;
-          if (d > 0.5) for (const oc of this.cars) if (oc !== car && !oc.taken && oc.L.axis !== L.axis && oc.x !== undefined && Math.abs(oc.x - ix) < (ns ? 12 : bx) && Math.abs(oc.z - iz) < (ns ? bz : 12)) { vT = Math.min(vT, (d - 0.5) * 0.9); break; }
+          if (d > 0.5) { let busy = false; for (let gx = Math.floor(ix / 30) - 1; gx <= Math.floor(ix / 30) + 1 && !busy; gx++) for (let gz = Math.floor(iz / 30) - 1; gz <= Math.floor(iz / 30) + 1 && !busy; gz++) { const a = bk.get(gx * 100000 + gz); if (a) for (const oc of a) if (oc !== car && oc.L.axis !== L.axis && Math.abs(oc.x - ix) < (ns ? 12 : bx) && Math.abs(oc.z - iz) < (ns ? bz : 12)) { busy = true; break; } } if (busy) vT = Math.min(vT, (d - 0.5) * 0.9); }
         }
       }
       vT = Math.max(0, vT);

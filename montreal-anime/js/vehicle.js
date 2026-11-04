@@ -89,13 +89,14 @@ export class Vehicle {
     } else this.stuckT = 0;
     // loose props and people
     for (const [cx, cz, cr] of this.circles(this.pos.x, this.pos.z, this.yaw)) ctx.props?.push(cx, cz, this.pos.y, this.pos.y + 1.4, cr, vx, vz, 1300);
-    if (ctx.peds && this.speed > 2.5) for (const n of ctx.peds) {
+    if (ctx.peds && this.speed > 0.4) for (const n of ctx.peds) {
       if (n.rag) continue;
-      let hitIt = false, near = false;
-      for (const [cx, cz, cr] of this.circles(this.pos.x, this.pos.z, this.yaw)) { const d2 = (n.pos.x - cx) ** 2 + (n.pos.z - cz) ** 2; if (Math.abs(n.pos.y - this.pos.y) < 1.6 && d2 < (cr + 0.35) ** 2) hitIt = true; }
+      let hitIt = false, near = false, px = 0, pz = 0, pen = 0;
+      for (const [cx, cz, cr] of this.circles(this.pos.x, this.pos.z, this.yaw)) { const d2 = (n.pos.x - cx) ** 2 + (n.pos.z - cz) ** 2; if (Math.abs(n.pos.y - this.pos.y) < 1.6 && d2 < (cr + 0.35) ** 2) { hitIt = true; const d = Math.sqrt(d2) || 0.01, o = cr + 0.36 - d; if (o > pen) { pen = o; px = (n.pos.x - cx) / d; pz = (n.pos.z - cz) / d; } } }
+      if (hitIt && this.speed <= 3.2) { if (n.offX !== undefined) { n.offX += px * pen; n.offZ += pz * pen; } else { n.pos.x += px * pen; n.pos.z += pz * pen; if (n.home) n.home.set(n.pos.x, n.pos.y, n.pos.z); } continue; }   // slow: just nudge them aside, never drive through
       if (hitIt && this.speed > 3.2 && ctx.hitPed) { ctx.hitPed(n, vx, vz, this.speed, this); this.vF *= 0.985; continue; }
       const dx = n.pos.x - (this.pos.x + f.x * 3), dz = n.pos.z - (this.pos.z + f.z * 3); if (dx * dx + dz * dz < 9) near = true;
-      if (near) n.dodge?.(r.x * Math.sign(dx * r.x + dz * r.z || 1), r.z * Math.sign(dx * r.x + dz * r.z || 1));
+      if (near && this.speed > 2.5) n.dodge?.(r.x * Math.sign(dx * r.x + dz * r.z || 1), r.z * Math.sign(dx * r.x + dz * r.z || 1));
     }
     // suspension: ground under each wheel → height, pitch and roll; airborne off ledges
     const W = this.m.wheels, hs = [];

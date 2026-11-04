@@ -361,7 +361,10 @@ export class Pipeline {
   constructor(renderer, scene, camera) {
     this.r = renderer; this.scene = scene; this.camera = camera;
     const half = { type: THREE.HalfFloatType };
-    this.color = new THREE.WebGLRenderTarget(4, 4, Object.assign({ samples: 4 }, half));
+    // realistic mode renders the scene ONCE: depth comes from a depth texture (for AO and cloud shadows), FXAA
+    // replaces MSAA, and the separate normal/depth pass (only needed for ink outlines) is skipped
+    this.color = new THREE.WebGLRenderTarget(4, 4, Object.assign({ samples: REAL ? 0 : 4 }, half));
+    if (REAL) { this.color.depthTexture = new THREE.DepthTexture(4, 4); this.color.depthTexture.type = THREE.UnsignedIntType; }
     this.normal = new THREE.WebGLRenderTarget(4, 4, Object.assign({ minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter }, half));
     this.b1 = new THREE.WebGLRenderTarget(4, 4, half); this.b2 = new THREE.WebGLRenderTarget(4, 4, half);
     this.nmat = new THREE.ShaderMaterial({
@@ -391,25 +394,48 @@ void main(){
       tC: { value: this.color.texture }, tN: { value: this.normal.texture }, tB: { value: this.b1.texture },
       uPx: { value: new THREE.Vector2() }, uLW: { value: 1 }, uInk: { value: new THREE.Color(0.10, 0.08, 0.20) }, uNight: U.uNight, uTime: U.uTime,
       uGrade: { value: new THREE.Vector3(1.08, 1, 0) }, uTan: { value: new THREE.Vector2(1, 1) }, uCamM: { value: new THREE.Matrix4() },
-      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 }, uReal: { value: REAL ? 1 : 0 }, uExpo: { value: 0.88 },
+      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 }, uReal: { value: REAL ? 1 : 0 }, uExpo: { value: 0.88 }, tD: { value: REAL ? this.color.depthTexture : null }, uNF: { value: new THREE.Vector2(0.25, 2600) },
     };
     this.quad = pass(/* glsl */`
-uniform sampler2D tC, tN, tB; uniform vec2 uPx, uTan; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash, uDesat, uHurt, uReal, uExpo;
+uniform sampler2D tC, tN, tB, tD; uniform vec2 uPx, uTan, uNF; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash, uDesat, uHurt, uReal, uExpo;
 vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); } uniform vec3 uInk, uGrade, uSun; uniform mat4 uCamM; varying vec2 vUv;
 ${GLSL_NOISE}
+#ifdef DEPTHTEX
+float D(vec2 uv){ float z = texture2D(tD, uv).x; if (z > 0.99999) return 1e4; float nd = z * 2.0 - 1.0; return 2.0 * uNF.x * uNF.y / (uNF.y + uNF.x - nd * (uNF.y - uNF.x)); }
+vec3 fxaa(vec2 uv){
+  vec3 lw = vec3(0.299, 0.587, 0.114); vec2 px = uPx;
+  vec3 cM = texture2D(tC, uv).rgb, cNW = texture2D(tC, uv + vec2(-1.0, -1.0) * px).rgb, cNE = texture2D(tC, uv + vec2(1.0, -1.0) * px).rgb, cSW = texture2D(tC, uv + vec2(-1.0, 1.0) * px).rgb, cSE = texture2D(tC, uv + vec2(1.0, 1.0) * px).rgb;
+  float lM = dot(min(cM, 1.0), lw), lNW = dot(min(cNW, 1.0), lw), lNE = dot(min(cNE, 1.0), lw), lSW = dot(min(cSW, 1.0), lw), lSE = dot(min(cSE, 1.0), lw);
+  float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE))), lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+  if (lMax - lMin < 0.05) return cM;
+  vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), (lNW + lSW) - (lNE + lSE));
+  float red = max((lNW + lNE + lSW + lSE) * 0.03125, 1.0 / 128.0), rcp = 1.0 / (min(abs(dir.x), abs(dir.y)) + red);
+  dir = clamp(dir * rcp, -8.0, 8.0) * px;
+  vec3 A = 0.5 * (texture2D(tC, uv + dir * (1.0 / 3.0 - 0.5)).rgb + texture2D(tC, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+  vec3 B = A * 0.5 + 0.25 * (texture2D(tC, uv - dir * 0.5).rgb + texture2D(tC, uv + dir * 0.5).rgb);
+  float lB = dot(min(B, 1.0), lw); return (lB < lMin || lB > lMax) ? A : B;
+}
+#else
 float D(vec2 uv){ float a = texture2D(tN, uv).a; return a < 0.001 ? 1e4 : a; }
+#endif
 void main(){
+#ifdef DEPTHTEX
+  vec3 c = fxaa(vUv);
+  vec4 n0 = vec4(0.0, 1.0, 0.0, 1.0);
+  float d0 = D(vUv); bool sky = d0 > 9999.0;
+#else
   vec3 c = texture2D(tC, vUv).rgb;
   vec4 n0 = texture2D(tN, vUv);
   bool sky = n0.a < 0.001;
   float d0 = sky ? 1e4 : n0.a;
+#endif
   vec2 o = uPx * uLW;
   float dd0 = D(vUv + vec2(o.x, 0.0)), dd1 = D(vUv - vec2(o.x, 0.0)), dd2 = D(vUv + vec2(0.0, o.y)), dd3 = D(vUv - vec2(0.0, o.y));
   float dmin = min(d0, min(min(dd0, dd1), min(dd2, dd3)));
   float lap = abs(dd0 + dd1 - 2.0 * d0) + abs(dd2 + dd3 - 2.0 * d0);
   float de = smoothstep(0.05, 0.1, lap / max(dmin, 0.3));
   float ne = 0.0;
-  if (!sky) {
+  if (!sky && uReal < 0.5) {
     vec3 s0 = texture2D(tN, vUv + vec2(o.x, 0.0)).xyz, s1 = texture2D(tN, vUv - vec2(o.x, 0.0)).xyz, s2 = texture2D(tN, vUv + vec2(0.0, o.y)).xyz, s3 = texture2D(tN, vUv - vec2(0.0, o.y)).xyz;
     ne = max(max(1.0 - dot(n0.xyz, s0), 1.0 - dot(n0.xyz, s1)), max(1.0 - dot(n0.xyz, s2), 1.0 - dot(n0.xyz, s3)));
   }
@@ -468,13 +494,14 @@ void main(){
   gl_FragColor = vec4(c, 1.0);
   #include <colorspace_fragment>
 }`, this.U);
+    if (REAL) { this.quad.material.defines = { DEPTHTEX: '' }; this.quad.material.needsUpdate = true; }
     this.qscene = new THREE.Scene(); this.qcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.clearN = new THREE.Color(0, 0, 0);
     this.bloomOn = true; this.aoOn = true;
   }
   setSize(w, h, pr) {
     const W = Math.floor(w * pr), H = Math.floor(h * pr);
-    this.color.setSize(W, H); this.normal.setSize(W, H);
+    this.color.setSize(W, H); this.normal.setSize(REAL ? 4 : W, REAL ? 4 : H);
     this.b1.setSize(Math.max(1, W >> 2), Math.max(1, H >> 2)); this.b2.setSize(Math.max(1, W >> 2), Math.max(1, H >> 2));
     this.U.uPx.value.set(1 / W, 1 / H);
     this.U.uLW.value = Math.max(1, Math.round(H / 820));
@@ -483,13 +510,16 @@ void main(){
   draw(mesh, target) { this.qscene.children.length = 0; this.qscene.add(mesh); this.r.setRenderTarget(target); this.r.render(this.qscene, this.qcam); }
   render() {
     const r = this.r, cam = this.camera, sc = this.scene;
-    const fog = sc.fog; sc.fog = null; sc.overrideMaterial = this.nmat;
-    const mask = cam.layers.mask; cam.layers.set(0);
-    r.setRenderTarget(this.normal); r.setClearColor(this.clearN, 0); r.clear();
-    const sh = r.shadowMap.autoUpdate; r.shadowMap.autoUpdate = false;
-    r.render(sc, cam);
-    r.shadowMap.autoUpdate = sh;
-    sc.overrideMaterial = null; sc.fog = fog; cam.layers.mask = mask;
+    if (!REAL) {
+      const fog = sc.fog; sc.fog = null; sc.overrideMaterial = this.nmat;
+      const mask = cam.layers.mask; cam.layers.set(0);
+      r.setRenderTarget(this.normal); r.setClearColor(this.clearN, 0); r.clear();
+      const sh = r.shadowMap.autoUpdate; r.shadowMap.autoUpdate = false;
+      r.render(sc, cam);
+      r.shadowMap.autoUpdate = sh;
+      sc.overrideMaterial = null; sc.fog = fog; cam.layers.mask = mask;
+    }
+    this.U.uNF.value.set(cam.near, cam.far);
     r.setRenderTarget(this.color); r.render(sc, cam);
     // bloom
     if (this.bloomOn) {

@@ -332,6 +332,7 @@ export class Combat {
   }
   hitByCar(a, vx, vz, speed) {
     if (a.rag) return;
+    if (this.police && this.police.foot.includes(a)) { a.hp -= speed * 5; if (a.hp <= 0) a.dead = true; this.police.crime(1.1, 'cop', this.player.pos); }
     const f = Math.min(1, speed / 24);
     this.floor(a, vx * 0.85, vz * 0.85, 2.5 + f * 5.5, 3 + f * 6, false);
     this.cam.shake = Math.max(this.cam.shake || 0, 0.3 + f * 0.4); this.ui.buzz?.(30);

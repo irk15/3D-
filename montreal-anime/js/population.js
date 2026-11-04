@@ -81,7 +81,7 @@ export class Walkers {
         const avoid = (ox, oz, r) => { const dx = ox - nx, dz = oz - nz, ahead = dx * sx + dz * sz, lat = dx * lx + dz * lz; if (ahead > -0.2 && ahead < r + 0.8 && Math.abs(lat) < 0.7) { if (p.sideT <= 0) { p.side += lat > 0 ? -0.9 : 0.9; p.side = Math.max(-1.3, Math.min(1.3, p.side)); p.sideT = 1.2; } if (ahead < r) wait = true; } };
         for (const o of this.list) if (o !== p && o.live) avoid(o.pos.x, o.pos.z, 0.6);
         avoid(px, pz, 0.8);
-        const C2 = (x, z) => C.blocked(x, z, 0.3, p.pos.y, 0.45, p.pos.y + 1.5);
+        const C2 = (x, z) => C.blocked(x, z, 0.3, p.pos.y, 0.45, p.pos.y + 1.5) || (this.carBlock && this.carBlock(x, z));
         const lift = C.ground(nx, nz, p.pos.y + 0.5, 0.1) - h(nz);
         if (p.crossing) { p.crossT -= dt; if (lift > 0.05 || p.crossT < 0) p.crossing = false; }
         if (!p.crossing && (C2(nx, nz) || !inWalk(nx, nz))) {
@@ -107,7 +107,9 @@ export class Walkers {
       // animation LOD + only draw what's near
       const vis = d < 125; p.ch.root.visible = vis; p.adt += dt;
       if (!vis) { p.adt = 0; continue; }
-      const every = d > 70 ? 4 : d > 30 ? 2 : 1;
+      const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), behind = (p.pos.x - camera.position.x) * fx + (p.pos.z - camera.position.z) * fz < -4;
+      if (behind) { p.adt = Math.min(p.adt, 0.5); continue; }   // out of view: skip the skeleton
+      const every = d > 55 ? 4 : d > 22 ? 2 : 1;
       if ((this.fr + p.id) % every === 0) { p.ch.animate(p.adt, p.vs < 0.2 ? 0 : p.vs, true, 0, { phone: p.phone && p.vs < 2 && !(p.flee > 0) && !(p.handsT > 0), handsUp: p.handsT > 0, cower: p.cower > 0 }); p.adt = 0; }
     }
   }

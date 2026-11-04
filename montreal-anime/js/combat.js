@@ -127,7 +127,7 @@ export class Combat {
     this.nextShot = 0; this.reload = 0; this.trigger = false; this.aimZoom = false; this.hp = 100; this.lastHurt = -99; this.pd = null; this.inv = 0;
     this.kills = 0; this.deaths = 0; this.pvp = true; this.t = 0; this.hitmark = 0; this.cops = null; this.police = null; this._muz = new THREE.Vector3();
     this._o = new THREE.Vector3(); this._d = new THREE.Vector3(); this._p = new THREE.Vector3(); this.shotCount = 0; this.heard = 0;
-    this.el = {}; for (const id of ['hpFill', 'weapName', 'ammo', 'xhair', 'hurt', 'wasted', 'wastedTxt', 'feed', 'hitm', 'hud2', 'reloadBar', 'pvpTag']) this.el[id] = document.getElementById(id);
+    this.el = {}; for (const id of ['lock', 'hpFill', 'weapName', 'ammo', 'xhair', 'hurt', 'wasted', 'wastedTxt', 'feed', 'hitm', 'hud2', 'reloadBar', 'pvpTag']) this.el[id] = document.getElementById(id);
   }
   get armed() { return this.drawn && !this.pd && !this.getCar() && !this.player.flying && !this.player.bike; }
   get weapon() { return WEAPONS[this.cur]; }
@@ -160,6 +160,7 @@ export class Combat {
     const out = [];
     for (const n of this.npcs.list) if (n.out && !n.rag && n.ch.root.visible) out.push({ kind: 'ped', a: n, pos: n.pos });
     for (const p of this.crowd.list) if (!p.rag && p.ch.root.visible) out.push({ kind: 'ped', a: p, pos: p.pos });
+    if (this.walkers) for (const p of this.walkers.list) if (p.live && !p.rag && p.ch.root.visible) out.push({ kind: 'ped', a: p, pos: p.pos });
     if (this.police) for (const c of this.police.foot) if (!c.rag && !c.gone) out.push({ kind: 'cop', a: c, pos: c.pos });
     if (this.pvp && this.net.peers.size) for (const r of this.remotes.values()) if (r.ch.root.visible && r.pvp !== false && !r.down) out.push({ kind: 'remote', a: r, pos: r.pos });
     return out;
@@ -187,8 +188,68 @@ export class Combat {
     return best;
   }
   // direction from the camera that the crosshair points along (with a light aim assist on touch screens)
+  // ---------------------------------------------------------------- aiming: GTA-style lock-on + free aim
+  // a target's chest, in world space
+  tpos(x, out = this._tp || (this._tp = new THREE.Vector3())) { return out.set(x.pos.x, x.pos.y + (x.kind === 'car' ? 0.9 : 1.15), x.pos.z); }
+  // the best target near the middle of the screen (angle from the view ray, weighted by distance)
+  pickTarget(maxAng, range) {
+    const cam = this.camera, d = this._v1 || (this._v1 = new THREE.Vector3()); d.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    let best = null, bs = Infinity;
+    for (const x of this.targets()) {
+      if (x.kind === 'remote' && !this.pvp) continue;
+      const p = this.tpos(x), dx = p.x - cam.position.x, dy = p.y - cam.position.y, dz = p.z - cam.position.z, l = Math.hypot(dx, dy, dz);
+      const own = Math.hypot(p.x - this.player.pos.x, p.z - this.player.pos.z); if (own < 1.2 || own > range) continue;
+      const ang = Math.acos(Math.min(1, (dx * d.x + dy * d.y + dz * d.z) / l)); if (ang > maxAng) continue;
+      // nothing solid in between
+      let clear = true; for (let t = 1.5; t < own - 0.6; t += 1.2) { const k = t / own; if (this.world.colliders.solid(this.player.pos.x + (p.x - this.player.pos.x) * k, this.player.pos.y + 1.4 + (p.y - this.player.pos.y - 1.4) * k, this.player.pos.z + (p.z - this.player.pos.z) * k)) { clear = false; break; } }
+      if (!clear) continue;
+      const sc = ang * 3 + own / range; if (sc < bs) { bs = sc; best = x; }
+    }
+    return best;
+  }
+  lockValid(x) {
+    if (!x) return false; const a = x.a;
+    if (a.rag || a.gone || a.down || a.dead || (x.kind === 'ped' && a.out === false) || (a.ch && !a.ch.root.visible)) return false;
+    return Math.hypot(x.pos.x - this.player.pos.x, x.pos.z - this.player.pos.z) < this.weapon.range;
+  }
+  // called every frame before the camera: hold aim → lock on and steer the camera onto the target
+  updateAim(dt) {
+    const aiming = this.armed && this.aiming && !this.pd;
+    this.lockBlock = Math.max(0, (this.lockBlock || 0) - dt);
+    if (!aiming) { this.lock = null; }
+    else {
+      if (this.lock && !this.lockValid(this.lock)) this.lock = null;
+      if (!this.lock && this.lockBlock <= 0) { this.lock = this.pickTarget(this.ui.isTouch ? 0.75 : 0.45, this.weapon.range * 0.85); if (this.lock) this.sfx.ping?.(); }
+      if (this.lock) {
+        const p = this.tpos(this.lock), c = this.cam.target, dx = p.x - c.x, dy = p.y - c.y, dz = p.z - c.z, hz = Math.hypot(dx, dz);
+        let wy = Math.atan2(-dx, -dz), wp = Math.atan2(-dy, hz) + 0.08;
+        let d = wy - this.cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+        const k = 1 - Math.exp(-dt * 14); this.cam.yaw += d * k; this.cam.pitch += (Math.max(-0.75, Math.min(1, wp)) - this.cam.pitch) * k; this.cam.lastInput = this.t;
+      }
+    }
+    // red crosshair when the dot is over someone (checked ~20× a second)
+    this._ot = (this._ot || 0) - dt;
+    if (this.armed && this._ot <= 0) {
+      this._ot = 0.05; const cam = this.camera, d = this._v2 || (this._v2 = new THREE.Vector3()); d.set(0, 0, -1).applyQuaternion(cam.quaternion);
+      const o = this._v3 || (this._v3 = new THREE.Vector3()); o.copy(cam.position).addScaledVector(d, Math.max(1.2, this.cam.cur + 0.3));
+      const hit = this.lock ? { kind: this.lock.kind } : this.trace(o, d, this.weapon.range, this.targets());
+      this.onTarget = hit.kind === 'ped' || hit.kind === 'cop' || hit.kind === 'remote';
+    }
+    // the lock-on reticle follows the target on screen
+    const el = this.el.lock;
+    if (el) {
+      if (this.lock) {
+        const v = this._v4 || (this._v4 = new THREE.Vector3()); this.tpos(this.lock, v).project(this.camera);
+        if (v.z < 1) { el.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px,${(-v.y * 0.5 + 0.5) * innerHeight}px) translate(-50%,-50%) rotate(45deg)`; el.classList.add('show'); el.classList.toggle('hp', (this.lock.a.hp ?? 60) < 30); }
+        else el.classList.remove('show');
+      } else el.classList.remove('show');
+    }
+  }
+  // mouse moved a lot while locked: break the lock (free aim for a moment), like flicking the stick in GTA
+  flick(px) { if (!this.lock) return; this._fl = (this._fl || 0) + px; if (this._fl > 60) { this.lock = null; this.lockBlock = 0.35; this._fl = 0; } }
   aimDir(w, tg) {
     const cam = this.camera, d = this._d.set(0, 0, -1).applyQuaternion(cam.quaternion).normalize();
+    if (this.lock && this.lockValid(this.lock)) { const p = this.tpos(this.lock), dx = p.x - cam.position.x, dy = p.y - cam.position.y + (Math.random() < 0.25 ? 0.3 : 0), dz = p.z - cam.position.z; return d.set(dx, dy, dz).normalize(); }
     if (this.ui.isTouch) {
       let bestA = 0.2, pick = null;
       for (const x of tg) { if (x.kind === 'remote' && !this.pvp) continue; const dx = x.pos.x - cam.position.x, dy = x.pos.y + 1.2 - cam.position.y, dz = x.pos.z - cam.position.z, l = Math.hypot(dx, dy, dz); if (l > w.range || l < 3) continue; const dot = (dx * d.x + dy * d.y + dz * d.z) / l; const ang = Math.acos(Math.min(1, dot)); if (ang < bestA) { bestA = ang; pick = [dx / l, dy / l, dz / l]; } }
@@ -208,7 +269,7 @@ export class Combat {
     if (a.mag <= 0) { this.startReload(); if (a.res <= 0) this.sfx.empty?.(); this.nextShot = this.t + 0.3; return; }
     a.mag--; this.nextShot = this.t + w.rate; this.shotCount++;
     const tg = this.targets(), cam = this.camera, dir = this.aimDir(w, tg);
-    const spread = w.spread * (this.aimZoom ? 0.45 : 1) * (this.player.speed > 2 ? 1.8 : 1);
+    const spread = w.spread * (this.aiming || this.aimZoom ? 0.45 : 1) * (this.player.speed > 2 ? 1.6 : 1) * (this.lock ? 0.7 : 1);
     dir.x += (Math.random() - 0.5) * spread * 2; dir.y += (Math.random() - 0.5) * spread * 2; dir.z += (Math.random() - 0.5) * spread * 2; dir.normalize();
     // 1) where does the crosshair point? (start past the player so the camera's own body never blocks)
     const o1 = this._o.copy(cam.position).addScaledVector(dir, Math.max(1.2, this.cam.cur + 0.3));
@@ -269,6 +330,7 @@ export class Combat {
   scare(x, z, r, except) {
     for (const n of this.npcs.list) if (n.out && n !== except && !n.rag && Math.hypot(n.pos.x - x, n.pos.z - z) < r) n.scare?.(x, z);
     for (const p of this.crowd.list) if (p !== except && !p.rag && p.ch.root.visible && Math.hypot(p.pos.x - x, p.pos.z - z) < r) p.scare?.(x, z);
+    if (this.walkers) for (const p of this.walkers.list) if (p !== except && p.live && !p.rag && Math.hypot(p.pos.x - x, p.pos.z - z) < r) p.scare(x, z);
   }
   // ---------------------------------------------------------------- me: health, knockdown, death
   damage(n, by, vx = 0, vz = 0) {
@@ -333,6 +395,7 @@ export class Combat {
     // dizzy stars over every downed pedestrian near us
     for (const n of this.npcs.list) if (n.rag || n.stars) this.fx.dizzy(n, t);
     for (const p of this.crowd.list) if (p.rag || p.stars) this.fx.dizzy(p, t);
+    if (this.walkers) for (const p of this.walkers.list) if (p.rag || p.stars) this.fx.dizzy(p, t);
     this.hud(dt);
   }
   refreshHud() {
@@ -343,7 +406,7 @@ export class Combat {
   hud(dt) {
     const e = this.el; if (!e.hud2) return;
     const show = this.armed;
-    document.body.classList.toggle('armed', show); e.xhair.classList.toggle('show', show); e.xhair.classList.toggle('hit', this.hitmark > 0);
+    document.body.classList.toggle('armed', show); e.xhair.classList.toggle('show', show); e.xhair.classList.toggle('hit', this.hitmark > 0); e.xhair.classList.toggle('on', !!this.onTarget); e.xhair.classList.toggle('aim', !!this.aiming); document.body.classList.toggle('aiming', show && !!this.aiming);
     if (e.hitm) e.hitm.style.opacity = this.hitmark > 0 ? Math.min(1, this.hitmark * 5) : 0;
     if (this.dirtyHp || (this.hpShown | 0) !== (this.hp | 0)) { this.hpShown = this.hp; this.dirtyHp = false; e.hpFill.style.width = this.hp + '%'; e.hpFill.classList.toggle('low', this.hp < 30); const af = document.getElementById('arFill'); if (af) af.style.width = (this.armour || 0) + '%'; }
     e.hurt.style.opacity = Math.min(0.9, (this.hurt || 0) + (this.hp < 30 ? 0.25 + Math.sin(this.t * 6) * 0.1 : 0));

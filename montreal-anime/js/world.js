@@ -249,7 +249,7 @@ const L = (hex) => lin(hex);
 // ================================================================= the world
 export function buildWorld(scene) {
   const B = new Batch(96), C = new Colliders(), atlas = new Atlas(2048), S = new SignBatch(atlas);
-  const glows = new Glows(1600);
+  const glows = new Glows(2600);
   const spots = { balcony: [], back: [], alley: [], sidewalk: [], shed: [], doors: [], stairs: [] };
   const docks = [];
   const npcPaths = [], shops = [], lamps = [], trees = [], parked = [], benches = [], foot = [];

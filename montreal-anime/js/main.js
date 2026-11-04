@@ -1,6 +1,6 @@
 // main.js — Plateau · Montréal: boot, camera, input, interactions, the living-world systems and HUD.
 import * as THREE from 'three';
-import { h, U, whereIs, PARK, PLAZA, WATER_Y, RIVER_Z, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, alleyX, ALLEY_HW } from './layout.js';
+import { h, U, WATERS, whereIs, PARK, PLAZA, WATER_Y, RIVER_Z, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, alleyX, ALLEY_HW } from './layout.js';
 import { Pipeline, makeSky, LAYER_FX } from './toon.js';
 import { buildWorld } from './world.js';
 import { makeCharacter, Player, Neighbours, Traffic, Pigeons, makeCat, Bagels, bikeModel } from './actors.js';
@@ -16,6 +16,9 @@ import { Crowd } from './crowd.js';
 import { Combat, WEAPONS } from './combat.js';
 import { Police } from './police.js';
 import { Pickups } from './pickups.js';
+import { buildCities, CITIES, cityAt } from './cities.js';
+import { Walkers } from './population.js';
+import { Activities } from './activities.js';
 import { carDrivable } from './cars.js';
 
 const $c = {};
@@ -55,6 +58,9 @@ async function boot() {
   $('#loadMsg').textContent = 'Downtown, the Stadium, the river…';
   await new Promise((r) => setTimeout(r, 20));
   const downtown = app.downtown = buildDowntown(scene, world);
+  $('#loadMsg').textContent = 'Toronto and Ottawa…';
+  await new Promise((r) => setTimeout(r, 20));
+  const cities = app.cities = buildCities(scene, world);
   const pipe = app.pipe = new Pipeline(renderer, scene, camera);
   if (touch) pipe.aoOn = false;
 
@@ -68,19 +74,31 @@ async function boot() {
   let hero = makeCharacter(optsFor(save.outfit, save.color, save.model)); scene.add(hero.root);
   const player = app.player = new Player(world, hero);
   const npcs = app.npcs = new Neighbours(scene, world);
-  const traffic = app.traffic = new Traffic(scene, world, world.glows);
+  const lanes = [];
+  { const T = CITIES.toronto, O = CITIES.ottawa, ns = (k, n, span, o = {}) => { for (const d of [-1, 1]) lanes.push({ axis: 'z', c: nsX(k) + d * 2.3, dir: -d, n, k, span, ...o }); }, ew = (m, n, span, o = {}) => { for (const d of [-1, 1]) lanes.push({ axis: 'x', c: ewZ(m) + d * 2.3, dir: d, n, m, span, ...o }); };
+    const tz = [ewZ(T.m0) - 30, ewZ(T.m1) + 30], tx = [nsX(T.k0) - 20, nsX(T.k1) + 20];
+    for (const k of [36, 39, 40, 41, 43, 45]) ns(k, 3, tz);
+    for (const m of [-4, 0, 3, 4]) ew(m, 3, tx);
+    for (const m of [1, 2]) ew(m, 2, tx, { bus: '#d8262b', vmax: 9 });   // red TTC streetcars on Queen and King
+    const oz = [ewZ(O.m0) - 30, ewZ(O.m1) - 4], ox = [nsX(O.k0) - 20, nsX(O.k1) + 20];
+    for (const k of [-43, -42, -40, -36]) ns(k, 2, oz);
+    for (const m of [-3, 0, 2]) ew(m, 2, ox);
+    ew(-1, 2, ox, { bus: '#c8102e', vmax: 9 }); }
+  const traffic = app.traffic = new Traffic(scene, world, world.glows, lanes);
   player.carBlock = (x, z) => traffic.blocks(x, z) || app.vehicles.some((v) => v.hitCircle(x, z, 0.3));
   world.glows.commit();   // traffic head/tail-light glows were added after the world was built
   // ---- physics props, the crowd, and cars you can drive
   const props = app.props = new Props(scene, world);
   const crowd = app.crowd = new Crowd(scene, world);
+  const walkers = app.walkers = new Walkers(scene, world, params.has('fewpeople') ? 8 : touch ? 22 : 40);
   const vehicles = app.vehicles = [];
   traffic.vehicles = vehicles;
   const spawnCar = (kind, col, x, z, yaw) => { const v = new Vehicle(scene, world, kind, col, x, z, yaw); for (let i = 0; i < 12 && v.blockedAt(v.pos.x, v.pos.z, v.yaw, vehicles); i++) { v.pos.x += 1.5; v.place(); } vehicles.push(v); return v; };
   { const px = (PLAZA.x0 + PLAZA.x1) / 2, pz = PLAZA.z0 + 18;
     spawnCar('sport', '#d0312d', px - 4, pz, 0); spawnCar('suv', '#2f3a44', px + 4, pz + 2, 0);
     spawnCar('sedan', '#2f7fbf', PARK.x1 - 4, PARK.z0 - 10, Math.PI / 2);
-    if (world.pvmBeacon) spawnCar('sport', '#f2b43c', world.pvmBeacon.x + 52, world.pvmBeacon.z + 8, 0); }
+    if (world.pvmBeacon) spawnCar('sport', '#f2b43c', world.pvmBeacon.x + 52, world.pvmBeacon.z + 8, 0);
+    for (const c of [CITIES.toronto, CITIES.ottawa]) { const [x, z] = c.spawn, k = Math.round(x / 90), sx = nsX(k) + 2.4; spawnCar('sport', c.key === 'toronto' ? '#1d4fa3' : '#c8102e', sx, z - 14, 0); spawnCar('suv', '#2f3a44', sx, z - 24, 0); spawnCar('sedan', '#e8e4dc', nsX(k + 1) - 2.4, z + 10, Math.PI); } }
   let car = null, carView = 'chase', carCam = { yaw: 0, look: 0 }, combat = null;
   function enterCar(v) {
     if (v.wreck) { areaToast('It\'s a burnt-out wreck'); return; }
@@ -137,6 +155,7 @@ async function boot() {
     for (const v of vehicles) { const d = v.doorPos(); out.push({ x: d.x, z: d.z, y: v.pos.y, label: v.kind === 'sport' ? '🏎️ Drive' : '🚗 Drive', act: () => enterCar(v) }); }
     { const tc = traffic.nearest(player.pos.x, player.pos.z); if (tc) out.push({ x: tc.x, z: tc.z, y: player.pos.y, label: '🚕 Take this car', act: () => takeTraffic(tc) }); }
     { const pc = world.parked.nearest(player.pos.x, player.pos.z); if (pc) out.push({ x: pc.x, z: pc.z, y: player.pos.y, label: '🚙 Drive this car', act: () => takeParked(pc) }); }
+    for (const c of Object.values(CITIES)) { const [sx1, sz1] = c.station; if (Math.abs(sx1 - player.pos.x) < 30 && Math.abs(sz1 - player.pos.z) < 30) out.push({ x: sx1, z: sz1, y: world.colliders.ground(sx1, sz1, h(sz1) + 3, 0.1), label: '🚆 VIA Rail · travel to another city', act: () => openTravel() }); }
     if (player.bike) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Get off the bike', act: () => { player.dismount(); sfx.blip(); } }); return out; }
     for (const n of npcs.list) if (n.out) out.push({ x: n.pos.x, z: n.pos.z, y: n.pos.y, label: `Talk to ${n.name}`, act: () => talkTo(n) });
     for (const s of world.shops) out.push({ x: s.x, z: s.z, y: h(s.z), label: shopLabel(s), act: () => shopAct(s) });
@@ -180,7 +199,7 @@ async function boot() {
 
   // ---- camera rig
   const cam = app.cam = { yaw: 0, pitch: 0.28, dist: 5.2, cur: 5.2, lastInput: -10, target: new THREE.Vector3(), fov: 52, flyK: 0 };
-  const pitchMin = () => (player.flying ? -0.9 : -0.25);
+  const pitchMin = () => (player.flying ? -0.9 : combat?.armed ? -0.7 : -0.25);
   function updateCamera(dt, t) {
     if (car) return carCamera(dt, t);
     if (camera.near < 0.2) { camera.near = 0.25; camera.updateProjectionMatrix(); }
@@ -190,20 +209,20 @@ async function boot() {
       let d = (player.yaw + Math.PI) - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
       cam.yaw += d * (1 - Math.exp(-dt * (player.bike ? 2.2 : 0.9)));
     }
-    if (!player.flying && cam.pitch < -0.25) cam.pitch += (-0.25 - cam.pitch) * (1 - Math.exp(-dt * 4));
+    if (!player.flying && !combat?.armed && cam.pitch < -0.25) cam.pitch += (-0.25 - cam.pitch) * (1 - Math.exp(-dt * 4));
     const dir = new THREE.Vector3(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
     cam.flyK += ((player.flying ? 1 : 0) - cam.flyK) * (1 - Math.exp(-dt * 2.5));
     cam.armK = (cam.armK || 0) + ((combat?.armed ? 1 : 0) - (cam.armK || 0)) * (1 - Math.exp(-dt * 8));
-    const want = Math.min(cam.dist * (player.bike ? 1.25 : 1) * (1 + cam.flyK * (0.55 + Math.min(0.5, player.speed / 40))), 6 - cam.armK * 2.6);
+    const want = Math.min(cam.dist * (player.bike ? 1.25 : 1) * (1 + cam.flyK * (0.55 + Math.min(0.5, player.speed / 40))), 6 - cam.armK * 2.6 - (combat?.aiming ? cam.armK * 1.1 : 0));
     let free = want;
     for (let s = 0.4; s <= want; s += 0.2) { const q = cam.target.clone().addScaledVector(dir, s); if (world.colliders.solid(q.x, q.y, q.z)) { free = Math.max(0.6, s - 0.35); break; } }
     cam.cur += (free - cam.cur) * (free < cam.cur ? 1 - Math.exp(-dt * 25) : 1 - Math.exp(-dt * 3));
     camera.position.copy(cam.target).addScaledVector(dir, cam.cur);
-    if (cam.armK > 0.01) { const sh = 0.75 * cam.armK; camera.position.x += Math.cos(cam.yaw) * sh; camera.position.z -= Math.sin(cam.yaw) * sh; camera.lookAt(cam.target.x + Math.cos(cam.yaw) * sh, cam.target.y, cam.target.z - Math.sin(cam.yaw) * sh); } else camera.lookAt(cam.target);
+    if (cam.armK > 0.01) { const sh = (combat?.aiming ? 0.95 : 0.75) * cam.armK; camera.position.x += Math.cos(cam.yaw) * sh; camera.position.z -= Math.sin(cam.yaw) * sh; camera.lookAt(cam.target.x + Math.cos(cam.yaw) * sh, cam.target.y, cam.target.z - Math.sin(cam.yaw) * sh); } else camera.lookAt(cam.target);
     cam.shake = Math.max(0, (cam.shake || 0) - dt * 2.5);
     if (cam.shake > 0 && !car) camera.position.add(new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(cam.shake * 0.25));
     // a little FOV kick with speed — the anime "whoosh"
-    const fovT = 52 + Math.min(12, Math.max(0, player.speed - 5) * 1.6) + (player.dashT > 0 ? 6 : 0) - (combat?.aimZoom ? 14 : 0);
+    const fovT = 52 + Math.min(12, Math.max(0, player.speed - 5) * 1.6) + (player.dashT > 0 ? 6 : 0) - (combat?.aiming && combat.armed ? 16 : 0);
     cam.fov += (fovT - cam.fov) * (1 - Math.exp(-dt * 5));
     if (Math.abs(camera.fov - cam.fov) > 0.01) { camera.fov = cam.fov; camera.updateProjectionMatrix(); }
   }
@@ -274,9 +293,27 @@ async function boot() {
   addEventListener('blur', () => keys.clear());
   const cv = renderer.domElement;
   let drag = null, mouseFire = false;
-  cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; if (combat?.armed) { if (e.button === 2) combat.aimZoom = true; else if (e.button === 0) mouseFire = true; } drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
+  // armed on desktop: the mouse is captured (pointer lock) so it aims like a shooter; right button = aim / lock on
+  const locked = () => document.pointerLockElement === cv;
+  cv.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
+    if (combat?.armed) {
+      if (!locked() && !isTouch) { try { cv.requestPointerLock?.(); } catch (err) { /* not allowed */ } }
+      if (e.button === 2) combat.aiming = true; else if (e.button === 0) mouseFire = true;
+      if (locked()) return;
+    }
+    drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!locked()) return;
+    const sens = combat?.aiming ? 0.0013 : 0.0024;
+    cam.yaw -= e.movementX * sens; cam.pitch = Math.min(1.1, Math.max(pitchMin(), cam.pitch + e.movementY * sens * 0.8)); cam.lastInput = clock.elapsedTime;
+    combat?.flick(Math.abs(e.movementX) + Math.abs(e.movementY));
+  });
+  document.addEventListener('pointerlockchange', () => { if (!locked()) { mouseFire = false; if (combat) combat.aiming = false; } });
+  addEventListener('mouseup', (e) => { if (e.button === 2 && combat) combat.aiming = false; if (e.button === 0) mouseFire = false; });
   cv.addEventListener('pointermove', (e) => { if (!drag) return; cam.yaw -= (e.clientX - drag.x) * 0.006; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + (e.clientY - drag.y) * 0.005)); drag = { x: e.clientX, y: e.clientY }; cam.lastInput = clock.elapsedTime; });
-  cv.addEventListener('pointerup', () => { drag = null; mouseFire = false; if (combat) combat.aimZoom = false; });
+  cv.addEventListener('pointerup', (e) => { drag = null; if (e.button === 0) mouseFire = false; if (e.button === 2 && combat) combat.aiming = false; });
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
   cv.addEventListener('wheel', (e) => { cam.dist = Math.min(photoMode ? 16 : 10, Math.max(photoMode ? 1.2 : 2.4, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); e.preventDefault(); }, { passive: false });
   // ---- touch: floating joystick on the left (push to the edge to run), swipe to look and pinch to zoom
@@ -336,7 +373,7 @@ async function boot() {
   pad('tLand', () => { inp.fly = true; });
   pad('tBell', () => sfx.bell(2));
   pad('tHorn', () => sfx.horn());
-  pad('tShoot'); pad('tDraw', () => combat?.toggle()); pad('tReload', () => combat?.key('KeyR')); pad('tSwap', () => app.openWheel?.());
+  pad('tShoot'); pad('tAim'); pad('tDraw', () => combat?.toggle()); pad('tReload', () => combat?.key('KeyR')); pad('tSwap', () => app.openWheel?.());
   pad('tView', () => { carView = carView === 'chase' ? 'cabin' : 'chase'; carCam.look = 0; });
   for (const id of ['tUp', 'tDown', 'tBoost', 'tGas', 'tBrake', 'tHand']) pad(id);
   addEventListener('blur', () => { for (const k in tHeld) tHeld[k] = false; joyRelease(); looks.clear(); });
@@ -408,7 +445,7 @@ async function boot() {
   }
   let lastArea = null, toastT = null;
   function areaToast(name) {
-    const t = $('#area'); $('#areaName').textContent = name; $('#area small').textContent = player.pos.x < -80 && player.pos.z > 520 ? 'Downtown Montréal' : player.pos.z > 1200 ? 'Old Port' : 'Plateau-Mont-Royal'; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+    const t = $('#area'); $('#areaName').textContent = name; $('#area small').textContent = Math.abs(player.pos.x) > 2500 ? cityAt(player.pos.x).tag : player.pos.x < -80 && player.pos.z > 520 ? 'Downtown Montréal' : player.pos.z > 1200 ? 'Old Port' : 'Plateau-Mont-Royal'; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
     clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200);
   }
   function achToast(ic, name) {
@@ -493,6 +530,7 @@ async function boot() {
 
   // ---- minimap
   const mm = makeMinimap(world);
+  for (const c of Object.values(cities.cities)) mm.addBase(c.map);
 
   // ---- resize
   function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); pipe.setSize(innerWidth, innerHeight, renderer.getPixelRatio()); }
@@ -538,14 +576,34 @@ async function boot() {
   function dropRemote(id) { const r = remotes.get(id); if (!r) return; scene.remove(r.ch.root); if (r.car) scene.remove(r.car.g); for (const t of r.trails) scene.remove(t.mesh); r.tag.remove(); remotes.delete(id); }
   const netF = { get peers() { return net.peers; }, get id() { return net.id; }, send: (m) => net.send(m), on: (t, f) => net.on(t, f) };
   combat = app.combat = new Combat({
-    scene, camera, world, player, getHero: () => hero, getCar: () => car, cam, npcs, crowd, traffic, vehicles, props, remotes, net: netF, sfx, puffs, burst,
+    scene, camera, world, player, getHero: () => hero, getCar: () => car, cam, npcs, crowd, walkers, traffic, vehicles, props, remotes, net: netF, sfx, puffs, burst,
     ui: { isTouch, pitchMin, buzz, floatText: (t, c) => floatText(t, c), exitCar: () => exitCar(), updateMoney: () => updateMoney(),
       getMoney: () => save.money, addMoney: (v) => { save.money = Math.max(0, save.money + v); writeSave(save); updateMoney(); },
-      setArmed: (on) => document.body.classList.toggle('armed', on),
-      respawn: () => { const z = 112; player.pos.set(9, world.colliders.ground(9, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vel.set(0, 0, 0); player.vy = 0; player.grounded = true; player.unstick(); hero.root.position.copy(player.pos); } },
+      setArmed: (on) => { document.body.classList.toggle('armed', on); if (!on && document.pointerLockElement) document.exitPointerLock?.(); },
+      respawn: () => { const [sx0, z] = cityAt(player.pos.x).spawn; player.pos.set(sx0, world.colliders.ground(sx0, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vel.set(0, 0, 0); player.vy = 0; player.grounded = true; player.unstick(); hero.root.position.copy(player.pos); } },
   });
   const police = app.police = new Police({ scene, world, player, getCar: () => car, combat, sfx, ui: combat.ui });
   combat.police = police; traffic.extra = police.carVs; police.mkctx = () => ({ vehicles: vehicles.concat(police.carVs), traffic, props, peds: null, night: look.night, clock: '' });
+  // ---- travel between Montréal, Toronto and Ottawa (VIA Rail stations, the ✈ button, or the lobby)
+  function travelTo(key, quick = false) {
+    const c = CITIES[key]; if (!c) return;
+    $('#travel').classList.remove('show');
+    if (car) exitCar(); if (player.bike) player.dismount(); player.flying = false;
+    const go = () => {
+      const [x, z] = c.spawn; player.pos.set(x, world.colliders.ground(x, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vel.set(0, 0, 0); player.vy = 0; player.grounded = true; player.unstick();
+      hero.root.position.copy(player.pos); player.yaw = c.yaw; cam.yaw = c.yaw + Math.PI; cam.pitch = 0.22; cam.target.set(x, player.pos.y + 1.45, z);
+      police.clear(); walkers.reset(x, z, cam.yaw); save.city = key; writeSave(save); lastArea = null;
+      areaToast(c.key === 'montreal' ? 'Saint-Denis Street' : whereIs(x, z).name || c.name);
+    };
+    if (quick) { go(); return; }
+    const f = $('#fade'); $('#fadeCity').textContent = c.name; f.classList.add('show'); sfx.whoosh?.();
+    setTimeout(() => { go(); setTimeout(() => f.classList.remove('show'), 500); }, 1100);
+  }
+  function openTravel() { const here = cityAt(player.pos.x).key; document.querySelectorAll('#travel [data-c]').forEach((b) => b.classList.toggle('here', b.dataset.c === here)); $('#travel').classList.add('show'); }
+  document.querySelectorAll('#travel [data-c]').forEach((b) => b.addEventListener('click', () => travelTo(b.dataset.c)));
+  $('#travelClose').onclick = () => $('#travel').classList.remove('show');
+  $('#btnTravel').onclick = openTravel;
+  app.travelTo = travelTo;
   const pickups = app.pickups = new Pickups(scene, world, (type) => {
     if (type === 'health') { if (combat.hp >= 100) return false; combat.hp = Math.min(100, combat.hp + 45); floatText('+ Health', 'money'); }
     else if (type === 'armour') { if ((combat.armour || 0) >= 100) return false; combat.armour = Math.min(100, (combat.armour || 0) + 50); floatText('+ Armour', 'money'); }
@@ -553,6 +611,7 @@ async function boot() {
     else { for (const k of [1, 2, 3]) combat.ammo[k].res += WEAPONS[k].mag * 2; floatText('+ Ammo', 'money'); }
     sfx.collect(1.2); combat.refreshHud(); return true;
   });
+  const activities = app.activities = new Activities(scene, world, save, { toast: (t) => areaToast(t), float: (t) => floatText(t, 'combo'), sfx: (k) => sfx.mission(k), passed: (a, b) => passed(a, b) });
   const STATIONS = ['Plateau Lo-Fi 96.3', 'Neon 88 FM', 'Mile End Beats', 'Radio Off'];
   let radioT = 0;
   function radio(step = 1) { const n = sfx.radio(sfx.station + step); $('#radioTxt').textContent = STATIONS[n]; $('#radioName').classList.add('show'); clearTimeout(radioT); radioT = setTimeout(() => $('#radioName').classList.remove('show'), 2600); sfx.blip?.(); }
@@ -750,11 +809,14 @@ async function boot() {
   let started = params.has('play');
   const begin = (room) => {
     if (!save.name) { save.name = NAMES[Math.floor(Math.random() * NAMES.length)] + ' ' + (10 + Math.floor(Math.random() * 89)); $('#pName').value = save.name; writeSave(save); }
-    started = true; document.body.classList.add('playing'); sfx.start(); $('#btnSound').classList.remove('off');
+    started = true; document.body.classList.add('playing'); if (save.city && save.city !== 'montreal') travelTo(save.city, true); sfx.start(); $('#btnSound').classList.remove('off');
     if (room) { goOnline(room); if (!invited) setTimeout(showInvite, 900); }
     setTimeout(() => areaToast('Saint-Denis Street'), 600);
     if (!save.deliveries && !params.has('play')) setTimeout(() => say('Tutorial', room ? (isTouch ? 'Welcome! When your friends join, the host starts a mission from the ☰ menu. First to finish wins! Tap 🕊 Fly to take off.' : 'Welcome! When your friends join, the host starts a mission (N). First to finish wins! Press V (or jump three times) to fly.') : (isTouch ? 'Welcome to the Plateau! Left thumb to move, swipe right to look. Tap 🕊 Fly to take off, and the 👆 bubble to talk or deliver. Find the 12 golden bagels!' : 'Welcome to the Plateau! Press V (or jump three times) to fly. N starts a mission. Step into a shop (E) for a delivery, and look for the 12 golden bagels.')), 2500);
   };
+  const cityBtns = [...document.querySelectorAll('#pCity button')];
+  const updCity = () => cityBtns.forEach((b) => b.classList.toggle('on', b.dataset.c === (save.city || 'montreal')));
+  cityBtns.forEach((b) => { b.onclick = () => { save.city = b.dataset.c; writeSave(save); updCity(); }; }); updCity();
   $('#play').onclick = () => begin();
   $('#host').onclick = () => begin(randomCode());
   $('#join').onclick = () => { const c = $('#pCode').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length < 4) { $('#pCode').focus(); $('#pCode').animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250); return; } begin(c); };
@@ -800,7 +862,7 @@ async function boot() {
   }
   function frame(dtOverride) {
     const rawDt = typeof dtOverride === 'number' ? dtOverride : Math.min(clock.getDelta(), 1);
-    const dt = (typeof dtOverride === 'number' ? dtOverride : Math.min(rawDt, 1 / 20)) * (slowmo || 1) * (combat?.pd?.dead ? 0.6 : 1);
+    const dt = (typeof dtOverride === 'number' ? dtOverride : Math.min(rawDt, 1 / 20)) * (slowmo || 1) * (combat?.pd?.dead ? 0.6 : 1) * (activities?.slow || 1);
     if (typeof dtOverride === 'number') clock.elapsedTime += dt;
     const t = clock.elapsedTime;
     U.uTime.value = t;
@@ -810,7 +872,8 @@ async function boot() {
     if (!started || photoMode) { inp.x = inp.y = 0; inp.jump = false; inp.dash = false; if (!started) cam.yaw += dt * 0.05; }
     let stepped = false;
     combat.trigger = !!(tHeld.tShoot || mouseFire); if (car) combat.trigger = false;
-    const vctx = { vehicles: police.carVs.length ? vehicles.concat(police.carVs) : vehicles, hitPed: (n, vx, vz, sp) => combat.hitByCar(n, vx, vz, sp), traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list], night: look.night, clock: fmtHour(clockH) };
+    if (isTouch) combat.aiming = !!tHeld.tAim || !!tHeld.tShoot;
+    const vctx = { vehicles: police.carVs.length ? vehicles.concat(police.carVs) : vehicles, hitPed: (n, vx, vz, sp) => combat.hitByCar(n, vx, vz, sp), traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list, ...walkers.list.filter((p) => p.live)], night: look.night, clock: fmtHour(clockH) };
     if (car) {
       inp.fly = false; inp.dash = false;
       car.update(dt, started && !photoMode ? inp : null, vctx);
@@ -829,14 +892,22 @@ async function boot() {
     for (const v of vehicles) if (v !== car) { if (v.speed > 0.05) v.update(dt, null, vctx); else v.place(0, vctx); }
     for (const v of vehicles) v.m.lod(v === car ? 0 : v.pos.distanceTo(camera.position));
     // fell into the St. Lawrence: splash, swim back to the quay
+    if (!car && !player.flying) for (const W of WATERS) {
+      if (player.pos.x < W.x0 || player.pos.x > W.x1 || player.pos.z < W.z0 || player.pos.z > W.z1) continue;
+      const wy = W.y ?? h(player.pos.z) + W.slope; if (W.y == null && player.pos.y > wy + 0.2) continue;   // the lake and river are deep right from the quay
+      puffs.ring(player.pos.clone().setY(wy), 0xbfe3ff); sfx.land(); areaToast(W.side !== undefined ? 'Splash! The Rideau Canal' : cityAt(player.pos.x).key === 'toronto' ? 'Splash! Lake Ontario' : 'Splash! The Ottawa River');
+      const x = W.side ?? player.pos.x, z = W.side !== undefined ? player.pos.z : W.back; player.pos.set(x, world.colliders.ground(x, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vy = 0; player.grounded = true; player.unstick(); break;
+    }
+    if (car) for (const W of WATERS) { if (car.pos.x > W.x0 && car.pos.x < W.x1 && car.pos.z > W.z0 && car.pos.z < W.z1 && W.y != null) { car.dmg = 1; } }
     if (!car && !player.flying && player.pos.z > RIVER_Z - 6 && player.pos.y < WATER_Y + 0.2) {
       puffs.ring(player.pos.clone().setY(WATER_Y), 0xbfe3ff); sfx.land(); areaToast('Splash! The Saint Lawrence River');
       const z = RIVER_Z - 12; player.pos.set(player.pos.x, world.colliders.ground(player.pos.x, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vy = 0; player.grounded = true; player.unstick();
     }
     if (!car && player.speed > 0.5) props.push(player.pos.x, player.pos.z, player.pos.y, player.pos.y + 1.7, player.bike ? 0.55 : 0.35, player.vel.x, player.vel.z, player.bike ? 95 : 70);
     props.update(dt);
-    crowd.update(dt, player, camera.position);
+    crowd.update(dt, player, camera.position); walkers.update(dt, player, camera, cam.yaw); cities.update(t, scene.fog);
     combat.update(dt, t); police.update(dt, t); pickups.update(dt, player, combat);
+    activities.update(dt, player, car, (v) => { save.money += v; writeSave(save); updateMoney(); sfx.collect(1.3); });
     for (const v of vehicles) carFx(v, dt); for (const v of police.carVs) carFx(v, dt);
     if (car && car.wreck) exitCar();
     // nobody walks through you: nudge people out of your way
@@ -898,7 +969,7 @@ async function boot() {
     if (started && (clockH >= 22 || clockH < 4)) ach.unlock('night');
     if (started && season === 'winter' && player.speed > 1) ach.unlock('snow');
     updateLook(dt);
-    updateCamera(dt, t);
+    combat.updateAim(dt); updateCamera(dt, t);
     // speed lines + flash
     const sp = car ? Math.min(1, Math.max(0, (car.speed - 16) / 14)) : Math.max(player.dashT > 0 ? 1 : 0, Math.min(1, Math.max(0, (player.speed - 6.5) / 4)));
     pipe.U.uSpeed.value += (sp - pipe.U.uSpeed.value) * (1 - Math.exp(-dt * 8));
@@ -914,10 +985,10 @@ async function boot() {
     if (w.name && w.name !== lastArea && started) { lastArea = w.name; areaToast(w.name); }
     $('#boostCafe').classList.toggle('show', player.boost > 0); $('#boostJump').classList.toggle('show', player.jumpBoost > 0);
     $('#onBike').classList.toggle('show', !!player.bike);
-    const mt = missions.target(), ma = $('#marr');
+    const mt = activities.target() || missions.target(), ma = $('#marr');
     ma.classList.toggle('has', !!mt);
     if (mt) { pointArrow(ma, mt); ma.querySelector('span').textContent = Math.round(mt.distanceTo(player.pos)) + ' m'; }
-    if ((mmT = (mmT + 1) % 2) === 0) mm.draw(player, cam.yaw, bagels.list, job?.target, missions.marks(), [...remotes.values()].map((r) => ({ x: r.pos.x, z: r.pos.z, c: COLORS[r.color] })).concat(pickups.marks(), police.marks(t)));
+    if ((mmT = (mmT + 1) % 2) === 0) mm.draw(player, cam.yaw, bagels.list, job?.target, missions.marks(), [...remotes.values()].map((r) => ({ x: r.pos.x, z: r.pos.z, c: COLORS[r.color] })).concat(pickups.marks(), activities.marks(), police.marks(t)));
     placeTag(meTag, hero.root.position, 2.2);
     for (const r of remotes.values()) placeTag(r.tag, r.pos, 2.25);
     sfx.ambience(look.night, season, weather.precip);
@@ -1056,8 +1127,9 @@ function makeMinimap(world) {
   for (let k = -2; k <= 2; k++) { const sx = nsX(k); R(sx - nsHW(k), sx + nsHW(k), Z0, Z1, '#a9b0b6'); }
   for (let m = -3; m <= 3; m++) { const sz = ewZ(m); R(X0, X1, sz - ewHW(m), sz + ewHW(m), '#a9b0b6'); }
   for (const [a, c, z0, z1] of world.foot) R(a, c, z0, z1, '#2c3238');
-  const W = cv.width, H = cv.height;
+  const W = cv.width, H = cv.height, extra = [];
   return {
+    addBase(e) { extra.push(e); },
     draw(player, yaw, bagels, target, marks = [], others = []) {
       x.clearRect(0, 0, W, H);
       const CY = H * 0.6;   // like the game's radar: you sit a little below the middle, more road ahead
@@ -1066,6 +1138,7 @@ function makeMinimap(world) {
       x.translate(W / 2, CY); x.rotate(yaw); const sc = 1.1;
       x.scale(sc / S, sc / S); x.translate(-(player.pos.x - X0) * S, -(player.pos.z - Z0) * S);
       x.drawImage(base, 0, 0);
+      for (const e of extra) if (Math.abs(player.pos.x - (e.X0 + e.cv.width / 2)) < 1700) x.drawImage(e.cv, (e.X0 - X0) * S, (e.Z0 - Z0) * S, e.cv.width * S, e.cv.height * S);
       if (target) { const tx = (target.x - X0) * S, tz = (target.z - Z0) * S; x.strokeStyle = 'rgba(40,200,230,.9)'; x.lineWidth = 5; x.setLineDash([10, 8]); x.beginPath(); x.moveTo((player.pos.x - X0) * S, (player.pos.z - Z0) * S); x.lineTo(tx, tz); x.stroke(); x.setLineDash([]); x.fillStyle = '#2fd0ee'; x.strokeStyle = '#fff'; x.lineWidth = 4; x.beginPath(); x.arc(tx, tz, 11, 0, 7); x.fill(); x.stroke(); }
       for (const m of marks) { x.beginPath(); x.arc((m.x - X0) * S, (m.z - Z0) * S, m.r, 0, 7); if (m.ring) { x.fillStyle = m.c; x.fill(); x.strokeStyle = 'rgba(230,140,20,.9)'; x.lineWidth = 4; x.setLineDash([8, 6]); x.stroke(); x.setLineDash([]); } else { x.fillStyle = m.c; x.strokeStyle = '#2b2550'; x.lineWidth = 3; x.fill(); x.stroke(); } }
       for (const o of others) { x.beginPath(); x.arc((o.x - X0) * S, (o.z - Z0) * S, o.r || 10, 0, 7); x.fillStyle = o.c; x.strokeStyle = o.s || '#fff'; x.lineWidth = 4; x.fill(); x.stroke(); }

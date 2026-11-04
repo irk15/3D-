@@ -493,6 +493,35 @@ body.touch #pvpTag{top:calc(max(12px,env(safe-area-inset-top)) + 140px)}
 @media (max-height:480px){body.touch #mini{width:150px;height:96px}body.touch #hpBar,body.touch #arBar{top:calc(max(10px,env(safe-area-inset-top)) + 104px);width:73px}body.touch #arBar{left:calc(max(22px,env(safe-area-inset-left)) + 77px)}}
 #tRadio{right:180px;bottom:84px}
 body:not(.touch) .icons{top:auto;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 96px);transform:none;gap:5px}body:not(.touch) .ic{width:34px;height:34px}body:not(.touch) .ic svg{width:20px;height:20px}
+
+/* aiming */
+#xhair.on{background:#e4402b;box-shadow:0 0 0 2px #000,0 0 10px rgba(228,64,43,.8)}
+#xhair.aim{width:6px;height:6px;margin:-3px 0 0 -3px}
+#lock{position:absolute;left:0;top:0;width:34px;height:34px;border:3px solid #fff;outline:2px solid rgba(0,0,0,.6);opacity:0;transition:opacity .12s;pointer-events:none;box-shadow:0 0 12px rgba(228,64,43,.6)}
+#lock.show{opacity:1;border-color:#e4402b;animation:lockin .25s ease-out}
+#lock.hp{border-color:#ffb02e}
+@keyframes lockin{from{width:64px;height:64px;opacity:0}}
+body:not(.armed) #tc #tAim{display:none!important}
+body.armed #tc #tDraw{display:none!important}
+#tAim{right:100px;bottom:96px}
+body.armed #tc #tSwap{right:180px;bottom:6px}
+body.aiming .vignAim{opacity:1}
+
+#pCity{display:flex;gap:8px;flex-wrap:wrap}#pCity button{font-weight:700;font-size:15px;padding:8px 14px;border-radius:999px;background:#efe7d8;border:3px solid transparent}#pCity button.on{border-color:var(--ink);background:#fff3cf}
+body.touch #pCity button{min-height:44px}
+#travel{position:fixed;inset:0;display:none;place-items:center;background:rgba(10,12,16,.55);z-index:40;font-family:var(--g)}#travel.show{display:grid}
+#travel .card{background:rgba(14,16,20,.94);color:#fff;border-radius:6px;padding:22px;width:min(560px,calc(100vw - 32px));box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#travel h3{margin:0;font:700 30px var(--g);letter-spacing:.03em;text-transform:uppercase}#travel .sub{margin:4px 0 14px;color:#aaa}
+#travel .cities{display:grid;gap:10px}#travel .cities button{display:grid;text-align:left;gap:2px;padding:12px 16px;border-radius:4px;background:#22262d;color:#fff;border:2px solid transparent;cursor:pointer}
+#travel .cities button:hover{border-color:#f2a93b}#travel .cities button b{font:600 20px var(--g)}#travel .cities button small{color:#aaa;font-size:13px}
+#travel .cities button.here{opacity:.5}#travel .cities button.here b::after{content:" · you are here";font-size:13px;color:#f2a93b}
+#travel #travelClose{margin-top:14px;background:#33373f;color:#fff}
+#fade{position:fixed;inset:0;display:grid;place-items:center;background:#0b0d10;opacity:0;pointer-events:none;transition:opacity .8s;z-index:50;text-align:center;color:#fff}#fade.show{opacity:1;pointer-events:auto}
+#fade small{display:block;font:600 14px var(--g);letter-spacing:.3em;color:#f2a93b}#fade b{font:400 clamp(48px,10vw,110px)/1.1 var(--gd);letter-spacing:.03em}
+
+#act{position:absolute;left:50%;top:max(18px,env(safe-area-inset-top));transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;border-radius:4px;padding:6px 16px;text-align:center;font-family:var(--g);opacity:0;transition:opacity .3s;pointer-events:none}
+#act.show{opacity:1}#act small{display:block;font:600 12px var(--g);letter-spacing:.2em;color:#ffd447;text-transform:uppercase}#act #actInfo{font:500 15px var(--g)}#act b{font:700 22px var(--g)}
+body.touch #act{top:calc(max(12px,env(safe-area-inset-top)) + 46px)}
 </style>
 </head>
 <body>
@@ -511,6 +540,7 @@ body:not(.touch) .icons{top:auto;bottom:calc(max(26px,env(safe-area-inset-bottom
   <div class="boosts" style="top:84px"><div class="boost" id="boostCafe">☕ Caffeine!</div><div class="boost" id="boostJump">🥐 Super jump!</div></div>
   <div class="icons">
     <button class="ic" id="btnMission" title="Start a mission (N)"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
+    <button class="ic" id="btnTravel" title="Travel: Montréal · Toronto · Ottawa"><svg viewBox="0 0 24 24"><path d="M2.5 13.5l19-7-5 15-4-6.5z"/><path d="M12.5 15l4-4"/></svg></button>
     <button class="ic" id="btnInvite" title="Play with friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M17 8v6M14 11h6"/></svg></button>
     <button class="ic" id="btnHelp" title="Help (H)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <button class="ic" id="btnTime" data-v="day" title="Time of day (T)"><svg viewBox="0 0 24 24"><g class="sun"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g><g class="set"><path d="M3 17h18M6 17a6 6 0 0112 0M12 4v4M5 9l2 2M19 9l-2 2M8 21h8"/></g><g class="moon"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></g></svg></button>
@@ -525,12 +555,13 @@ body:not(.touch) .icons{top:auto;bottom:calc(max(26px,env(safe-area-inset-bottom
   <div id="area"><small>LE PLATEAU-MONT-ROYAL</small><span id="areaName">Rue Saint-Denis</span></div>
   <div id="prompt"><kbd>E</kbd><i class="hand">👆</i><span id="promptText">Parler</span></div>
   <div id="say"><span id="sayName">Nom</span><span id="sayHearts"></span><div id="sayText"></div></div>
-  <div id="hudC"><div id="hud2"></div><div id="hpBar"><i id="hpFill"></i><span>♥</span></div><div id="arBar"><i id="arFill"></i></div><div id="radioName" class="gtxt"><small>RADIO</small><b id="radioTxt"></b></div><div id="passed"><b id="passedTxt">mission passed</b><small id="passedSub"></small></div><div id="weapBox"><span id="weapName"></span><span id="ammo"></span><div class="rl"><i id="reloadBar"></i></div></div><span id="pvpTag"></span><div id="stars"></div><div id="cops"></div><div id="xhair"></div><div id="hitm">✕</div><div id="feed"></div><div id="hurt"></div><div id="wasted"><b id="wastedTxt">WASTED</b></div></div>
+  <div id="hudC"><div id="hud2"></div><div id="hpBar"><i id="hpFill"></i><span>♥</span></div><div id="arBar"><i id="arFill"></i></div><div id="radioName" class="gtxt"><small>RADIO</small><b id="radioTxt"></b></div><div id="act"><small id="actName">Race</small><div id="actInfo"></div></div><div id="passed"><b id="passedTxt">mission passed</b><small id="passedSub"></small></div><div id="weapBox"><span id="weapName"></span><span id="ammo"></span><div class="rl"><i id="reloadBar"></i></div></div><span id="pvpTag"></span><div id="stars"></div><div id="cops"></div><div id="xhair"></div><div id="lock"></div><div id="hitm">✕</div><div id="feed"></div><div id="hurt"></div><div id="wasted"><b id="wastedTxt">WASTED</b></div></div>
   <div id="wheel"><div class="ring"><button data-w="0" style="left:50%;top:16%"><i>✊</i>Fists<small>—</small></button><button data-w="1" style="left:84%;top:50%"><i>🔫</i>Pistol<small id="ww1"></small></button><button data-w="2" style="left:50%;top:84%"><i>🔫</i>SMG<small id="ww2"></small></button><button data-w="3" style="left:16%;top:50%"><i>🎯</i>Rifle<small id="ww3"></small></button><div class="mid">WEAPONS</div></div></div>
   <div id="tc">
     <button class="tb mp" id="tChat" data-m="walk bike">💬</button><button class="tb mp" id="tEmo" data-m="walk bike">👋</button>
     <div class="pad">
       <button class="tb big hold" id="tShoot" data-m="walk"><i>🔫</i><b>Fire</b></button>
+      <button class="tb mid hold" id="tAim" data-m="walk"><i>◎</i><b>Aim</b></button>
       <button class="tb sm" id="tReload" data-m="walk"><i>⟳</i><b>Reload</b></button>
       <button class="tb sm" id="tSwap" data-m="walk"><i>⇄</i><b>Weapon</b></button>
       <button class="tb sm" id="tDraw" data-m="walk"><i>🔫</i><b>Gun</b></button>
@@ -564,12 +595,15 @@ body:not(.touch) .icons{top:auto;bottom:calc(max(26px,env(safe-area-inset-bottom
     <div><label>YOUR NAME</label><div class="row2"><input id="pName" maxlength="16" placeholder="Your name" autocomplete="off"></div></div>
     <div><label>YOUR COLOUR</label><div id="pCols"></div></div>
     <div><label>YOUR CHARACTER</label><div id="pChars"><button data-m="bot">🤖 X Bot</button><button data-m="michelle">💃 Michelle</button><button data-m="soldier">🪖 Vanguard</button></div></div>
+    <div><label>START IN</label><div id="pCity"><button data-c="montreal">⚜️ Montréal</button><button data-c="toronto">🗼 Toronto</button><button data-c="ottawa">🍁 Ottawa</button></div></div>
     <div class="modes"><button class="btn red" id="play">Solo ▸</button><button class="btn gold" id="host">Host a game</button></div>
     <div class="or">— or join your friends with a code —</div>
     <div class="row2" id="joinRow"><input id="pCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn blue" id="join">Join</button></div>
   </div>
   <div class="thint">🕹 joystick on the left · buttons on the right · swipe to look</div><div class="hint">WASD + Space · V to fly · E interact · N mission · H help</div>
 </div></div>
+<div id="travel"><div class="card"><h3>Where to?</h3><p class="sub">VIA Rail · the train takes you there in a moment</p><div class="cities"><button data-c="montreal"><b>⚜️ Montréal</b><small>The Plateau, downtown, the Old Port, the river</small></button><button data-c="toronto"><b>🗼 Toronto</b><small>CN Tower, the Financial District, Yonge–Dundas, the Gardiner, Lake Ontario</small></button><button data-c="ottawa"><b>🍁 Ottawa</b><small>Parliament Hill, the Rideau Canal, Château Laurier, ByWard Market</small></button></div><button class="btn" id="travelClose">Close</button></div></div>
+<div id="fade"><div><small>VIA RAIL · ARRIVING IN</small><b id="fadeCity">Toronto</b></div></div>
 <div id="help"><div class="card">
   <h3>How to play</h3>
   <dl class="touchHelp">
@@ -580,11 +614,13 @@ body:not(.touch) .icons{top:auto;bottom:calc(max(26px,env(safe-area-inset-bottom
     <dt>👆 Bubble</dt><dd>When a bubble appears on the right (talk, drive, take a BIXI, deliver…), tap it.</dd>
     <dt>🚗 Car</dt><dd>Joystick: steer · ⏶ Gas · ⏷ Brake and reverse · ⟲ Handbrake to drift · 👁 interior view.</dd>
     <dt>🔫 Gun</dt><dd>Tap Gun to draw · Fire (aim assist) · ⟳ reload · ⇄ opens the weapon wheel. Cars knock people over; the police notice. Grab green ✚ health, blue armour, cash and ammo on the sidewalks. 📻 changes the radio in a car.</dd>
+    <dt>✈ Cities</dt><dd>Travel to Toronto or Ottawa from the ☰ menu. Drive into a yellow marker for a street race; ramps give stunt bonuses.</dd>
     <dt>☰ Menu</dt><dd>Missions, friends, time, weather, season, journal, photo, music, fullscreen.</dd>
     <dt>Goal</dt><dd>Deliver parcels on time, find the 12 golden bagels, win missions against your friends.</dd>
   </dl>
   <dl class="keyHelp">
     <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Walk · <kbd>Shift</kbd> run</dd>
+    <dt>✈ Travel</dt><dd>Montréal · Toronto · Ottawa — VIA Rail stations or the ✈ button. Drive into a yellow marker to start a race.</dd>
     <dt><kbd>Tab</kbd> <kbd>O</kbd></dt><dd>Weapon wheel (time slows) · change radio station</dd>
     <dt><kbd>G</kbd> <kbd>U</kbd> <kbd>R</kbd></dt><dd>Draw / holster the gun · switch weapon · reload · click to fire · right-click to zoom · <kbd>K</kbd> PvP on/off</dd>
     <dt><kbd>Space</kbd></dt><dd>Jump · twice for a flip · hold in the air to glide with the umbrella</dd>

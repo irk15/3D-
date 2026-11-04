@@ -333,7 +333,7 @@ export function buildDowntown(scene, world) {
   };
 }
 
-function waterMaterial() {
+export function waterMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: { uTime: { value: 0 }, uNight: U.uNight, fogColor: { value: new THREE.Color() }, fogNear: { value: 1 }, fogFar: { value: 1000 } },
     fog: true,

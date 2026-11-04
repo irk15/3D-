@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { Vehicle } from './vehicle.js';
 import { makeCharacter } from './actors.js';
-import { nsX, ewZ, WALK } from './layout.js';
+import { nsX, ewZ, WALK, inWalk, h } from './layout.js';
 import { knock, stepRag } from './combat.js';
 
 const STAR_AT = [0.6, 1.8, 4, 7, 11];     // heat needed for 1…5 stars
@@ -55,9 +55,9 @@ export class Police {
     const p = this.player.pos, C = this.world.colliders;
     for (let tries = 0; tries < 8; tries++) {
       const ns = Math.random() < 0.5; let x, z, yaw;
-      if (ns) { const k = Math.round(p.x / 90) + ((Math.random() * 3 | 0) - 1); x = nsX(Math.max(-2, Math.min(2, k))); z = p.z + (Math.random() < 0.5 ? -1 : 1) * (95 + Math.random() * 60); yaw = Math.atan2(0, p.z - z); }
-      else { const m = Math.round((p.z + 160) / 110 - 1) + ((Math.random() * 3 | 0) - 1); z = ewZ(Math.max(-1, Math.min(2, m))); x = p.x + (Math.random() < 0.5 ? -1 : 1) * (95 + Math.random() * 60); yaw = Math.atan2(p.x - x, 0); }
-      if (x < WALK.x0 + 5 || x > WALK.x1 - 5 || z < WALK.z0 + 5 || z > WALK.z1 - 5) continue;
+      if (ns) { const k = Math.round(p.x / 90) + ((Math.random() * 3 | 0) - 1); x = nsX(Math.abs(p.x) > 1500 ? k : Math.max(-2, Math.min(2, k))); z = p.z + (Math.random() < 0.5 ? -1 : 1) * (95 + Math.random() * 60); yaw = Math.atan2(0, p.z - z); }
+      else { const m = Math.round((p.z + 160) / 110 - 1) + ((Math.random() * 3 | 0) - 1); z = ewZ(Math.abs(p.x) > 1500 ? Math.max(-4, Math.min(3, m)) : Math.max(-1, Math.min(2, m))); x = p.x + (Math.random() < 0.5 ? -1 : 1) * (95 + Math.random() * 60); yaw = Math.atan2(p.x - x, 0); }
+      if (!inWalk(x - 5, z - 5) || !inWalk(x + 5, z + 5)) continue;
       const y = C.ground(x, z, 99, 0.2); if (!isFinite(y) || C.blocked(x, z, 2.2, y, 0.5, y + 1.6)) continue;
       const v = new Vehicle(this.scene, this.world, 'sedan', '#2a3558', x, z, yaw); v.cop = true; v.driver = { cop: true };
       const S = v.S, g = v.m.g;

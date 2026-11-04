@@ -4,7 +4,7 @@
 // buildings, parked cars, traffic and other drivable cars (with a bounce and a thump), loose props that
 // get knocked flying, and pedestrians who jump out of the way.
 import * as THREE from 'three';
-import { h, WALK } from './layout.js';
+import { h, WALK, inWalk } from './layout.js';
 import { carDrivable } from './cars.js';
 
 const GEARS = [0, 4.2, 9, 15, 22, 30, 60];   // m/s where each gear tops out
@@ -25,7 +25,7 @@ export class Vehicle {
   circles(x, z, yaw) { const s = Math.sin(yaw), c = Math.cos(yaw), r = this.S.W / 2, o = this.S.L / 2 - r; return [[x + s * o, z + c * o, r], [x, z, r], [x - s * o, z - c * o, r]]; }
   blockedAt(x, z, yaw, others) {
     const C = this.w.colliders, y = this.pos.y;
-    if (x < WALK.x0 || x > WALK.x1 || z < WALK.z0 || z > WALK.z1) return true;
+    if (!inWalk(x, z)) return true;
     for (const [cx, cz, r] of this.circles(x, z, yaw)) {
       if (C.blocked(cx, cz, r * 0.92, y, 0.55, y + 1.3)) return true;
       for (const o of others) if (o !== this && o.hitCircle && o.hitCircle(cx, cz, r * 0.92)) return o;
@@ -100,7 +100,8 @@ export class Vehicle {
     for (const w of W) { const lx = w.g.position.x, lz = w.g.position.z, wx = this.pos.x + f.x * lz + r.x * lx, wz = this.pos.z + f.z * lz + r.z * lx; hs.push(C.ground(wx, wz, this.pos.y + 0.6, 0)); }
     const front = (hs[0] + hs[1]) / 2, rear = (hs[2] + hs[3]) / 2, left = (hs[0] + hs[2]) / 2, right = (hs[1] + hs[3]) / 2, gy = Math.max((front + rear) / 2, Math.max(...hs) - 0.25);
     if (this.pos.y > gy + 0.05) { this.vy -= 15 * dt; this.pos.y = Math.max(gy, this.pos.y + this.vy * dt); if (this.pos.y <= gy) { this.impact = Math.max(this.impact, -this.vy * 0.6); this.vy = 0; } }
-    else { this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-dt * 18)); this.vy = 0; }
+    else { this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-dt * 18)); this.climb = (this.climb || 0) + (Math.min(14, (gy - (this._gy ?? gy)) / Math.max(dt, 1e-3)) - (this.climb || 0)) * Math.min(1, dt * 8); this.vy = Math.max(0, this.climb - 0.6); }   // a sustained climb (a ramp, not a kerb) launches you
+    this._gy = gy;
     const tp = Math.atan2(rear - front, wb), tr = Math.atan2(right - left, S.W - 0.3);
     this.dive += ((-a * 0.0065) - this.dive) * (1 - Math.exp(-dt * 6));
     this.pitch += (tp + this.dive - this.pitch) * (1 - Math.exp(-dt * 9));

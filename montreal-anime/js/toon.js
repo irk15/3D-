@@ -91,7 +91,13 @@ gEmit = vec3(0.0);
     float col = floor(u / cw), fl = floor(vWP.y / fh);
     float mull = max(band(fract(u / cw), 0.0, 0.07), band(fract(vWP.y / fh), 0.0, 0.12)) * vis(0.08, fw);
     float refl = smoothstep(0.1, 0.9, fract(vWP.y * 0.0085 + u * 0.0031 + 0.37));
-    vec3 glassC = mix(c * 0.62, mix(vec3(0.52, 0.70, 0.88), vec3(0.88, 0.94, 1.0), refl), 0.5);
+    // real reflections: a fresnel mirror of the sky (zenith → horizon, with drifting cloud streaks)
+    vec3 Vd = normalize(cameraPosition - vWP), Rr = reflect(-Vd, normalize(vWN));
+    float fres = 0.22 + 0.78 * pow(1.0 - max(dot(Vd, normalize(vWN)), 0.0), 3.0);
+    vec3 skyR = mix(vec3(0.80, 0.88, 0.96), vec3(0.36, 0.56, 0.86), clamp(Rr.y * 1.6, 0.0, 1.0));
+    skyR += vec3(0.16) * smoothstep(0.55, 0.8, vn(Rr.xz / (abs(Rr.y) + 0.35) * 2.5 + uTime * 0.01)) * step(0.0, Rr.y);
+    skyR = mix(skyR, vec3(0.32, 0.30, 0.28), step(Rr.y, -0.02) * 0.7);   // the street below
+    vec3 glassC = mix(c * 0.55, mix(vec3(0.52, 0.70, 0.88), vec3(0.88, 0.94, 1.0), refl) * 0.5 + skyR * 0.5, fres);
     float lit = step(h21(vec2(col, fl) + floor(vWP.x * 0.02) * 5.7 + floor(vWP.z * 0.02) * 2.3), 0.36);
     vec3 nightC = mix(vec3(0.04, 0.06, 0.12), vec3(1.0, 0.84, 0.58) * 0.32, lit);
     float nf = smoothstep(0.3, 0.85, uNight);   // offices only show once it's properly dark

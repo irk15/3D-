@@ -15,8 +15,9 @@ export const nsHW = (k) => (k === 0 ? 7.5 : k === -1 ? 4.2 : k === -2 ? 8 : 5);
 export const nsSW = (k) => (k === 0 ? 4 : 3);
 export const ewHW = (m) => (m === -1 ? 7 : m === 1 ? 6 : m === 3 ? 8 : 5);
 export const ewSW = (m) => (m === -1 ? 4.5 : 3);
-export const nsName = (k) => NS_NAMES[k] || 'Plateau Street';
-export const ewName = (m) => EW_NAMES[m] || 'Plateau Street';
+export const NAMES = { ns: {}, ew: {} };   // other cities add their street names here (cities.js)
+export const nsName = (k) => NAMES.ns[k] || NS_NAMES[k] || (Math.abs(k) > 20 ? 'Street' : 'Plateau Street');
+export const ewName = (m, x = 0) => (Math.abs(x) > 2500 ? NAMES.ew[(x > 0 ? 'toronto:' : 'ottawa:') + m] || 'Street' : EW_NAMES[m] || 'Plateau Street');
 export const nsIdx = (x) => Math.round(x / 90);
 export const ewIdx = (z) => Math.round((z + 160) / 110) - 1;
 export const ALLEY_HW = 2.6;
@@ -31,6 +32,11 @@ export const RIVER_Z = 1290;                                              // the
 export const WATER_Y = -0.055 * RIVER_Z - 3;
 export const WALK = { x0: -950, x1: 1150, z0: -560, z1: RIVER_Z - 6 };   // where you can walk
 export const FLY = { x0: -1150, x1: 1350, z0: -760, z1: 1950 };           // where you can fly
+// the playable map is several rectangles (Montréal, Toronto, Ottawa) and some water you can splash into
+export const REGIONS = { walk: [WALK], fly: [FLY] };
+export const WATERS = [];
+export const inWalk = (x, z) => { for (const r of REGIONS.walk) if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return true; return false; };
+export const inFly = (x, z) => { for (const r of REGIONS.fly) if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return true; return false; };
 
 // special places
 export const PARK = { x0: -90 + nsHW(-1) + nsSW(-1), x1: -nsHW(0) - nsSW(0), z0: ewZ(1) + ewHW(1) + ewSW(1), z1: ewZ(2) - ewHW(2) - ewSW(2), name: 'Saint-Louis Square' };
@@ -47,7 +53,7 @@ export function whereIs(x, z) {
   if (inRect(PARK, x, z)) return { kind: 'park', name: PARK.name };
   if (inRect(PLAZA, x, z)) return { kind: 'plaza', name: PLAZA.name };
   if (dx < nsHW(k) + nsSW(k) + 1) return { kind: 'ns', name: nsName(k), k };
-  if (dz < ewHW(m) + ewSW(m) + 1) return { kind: 'ew', name: ewName(m), m };
+  if (dz < ewHW(m) + ewSW(m) + 1) return { kind: 'ew', name: ewName(m, x), m };
   const ka = Math.round((x - 45) / 90);
   if (Math.abs(x - alleyX(ka)) < ALLEY_HW + 0.5) {
     const green = Math.abs(x - GREEN_ALLEY.x) < 4 && z > GREEN_ALLEY.z0 && z < GREEN_ALLEY.z1;

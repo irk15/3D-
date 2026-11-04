@@ -1,4 +1,4 @@
-# Plateau · Montréal
+# Plateau · Montréal — and Toronto, and Ottawa
 
 An anime-style multiplayer adventure in Three.js, set in Montreal's Plateau-Mont-Royal. Fly over the rooftops and race your friends through missions.
 
@@ -105,6 +105,16 @@ Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) charac
 - **GTA-style HUD**: rectangular radar with health and armour bars, cash, weapon and ammo, wanted stars, district and street names in the corner, help box, speedometer, *mission passed* banners, *wasted* / *busted* screens.
 - **Fixes**: cars slide along walls instead of sticking and ease out if traffic drives into them; you can always walk out of something that drove onto you; traffic stops for cop cars and people in the road; pedestrians' legs now match how fast they really move (no more sliding or crab-walking), walkers turn toward where they go, and nobody walks through you.
 
+## Version 7 — three cities: Montréal, Toronto, Ottawa
+
+- **Toronto** (3.6 km east of the Plateau): 13 × 9 blocks of downtown on Toronto's real street names (Bathurst to Cherry, Bloor to Lake Shore). The CN Tower (553 m, with the glass pod and SkyPod), the Rogers Centre dome, City Hall's two curved towers with Nathan Phillips Square and the colourful TORONTO sign, the Financial District (First Canadian Place, the black TD towers, gold Royal Bank Plaza, red Scotia Plaza), Union Station's colonnade, the Royal York, Queen's Park, Yonge–Dundas Square with giant screens, a condo forest of glass towers on brick podiums, the elevated Gardiner Expressway (drivable, with ramps), the waterfront boardwalk, Lake Ontario and the Toronto Islands. Red TTC streetcars run on Queen and King.
+- **Ottawa** (3.6 km west): Centretown from Bronson to Nelson, Gladstone to Wellington. Parliament Hill on its raised lawn — Centre Block with copper roofs and spires, the Peace Tower with its clock faces, the round Library of Parliament, the East and West Blocks, the Centennial Flame — the Rideau Canal with stone walls, bridges and locks, Château Laurier, the National War Memorial, ByWard Market with its brick hall and striped stalls, the Ottawa River and the Gatineau hills.
+- **Travel** between cities by VIA Rail: walk into the station in each city (Mont-Royal plaza, Union Station, by the Château), use the ✈ button, or pick a starting city in the lobby.
+- **Crowds everywhere**: a pool of pedestrians always fills the sidewalks around you in every city. They walk the grid, turn at corners, keep their distance, flee from gunfire, get knocked down and get back up, and quietly respawn out of sight.
+- **Activities**: four street races (Plateau Loop, King & Yonge Sprint, Lake Shore Run, Parliament Dash) with checkpoint rings, par times and saved records; twelve stunt ramps and a *stunt bonus* (with slow motion) for any big jump; twenty hidden golden maple leaves on parks and rooftops in Toronto and Ottawa.
+- **Aiming like GTA**: on desktop the mouse is captured when your gun is out (free aim), right button aims and **locks on** to the nearest target with a red reticle, the camera tightens over your shoulder and zooms, and the dot turns red over a target. On phones, hold **Aim** (or Fire) to lock on.
+- **Graphics**: glass towers now mirror the sky with a fresnel reflection (and the street below), lit offices at night, a sun-swept skyline in every city, plus street trees and lamps along every block.
+
 ## How it looks the way it does
 
 - **Toon shading**: three-band light ramp, blue-violet ambient shadows, painted sky with flat two-tone clouds.
@@ -114,6 +124,6 @@ Models: X Bot, Michelle and Vanguard are [Mixamo](https://www.mixamo.com) charac
 
 ## Files
 
-`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/rig.js` (Mixamo characters, animation blending, procedural poses) · `js/cars.js` (car models) · `js/vehicle.js` (driving physics) · `js/physics.js` (loose objects) · `js/crowd.js` (people around town) · `js/downtown.js` (downtown, landmarks, river) · `js/combat.js` (weapons, knock-downs, health, PvP) · `js/police.js` (wanted level, cops) · `js/pickups.js` (health, armour, cash, ammo) · `models/` (compressed Mixamo glTF, plus light crowd versions) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
+`index.html` (page and interface) · `js/layout.js` (street grid and slope) · `js/toon.js` (materials, sky, outline pipeline) · `js/world.js` (buildings, props, colliders) · `js/actors.js` (characters, player, neighbours, traffic, bagels) · `js/main.js` (camera, input, time, seasons, audio, minimap, lobby, remote players) · `js/net.js` (peer-to-peer rooms) · `js/missions.js` (missions, scoring) · `js/sky.js` (clouds, rooftop props, wing trails) · `js/rig.js` (Mixamo characters, animation blending, procedural poses) · `js/cars.js` (car models) · `js/vehicle.js` (driving physics) · `js/physics.js` (loose objects) · `js/crowd.js` (people around town) · `js/downtown.js` (downtown, landmarks, river) · `js/combat.js` (weapons, knock-downs, health, PvP) · `js/police.js` (wanted level, cops) · `js/pickups.js` (health, armour, cash, ammo) · `js/cities.js` (Toronto and Ottawa) · `js/population.js` (pedestrians around you) · `js/activities.js` (races, stunts, maple leaves) · `models/` (compressed Mixamo glTF, plus light crowd versions) · `js/vendor-trystero.js` (bundled [Trystero](https://github.com/dmotz/trystero), MIT).
 
 The neighbourhood is a stylised impression of the Plateau, not a survey-accurate map; street names are real, but the shops and characters are invented.

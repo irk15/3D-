@@ -1,0 +1,97 @@
+// population.js — GTA-style ambient pedestrians: a recycled pool of walkers that always fills the
+// sidewalks around the player, in every city. They walk the sidewalk grid at their own pace, turn at
+// corners, step around each other, react to cars, guns and explosions (they can be knocked down like
+// anyone else), and quietly respawn out of sight when you leave them behind.
+import * as THREE from 'three';
+import { h, CURB, nsX, ewZ, nsHW, ewHW, nsSW, ewSW, nsIdx, ewIdx, inWalk } from './layout.js';
+import { makeCharacter } from './actors.js';
+import { stepRag } from './combat.js';
+
+const TOPS = ['#2f8f8a', '#d8473f', '#f2b43c', '#5a4a8f', '#3c6fb4', '#e79cb4', '#2f3a44', '#f4efe6', '#7a9e4a', '#c46a2f', '#1f1f24', '#8a8f99'];
+const PANTS = ['#2b2550', '#3a3a4a', '#2f3550', '#4f6f9f', '#5b4636', '#1d1d22', '#6b6b70'];
+const TINTS = ['#f6d2b8', '#e8b48e', '#c68863', '#8d5a3c', '#f1c9a5', '#5c3a26'];
+const pick = (a) => a[(Math.random() * a.length) | 0];
+
+export class Walkers {
+  constructor(scene, world, n) {
+    this.w = world; this.list = []; this.fr = 0; this.scene = scene;
+    for (let i = 0; i < n; i++) {
+      const ch = makeCharacter({ model: i % 2 ? 'bot_lo' : 'michelle_lo', top: pick(TOPS), pants: pick(PANTS), tint: pick(TINTS), scale: 0.9 + Math.random() * 0.18 });
+      ch.root.visible = false; scene.add(ch.root);
+      const p = { ch, pos: new THREE.Vector3(0, -999, 0), id: i, live: false, axis: 'z', dir: 1, c: 0, speed: 1.2, yaw: 0, adt: 0, vs: 0, hp: 60, phone: Math.random() < 0.2 };
+      p.scare = (x, z) => { if (p.rag) return; p.flee = 5 + Math.random() * 3; p.fleeFrom = { x, z }; };
+      p.dodge = (sx, sz) => { if (p.dodgeT > 0) return; p.dodgeT = 0.45; p.dv = new THREE.Vector3(sx, 0, sz).multiplyScalar(5); ch.gesture?.('shake', 1.4); };
+      this.list.push(p);
+    }
+  }
+  // a random sidewalk spot in a ring around (x,z), not in front of the camera if possible
+  spawn(p, px, pz, camYaw, rMin, rMax) {
+    const C = this.w.colliders;
+    for (let t = 0; t < 14; t++) {
+      const a = Math.random() * Math.PI * 2, rr = rMin + Math.random() * (rMax - rMin);
+      let x = px + Math.sin(a) * rr, z = pz + Math.cos(a) * rr;
+      // snap to the nearest sidewalk line of the grid
+      const k = nsIdx(x), m = ewIdx(z), dx = x - nsX(k), dz = z - ewZ(m);
+      if (Math.abs(dx) - nsHW(k) < Math.abs(dz) - ewHW(m)) { const s = Math.sign(dx) || 1; x = nsX(k) + s * (nsHW(k) + nsSW(k) * 0.5); p.axis = 'z'; p.c = x; }
+      else { const s = Math.sign(dz) || 1; z = ewZ(m) + s * (ewHW(m) + ewSW(m) * 0.5); p.axis = 'x'; p.c = z; }
+      if (!inWalk(x, z)) continue;
+      const y = C.ground(x, z, h(z) + 1.2, 0.1), lift = y - h(z);
+      if (lift < 0.05 || lift > 0.6 || C.blocked(x, z, 0.3, y, 0.3, y + 1.6)) continue;   // must be on a raised sidewalk, in the open
+      // prefer spots behind the camera so nobody pops in where you're looking
+      const vx = x - px, vz = z - pz, fwd = -(Math.sin(camYaw) * vx + Math.cos(camYaw) * vz) / (Math.hypot(vx, vz) || 1);
+      if (fwd > 0.5 && t < 10 && rMin > 30) continue;
+      p.pos.set(x, y, z); p.dir = Math.random() < 0.5 ? 1 : -1; p.speed = 1.05 + Math.random() * 0.45; p.live = true; p.hp = 60; p.flee = 0; p.rag = null; p.turnCD = 2;
+      p.yaw = p.axis === 'z' ? (p.dir > 0 ? 0 : Math.PI) : (p.dir > 0 ? Math.PI / 2 : -Math.PI / 2); p.ch.root.rotation.set(0, p.yaw, 0); p.ch.root.position.copy(p.pos); p.ch.root.visible = true;
+      return true;
+    }
+    p.live = false; p.ch.root.visible = false; return false;
+  }
+  update(dt, player, camera, camYaw) {
+    this.fr++; const C = this.w.colliders, px = player.pos.x, pz = player.pos.z;
+    let spawned = 0;
+    for (const p of this.list) {
+      const d = Math.hypot(p.pos.x - px, p.pos.z - pz);
+      if (!p.live || (d > 150 && !p.rag)) { if (spawned < 2) { spawned++; this.spawn(p, px, pz, camYaw, p.live ? 70 : 20, p.live ? 130 : 110); } else { p.ch.root.visible = false; p.live = false; } continue; }
+      if (p.rag) { if (stepRag(p, dt, C)) { p.ch.root.visible = true; continue; } }
+      if (p.ragEnded) { p.ragEnded = false; if (p.axis === 'z') p.c = p.pos.x; else p.c = p.pos.z; }
+      const px0 = p.pos.x, pz0 = p.pos.z;
+      p.turnCD -= dt;
+      if (p.dodgeT > 0) { p.dodgeT -= dt; const nx = p.pos.x + p.dv.x * dt, nz = p.pos.z + p.dv.z * dt; if (!C.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5)) { p.pos.x = nx; p.pos.z = nz; } }
+      else if (p.flee > 0) {
+        p.flee -= dt;
+        let fx = p.pos.x - p.fleeFrom.x, fz = p.pos.z - p.fleeFrom.z; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
+        const nx = p.pos.x + fx * 4.6 * dt, nz = p.pos.z + fz * 4.6 * dt;
+        if (!C.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5) && inWalk(nx, nz)) { p.pos.x = nx; p.pos.z = nz; } else p.fleeFrom = { x: p.pos.x - fz * 3, z: p.pos.z + fx * 3 };
+        if (p.flee <= 0) { if (Math.abs(fx) > Math.abs(fz)) { p.axis = 'x'; p.dir = Math.sign(fx); p.c = p.pos.z; } else { p.axis = 'z'; p.dir = Math.sign(fz); p.c = p.pos.x; } }
+      } else {
+        // walk the sidewalk line; drift back onto it; turn at corners now and then
+        const sx = p.axis === 'x' ? p.dir : 0, sz = p.axis === 'z' ? p.dir : 0;
+        let nx = p.pos.x + sx * p.speed * dt, nz = p.pos.z + sz * p.speed * dt;
+        if (p.axis === 'z') nx += (p.c - p.pos.x) * Math.min(1, dt * 1.5); else nz += (p.c - p.pos.z) * Math.min(1, dt * 1.5);
+        // keep a little space from other walkers ahead
+        let blockedByPed = false;
+        for (const o of this.list) { if (o === p || !o.live) continue; const ox = o.pos.x - nx, oz = o.pos.z - nz; if (ox * ox + oz * oz < 0.5) { const ahead = ox * sx + oz * sz; if (ahead > 0) blockedByPed = true; else continue; nx += (sx ? 0 : 1) * (p.id % 2 ? 0.4 : -0.4) * dt; nz += (sz ? 0 : 1) * (p.id % 2 ? 0.4 : -0.4) * dt; } }
+        const lift = C.ground(nx, nz, p.pos.y + 0.5, 0.1) - h(nz);
+        if (C.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5) || lift < 0.05 || !inWalk(nx, nz)) {
+          // end of the sidewalk (a corner): turn onto the cross street's sidewalk, or turn back
+          if (p.turnCD <= 0 && Math.random() < 0.6) { p.turnCD = 3; if (p.axis === 'z') { p.axis = 'x'; p.c = p.pos.z; p.dir = Math.random() < 0.5 ? 1 : -1; } else { p.axis = 'z'; p.c = p.pos.x; p.dir = Math.random() < 0.5 ? 1 : -1; } }
+          else { p.dir *= -1; p.turnCD = 1.5; }
+        } else if (!blockedByPed) { p.pos.x = nx; p.pos.z = nz; }
+      }
+      p.pos.y += (C.ground(p.pos.x, p.pos.z, p.pos.y + 0.5, 0.1) - p.pos.y) * Math.min(1, dt * 12);
+      // legs and facing come from what they actually did
+      const mvx = (p.pos.x - px0) / Math.max(dt, 1e-3), mvz = (p.pos.z - pz0) / Math.max(dt, 1e-3), ms = Math.min(7, Math.hypot(mvx, mvz));
+      p.vs += (ms - p.vs) * (1 - Math.exp(-dt * 10));
+      if (ms > 0.3) p.yaw = Math.atan2(mvx, mvz);
+      let dy = p.yaw - p.ch.root.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.ch.root.rotation.y += dy * (1 - Math.exp(-dt * 7));
+      p.ch.root.position.copy(p.pos);
+      // animation LOD + only draw what's near
+      const vis = d < 125; p.ch.root.visible = vis; p.adt += dt;
+      if (!vis) { p.adt = 0; continue; }
+      const every = d > 70 ? 4 : d > 30 ? 2 : 1;
+      if ((this.fr + p.id) % every === 0) { p.ch.animate(p.adt, p.vs < 0.2 ? 0 : p.vs, true, 0, { phone: p.phone && p.vs < 2 && !(p.flee > 0) }); p.adt = 0; }
+    }
+  }
+  // move everybody near a new place (after travelling)
+  reset(px, pz, camYaw) { for (const p of this.list) { p.rag = null; p.ch.root.rotation.x = 0; this.spawn(p, px, pz, camYaw, 8, 110); } }
+}

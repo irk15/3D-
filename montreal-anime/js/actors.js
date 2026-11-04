@@ -2,7 +2,7 @@
 // cars with lights and stop signs, pigeons, a cat and the golden bagels.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, WALK, FLY, PLAZA, PARK, rng, pick, U } from './layout.js';
+import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, WALK, FLY, inWalk, inFly, PLAZA, PARK, rng, pick, U } from './layout.js';
 import { toon, LAYER_FX, gradient, Glows } from './toon.js';
 import { makeRigged, rigReady } from './rig.js';
 import { stepRag } from './combat.js';
@@ -191,7 +191,7 @@ export class Player {
     // horizontal with collisions
     const tryMove = (dx, dz) => {
       const nx = p.x + dx, nz = p.z + dz;
-      if (nx < FLY.x0 || nx > FLY.x1 || nz < FLY.z0 || nz > FLY.z1) return false;
+      if (!inFly(nx, nz)) return false;
       if (C.blocked(nx, nz, 0.35, p.y, 0.3, p.y + 1.5)) return false;
       p.x = nx; p.z = nz; return true;
     };
@@ -286,7 +286,7 @@ export class Player {
     const step = bike ? 0.35 : 0.45, head = p.y + 1.5;
     const tryMove = (dx, dz) => {
       const nx = p.x + dx, nz = p.z + dz;
-      if (nx < WALK.x0 || nx > WALK.x1 || nz < WALK.z0 || nz > WALK.z1) return false;
+      if (!inWalk(nx, nz)) return false;
       // blocked only if the move goes INTO something; if we're already inside (a car drove onto us), let us walk out
       if (C.blocked(nx, nz, this.r, p.y, step, head) && !C.blocked(p.x, p.z, this.r, p.y, step, head)) return false;
       if (this.carBlock && this.carBlock(nx, nz) && !this.carBlock(p.x, p.z)) return false;
@@ -500,7 +500,7 @@ export class Neighbours {
 
 // ================================================================= traffic
 export class Traffic {
-  constructor(scene, world, glows) {
+  constructor(scene, world, glows, extra = []) {
     this.w = world; this.cars = []; this.glows = glows; this.t = 0;
     const cols = ['#e8e4dc', '#d8473f', '#7fb2d6', '#f2b43c', '#3f7a5a', '#e79cb4', '#5a4a8f', '#2f3a44', '#f07c3c'];
     const lanes = [
@@ -526,6 +526,18 @@ export class Traffic {
       car.gl = [glows.add(0, 0, 0, 1, 0.95, 0.8, 0.6), glows.add(0, 0, 0, 1, 0.95, 0.8, 0.6), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.4), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.4)];
       this.cars.push(car);
     }
+    // other cities' lanes (cities.js): cars, and buses/streetcars where a lane asks for one
+    let ei = 0;
+    for (const L of extra) {
+      for (let j = 0; j < L.n + (L.bus ? 1 : 0); j++) {
+        const bus = L.bus && j === L.n, col = bus ? L.bus : cols[(ei * 5 + 2) % cols.length], kind = bus ? 'bus' : CAR_KINDS[(ei * 3 + 2) % CAR_KINDS.length]; ei++;
+        const m = carModel(col, kind); scene.add(m.g);
+        const car = { m, col, kind, len: bus ? 12 : 4.6, isTrafficCar: true, knock: 0, bumped(vx, vz) { this.v = 0; this.knock = 2.5; }, L, s: L.span[0] + (L.span[1] - L.span[0]) * (j + Math.random() * 0.6) / (L.n + 1), span: L.span, v: 7, vmax: bus ? 8 : L.vmax || 10, stopT: 0, lastStop: null };
+        car.gl = [glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.95, 0.8, 0.5), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35), glows.add(0, 0, 0, 1, 0.1, 0.05, 0.35)];
+        this.cars.push(car);
+      }
+    }
+    for (const c of this.cars) (c.L.cars || (c.L.cars = [])).push(c);
     this.wheelSet = new WheelSet(scene, this.cars.length * 4);
     // traffic lights at Saint-Denis × Mont-Royal and × Rachel
     this.mats = { ns: this.lightMats(), ew: this.lightMats() };
@@ -564,8 +576,12 @@ export class Traffic {
       const L = car.L;
       let vT = car.vmax;
       if (car.knock > 0) { car.knock -= dt; vT = 0; }
+      // far from the player (another city): just keep rolling, skip the checks
+      const far = Math.abs((car.x ?? 0) - player.pos.x) > 420 || Math.abs((car.z ?? 0) - player.pos.z) > 420;
+      if (far) { vT = car.vmax; for (const o of L.cars) if (o !== car && !o.taken) { const d = (o.s - car.s) * L.dir, gap = (o.len + car.len) / 2 + 1.5; if (d > 0 && d < gap + 6) vT = Math.min(vT, (d - gap) * 1.2); } }
+      if (!far) {
       // car ahead in the same lane
-      for (const o of this.cars) if (o !== car && !o.taken && o.L === L) { const d = (o.s - car.s) * L.dir, gap = (o.len + car.len) / 2 + 1.5; if (d > 0 && d < gap + 6) vT = Math.min(vT, (d - gap) * 1.2); }
+      for (const o of L.cars) if (o !== car && !o.taken && o.L === L) { const d = (o.s - car.s) * L.dir, gap = (o.len + car.len) / 2 + 1.5; if (d > 0 && d < gap + 6) vT = Math.min(vT, (d - gap) * 1.2); }
       // people in front
       const ahead = (px, pz) => { const along = (L.axis === 'z' ? pz - car.s : px - car.s) * L.dir, lat = Math.abs(L.axis === 'z' ? px - L.c : pz - L.c); return along > 0 && along < 9 && lat < 1.6 ? along : null; };
       const pa = ahead(player.pos.x, player.pos.z); if (pa !== null) vT = Math.min(vT, (pa - (player.driving ? 6.5 : 3.5)) * 1.5);
@@ -584,6 +600,7 @@ export class Traffic {
       } else if (L.m === -1 || L.m === 1) {
         const stopX = -L.dir * (nsHW(0) + nsSW(0) + 1.2), d = (stopX - car.s) * L.dir;
         if (d > 2 && d < 22 && ph.ew !== 2) vT = Math.min(vT, (d - 0.5) * 0.9);
+      }
       }
       vT = Math.max(0, vT);
       const acc = vT > car.v ? 3 : 9;

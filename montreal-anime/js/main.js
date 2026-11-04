@@ -19,6 +19,7 @@ import { Pickups } from './pickups.js';
 import { buildCities, CITIES, cityAt } from './cities.js';
 import { Walkers } from './population.js';
 import { Activities } from './activities.js';
+import { Breakables } from './breakables.js';
 import { carDrivable } from './cars.js';
 
 const $c = {};
@@ -36,7 +37,7 @@ async function boot() {
   const renderer = new THREE.WebGLRenderer({ canvas: $('#gl'), antialias: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.NoToneMapping;
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = !touch && !new URLSearchParams(location.search).has('anime') ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, 0.25, 2600);
   camera.layers.enable(LAYER_FX);
@@ -94,9 +95,16 @@ async function boot() {
   world.glows.commit();   // traffic head/tail-light glows were added after the world was built
   // ---- physics props, the crowd, and cars you can drive
   const props = app.props = new Props(scene, world);
+  let jetT = 0;
+  const breakables = app.breakables = new Breakables(scene, world, world.breakList, {
+    hit: (it, sp) => { sfx.crash(Math.min(0.5, 0.15 + sp / 60)); puffs.at(new THREE.Vector3(it.x, it.y + 0.4, it.z), 0xd9cdb8, 4); },
+    thud: (it) => { sfx.thud?.(0.35); },
+    jet: (x, y, z, left) => { jetT -= 1 / 60; if (jetT > 0) return; jetT = 0.04; puffs.at(new THREE.Vector3(x + (Math.random() - 0.5) * 0.2, y + 0.6 + Math.random() * 1.6 * Math.min(1, left), z + (Math.random() - 0.5) * 0.2), 0xcfe8ff, 2); },
+  });
   const crowd = app.crowd = new Crowd(scene, world);
   const walkers = app.walkers = new Walkers(scene, world, params.has('fewpeople') ? 8 : touch ? 22 : 40);
   const vehicles = app.vehicles = [];
+  let screamT = 0; walkers.onScream = (p) => { const now = performance.now(); if (now - screamT < 700 || Math.random() < 0.5) return; screamT = now; const d = Math.hypot(p.pos.x - player.pos.x, p.pos.z - player.pos.z); if (d < 45) sfx.scream?.(Math.max(0.2, 1 - d / 45)); };
   walkers.carNear = (x, z, r) => traffic.cars.some((c) => !c.taken && c.x !== undefined && Math.abs(c.x - x) < r && Math.abs(c.z - z) < r && c.v > 1) || vehicles.some((v) => v.speed > 1 && Math.abs(v.pos.x - x) < r && Math.abs(v.pos.z - z) < r);
   traffic.vehicles = vehicles;
   const spawnCar = (kind, col, x, z, yaw) => { const v = new Vehicle(scene, world, kind, col, x, z, yaw); for (let i = 0; i < 12 && v.blockedAt(v.pos.x, v.pos.z, v.yaw, vehicles); i++) { v.pos.x += 1.5; v.place(); } vehicles.push(v); return v; };
@@ -485,8 +493,8 @@ async function boot() {
     const ws = weather.state, dim = ws === 'clear' ? 1 : ws === 'cloudy' ? 0.62 : 0.4;
     const grey = new THREE.Color(0x9aa6b8).multiplyScalar(0.35 + 0.65 * (1 - look.night));
     const mixG = (c, k) => c.clone().lerp(grey, k * (1 - dim));
-    sun.color.copy(look.sunC); sun.intensity = look.sunI * dim * (REAL ? 1.35 : 1);
-    hemi.color.copy(mixG(look.sky, 0.6)); hemi.groundColor.copy(look.gnd); hemi.intensity = look.hemiI * (1 + (1 - dim) * 0.35) * (REAL ? 0.32 : 1);
+    sun.color.copy(look.sunC); sun.intensity = look.sunI * dim * (REAL ? 1.05 : 1);
+    hemi.color.copy(mixG(look.sky, 0.6)); hemi.groundColor.copy(look.gnd); hemi.intensity = look.hemiI * (1 + (1 - dim) * 0.35) * (REAL ? 0.42 : 1);
     const su = sky.material.uniforms;
     su.uZen.value.copy(mixG(look.zen, 0.8)); su.uHor.value.copy(mixG(look.hor, 0.7)); su.uSunCol.value.copy(look.sunC).multiplyScalar(dim); su.uSun.value.copy(look.sunDir);
     su.uCloudCol.value.copy(mixG(look.cloud, 0.6)); su.uCloudShade.value.copy(mixG(look.shade, 0.8)); su.uCloud.value = weather.cover;
@@ -550,6 +558,9 @@ async function boot() {
   const EMO = ['👋', '❤️', '😂', '🏆'];
   const missions = app.missions = new Missions(scene, world, roofs, net, {
     myName, myColor: () => COLORS[save.color | 0], player,
+    posOf: (id) => (id === net.id ? player.pos : remotes.get(id)?.pos || null),
+    isDown: () => !!combat?.pd,
+    onBag: (on) => { player.parcel = on; if (on) police.crime(4.2, 'heist', player.pos); },
     sfx: (k, n) => sfx.mission(k, n), burst: (p) => burst.at(p), float: (t) => floatText(t), toast: (t) => areaToast(t),
     onBegin: (c) => { closeSay(); $('#marr span').textContent = ''; },
     onEnd: (c, m) => { if (c.kind === 'courier' && !deliveries.job) player.parcel = false; if (m.winner === net.id) { ach.unlock('mwin'); passed('mission passed', 'Respect +'); burst.at(player.pos.clone().setY(player.pos.y + 1.2)); hero.gesture?.('dance', 5); } else hero.gesture?.('shake', 2.4); },
@@ -590,7 +601,7 @@ async function boot() {
       respawn: () => { const [sx0, z] = cityAt(player.pos.x).spawn; player.pos.set(sx0, world.colliders.ground(sx0, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vel.set(0, 0, 0); player.vy = 0; player.grounded = true; player.unstick(); hero.root.position.copy(player.pos); } },
   });
   const police = app.police = new Police({ scene, world, player, getCar: () => car, combat, sfx, ui: combat.ui });
-  combat.police = police; traffic.extra = police.carVs; police.mkctx = () => ({ vehicles: vehicles.concat(police.carVs), traffic, props, peds: null, night: look.night, clock: '' });
+  combat.police = police; traffic.extra = police.carVs; police.mkctx = () => ({ breakables, vehicles: vehicles.concat(police.carVs), traffic, props, peds: null, night: look.night, clock: '' });
   // ---- travel between Montréal, Toronto and Ottawa (VIA Rail stations, the ✈ button, or the lobby)
   function travelTo(key, quick = false) {
     const c = CITIES[key]; if (!c) return;
@@ -880,7 +891,7 @@ async function boot() {
     let stepped = false;
     combat.trigger = !!(tHeld.tShoot || mouseFire); if (car) combat.trigger = false;
     if (isTouch) combat.aiming = !!tHeld.tAim || !!tHeld.tShoot;
-    const vctx = { vehicles: police.carVs.length ? vehicles.concat(police.carVs) : vehicles, hitPed: (n, vx, vz, sp) => combat.hitByCar(n, vx, vz, sp), traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list, ...walkers.list.filter((p) => p.live)], night: look.night, clock: fmtHour(clockH) };
+    const vctx = { breakables, vehicles: police.carVs.length ? vehicles.concat(police.carVs) : vehicles, hitPed: (n, vx, vz, sp) => combat.hitByCar(n, vx, vz, sp), traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list, ...walkers.list.filter((p) => p.live)], night: look.night, clock: fmtHour(clockH) };
     if (car) {
       inp.fly = false; inp.dash = false;
       car.update(dt, started && !photoMode ? inp : null, vctx);
@@ -913,7 +924,7 @@ async function boot() {
     if (!car && player.speed > 0.5) props.push(player.pos.x, player.pos.z, player.pos.y, player.pos.y + 1.7, player.bike ? 0.55 : 0.35, player.vel.x, player.vel.z, player.bike ? 95 : 70);
     props.update(dt);
     crowd.update(dt, player, camera.position); walkers.update(dt, player, camera, cam.yaw); cities.update(t, scene.fog);
-    combat.update(dt, t); police.update(dt, t); pickups.update(dt, player, combat);
+    combat.update(dt, t); police.update(dt, t); pickups.update(dt, player, combat); breakables.update(dt, look.night);
     activities.update(dt, player, car, (v) => { save.money += v; writeSave(save); updateMoney(); sfx.collect(1.3); });
     for (const v of vehicles) carFx(v, dt); for (const v of police.carVs) carFx(v, dt);
     if (car && car.wreck) exitCar();
@@ -1250,6 +1261,7 @@ function makeAudio() {
     hurt() { if (!A || !on) return; const t = A.currentTime; tone(180, t, 0.18, 0.12, 'sawtooth'); noise(t, 0.1, 0.12, 500, 1); },
     wasted() { if (!A || !on) return; const t = A.currentTime; [330, 247, 196, 147].forEach((f, i) => tone(f, t + i * 0.28, 0.9, 0.07, 'triangle')); },
     star(n = 1) { if (!A || !on) return; const t = A.currentTime; tone(880 + n * 120, t, 0.12, 0.05, 'square'); tone(1175 + n * 120, t + 0.12, 0.16, 0.05, 'square'); },
+    scream(v = 1) { if (!A || !on) return; const t = A.currentTime, o = A.createOscillator(), g = A.createGain(), f = A.createBiquadFilter(), b0 = 520 + Math.random() * 420; o.type = 'sawtooth'; o.frequency.setValueAtTime(b0, t); o.frequency.linearRampToValueAtTime(b0 * 1.7, t + 0.12); o.frequency.linearRampToValueAtTime(b0 * 1.25, t + 0.55); const lfo = A.createOscillator(), lg = A.createGain(); lfo.frequency.value = 7; lg.gain.value = 30; lfo.connect(lg).connect(o.frequency); f.type = 'bandpass'; f.frequency.value = 1600; f.Q.value = 1.2; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05 * v, t + 0.05); g.gain.linearRampToValueAtTime(0.0001, t + 0.62); o.connect(f).connect(g).connect(master); o.start(t); lfo.start(t); o.stop(t + 0.65); lfo.stop(t + 0.65); },
     copSiren(far = 1) { if (!A || !on) return; const t = A.currentTime, o = A.createOscillator(), g = A.createGain(); o.type = 'square'; for (let i = 0; i < 6; i++) o.frequency.setValueAtTime(i % 2 ? 960 : 720, t + i * 0.3); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.025 * far, t + 0.1); g.gain.linearRampToValueAtTime(0.0001, t + 1.8); o.connect(g).connect(master); o.start(t); o.stop(t + 1.9); },
     door() { if (!A || !on) return; noise(A.currentTime, 0.08, 0.2, 500, 1.2); noise(A.currentTime + 0.09, 0.05, 0.12, 900, 1.2); },
     whoosh() { if (!A || !on) return; noise(A.currentTime, 0.45, 0.16, 700, 0.4); noise(A.currentTime + 0.1, 0.35, 0.1, 1500, 0.6); },

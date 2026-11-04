@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { Vehicle } from './vehicle.js';
 import { makeCharacter } from './actors.js';
 import { nsX, ewZ, WALK, inWalk, h } from './layout.js';
-import { knock, stepRag } from './combat.js';
+import { knock, stepRag, unstuck } from './combat.js';
 
 const STAR_AT = [0.6, 1.8, 4, 7, 11];     // heat needed for 1…5 stars
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -132,6 +132,7 @@ export class Police {
         if (!C.blocked(nx, nz, 0.3, c.pos.y, 0.4, c.pos.y + 1.5)) { c.pos.x = nx; c.pos.z = nz; } else if (!C.blocked(nx, c.pos.z, 0.3, c.pos.y, 0.4, c.pos.y + 1.5)) c.pos.x = nx; else if (!C.blocked(c.pos.x, nz, 0.3, c.pos.y, 0.4, c.pos.y + 1.5)) c.pos.z = nz;
         c.pos.y = C.ground(c.pos.x, c.pos.z, c.pos.y + 0.6, 0.1); }
       else if (!car && Math.abs(p.y - c.pos.y) < 2) touching++;
+      unstuck(C, c.pos, dt);
       c.ch.root.position.copy(c.pos);
       // shooting at you (level 3+)
       if (armed && !down) { c.shootT -= dt; if (c.shootT <= 0) { c.shootT = 0.8 + Math.random() * 0.8; const m = new THREE.Vector3(c.pos.x + Math.sin(yaw) * 0.6, c.pos.y + 1.3, c.pos.z + Math.cos(yaw) * 0.6), tgt = new THREE.Vector3(p.x + (Math.random() - 0.5) * 1.2, p.y + 1.0, p.z + (Math.random() - 0.5) * 1.2);

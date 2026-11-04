@@ -330,6 +330,17 @@ export function makeRigged(o = {}) {
       aim('Neck', 'Head', V(0, 0.05 + ap * 0.6, 1), st.gun * 0.5);
     }
     if (st.gun > 0.01 && op.drive) { aim('RightArm', 'RightForeArm', V(-0.2, -0.05, 1), st.gun * 0.8); aim('RightForeArm', 'RightHand', V(-0.1, 0.1, 1), st.gun * 0.8); }
+    // hands up (someone's pointing a gun at them) and cowering (crouched, arms over the head)
+    st.hu = lerp(st.hu || 0, op.handsUp ? 1 : 0, k(9)); st.cow = lerp(st.cow || 0, op.cower ? 1 : 0, k(9));
+    if (st.hu > 0.01) for (const [sd, x] of [['Left', 1], ['Right', -1]]) { aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.85, 0.35, 0.15), st.hu); aim(sd + 'ForeArm', sd + 'Hand', V(x * 0.1, 1, 0.05), st.hu); }
+    if (st.cow > 0.01) {
+      const w = st.cow;
+      for (const [sd, x] of [['Left', 1], ['Right', -1]]) {
+        aim(sd + 'UpLeg', sd + 'Leg', V(x * 0.25, -0.25, 1), w); aim(sd + 'Leg', sd + 'Foot', V(0, -1, -0.45), w);
+        aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.4, 0.75, 0.45), w); aim(sd + 'ForeArm', sd + 'Hand', V(-x * 0.75, 0.3, 0.2), w);
+      }
+      aim('Spine', 'Spine1', V(0, 0.7, 0.7), w * 0.8); aim('Neck', 'Head', V(0, 0.5, 0.85), w * 0.7);
+    }
     // knocked down: limp, sprawled limbs (flailing while airborne) instead of a stiff plank
     st.ko = lerp(st.ko || 0, op.ko ? 1 : 0, k(op.ko ? 10 : 4));
     if (st.ko > 0.01) {
@@ -355,7 +366,7 @@ export function makeRigged(o = {}) {
     st.land = Math.max(0, st.land - dt * 4.5);
     const sq = st.land * 0.16 * Math.sin(st.land * Math.PI) - st.jump * 0.1 + (air > 0.5 && !op.flip ? -0.04 : 0);
     body.scale.set(1 + sq * 0.6, 1 - sq, 1 + sq * 0.6);
-    body.position.y = 0.95 + (op.bike ? 0.1 : 0) - st.land * 0.05 - (st.sit || 0) * (op.drive ? 0.42 : 0.4);
+    body.position.y = 0.95 + (op.bike ? 0.1 : 0) - st.land * 0.05 - (st.sit || 0) * (op.drive ? 0.42 : 0.4) - (st.cow || 0) * 0.42;
     // wings with follow-through (they lag the body's motion)
     wings.g.visible = !!op.wings; if (op.wings) { const fl = op.flap ?? 1; const a2 = 0.2 + Math.sin(st.t * (6 + fl * 6)) * (0.15 + 0.5 * fl); wings.L.rotation.set(0, -0.35, a2); wings.R.rotation.set(0, 0.35, -a2); }
     parcel.visible = st.parcel > 0.5; umb.visible = st.umb > 0.5;

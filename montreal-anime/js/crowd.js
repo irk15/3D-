@@ -10,7 +10,7 @@ import { makeCharacter } from './actors.js';
 const TOPS = ['#d8473f', '#2f7fbf', '#3f9a6a', '#f2b43c', '#7b4fb0', '#e79cb4', '#2f3a44', '#f07c3c', '#5aa04a', '#8ec5b8'];
 const TINTS = ['#ffffff', '#ffe9e2', '#e6f1ff', '#fff3d6', '#efe6ff'];
 
-import { stepRag } from './combat.js';
+import { stepRag, unstuck } from './combat.js';
 export class Crowd {
   constructor(scene, world) {
     this.list = []; this.w = world; this.fr = 0;
@@ -22,7 +22,7 @@ export class Crowd {
       ch.root.position.set(x, y, z); ch.root.rotation.y = yaw; scene.add(ch.root);
       const p = { ch, pos: ch.root.position, yaw, mode, home: new THREE.Vector3(x, y, z), t: R() * 6, gest: 0, wave: 0, adt: 0, id: this.list.length, ...o };
       p.dodge = (sx, sz) => { if (p.dodgeT > 0) return; p.dodgeT = 0.45; p.dv = new THREE.Vector3(sx, 0, sz).multiplyScalar(p.mode === 'sit' ? 0 : 5); ch.gesture?.('shake', 1.5); };
-      p.scare = (x, z) => { if (p.rag || p.mode === 'sit') return; p.flee = 5 + Math.random() * 3; p.fleeFrom = { x, z }; };
+      p.scare = (x, z) => { if (p.rag) return; if (!(p.flee > 0) && Math.random() < 0.4) p.cower = 1.2 + Math.random() * 2; p.flee = 6 + Math.random() * 3; p.fleeFrom = { x, z }; if (p.mode === 'sit') p.mode = 'stand'; };
       this.list.push(p); return p;
     };
     this.add = add;
@@ -67,7 +67,8 @@ export class Crowd {
       if (p.rag && stepRag(p, dt, this.w.colliders)) { p.ch.root.visible = true; continue; }
       if (p.ragEnded) { p.ragEnded = false; p.pos = p.ch.root.position; p.mode = p.mode === 'sit' ? 'stand' : p.mode; }
       let running = false;
-      if (p.flee > 0) {
+      if (p.cower > 0) { p.cower -= dt; }
+      else if (p.flee > 0) {
         p.flee -= dt; running = true;
         let fx = p.pos.x - p.fleeFrom.x, fz = p.pos.z - p.fleeFrom.z; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
         const nx = p.pos.x + fx * 4.4 * dt, nz = p.pos.z + fz * 4.4 * dt;
@@ -75,6 +76,7 @@ export class Crowd {
         p.yaw = Math.atan2(fx, fz);
       }
       // dodging cars
+      if ((this.fr + p.id) % 6 === 0 && p.mode !== 'sit' && (p.flee > 0 || (p.vs || 0) > 0.5) && unstuck(this.w.colliders, p.pos, dt * 6) && p.home) p.home.copy(p.pos);
       const px0 = p.pos.x, pz0 = p.pos.z;
       if (p.dodgeT > 0) { p.dodgeT -= dt; const nx = p.pos.x + p.dv.x * dt, nz = p.pos.z + p.dv.z * dt; if (!this.w.colliders.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5)) { p.pos.x = nx; p.pos.z = nz; } }
       else if (!running && p.mode !== 'sit') {
@@ -97,7 +99,7 @@ export class Crowd {
       let dy = yaw - p.ch.root.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.ch.root.rotation.y += dy * (1 - Math.exp(-dt * (walking ? 8 : 4)));
       const every = d2 > 70 * 70 ? 4 : d2 > 25 * 25 ? 2 : 1;
       if ((this.fr + p.id) % every === 0) {
-        p.ch.animate(p.adt, p.vs < 0.2 ? 0 : p.vs, true, wave, { sit: p.mode === 'sit' && !walking, phone: !walking && (p.mode === 'phone' || p.phone) });
+        p.ch.animate(p.adt, p.vs < 0.2 ? 0 : p.vs, true, wave, { sit: p.mode === 'sit' && !walking, phone: !walking && !(p.cower > 0) && (p.mode === 'phone' || p.phone), cower: p.cower > 0 });
         p.adt = 0;
       }
     }

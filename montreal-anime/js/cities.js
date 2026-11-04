@@ -18,7 +18,7 @@ export const CITIES = {
     ew: ['Bloor Street', 'Wellesley Street', 'College Street', 'Gerrard Street', 'Dundas Street', 'Queen Street', 'King Street', 'Front Street', 'Lake Shore Blvd'],
   },
   ottawa: {
-    key: 'ottawa', name: 'Ottawa', tag: 'Centretown, Ottawa', k0: -46, k1: -34, m0: -4, m1: 3, waterZ: 398, spawn: [-3600, 262], yaw: 0, station: [-3395, 255],
+    key: 'ottawa', name: 'Ottawa', tag: 'Centretown, Ottawa', k0: -46, k1: -34, m0: -4, m1: 3, waterZ: 398, spawn: [-3593.5, 255], yaw: 0, station: [-3395, 255],
     ns: ['Bronson Avenue', 'Bay Street', 'Lyon Street', 'Kent Street', 'Bank Street', "O'Connor Street", 'Metcalfe Street', 'Elgin Street', 'Waller Street', 'Cumberland Street', 'King Edward Avenue', 'Dalhousie Street', 'Nelson Street'],
     ew: ['Gladstone Avenue', 'Somerset Street', 'Nepean Street', 'Laurier Avenue', 'Slater Street', 'Queen Street', 'Sparks Street', 'Wellington Street'],
   },
@@ -214,42 +214,42 @@ function buildCity(scene, world, def) {
   const CARC = ['#e8e4dc', '#2f3a44', '#7fb2d6', '#d8473f', '#1d1d22', '#9aa3ad', '#3f7a5a', '#f2b43c', '#5a4a8f'], KINDS = ['sedan', 'sedan', 'hatch', 'suv', 'suv', 'van', 'taxi', 'pickup'];
   for (let k = def.k0; k <= def.k1; k++) { if (busy.ns.includes(k)) continue; for (const sd of [-1, 1]) { const x = nsX(k) + sd * (nsHW(k) - 1.15); for (let z = r.z0 + 20; z < def.waterZ - 30; z += 6.4) { const m = ewIdx(z); if (Math.abs(z - ewZ(m)) < ewHW(m) + ewSW(m) + 5 || R() > 0.42) continue; carStatic(B, C, x, z, sd > 0 ? Math.PI : 0, pick(CARC, R), pick(KINDS, R)); } } }
   for (let m = def.m0; m <= def.m1; m++) { if (busy.ew.includes(m)) continue; for (const sd of [-1, 1]) { const z = ewZ(m) + sd * (ewHW(m) - 1.15); for (let x = r.x0 + 20; x < r.x1 - 20; x += 6.4) { const k = nsIdx(x); if (Math.abs(x - nsX(k)) < nsHW(k) + nsSW(k) + 5 || R() > 0.42) continue; carStatic(B, C, x, z, sd > 0 ? -Math.PI / 2 : Math.PI / 2, pick(CARC, R), pick(KINDS, R)); } } }
-  // corner furniture: benches, bins, hydrants, newspaper boxes (instanced)
-  {
-    const parts = { bench: [], bin: [], hydrant: [], news: [] };
-    for (let k = def.k0; k <= def.k1; k++) for (let m = def.m0; m <= def.m1; m++) for (const [sx, sz] of [[1, 1], [-1, -1], [1, -1], [-1, 1]]) {
-      const x = nsX(k) + sx * (nsHW(k) + nsSW(k) - 0.6), z = ewZ(m) + sz * (ewHW(m) + ewSW(m) + 3 + R() * 6), y = h(z) + CURB, rr = R();
-      if (C.blocked(x, z, 0.5, y, 0.2, y + 1)) continue;
-      if (rr < 0.3) parts.bench.push([x, y, z, sx > 0 ? -Math.PI / 2 : Math.PI / 2]); else if (rr < 0.55) parts.bin.push([x, y, z, 0]); else if (rr < 0.75) parts.hydrant.push([x - sx * 1.4, y, z, 0]); else if (rr < 0.88) parts.news.push([x, y, z, sx > 0 ? -Math.PI / 2 : Math.PI / 2]);
-    }
-    const G = {
-      bench: [mergeGeometries([new THREE.BoxGeometry(1.8, 0.08, 0.5).translate(0, 0.45, 0), new THREE.BoxGeometry(1.8, 0.45, 0.06).translate(0, 0.75, -0.23), new THREE.BoxGeometry(0.08, 0.45, 0.45).translate(-0.8, 0.22, 0), new THREE.BoxGeometry(0.08, 0.45, 0.45).translate(0.8, 0.22, 0)]), '#5b4636'],
-      bin: [new THREE.CylinderGeometry(0.3, 0.27, 0.95, 12).translate(0, 0.48, 0), '#2f5a3a'],
-      hydrant: [mergeGeometries([new THREE.CylinderGeometry(0.15, 0.18, 0.6, 10).translate(0, 0.3, 0), new THREE.SphereGeometry(0.16, 10, 6).translate(0, 0.62, 0), new THREE.CylinderGeometry(0.06, 0.06, 0.42, 6).rotateZ(Math.PI / 2).translate(0, 0.4, 0)]), isTO ? '#d23a2a' : '#e6c23a'],
-      news: [new THREE.BoxGeometry(0.5, 1.0, 0.45).translate(0, 0.5, 0), isTO ? '#2f6db4' : '#c8102e'],
-    };
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
-    for (const [k, list] of Object.entries(parts)) {
-      if (!list.length) continue;
-      const im = new THREE.InstancedMesh(G[k][0], new THREE.MeshToonMaterial({ color: G[k][1], gradientMap: gradient }), list.length);
-      list.forEach(([x, y, z, ry], i) => { im.setMatrixAt(i, m4.compose(new THREE.Vector3(x, y, z), q.setFromAxisAngle(up, ry), one)); C.add({ x0: x - 0.35, x1: x + 0.35, z0: z - 0.35, z1: z + 0.35, y0: y, y1: y + 0.9, nowalk: true }); });
-      im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
-    }
+  // corner furniture: benches, bins, hydrants, newspaper boxes (breakables.js draws them, instanced)
+  for (let k = def.k0; k <= def.k1; k++) for (let m = def.m0; m <= def.m1; m++) for (const [sx, sz] of [[1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+    const x = nsX(k) + sx * (nsHW(k) + nsSW(k) - 0.6), z = ewZ(m) + sz * (ewHW(m) + ewSW(m) + 3 + R() * 6), y = h(z) + CURB, rr = R();
+    if (C.blocked(x, z, 0.5, y, 0.2, y + 1)) continue;
+    const it = rr < 0.3 ? { type: 'bench', x, y, z, ry: sx > 0 ? -Math.PI / 2 : Math.PI / 2 } : rr < 0.55 ? { type: 'bin', x, y, z } : rr < 0.75 ? { type: 'hydrant', x: x - sx * 1.4, y, z, col: isTO ? '#d23a2a' : '#e6c23a' } : rr < 0.88 ? { type: 'news', x, y, z, ry: sx > 0 ? -Math.PI / 2 : Math.PI / 2, col: isTO ? '#2f6db4' : '#c8102e' } : null;
+    if (!it) continue;
+    it.c = C.add({ x0: it.x - 0.35, x1: it.x + 0.35, z0: it.z - 0.35, z1: it.z + 0.35, y0: y, y1: y + 0.9, nowalk: true }); world.breakList.push(it);
   }
   // lamp posts every 30 m on both sidewalks (matching the ground shader's lamp pools)
-  for (let k = def.k0; k <= def.k1; k++) { const sx = nsX(k), off = nsHW(k) + 0.6; for (let z = Math.ceil(r.z0 / 30) * 30; z < def.waterZ - 20; z += 30) { lamps.push([sx + off, z]); lamps.push([sx - off, z + 15]); } }
-  for (let m = def.m0; m <= def.m1; m++) { const sz = ewZ(m), off = ewHW(m) + 0.6; for (let x = Math.ceil(r.x0 / 30) * 30; x < r.x1; x += 30) { lamps.push([x, sz + off]); lamps.push([x + 15, sz - off]); } }
+  // (never on a carriageway: a lamp whose spot falls on a cross street is skipped)
+  const onRoad = (x, z) => Math.abs(x - nsX(nsIdx(x))) < nsHW(nsIdx(x)) + 0.4 || Math.abs(z - ewZ(ewIdx(z))) < ewHW(ewIdx(z)) + 0.4;
+  for (let k = def.k0; k <= def.k1; k++) { const sx = nsX(k), off = nsHW(k) + 0.6; for (let z = Math.ceil(r.z0 / 30) * 30; z < def.waterZ - 20; z += 30) { lamps.push([sx + off, z, Math.PI]); lamps.push([sx - off, z + 15, 0]); } }
+  for (let m = def.m0; m <= def.m1; m++) { const sz = ewZ(m), off = ewHW(m) + 0.6; for (let x = Math.ceil(r.x0 / 30) * 30; x < r.x1; x += 30) { lamps.push([x, sz + off, Math.PI / 2]); lamps.push([x + 15, sz - off, -Math.PI / 2]); } }
   const near = (x, z) => C.blocked(x, z, 0.3, h(z) + 0.3, 0.2, h(z) + 3);
-  const lampG = mergeGeometries([new THREE.CylinderGeometry(0.07, 0.09, 5.2, 6).translate(0, 2.6, 0), new THREE.BoxGeometry(0.9, 0.1, 0.12).translate(0.35, 5.15, 0)]);
-  const headG = new THREE.BoxGeometry(0.42, 0.14, 0.3).translate(0.7, 5.05, 0);
-  for (const [x, z] of lamps) { if (near(x, z)) continue; const y = h(z) + CURB, toRoad = 0; geo(lampG, M(x, y, z, toRoad), '#3d4650', 10); geo(headG, M(x, y, z, toRoad), '#fff3d0', 7); }
+  for (const [x, z, ry] of lamps) {
+    const ax = x + Math.cos(ry) * 0.4, az = z - Math.sin(ry) * 0.4;   // the side the pole stands on must be pavement
+    if (near(x, z) || onRoad(x, z) || onRoad(x - Math.cos(ry) * 0.6, z + Math.sin(ry) * 0.6)) continue;
+    void ax; void az;
+    const y = h(z) + CURB, c = C.add({ x0: x - 0.12, x1: x + 0.12, z0: z - 0.12, z1: z + 0.12, y0: y - 0.2, y1: y + 5.5, nowalk: true });
+    world.breakList.push({ type: 'lamp', x, y, z, ry, s: 0.76, c });
+  }
   // street trees: instanced (trunk + two-tier canopy) — two draw calls for the whole city
   {
     const tr = trees.filter(([x, z]) => !near(x, z));
     const trunk = new THREE.CylinderGeometry(0.14, 0.2, 2.6, 6).translate(0, 1.3, 0);
-    const crown = mergeGeometries([new THREE.IcosahedronGeometry(1.7, 0).translate(0, 3.6, 0), new THREE.IcosahedronGeometry(1.2, 0).translate(0.5, 4.7, 0.2)]);
+    // a leafy crown: clustered, jittered blobs with light and dark greens (vertex colours), not one faceted ball
+    const blobs = [];
+    const BL = [[0, 3.7, 0, 1.55], [0.9, 4.2, 0.3, 1.1], [-0.8, 4.3, -0.4, 1.15], [0.2, 5.0, -0.2, 1.0], [-0.3, 3.4, 0.9, 1.0], [0.6, 3.5, -0.9, 0.95], [-0.1, 5.6, 0.3, 0.7]];
+    for (const [bx, by, bz, br] of BL) {
+      const g = new THREE.IcosahedronGeometry(br, 1), P = g.attributes.position, cols = [];
+      for (let i = 0; i < P.count; i++) { const j = 0.84 + 0.3 * Math.abs(Math.sin(P.getX(i) * 7.1 + P.getY(i) * 3.3 + P.getZ(i) * 5.7 + bx * 9)); P.setXYZ(i, P.getX(i) * j, P.getY(i) * j * 0.92, P.getZ(i) * j); const top = (P.getY(i) / br + 1) / 2, sh = 0.55 + 0.45 * top; cols.push(0.36 * sh, (0.62 + 0.1 * Math.sin(bx * 5)) * sh, 0.24 * sh); }
+      g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); g.translate(bx, by, bz); g.computeVertexNormals(); blobs.push(g.toNonIndexed());
+    }
+    const crown = mergeGeometries(blobs);
     const m1 = new THREE.InstancedMesh(trunk, new THREE.MeshToonMaterial({ color: 0x6b4f3a, gradientMap: gradient }), tr.length);
-    const m2 = new THREE.InstancedMesh(crown, new THREE.MeshToonMaterial({ color: isTO ? 0x5f9a48 : 0x6aa04c, gradientMap: gradient }), tr.length);
+    const m2 = new THREE.InstancedMesh(crown, new THREE.MeshToonMaterial({ vertexColors: true, color: isTO ? 0xd8f0c8 : 0xe0f0c8, gradientMap: gradient }), tr.length);
     const m4 = new THREE.Matrix4();
     tr.forEach(([x, z, s], i) => { m4.compose(new THREE.Vector3(x, h(z) + CURB, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), R() * 6), new THREE.Vector3(s, s, s)); m1.setMatrixAt(i, m4); m2.setMatrixAt(i, m4); C.add({ x0: x - 0.2, x1: x + 0.2, z0: z - 0.2, z1: z + 0.2, y0: h(z), y1: h(z) + 3, thin: true }); });
     for (const m of [m1, m2]) { m.castShadow = true; m.receiveShadow = true; m.computeBoundingSphere(); scene.add(m); }
@@ -376,14 +376,14 @@ function buildCity(scene, world, def) {
       const yH = (z) => h(z) + lift;
       // Centre Block
       const cz0 = hz0 + 46, cz1 = cz0 + 30, yb = yH(cz1) - 0.5, top = yH(cz0) + 26;
-      box(cx - 62, cx + 62, yb, top, cz0, cz1, '#cbb68e', 2);
+      box(cx - 62, cx + 62, yb, top, cz0, cz1, '#cbb68e', 12);
       const roof = (x0, x1, z0, z1, y, hh) => { const s = new THREE.Shape(); s.moveTo(-(z1 - z0) / 2, 0); s.lineTo((z1 - z0) / 2, 0); s.lineTo(0, hh); s.closePath(); geo(new THREE.ExtrudeGeometry(s, { depth: x1 - x0, bevelEnabled: false }).rotateY(Math.PI / 2), M(x0, y, (z0 + z1) / 2), '#5f9f84', 0); };
       roof(cx - 62, cx + 62, cz0, cz1, top, 11);
-      for (const sx of [-1, 1]) for (const z of [cz0, cz1]) { box(cx + sx * 62 - 4, cx + sx * 62 + 4, yb, top + 6, z - 4, z + 4, '#cbb68e', 2); geo(new THREE.ConeGeometry(4.2, 10, 4).rotateY(Math.PI / 4), M(cx + sx * 62, top + 11, z), '#5f9f84', 0); }
+      for (const sx of [-1, 1]) for (const z of [cz0, cz1]) { box(cx + sx * 62 - 4, cx + sx * 62 + 4, yb, top + 6, z - 4, z + 4, '#cbb68e', 12); geo(new THREE.ConeGeometry(4.2, 10, 4).rotateY(Math.PI / 4), M(cx + sx * 62, top + 11, z), '#5f9f84', 0); }
       for (let x = cx - 52; x <= cx + 52; x += 13) if (Math.abs(x - cx) > 10) geo(new THREE.ConeGeometry(1.1, 6, 4), M(x, top + 3, cz0), '#5f9f84', 0);
       // Peace Tower
       const tz = cz0 - 2, ty = top + 46;
-      box(cx - 7, cx + 7, yH(tz) - 0.5, ty, tz - 7, tz + 7, '#cbb68e', 2);
+      box(cx - 7, cx + 7, yH(tz) - 0.5, ty, tz - 7, tz + 7, '#cbb68e', 12);
       box(cx - 7.6, cx + 7.6, ty, ty + 12, tz - 7.6, tz + 7.6, '#cbb68e', 2);
       for (const [ox, oz, ry] of [[0, -7.7, 0], [0, 7.7, 0], [-7.7, 0, Math.PI / 2], [7.7, 0, Math.PI / 2]]) { geo(new THREE.CylinderGeometry(3.2, 3.2, 0.3, 24).rotateX(Math.PI / 2), M(cx + ox, ty + 6, tz + oz, ry), '#f4f0e4', 0); geo(new THREE.CylinderGeometry(3.5, 3.5, 0.2, 24).rotateX(Math.PI / 2), M(cx + ox * 0.995, ty + 6, tz + oz * 0.995, ry), '#2b2550', 0); }
       geo(new THREE.ConeGeometry(10.2, 24, 4).rotateY(Math.PI / 4), M(cx, ty + 24, tz), '#5f9f84', 0);
@@ -394,7 +394,7 @@ function buildCity(scene, world, def) {
       const lz = cz1 + 18; geo(new THREE.CylinderGeometry(13, 13, 24, 16), M(cx, yH(lz) + 12, lz), '#cbb68e', 2); solid(cx - 11, cx + 11, lz - 11, lz + 11, yH(lz), yH(lz) + 24);
       geo(new THREE.ConeGeometry(14, 22, 16), M(cx, yH(lz) + 35, lz), '#5f9f84', 0); geo(new THREE.CylinderGeometry(2, 2.4, 6, 8), M(cx, yH(lz) + 49, lz), '#cbb68e', 0); geo(new THREE.ConeGeometry(2.6, 6, 8), M(cx, yH(lz) + 55, lz), '#5f9f84', 0);
       // East and West Blocks, side-on to the lawn
-      for (const sx of [-1, 1]) { const x = cx + sx * 82, z0 = hz0 + 10, z1 = hz0 + 70; box(x - 11, x + 11, yH(z1) - 0.5, yH(z0) + 20, z0, z1, '#c4ae86', 2); const s = new THREE.Shape(); s.moveTo(-11, 0); s.lineTo(11, 0); s.lineTo(0, 9); s.closePath(); geo(new THREE.ExtrudeGeometry(s, { depth: 60, bevelEnabled: false }), M(x, yH(z0) + 20, z0), '#5f9f84', 0); box(x - 4, x + 4, yH(z0) + 20, yH(z0) + 34, z0 + 2, z0 + 10, '#c4ae86', 2); geo(new THREE.ConeGeometry(5.6, 12, 4).rotateY(Math.PI / 4), M(x, yH(z0) + 40, z0 + 6), '#5f9f84', 0); }
+      for (const sx of [-1, 1]) { const x = cx + sx * 82, z0 = hz0 + 10, z1 = hz0 + 70; box(x - 11, x + 11, yH(z1) - 0.5, yH(z0) + 20, z0, z1, '#c4ae86', 12); const s = new THREE.Shape(); s.moveTo(-11, 0); s.lineTo(11, 0); s.lineTo(0, 9); s.closePath(); geo(new THREE.ExtrudeGeometry(s, { depth: 60, bevelEnabled: false }), M(x, yH(z0) + 20, z0), '#5f9f84', 0); box(x - 4, x + 4, yH(z0) + 20, yH(z0) + 34, z0 + 2, z0 + 10, '#c4ae86', 2); geo(new THREE.ConeGeometry(5.6, 12, 4).rotateY(Math.PI / 4), M(x, yH(z0) + 40, z0 + 6), '#5f9f84', 0); }
       // the Centennial Flame
       const fz = hz0 + 28; geo(new THREE.CylinderGeometry(4.5, 5, 1.2, 12), M(cx, yH(fz) + 0.6, fz), '#7d7a74', 2); glows.add(cx, yH(fz) + 2.2, fz, 1, 0.55, 0.15, 3.4); world.flame = new THREE.Vector3(cx, yH(fz) + 1.5, fz);
       for (let i = 0; i < 14; i++) trees.push([hx0 + 6 + R() * 30, hz0 + 20 + R() * (hz1 - hz0 - 30), 1.3], [hx1 - 6 - R() * 30, hz0 + 20 + R() * (hz1 - hz0 - 30), 1.3]);

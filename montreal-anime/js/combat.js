@@ -28,6 +28,15 @@ function rayCyl(o, d, cx, cz, r, y0, y1, maxT) {
   const y = o.y + d.y * t; return y >= y0 && y <= y1 ? t : Infinity;
 }
 
+// ---------------------------------------------------------------- never stuck inside a wall: ease out to the nearest free spot
+export function unstuck(C, pos, dt, r = 0.3) {
+  if (!C.blocked(pos.x, pos.z, r, pos.y, 0.45, pos.y + 1.5)) return false;
+  for (const rad of [0.4, 0.8, 1.3, 2, 3, 4.5]) for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2, x = pos.x + Math.cos(a) * rad, z = pos.z + Math.sin(a) * rad, y = C.ground(x, z, pos.y + 0.6, 0.1);
+    if (Math.abs(y - pos.y) < 1 && !C.blocked(x, z, r, y, 0.45, y + 1.5)) { const k = Math.min(1, dt * 8); pos.x += (x - pos.x) * k; pos.z += (z - pos.z) * k; pos.y += (y - pos.y) * k; return true; }
+  }
+  return false;
+}
 // ---------------------------------------------------------------- knocked-down people (shared by neighbours, crowd, cops)
 // actor: { ch (character), pos (Vector3 at the feet) }. While actor.rag exists the owner skips its own logic.
 export function knock(a, hit) {
@@ -234,6 +243,7 @@ export class Combat {
       const o = this._v3 || (this._v3 = new THREE.Vector3()); o.copy(cam.position).addScaledVector(d, Math.max(1.2, this.cam.cur + 0.3));
       const hit = this.lock ? { kind: this.lock.kind } : this.trace(o, d, this.weapon.range, this.targets());
       this.onTarget = hit.kind === 'ped' || hit.kind === 'cop' || hit.kind === 'remote';
+      const tgt = this.lock ? this.lock.a : hit.kind === 'ped' ? hit.a : null; if (tgt) { tgt.aimedAt = performance.now(); tgt.aimedT = (tgt.aimedT || 0) + 0.05; }
     }
     // the lock-on reticle follows the target on screen
     const el = this.el.lock;

@@ -62,6 +62,8 @@ export class Vehicle {
     const vx = f.x * this.vF + r.x * this.vR, vz = f.z * this.vF + r.z * this.vR;
     const nx = this.pos.x + vx * dt, nz = this.pos.z + vz * dt;
     const hitAt = (x, z) => { const o = this.blockedAt(x, z, this.yaw, ctx.vehicles); if (o) return o; if (ctx.traffic) for (const [cx, cz, cr] of this.circles(x, z, this.yaw)) { const t = ctx.traffic.hitCar(cx, cz, cr); if (t) return t; } return false; };
+    // street furniture gives way (lamps bend and fall, bins fly): it costs a little speed instead of a wall
+    if (ctx.breakables && this.speed > 2.2) { let f = 1; for (const [cx, cz, cr] of this.circles(nx, nz, this.yaw)) f *= ctx.breakables.hit(cx, cz, cr, vx, vz, this.speed); if (f < 1) { this.vF *= f; this.vR *= f; this.impact = Math.max(this.impact, (1 - f) * 30); this.dmg = Math.min(1, (this.dmg || 0) + (1 - f) * 0.08); } }
     const hit = hitAt(nx, nz);
     if (!hit) { this.pos.x = nx; this.pos.z = nz; }
     else {

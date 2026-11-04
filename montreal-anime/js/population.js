@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { h, CURB, nsX, ewZ, nsHW, ewHW, nsSW, ewSW, nsIdx, ewIdx, inWalk } from './layout.js';
 import { makeCharacter } from './actors.js';
-import { stepRag } from './combat.js';
+import { stepRag, unstuck } from './combat.js';
 
 const TOPS = ['#2f8f8a', '#d8473f', '#f2b43c', '#5a4a8f', '#3c6fb4', '#e79cb4', '#2f3a44', '#f4efe6', '#7a9e4a', '#c46a2f', '#1f1f24', '#8a8f99'];
 const PANTS = ['#2b2550', '#3a3a4a', '#2f3550', '#4f6f9f', '#5b4636', '#1d1d22', '#6b6b70'];
@@ -19,7 +19,7 @@ export class Walkers {
       const ch = makeCharacter({ model: i % 3 === 0 ? 'bot_lo' : 'michelle_lo', top: pick(TOPS), pants: pick(PANTS), tint: pick(TINTS), scale: 0.9 + Math.random() * 0.18 });
       ch.root.visible = false; scene.add(ch.root);
       const p = { ch, pos: new THREE.Vector3(0, -999, 0), id: i, live: false, axis: 'z', dir: 1, c: 0, speed: 1.2, yaw: 0, adt: 0, vs: 0, hp: 60, phone: Math.random() < 0.2 };
-      p.scare = (x, z) => { if (p.rag) return; p.flee = 5 + Math.random() * 3; p.fleeFrom = { x, z }; };
+      p.scare = (x, z) => { if (p.rag) return; if (!(p.flee > 0) && Math.random() < 0.35) p.cower = 1.2 + Math.random() * 1.8; p.flee = 6 + Math.random() * 3; p.fleeFrom = { x, z }; p.handsT = 0; this.onScream?.(p); };
       p.dodge = (sx, sz) => { if (p.dodgeT > 0) return; p.dodgeT = 0.45; p.dv = new THREE.Vector3(sx, 0, sz).multiplyScalar(5); ch.gesture?.('shake', 1.4); };
       this.list.push(p);
     }
@@ -54,9 +54,15 @@ export class Walkers {
       if (!p.live || (d > 150 && !p.rag)) { if (spawned < 2) { spawned++; this.spawn(p, px, pz, camYaw, p.live ? 70 : 20, p.live ? 130 : 110); } else { p.ch.root.visible = false; p.live = false; } continue; }
       if (p.rag) { if (stepRag(p, dt, C)) { p.ch.root.visible = true; continue; } }
       if (p.ragEnded) { p.ragEnded = false; if (p.axis === 'z') p.c = p.pos.x; else p.c = p.pos.z; }
+      if (this.fr % 4 === p.id % 4 && unstuck(C, p.pos, dt * 4)) { p.c = p.axis === 'z' ? p.pos.x : p.pos.z; }
       const px0 = p.pos.x, pz0 = p.pos.z;
       p.turnCD -= dt;
-      if (p.dodgeT > 0) { p.dodgeT -= dt; const nx = p.pos.x + p.dv.x * dt, nz = p.pos.z + p.dv.z * dt; if (!C.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5)) { p.pos.x = nx; p.pos.z = nz; } }
+      // someone's aiming at them: freeze with hands up; held too long, they bolt
+      if (p.aimedT > 0 && performance.now() - (p.aimedAt || 0) < 250) { p.handsT = 0.6; if (p.aimedT > 3.5 && !(p.flee > 0)) { p.scare(px, pz); p.aimedT = 0; } } else p.aimedT = 0;
+      p.handsT = Math.max(0, (p.handsT || 0) - dt);
+      if (p.cower > 0) { p.cower -= dt; }
+      else if (p.handsT > 0 && !(p.flee > 0)) { p.yaw = Math.atan2(px - p.pos.x, pz - p.pos.z); }
+      else if (p.dodgeT > 0) { p.dodgeT -= dt; const nx = p.pos.x + p.dv.x * dt, nz = p.pos.z + p.dv.z * dt; if (!C.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5)) { p.pos.x = nx; p.pos.z = nz; } }
       else if (p.flee > 0) {
         p.flee -= dt;
         let fx = p.pos.x - p.fleeFrom.x, fz = p.pos.z - p.fleeFrom.z; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
@@ -95,14 +101,14 @@ export class Walkers {
       // legs and facing come from what they actually did
       const mvx = (p.pos.x - px0) / Math.max(dt, 1e-3), mvz = (p.pos.z - pz0) / Math.max(dt, 1e-3), ms = Math.min(7, Math.hypot(mvx, mvz));
       p.vs += (ms - p.vs) * (1 - Math.exp(-dt * 10));
-      if (ms > 0.3) p.yaw = Math.atan2(mvx, mvz);
+      if (ms > 0.3 && !(p.handsT > 0)) p.yaw = Math.atan2(mvx, mvz);
       let dy = p.yaw - p.ch.root.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.ch.root.rotation.y += dy * (1 - Math.exp(-dt * 7));
       p.ch.root.position.copy(p.pos);
       // animation LOD + only draw what's near
       const vis = d < 125; p.ch.root.visible = vis; p.adt += dt;
       if (!vis) { p.adt = 0; continue; }
       const every = d > 70 ? 4 : d > 30 ? 2 : 1;
-      if ((this.fr + p.id) % every === 0) { p.ch.animate(p.adt, p.vs < 0.2 ? 0 : p.vs, true, 0, { phone: p.phone && p.vs < 2 && !(p.flee > 0) }); p.adt = 0; }
+      if ((this.fr + p.id) % every === 0) { p.ch.animate(p.adt, p.vs < 0.2 ? 0 : p.vs, true, 0, { phone: p.phone && p.vs < 2 && !(p.flee > 0) && !(p.handsT > 0), handsUp: p.handsT > 0, cower: p.cower > 0 }); p.adt = 0; }
     }
   }
   // move everybody near a new place (after travelling)

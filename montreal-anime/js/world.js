@@ -253,6 +253,7 @@ export function buildWorld(scene) {
   const spots = { balcony: [], back: [], alley: [], sidewalk: [], shed: [], doors: [], stairs: [] };
   const docks = [];
   const npcPaths = [], shops = [], lamps = [], trees = [], parked = [], benches = [], foot = [];
+  const breakList = [];
   const SIDE = atlas.draw(8, 8, (x) => { x.fillStyle = '#e9e4d8'; x.fillRect(0, 0, 8, 8); });
   const SIDE_DARK = atlas.draw(8, 8, (x) => { x.fillStyle = '#2b3036'; x.fillRect(0, 0, 8, 8); });
   const R = rng(1642);
@@ -619,15 +620,12 @@ export function buildWorld(scene) {
   // ---------------------------------------------------------- street furniture
   const poleCol = L('#7d858c');
   function lamp(x, z, dx, dz) {
-    const y = h(z) + CURB;
-    B.box(x - 0.08, x + 0.08, y - 0.2, y + 7.2, z - 0.08, z + 0.08, poleCol, 10);
-    const ex = x + dx * 1.7, ez = z + dz * 1.7;
-    B.box(Math.min(x, ex) - 0.05, Math.max(x, ex) + 0.05, y + 7.05, y + 7.15, Math.min(z, ez) - 0.05, Math.max(z, ez) + 0.05, poleCol, 10);
-    B.box(ex - 0.32, ex + 0.32, y + 6.85, y + 7.12, ez - 0.2, ez + 0.2, L('#5a6066'), 10);
-    B.box(ex - 0.26, ex + 0.26, y + 6.80, y + 6.86, ez - 0.15, ez + 0.15, L('#fff4d6'), 7);
-    C.add({ x0: x - 0.12, x1: x + 0.12, z0: z - 0.12, z1: z + 0.12, y0: y - 0.2, y1: y + 7.2, nowalk: true });
+    // drawn by breakables.js (instanced) so a car can knock it over
+    const y = h(z) + CURB, ex = x + dx * 1.7, ez = z + dz * 1.7;
+    const c = C.add({ x0: x - 0.12, x1: x + 0.12, z0: z - 0.12, z1: z + 0.12, y0: y - 0.2, y1: y + 7.2, nowalk: true });
     lamps.push([ex, y + 6.75, ez]);
-    glows.add(ex, y + 6.7, ez, 1, 0.82, 0.55, 0.7);
+    const glow = glows.add(ex, y + 6.7, ez, 1, 0.82, 0.55, 0.7);
+    breakList.push({ type: 'lamp', x, y, z, ry: Math.atan2(-dz, dx), c, glow });
   }
   const onStreetArea = (x, z, pad = 0) => {
     const k = Math.round(x / 90), m = Math.round((z + 160) / 110) - 1;
@@ -938,7 +936,7 @@ export function buildWorld(scene) {
   const backdrop = buildBackdrop(scene, glows);
   glows.commit();
 
-  return { city, parkedCars, parked: parkedApi, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot, docks };
+  return { breakList, city, parkedCars, parked: parkedApi, signs, ground, colliders: C, spots, npcPaths, shops, lamps, glows, trees: treesObj, benches, backdrop, tris: city.userData.tris, parkC: pc, foot, docks };
 }
 function await0(o, k, f) { if (!o[k]) o[k] = f(); return o[k]; }
 const nameNS = (k) => ({ '-1': 'Rue Drolet', 0: 'Rue Saint-Denis', 1: 'Rue Saint-Hubert' }[k] || 'Rue');

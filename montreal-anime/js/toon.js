@@ -44,6 +44,7 @@ export function toon(hex, opts = {}) {
 //        7 lamp, 8 shop window, 9 roof, 10 metal
 export function batchMaterial() {
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient });
+  m.userData.env = 0.6; m.userData.rough = 0.88;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uTime: U.uTime, uWet: U.uWet });
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
@@ -169,6 +170,7 @@ gEmit = vec3(0.0); gRough = 0.88; gMetal = 0.0; gBumpW = vec3(0.0);
 // ---------------------------------------------------------------- ground (one surface for roads, yards, park, plaza)
 export function groundMaterial() {
   const m = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradient });
+  m.userData.env = 0.25; m.userData.rough = 0.92;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { uNight: U.uNight, uSnow: U.uSnow, uAutumn: U.uAutumn, uWet: U.uWet, uTime: U.uTime });
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;')
@@ -389,7 +391,7 @@ void main(){
       tC: { value: this.color.texture }, tN: { value: this.normal.texture }, tB: { value: this.b1.texture },
       uPx: { value: new THREE.Vector2() }, uLW: { value: 1 }, uInk: { value: new THREE.Color(0.10, 0.08, 0.20) }, uNight: U.uNight, uTime: U.uTime,
       uGrade: { value: new THREE.Vector3(1.08, 1, 0) }, uTan: { value: new THREE.Vector2(1, 1) }, uCamM: { value: new THREE.Matrix4() },
-      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 }, uReal: { value: REAL ? 1 : 0 }, uExpo: { value: 1 },
+      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 }, uReal: { value: REAL ? 1 : 0 }, uExpo: { value: 0.88 },
     };
     this.quad = pass(/* glsl */`
 uniform sampler2D tC, tN, tB; uniform vec2 uPx, uTan; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash, uDesat, uHurt, uReal, uExpo;

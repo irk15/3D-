@@ -13,8 +13,10 @@ export const KINDS = {
   hunt: { ic: '🔍', name: 'Treasure Hunt', dur: 150 },
   king: { ic: '👑', name: 'King of the Roof', dur: 120 },
   courier: { ic: '📦', name: 'Lightning Delivery', dur: 150 },
+  heist: { ic: '💰', name: 'Bank Heist', dur: 200 },
+  bounty: { ic: '🎯', name: 'Bounty Hunt', dur: 120 },
 };
-const ORDER = ['stars', 'race', 'hunt', 'king', 'courier'];
+const ORDER = ['heist', 'stars', 'race', 'bounty', 'hunt', 'king', 'heist', 'courier'];
 const TREASURES = ['the golden toque', 'the crystal bagel', 'the key to the cross', 'Mrs. Tremblay\'s porcelain cat', 'the miniature gold BIXI', 'the maple syrup spoon'];
 const KING_T = 15, RINGS = 8, STARS = 18;
 const $c = {};
@@ -62,25 +64,29 @@ export class Missions {
     net.on('claim', (m, p) => { if (this.net.isHost) this.settle(p.id, m.item, m.val, m.round); });
     net.on('award', (m) => this.onAward(m));
     net.on('end', (m) => this.onEnd(m));
+    net.on('mdrop', (m) => { const c = this.cur; if (!c || m.round !== c.round || c.kind !== 'heist' || m.gen < c.bag.gen) return; this.dropBag(m.gen + 1, m.x, m.y, m.z, false); });
+    net.on('kill', (m) => { const c = this.cur; if (!this.net.isHost || !c || c.kind !== 'bounty' || c.phase !== 'play' || m.vic !== c.target || !m.by || m.by === c.target) return; this.settle(m.by, 'win', +((this.now() - c.startAt) / 1000).toFixed(1), c.round); });
     net.on('prog', (m, p) => { if (this.cur && m.round === this.cur.round) this.prog[p.id] = m.v; });
     net.on('join', (p) => {
       if (!this.net.isHost || !this.cur || this.cur.phase === 'done') return;
       const c = this.cur, el = (this.now() - c.startAt) / 1000;
-      this.net.send({ t: 'mis', round: c.round, kind: c.kind, seed: c.seed, dur: c.dur, count: Math.max(0, -el), elapsed: Math.max(0, el), pts: this.pts, awarded: [...c.awarded] }, p.id);
+      this.net.send({ t: 'mis', round: c.round, kind: c.kind, seed: c.seed, dur: c.dur, count: Math.max(0, -el), elapsed: Math.max(0, el), pts: this.pts, awarded: [...c.awarded], target: c.target, bag: c.bag && { gen: c.bag.gen, x: c.bag.pos.x, y: c.bag.pos.y, z: c.bag.pos.z } }, p.id);
     });
   }
   now() { return this.clock * 1000; }
   get me() { return this.net.id; }
   get active() { return this.cur && this.cur.phase !== 'done'; }
-  name(id) { return id === this.me ? this.hooks.myName() : this.net.peers.get(id)?.name || 'Ami'; }
+  name(id) { return id === this.me ? this.hooks.myName() : this.net.peers.get(id)?.name || 'Friend'; }
   color(id) { return id === this.me ? this.hooks.myColor() : COLORS[this.net.peers.get(id)?.color | 0] || '#888'; }
 
   // host: launch the next round
   start(kind) {
     if (!this.net.isHost) return;
     kind = kind || ORDER[this.kindI++ % ORDER.length];
+    if (kind === 'bounty' && this.net.count < 2) kind = 'heist';
     const round = Math.max(this.round, this.cur?.round || 0) + 1;
-    const m = { t: 'mis', round, kind, seed: (Math.random() * 1e9) | 0, dur: KINDS[kind].dur, count: 4, elapsed: 0, pts: this.pts };
+    const ids = [this.me, ...this.net.peers.keys()];
+    const m = { t: 'mis', round, kind, seed: (Math.random() * 1e9) | 0, dur: KINDS[kind].dur, count: 4, elapsed: 0, pts: this.pts, target: ids[(Math.random() * ids.length) | 0] };
     this.net.send(m); this.begin(m);
   }
   stop() { if (this.cur) this.clear(); this.cur = null; this.auto = false; $('#results').classList.remove('show'); document.body.classList.remove('mission'); }
@@ -90,6 +96,7 @@ export class Missions {
     this.round = m.round; this.prog = {}; if (m.pts) this.pts = { ...m.pts };
     const R = rng(m.seed), c = this.cur = { round: m.round, kind: m.kind, seed: m.seed, dur: m.dur, phase: 'count', startAt: this.now() + (m.count || 0) * 1000 - (m.elapsed || 0) * 1000, awarded: new Map(m.awarded || []), objs: [], score: {}, mine: 0, step: 0, claimed: new Set(), group: new THREE.Group(), lastCount: 99 };
     this.scene.add(c.group);
+    c.target = m.target; if (m.bag && c.kind === 'heist') c.bagInit = m.bag;
     this.build(c, R);
     for (const [item, who] of c.awarded) this.applyAward(item, who, true);
     $('#results').classList.remove('show'); document.body.classList.add('mission');
@@ -164,6 +171,23 @@ export class Missions {
       const b = beam('#ffd84a', 90, 1.2); b.position.set(r.x, r.y + 45, r.z); g.add(b);
       c.items = [{ p: new THREE.Vector3(r.x, r.y + 1, r.z), o: crown, b }];
     }
+    if (c.kind === 'heist') {
+      const bank = pick(W.shops, R);
+      const far = S.doors.filter((d) => { const l = Math.hypot(d.x - bank.x, d.z - bank.z); return l > 180 && l < 380; });
+      const door = pick(far.length ? far : S.doors, R);
+      const bag = new THREE.Group(); const sack = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), toon('#3f5a3a')); sack.scale.set(1, 0.85, 0.9); sack.castShadow = true; bag.add(sack);
+      const tie = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 0.25, 8), toon('#2c3a28')); tie.position.y = 0.42; bag.add(tie);
+      const sign = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 6, 16, Math.PI * 1.5), toon('#ffd84a', { emissive: '#ffb300', emissiveIntensity: 0.6 })); sign.position.set(0, 0.05, 0.4); bag.add(sign);
+      g.add(bag); const bb = beam('#ff4a3a', 70, 0.7); g.add(bb);
+      const get = new THREE.Group(); get.position.set(door.x, door.y, door.z); get.add(beam('#5ff08a', 80, 1.2)); g.add(get);
+      const p0 = c.bagInit ? new THREE.Vector3(c.bagInit.x, c.bagInit.y, c.bagInit.z) : new THREE.Vector3(bank.x, h(bank.z) + 0.6, bank.z);
+      c.bag = { gen: c.bagInit?.gen || 0, holder: null, pos: p0, o: bag, beam: bb }; c.get = new THREE.Vector3(door.x, door.y, door.z); c.bank = bank.name; c.addr = door.num;
+      c.items = [{ p: p0, o: bag }];
+    }
+    if (c.kind === 'bounty') {
+      const b = beam('#ff2a2a', 90, 1.4); g.add(b); c.tBeam = b;
+      c.items = [];
+    }
     if (c.kind === 'courier') {
       const shop = pick(W.shops, R);
       const far = S.doors.filter((d) => { const l = Math.hypot(d.x - shop.x, d.z - shop.z); return l > 120 && l < 320; });
@@ -207,6 +231,12 @@ export class Missions {
     if (c.kind === 'race') c.items.forEach((it, i) => { const nx = i === c.step; it.o.material = i < c.step ? M.ringDone : nx ? M.ringNext : M.ring; it.b.visible = nx && c.phase !== 'done'; const s = nx ? 1 + Math.sin(t * 5) * 0.06 : 1; it.o.scale.setScalar(s); });
     if (c.kind === 'hunt') { const it = c.items[0]; it.gem.rotation.y = t * 1.6; it.gem.position.y = Math.sin(t * 2) * 0.12; it.b.visible = el > c.dur * 0.6 && !c.awarded.size; }
     if (c.kind === 'king') { const it = c.items[0]; it.o.rotation.y = t; it.o.position.y = c.roof.y + 5 + Math.sin(t * 2) * 0.3; }
+    if (c.kind === 'heist') {
+      const B = c.bag, hp = B.holder ? this.hooks.posOf(B.holder) : null;
+      if (hp) { B.o.position.set(hp.x, hp.y + 2.3, hp.z); } else { B.o.position.copy(B.pos); B.o.position.y += 0.2 + Math.sin(t * 2.4) * 0.12; }
+      B.o.rotation.y = t * 1.5; B.beam.position.set(B.o.position.x, B.o.position.y + 35, B.o.position.z); B.beam.visible = c.phase !== 'done';
+    }
+    if (c.kind === 'bounty' && c.tBeam) { const tp = this.hooks.posOf(c.target); c.tBeam.visible = !!tp && c.phase !== 'done' && c.target !== this.me; if (tp) c.tBeam.position.set(tp.x, tp.y + 47, tp.z); }
     if (c.kind === 'courier') { c.items[0].o.visible = c.step === 0; c.items[1].o.visible = c.step === 1; c.items[0].o.children[1] && (c.items[0].o.children[1].rotation.y = t); }
   }
   detect(c, player, dt, el) {
@@ -228,6 +258,17 @@ export class Missions {
       if (on) { c.mine = Math.min(KING_T, c.mine + dt); c.sendT = (c.sendT || 0) - dt; if (c.sendT < 0) { c.sendT = 0.5; this.sendProg(+c.mine.toFixed(1)); } }
       if (c.mine >= KING_T) this.claim('win', el);
     }
+    if (c.kind === 'heist') {
+      const B = c.bag;
+      if (!B.holder && !c.claimed.has('bag' + B.gen) && near(B.pos, 1.8, 2.5)) this.claim('bag' + B.gen);
+      if (B.holder === me) {
+        if (this.hooks.isDown()) {   // knocked down or wasted: the bag falls where you are
+          const g2 = B.gen + 1; this.net.send({ t: 'mdrop', round: c.round, gen: B.gen, x: +P.x.toFixed(2), y: +(P.y + 0.6).toFixed(2), z: +P.z.toFixed(2) }); this.dropBag(g2, P.x, P.y + 0.6, P.z, true);
+        } else if (near(c.get, 4, 4)) this.claim('win', el);
+        c.sendT = (c.sendT || 0) - dt; if (c.sendT < 0) { c.sendT = 1; this.sendProg(Math.round(Math.hypot(c.get.x - P.x, c.get.z - P.z))); }
+      }
+    }
+    if (c.kind === 'bounty' && c.target === me) { c.alive = (c.alive || 0) + dt; c.sendT = (c.sendT || 0) - dt; if (c.sendT < 0) { c.sendT = 1; this.sendProg(Math.floor(c.alive)); } }
     if (c.kind === 'courier') {
       const it = c.items[c.step];
       if (it && near(it.p, 2.2, 2.6)) {
@@ -255,8 +296,19 @@ export class Missions {
     const c = this.cur; if (!c || m.round !== c.round || c.awarded.has(m.item)) return;
     c.awarded.set(m.item, m.who); this.applyAward(m.item, m.who, false);
   }
+  dropBag(gen, x, y, z, mine) {
+    const c = this.cur, B = c.bag; if (gen <= B.gen && !mine) return;
+    const was = B.holder; B.holder = null; B.gen = gen; B.pos.set(x, y, z); if (was === this.me || mine) this.hooks.onBag?.(false);
+    this.hooks.toast?.(was === this.me || mine ? '💥 You dropped the cash!' : `💰 ${this.name(was || '')} dropped the cash — grab it!`);
+  }
   applyAward(item, who, silent) {
     const c = this.cur;
+    if (c.kind === 'heist' && typeof item === 'string' && item.startsWith('bag')) {
+      const gen = +item.slice(3); if (gen !== c.bag.gen) return;
+      c.bag.holder = who;
+      if (!silent) { if (who === this.me) { this.hooks.onBag?.(true); this.hooks.sfx('star', 3); this.hooks.toast?.(`💰 You've got the cash! Get to the getaway at ${c.addr}`); } else this.hooks.toast?.(`💰 ${this.name(who)} has the cash — take them down!`); }
+      return;
+    }
     if (c.kind === 'stars' && item !== 'win') {
       const it = c.items[item]; if (!it) return; it.got = who; it.b.visible = false;
       c.score[who] = (c.score[who] || 0) + 1; this.prog[who] = c.score[who];
@@ -266,7 +318,9 @@ export class Missions {
   // host: close the round
   finish(reason, winner, val) {
     const c = this.cur; if (!c || c.phase === 'done') return;
-    if (!winner) {
+    if (!winner && c.kind === 'bounty' && reason === 'time') winner = c.target;
+    if (!winner && c.kind === 'heist') winner = null;
+    else if (!winner) {
       let best = 0;
       const table = c.kind === 'stars' ? c.score : this.prog;
       for (const [id, v] of Object.entries(table)) if (v > best) { best = v; winner = id; }
@@ -284,7 +338,7 @@ export class Missions {
     let pb = '';
     if (this.net.count === 1 && m.winner === this.me && m.val) {
       const k = c.kind, prev = this.best[k];
-      if (!prev || m.val < prev) { this.best[k] = +m.val.toFixed(1); try { localStorage.setItem('plateau-best', JSON.stringify(this.best)); } catch (e) { /* */ } pb = prev ? `Nouveau record! (avant: ${prev.toFixed(1)} s)` : 'Premier record!'; }
+      if (!prev || m.val < prev) { this.best[k] = +m.val.toFixed(1); try { localStorage.setItem('plateau-best', JSON.stringify(this.best)); } catch (e) { /* */ } pb = prev ? `New record! (was ${prev.toFixed(1)} s)` : 'First record!'; }
       else pb = `Record: ${prev.toFixed(1)} s`;
     }
     this.showResults(c, m, pb);
@@ -298,6 +352,8 @@ export class Missions {
     if (c.kind === 'race') return c.step < RINGS ? `Fly through the rings in order · ${c.step}/${RINGS}` : 'Finished!';
     if (c.kind === 'hunt') return `Find ${c.treasure}`;
     if (c.kind === 'king') return `Stay ${KING_T} s on the golden roof · ${c.mine.toFixed(1)} s${c.onRoof ? ' 👑' : ''}`;
+    if (c.kind === 'heist') { const B = c.bag; return B.holder === this.me ? `Get the cash to the getaway at ${c.addr} — cops are on you!` : B.holder ? `${this.name(B.holder)} has the cash — knock them down and steal it` : `Grab the cash bag${B.gen ? '' : ` — rob ${c.bank}`}`; }
+    if (c.kind === 'bounty') return c.target === this.me ? `You're the target — survive! ${Math.floor(c.alive || 0)} s` : `Take down ${this.name(c.target)} (red beam)`;
     if (c.kind === 'courier') return c.step === 0 ? `Pick up the package at ${c.shop}` : c.step === 1 ? `Deliver it to ${c.addr}` : 'Delivered!';
     return '';
   }
@@ -328,7 +384,7 @@ export class Missions {
     const wn = m.winner ? this.name(m.winner) : null;
     $('#resTitle').textContent = m.winner === this.me ? 'Victory!' : wn ? `${wn} wins!` : 'Time\'s up!';
     $('#resTitle').className = m.winner === this.me ? 'win' : '';
-    const unit = { stars: '⭐', race: 'rings', king: 's', courier: 'steps', hunt: '' }[c.kind];
+    const unit = { stars: '⭐', race: 'rings', king: 's', courier: 'steps', hunt: '', heist: 'm', bounty: 's' }[c.kind];
     $('#resSub').textContent = `${KINDS[c.kind].ic} ${KINDS[c.kind].name}` + (m.val && m.winner ? ` · ${(+m.val).toFixed(1)} s` : '') + (pb ? ` · ${pb}` : '');
     $('#resList').innerHTML = rows.map((r, i) => `<li class="${r.id === this.me ? 'me' : ''}"><span class="rk">${['🥇', '🥈', '🥉'][i] || i + 1}</span><i style="background:${this.color(r.id)}"></i><b>${esc(this.name(r.id))}</b><small>${unit && c.kind !== 'hunt' ? `${r.sc} ${unit}` : r.id === m.winner ? 'found!' : ''}</small><em>${r.pts} pts</em></li>`).join('');
     const solo = this.net.count === 1;
@@ -349,6 +405,8 @@ export class Missions {
     if (c.kind === 'courier') return c.items[c.step]?.p || null;
     if (c.kind === 'king') return c.items[0].p;
     if (c.kind === 'stars') { let best = null, bd = 1e9; const P = this.hooks.player.pos; for (const it of c.items) if (!it.got) { const d = it.p.distanceTo(P); if (d < bd) { bd = d; best = it.p; } } return best; }
+    if (c.kind === 'heist') { const B = c.bag; if (B.holder === this.me) return c.get; if (B.holder) { const p = this.hooks.posOf(B.holder); return p ? p.clone() : null; } return B.pos; }
+    if (c.kind === 'bounty') { if (c.target === this.me) return null; const p = this.hooks.posOf(c.target); return p ? p.clone() : null; }
     if (c.kind === 'hunt') return null;   // no cheating: hot/cold + map circle only
     return null;
   }
@@ -358,6 +416,8 @@ export class Missions {
     if (c.kind === 'race') return c.items.slice(c.step, c.step + 3).map((it, i) => ({ x: it.p.x, z: it.p.z, c: i ? '#5ff0ff' : '#ffb300', r: i ? 7 : 11 }));
     if (c.kind === 'hunt') return [{ x: c.hint.x, z: c.hint.z, c: 'rgba(255,190,40,.28)', r: c.hint.r * 2, ring: true }];
     if (c.kind === 'king') return [{ x: c.roof.x, z: c.roof.z, c: '#ffd84a', r: 12 }];
+    if (c.kind === 'heist') { const B = c.bag, p = B.holder ? this.hooks.posOf(B.holder) : B.pos; const out = [{ x: c.get.x, z: c.get.z, c: '#5ff08a', r: 12 }]; if (p) out.push({ x: p.x, z: p.z, c: '#ff4a3a', r: 11 }); return out; }
+    if (c.kind === 'bounty') { const p = this.hooks.posOf(c.target); return p && c.target !== this.me ? [{ x: p.x, z: p.z, c: '#ff2a2a', r: 12 }] : []; }
     if (c.kind === 'courier') { const it = c.items[c.step]; return it ? [{ x: it.p.x, z: it.p.z, c: c.step ? '#5ff08a' : '#2fd0ee', r: 11 }] : []; }
     return [];
   }

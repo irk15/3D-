@@ -469,7 +469,7 @@ async function boot() {
     const d = document.createElement('div'); d.className = 'ach'; d.innerHTML = `<i>${ic}</i><div><small>ACHIEVEMENT UNLOCKED</small><b>${name}</b></div>`;
     $('#achs').appendChild(d); setTimeout(() => d.classList.add('out'), 3600); setTimeout(() => d.remove(), 4200);
   }
-  function floatText(txt, cls = '') { const d = document.createElement('div'); d.className = 'float ' + cls; d.textContent = txt; $('#floats').appendChild(d); setTimeout(() => d.remove(), 1600); }
+  function floatText(txt, cls = '') { const d = document.createElement('div'); d.className = 'float ' + cls; d.textContent = txt; d.style.marginTop = ($('#floats').children.length * 38) + 'px'; $('#floats').appendChild(d); setTimeout(() => d.remove(), 1600); }
   let passT = 0;
   function passed(title, sub = '') { $('#passedTxt').textContent = title; $('#passedSub').textContent = sub; $('#passed').classList.add('show'); sfx.fanfare?.(0.8); clearTimeout(passT); passT = setTimeout(() => $('#passed').classList.remove('show'), 3200); }
   function updateMoney() { $('#money').textContent = '$' + Math.max(0, save.money | 0).toLocaleString('en-US'); if (save.money >= 200) ach.unlock('rich'); }

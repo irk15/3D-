@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { h, CURB, nsX, ewZ, nsHW, nsSW, ewHW, ewSW, BOUNDS, WALK, FLY, PLAZA, PARK, rng, pick, U } from './layout.js';
 import { toon, LAYER_FX, gradient, Glows } from './toon.js';
 import { makeRigged, rigReady } from './rig.js';
+import { stepRag } from './combat.js';
 import { carModel, CAR_KINDS, WheelSet } from './cars.js';
 
 const basic = (hex) => new THREE.MeshBasicMaterial({ color: hex });
@@ -278,7 +279,8 @@ export class Player {
         this.vel.set(Math.sin(this.yaw) * sp, 0, Math.cos(this.yaw) * sp);
       } else {
         this.vel.x += (mx * top - this.vel.x) * k; this.vel.z += (mz * top - this.vel.z) * k;
-        if (mag > 0.05) { const ty = Math.atan2(mx, mz); let d = ty - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 12)); }
+        if (this.gun) { let d = camYaw + Math.PI - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 14)); }
+        else if (mag > 0.05) { const ty = Math.atan2(mx, mz); let d = ty - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 12)); }
       }
     }
     const step = bike ? 0.35 : 0.45, head = p.y + 1.5;
@@ -324,7 +326,7 @@ export class Player {
     this.c.root.position.set(p.x, this.visY, p.z); this.c.root.rotation.y = this.yaw;
     if (bike) { this.bike.spin(this.speed * dt); this.c.root.rotation.z = 0; let dy = this.yaw - (this.prevYaw ?? this.yaw); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); this.bikeSteer = (this.bikeSteer || 0) + (Math.max(-0.5, Math.min(0.5, dy / Math.max(dt, 1e-3) * 0.25)) - (this.bikeSteer || 0)) * (1 - Math.exp(-dt * 8)); this.bike.steer?.(this.bikeSteer); }
     this.prevYaw = this.yaw;
-    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel });
+    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel, gun: bike ? null : this.gun, aimPitch: this.aimPitch });
   }
 }
 // BIXI — Montréal's shared bike: step-through grey frame with the red accents, front rack and basket,
@@ -384,18 +386,18 @@ export function bikeModel() {
 
 // ================================================================= neighbours
 const LINES = [
-  ['Mme Tremblay', 'Bonjour-Hi! Belle journée sur le Plateau, hein?'],
-  ['Karim', 'Il paraît qu\'il y a douze bagels dorés cachés dans le quartier. Bonne chasse!'],
-  ['Amélie', 'Je cherche mon chat… il adore les escaliers en colimaçon.'],
-  ['Jean-Philippe', 'Attention aux vélos sur Saint-Denis, la piste est juste là!'],
-  ['Mei', 'Le métro Mont-Royal? Tout droit vers le nord, sur la place.'],
-  ['Gabriel', 'Monte sur un balcon: d\'en haut, on voit la croix sur la montagne.'],
-  ['Fatou', 'Il y a une ruelle verte derrière, pleine de fleurs et de cordes à linge.'],
-  ['Olivier', 'Le 1er juillet, tout le monde déménage. Les escaliers débordent de boîtes!'],
-  ['Sophie', 'Un croissant de la boulangerie et tu sautes deux fois plus haut. Promis.'],
-  ['Ti-Guy', 'T\'as-tu vu le camion à poutine? Moi j\'veux une grosse!'],
-  ['Lucie', 'L\'hiver, on déneige les trottoirs la nuit. Quel vacarme!'],
-  ['Marc-André', 'Bienvenue à Montréal. Prends ton temps, ici on flâne.'],
+  ['Mrs. Tremblay', 'Bonjour-Hi! Beautiful day on the Plateau, eh?'],
+  ['Karim', 'They say there are twelve golden bagels hidden around the neighbourhood. Happy hunting!'],
+  ['Amélie', 'I\'m looking for my cat… he loves the spiral staircases.'],
+  ['Jean-Philippe', 'Watch out for bikes on Saint-Denis, the bike lane is right there!'],
+  ['Mei', 'Mont-Royal metro? Straight north, on the square.'],
+  ['Gabriel', 'Climb up on a balcony: from up there you can see the cross on the mountain.'],
+  ['Fatou', 'There\'s a green alley behind, full of flowers and clotheslines.'],
+  ['Olivier', 'On July 1st everyone moves. The staircases overflow with boxes!'],
+  ['Sophie', 'A croissant from the bakery and you jump twice as high. Promise.'],
+  ['Ti-Guy', 'Have you seen the poutine truck? I want a big one!'],
+  ['Lucie', 'In winter they plough the sidewalks at night. What a racket!'],
+  ['Marc-André', 'Welcome to Montréal. Take your time, here we stroll.'],
 ];
 const LOOKS = [
   { skin: '#f6d2b8', hair: '#b9b9c2', top: '#7b4fb0', pants: '#3a3a4a', hat: null, style: 'bun', scarf: null, pack: null },
@@ -427,6 +429,7 @@ export class Neighbours {
       if (p.axis === 'wander') { const r = p.rect; n.pos.set(r.x0 + 6 + R() * (r.x1 - r.x0 - 12), 0, r.z0 + 6 + R() * (r.z1 - r.z0 - 12)); n.yaw = R() * 6.28; }
       // jump out of the way of a car (sidestep + a startled head-shake)
       n.dodge = (sx, sz) => { if (n.dodgeT > 0) return; n.dodgeT = 0.5; n.dodgeV = new THREE.Vector3(sx, 0, sz).multiplyScalar(5); n.wait = 1.5; n.ch.gesture?.('shake', 1.6); };
+      n.scare = (x, z) => { if (n.rag) return; n.flee = 5 + Math.random() * 3; n.fleeFrom = { x, z }; n.talk = 0; };
       this.list.push(n);
     });
   }
@@ -436,12 +439,23 @@ export class Neighbours {
       const hr = ctx.hour < n.hours[0] ? ctx.hour + 24 : ctx.hour;
       n.out = hr >= n.hours[0] && hr < n.hours[1];
       if (!n.out) { n.ch.root.visible = false; continue; }
+      if (n.rag && stepRag(n, dt, C)) continue;
+      if (n.ragEnded) { n.ragEnded = false; n.offX = n.pos.x - (n.p.axis === 'z' ? n.p.c : n.s); n.offZ = n.pos.z - (n.p.axis === 'z' ? n.s : n.p.c); if (n.p.axis === 'wander') { n.offX = n.offZ = 0; } }
       const dp = Math.hypot(n.pos.x - player.pos.x, n.pos.z - player.pos.z);
       let moving = n.wait <= 0 && n.talk <= 0 && dp > 1.6;
       n.wait -= dt; n.talk -= dt;
       n.offX = n.offX || 0; n.offZ = n.offZ || 0;
       if (n.dodgeT > 0) { n.dodgeT -= dt; const ox = n.offX + n.dodgeV.x * dt, oz = n.offZ + n.dodgeV.z * dt; if (!this.w.colliders.blocked(n.pos.x + n.dodgeV.x * dt, n.pos.z + n.dodgeV.z * dt, 0.3, n.pos.y, 0.45, n.pos.y + 1.5)) { n.offX = ox; n.offZ = oz; } moving = false; }
       else if (n.wait <= 0) { n.offX *= Math.exp(-dt * 0.8); n.offZ *= Math.exp(-dt * 0.8); }
+      let running = false;
+      if (n.flee > 0) {
+        n.flee -= dt; running = true; moving = false; n.wait = 0;
+        let fx = n.pos.x - n.fleeFrom.x, fz = n.pos.z - n.fleeFrom.z; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
+        const sx = fx * 4.6 * dt, sz = fz * 4.6 * dt;
+        if (!C.blocked(n.pos.x + sx, n.pos.z + sz, 0.3, n.pos.y, 0.45, n.pos.y + 1.5)) { n.offX += sx; n.offZ += sz; if (n.p.axis === 'wander') { n.pos.x += sx; n.pos.z += sz; } }
+        else { n.fleeFrom = { x: n.pos.x - fz, z: n.pos.z + fx }; }
+        n.yaw = Math.atan2(fx, fz);
+      }
       if (n.p.axis === 'wander') {
         if (moving) {
           const nx = n.pos.x + Math.sin(n.yaw) * n.speed * dt, nz = n.pos.z + Math.cos(n.yaw) * n.speed * dt, r = n.p.rect;
@@ -464,7 +478,7 @@ export class Neighbours {
       if (!isFinite(n.pos.y)) n.pos.y = h(n.pos.z);
       // face the player while talking or when they come close
       let yaw = n.yaw;
-      if (n.talk > 0 || dp < 2.2) { yaw = Math.atan2(player.pos.x - n.pos.x, player.pos.z - n.pos.z); }
+      if (!running && (n.talk > 0 || dp < 2.2)) { yaw = Math.atan2(player.pos.x - n.pos.x, player.pos.z - n.pos.z); }
       let d = yaw - n.ch.root.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
       n.ch.root.rotation.y += d * (1 - Math.exp(-dt * 6));
       n.ch.root.position.copy(n.pos);
@@ -473,7 +487,7 @@ export class Neighbours {
       const every = far > 120 * 120 ? 4 : far > 45 * 45 ? 2 : 1;
       n.adt = (n.adt || 0) + dt; this.fr = (this.fr || 0) + (n === this.list[0] ? 1 : 0);
       if (!n.ch.root.visible) { n.adt = 0; continue; }
-      if ((this.fr + n.id) % every === 0) { n.ch.animate(n.adt, moving ? n.speed : 0, true, n.talk > 0 && !ctx.rain ? Math.min(1, n.talk) : 0, { umbrella: ctx.rain, talk: n.talk > 2.5 }); n.adt = 0; }
+      if ((this.fr + n.id) % every === 0) { n.ch.animate(n.adt, running ? 4.8 : moving ? n.speed : 0, true, n.talk > 0 && !ctx.rain ? Math.min(1, n.talk) : 0, { umbrella: ctx.rain, talk: n.talk > 2.5 }); n.adt = 0; }
     }
   }
 }

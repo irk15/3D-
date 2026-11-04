@@ -1,5 +1,5 @@
 // systems.js — the living-world layer: a real day/night clock, weather, saving, achievements,
-// spoken French dialogue with memory, courier deliveries, and the wardrobe.
+// spoken voices dialogue with memory, courier deliveries, and the wardrobe.
 import * as THREE from 'three';
 import { h, whereIs, nsName, ewName, nsIdx, ewIdx, U } from './layout.js';
 import { LAYER_FX } from './toon.js';
@@ -68,28 +68,28 @@ export function writeSave(d) { try { localStorage.setItem(KEY, JSON.stringify(d)
 
 // ================================================================= achievements
 export const ACH = {
-  firstBagel: ['🥯', 'Premier bagel', 'Trouve ton premier bagel doré'],
-  allBagels: ['🏆', 'Roi du bagel', 'Les 12 bagels du Plateau'],
-  firstDelivery: ['📦', 'Premier colis', 'Termine ta première livraison'],
-  tenDeliveries: ['🚲', 'Coursier pro', '10 livraisons réussies'],
-  speedy: ['⚡', 'Éclair', 'Livre avec plus de la moitié du temps restant'],
-  bixi: ['🚴', 'BIXI', 'Prends un vélo en libre-service'],
+  firstBagel: ['🥯', 'First bagel', 'Find your first golden bagel'],
+  allBagels: ['🏆', 'Bagel king', 'All 12 Plateau bagels'],
+  firstDelivery: ['📦', 'First parcel', 'Finish your first delivery'],
+  tenDeliveries: ['🚲', 'Pro courier', '10 successful deliveries'],
+  speedy: ['⚡', 'Lightning', 'Deliver with over half the time left'],
+  bixi: ['🚴', 'BIXI', 'Take a shared bike'],
   glide: ['☂️', 'Mary Poppins', 'Plane avec ton parapluie'],
-  flip: ['🌀', 'Salto', 'Fais un double saut'],
-  night: ['🌙', 'Noctambule', 'Balade-toi après 22 h'],
-  snow: ['❄️', 'Hiver québécois', 'Marche dans la neige'],
-  friends: ['💛', 'Bon voisin', 'Parle à 8 voisins différents'],
+  flip: ['🌀', 'Flip', 'Do a double jump'],
+  night: ['🌙', 'Night owl', 'Wander the city after 10 pm'],
+  snow: ['❄️', 'Quebec winter', 'Walk in the snow'],
+  friends: ['💛', 'Good neighbour', 'Talk to 8 different neighbours'],
   cat: ['🐈', 'Ami des chats', 'Flatte le chat'],
-  rich: ['💰', 'Économe', 'Accumule 200 $'],
-  style: ['🧢', 'Le style', 'Achète une nouvelle tenue'],
-  fly: ['🕊️', 'Premier envol', 'Déploie tes ailes et vole'],
-  cloud: ['☁️', 'Dans les nuages', 'Traverse un nuage en volant'],
-  summit: ['⛰️', 'Plus haut que la croix', 'Vole à plus de 100 m'],
-  mwin: ['🏅', 'Champion du Plateau', 'Gagne une mission'],
-  online: ['🌐', 'Entre amis', 'Joue avec quelqu\'un en ligne'],
-  driver: ['🚗', 'Au volant', 'Conduis une voiture dans Montréal'],
-  crash: ['💥', 'Carambolage', 'Rentre dans quelque chose à pleine vitesse'],
-  downtown: ['🏙️', 'Centre-ville', 'Pose-toi sur une tour du centre-ville'],
+  rich: ['💰', 'Saver', 'Save up $200'],
+  style: ['🧢', 'Style', 'Buy a new outfit'],
+  fly: ['🕊️', 'First flight', 'Spread your wings and fly'],
+  cloud: ['☁️', 'In the clouds', 'Fly through a cloud'],
+  summit: ['⛰️', 'Higher than the cross', 'Fly above 100 m'],
+  mwin: ['🏅', 'Plateau champion', 'Win a mission'],
+  online: ['🌐', 'Among friends', 'Play with someone online'],
+  driver: ['🚗', 'Behind the wheel', 'Drive a car through Montréal'],
+  crash: ['💥', 'Pile-up', 'Crash into something at full speed'],
+  downtown: ['🏙️', 'Downtown', 'Land on a downtown tower'],
 };
 export class Achievements {
   constructor(save, toast) { this.s = save; this.toast = toast; }
@@ -97,9 +97,9 @@ export class Achievements {
   count() { return Object.keys(this.s.ach).length; }
 }
 
-// ================================================================= spoken French (Web Speech) with per-character voices
+// ================================================================= spoken voices (Web Speech) with per-character voices
 export class Voice {
-  constructor() { this.on = true; this.voices = []; const load = () => { this.voices = (speechSynthesis?.getVoices?.() || []).filter((v) => /^fr/i.test(v.lang)); }; try { load(); speechSynthesis.onvoiceschanged = load; } catch (e) { /* no speech */ } }
+  constructor() { this.on = true; this.voices = []; const load = () => { this.voices = (speechSynthesis?.getVoices?.() || []).filter((v) => /^en/i.test(v.lang)); }; try { load(); speechSynthesis.onvoiceschanged = load; } catch (e) { /* no speech */ } }
   speak(text, who = 0) {
     if (!this.on || typeof speechSynthesis === 'undefined') return;
     try {
@@ -107,7 +107,7 @@ export class Voice {
       const u = new SpeechSynthesisUtterance(text.replace(/[^\p{L}\p{N}\s.,!?'’«»:;-]/gu, ''));
       const ca = this.voices.filter((v) => /CA/i.test(v.lang)), pool = ca.length ? ca : this.voices;
       if (pool.length) u.voice = pool[who % pool.length];
-      u.lang = u.voice?.lang || 'fr-CA';
+      u.lang = u.voice?.lang || 'en-US';
       u.pitch = 0.8 + ((who * 37) % 10) / 12; u.rate = 1.02 + ((who * 13) % 5) / 30;
       speechSynthesis.speak(u);
     } catch (e) { /* ignore */ }
@@ -122,22 +122,22 @@ export function dialogue(n, save, ctx) {
   const hearts = Math.min(5, Math.floor(m.talks / 2) + 1);
   if (m.talks === 1) return { text: n.line, hearts };
   const pool = [];
-  if (ctx.rain) pool.push('Quelle pluie! Heureusement que j\'ai mon parapluie.', 'Il mouille, il mouille… les ruelles sentent bon après la pluie.');
-  if (ctx.season === 'winter') pool.push('Fais attention, ça glisse! Les trottoirs sont une patinoire.', 'Tu as vu la tempête? On va déneiger toute la nuit.');
-  if (ctx.season === 'autumn') pool.push('Les érables sont magnifiques cette semaine, hein?', 'L\'automne sur le Plateau, c\'est le plus beau moment.');
-  if (ctx.season === 'summer') pool.push('Il fait chaud! Une crème glacée au parc?', 'Ce soir il y a un spectacle gratuit au Quartier des spectacles.');
-  if (ctx.hour >= 21 || ctx.hour < 5) pool.push('Il est tard, coursier! Rentre bien.', 'La nuit, le Plateau devient tout doux.');
-  else if (ctx.hour < 10) pool.push('Bon matin! Tu as pris ton café?', 'Le matin, Saint-Denis sent le pain chaud.');
-  if (ctx.delivery) pool.push(`Une livraison pour le ${ctx.delivery}? Fais vite, ils attendent!`, 'Encore une livraison? Tu es le meilleur coursier du quartier.');
-  if (ctx.bagels >= 6) pool.push(`Déjà ${ctx.bagels} bagels dorés? Impressionnant!`);
-  if (hearts >= 4) pool.push(`${ctx.name || 'Toi'}, tu fais maintenant partie du quartier. Merci d'être là.`, 'Reviens me voir quand tu veux, d\'accord?');
-  pool.push('Re-bonjour! Belle journée pour flâner.', 'Toujours en balade? Moi aussi, j\'adore marcher ici.', 'Salut! Tu connais la ruelle verte derrière Saint-Denis?');
+  if (ctx.rain) pool.push('What rain! Good thing I brought my umbrella.', 'It\'s pouring… the alleys smell so good after the rain.');
+  if (ctx.season === 'winter') pool.push('Careful, it\'s slippery! The sidewalks are a skating rink.', 'Did you see the storm? They\'ll be ploughing all night.');
+  if (ctx.season === 'autumn') pool.push('The maples are gorgeous this week, aren\'t they?', 'Autumn on the Plateau is the best time of year.');
+  if (ctx.season === 'summer') pool.push('It\'s hot! Ice cream in the park?', 'Tonight there\'s a free show at the Quartier des spectacles.');
+  if (ctx.hour >= 21 || ctx.hour < 5) pool.push('It\'s late, courier! Get home safe.', 'At night the Plateau gets all soft and quiet.');
+  else if (ctx.hour < 10) pool.push('Good morning! Had your coffee yet?', 'In the morning, Saint-Denis smells like fresh bread.');
+  if (ctx.delivery) pool.push(`A delivery for ${ctx.delivery}? Hurry, they\'re waiting!`, 'Another delivery? You\'re the best courier in the neighbourhood.');
+  if (ctx.bagels >= 6) pool.push(`Already ${ctx.bagels} golden bagels? Impressive!`);
+  if (hearts >= 4) pool.push(`${ctx.name || 'You'}, you\'re part of the neighbourhood now. Thanks for being here.`, 'Come see me whenever you like, okay?');
+  pool.push('Hi again! Lovely day for a stroll.', 'Still out wandering? I love walking around here too.', 'Hey! Do you know the green alley behind Saint-Denis?');
   return { text: pool[(m.talks * 7 + n.id) % pool.length], hearts };
 }
 
 // ================================================================= courier deliveries
-const NAMES = ['Mme Gagnon', 'M. Lefebvre', 'Chloé', 'Raphaël', 'les Nguyen', 'Mme Bouchard', 'Samir', 'Léa', 'M. Côté', 'Inès', 'les Roy', 'Antoine'];
-const ITEMS = ['des bagels', 'un gâteau', 'des fleurs', 'des livres', 'un vinyle', 'du fromage', 'une poutine', 'des croissants', 'un colis', 'des médicaments', 'une plante', 'des billets de spectacle'];
+const NAMES = ['Mrs. Gagnon', 'Mr. Lefebvre', 'Chloé', 'Raphaël', 'the Nguyens', 'Mrs. Bouchard', 'Samir', 'Léa', 'Mr. Côté', 'Inès', 'the Roys', 'Antoine'];
+const ITEMS = ['bagels', 'a cake', 'flowers', 'books', 'a vinyl record', 'cheese', 'a poutine', 'croissants', 'a parcel', 'medicine', 'a plant', 'show tickets'];
 export class Deliveries {
   constructor(scene, world) {
     this.w = world; this.job = null; this.combo = 0;
@@ -162,7 +162,7 @@ export class Deliveries {
     const who = NAMES[Math.floor(Math.random() * NAMES.length)], item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
     const num = 4000 + Math.floor(Math.abs(d.z * 7 + d.x * 3)) % 900 * 2 + (d.x > k * 90 ? 1 : 0);
     const time = Math.round(dist / 3.4 + 25 + (d.balcony ? 12 : 0));
-    return { from: shop.name, who, item, addr: `${num}, ${street}`, short: `${num} ${street.replace(/^(Rue|Avenue|Av\.) /, '')}`, target: new THREE.Vector3(d.x, d.y, d.z), balcony: !!d.balcony, time, left: time, reward: Math.round(8 + dist / 14) };
+    return { from: shop.name, who, item, addr: `${num} ${street}`, short: `${num} ${street.replace(/ (Street|Avenue|Blvd)$/, '')}`, target: new THREE.Vector3(d.x, d.y, d.z), balcony: !!d.balcony, time, left: time, reward: Math.round(8 + dist / 14) };
   }
   start(job) { this.job = job; this.marker.visible = true; this.marker.position.copy(job.target); }
   cancel() { this.job = null; this.marker.visible = false; }
@@ -184,10 +184,10 @@ export class Deliveries {
 
 // ================================================================= wardrobe (bought at the friperie)
 export const OUTFITS = [
-  { name: 'Coursier classique', price: 0, o: {} },
-  { name: 'Tuque jaune soleil', price: 25, o: { hatCol: '#f2b43c', top: '#2f5a8a', scarf: '#e4402b' } },
-  { name: 'Hiver à Montréal', price: 40, o: { hatCol: '#f4efe6', top: '#d8473f', scarf: '#2f7fbf', pack: '#3d3a4f' } },
-  { name: 'Casquette vintage', price: 45, o: { hat: 'cap', hatCol: '#3f9a6a', top: '#f2d36b', scarf: null, pack: '#7b4fb0' } },
-  { name: 'Nuit sur le Plateau', price: 60, o: { hatCol: '#7b4fb0', top: '#1f1f2a', pants: '#3d3a6f', scarf: '#ff6fa8', pack: '#ff6fa8' } },
-  { name: 'Tenue Saint-Jean', price: 80, o: { hatCol: '#2f7fbf', top: '#f4efe6', pants: '#2f5a8a', scarf: '#2f7fbf', pack: '#f4efe6' } },
+  { name: 'Classic courier', price: 0, o: {} },
+  { name: 'Sunny yellow toque', price: 25, o: { hatCol: '#f2b43c', top: '#2f5a8a', scarf: '#e4402b' } },
+  { name: 'Montréal winter', price: 40, o: { hatCol: '#f4efe6', top: '#d8473f', scarf: '#2f7fbf', pack: '#3d3a4f' } },
+  { name: 'Vintage cap', price: 45, o: { hat: 'cap', hatCol: '#3f9a6a', top: '#f2d36b', scarf: null, pack: '#7b4fb0' } },
+  { name: 'Plateau night', price: 60, o: { hatCol: '#7b4fb0', top: '#1f1f2a', pants: '#3d3a6f', scarf: '#ff6fa8', pack: '#ff6fa8' } },
+  { name: 'Saint-Jean outfit', price: 80, o: { hatCol: '#2f7fbf', top: '#f4efe6', pants: '#2f5a8a', scarf: '#2f7fbf', pack: '#f4efe6' } },
 ];

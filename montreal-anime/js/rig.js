@@ -156,6 +156,18 @@ function makeWings(col) {
   return { g, L, R };
 }
 function makeParcel() { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.26, 0.3), toon('#c98a4b')); b.castShadow = true; g.add(b); const t = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.05, 0.31), toon('#f4efe6')); g.add(t); g.position.set(0, 1.0, 0.36); g.visible = false; return g; }
+// ---- firearms: simple chunky toon models, +z is the muzzle direction, origin at the grip
+const GUN_SPEC = {
+  pistol: { parts: [[0.05, 0.07, 0.24, 0, 0.03, 0.1, '#2f3138'], [0.045, 0.13, 0.07, 0, -0.07, 0, '#1d1e22'], [0.03, 0.03, 0.05, 0, 0.0, 0.0, '#c9ced6']], muzzle: 0.23 },
+  smg:    { parts: [[0.06, 0.09, 0.42, 0, 0.03, 0.18, '#2b2d33'], [0.04, 0.2, 0.07, 0, -0.12, 0.08, '#1d1e22'], [0.045, 0.12, 0.06, 0, -0.08, -0.02, '#1d1e22'], [0.03, 0.04, 0.1, 0, 0.1, 0.18, '#c9ced6'], [0.045, 0.06, 0.16, 0, 0.0, -0.12, '#3a3d45']], muzzle: 0.43 },
+  rifle:  { parts: [[0.06, 0.1, 0.62, 0, 0.03, 0.26, '#2b2d33'], [0.05, 0.16, 0.07, 0, -0.1, 0.08, '#1d1e22'], [0.055, 0.12, 0.22, 0, 0.0, -0.18, '#6a4a2c'], [0.035, 0.05, 0.4, 0, 0.1, 0.3, '#c9ced6'], [0.04, 0.05, 0.28, 0, 0.0, 0.62, '#1d1e22']], muzzle: 0.9 },
+};
+export function makeGun(kind = 'pistol') {
+  const S = GUN_SPEC[kind] || GUN_SPEC.pistol, g = new THREE.Group();
+  for (const [w, h, d, x, y, z, c] of S.parts) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), toon(c)); m.position.set(x, y, z); m.castShadow = true; g.add(m); }
+  const tip = new THREE.Object3D(); tip.position.set(0, 0.03, S.muzzle); g.add(tip); g.userData.muzzle = tip;
+  g.visible = false; return g;
+}
 function makeUmbrella(col) {
   const g = new THREE.Group();
   const c = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.32, 10, 1, true), toon(col, { side: THREE.DoubleSide })); c.position.y = 0.95; g.add(c);
@@ -206,6 +218,7 @@ export function makeRigged(o = {}) {
   } else { wings.g.position.set(0, 0.42, -0.17); body.add(wings.g); }
   const parcel = makeParcel(); body.add(parcel);
   const umb = makeUmbrella(o.hatCol || '#e4402b'); body.add(umb);
+  const guns = { pistol: makeGun('pistol'), smg: makeGun('smg'), rifle: makeGun('rifle') }; for (const g of Object.values(guns)) body.add(g);
   const _h1 = new THREE.Vector3(), _h2 = new THREE.Vector3();
   const atHand = (name, out) => { const b = bones[name]; if (!b) return null; b.updateWorldMatrix(true, false); out.setFromMatrixPosition(b.matrixWorld); return body.worldToLocal(out); };
   const st = { t: Math.random() * 10, air: 0, fly: 0, bike: 0, wave: 0, umb: 0, parcel: 0, land: 0, jump: 0, gest: null, gestT: 0, gestW: 0, lean: 0, prevYaw: 0, ph: 0, w: { idle: 1, walk: 0, run: 0 } };
@@ -256,6 +269,7 @@ export function makeRigged(o = {}) {
     st.wave = lerp(st.wave, wave > 0 ? 1 : 0, k(8));
     st.umb = lerp(st.umb, op.umbrella ? 1 : 0, k(8));
     st.parcel = lerp(st.parcel, op.parcel ? 1 : 0, k(8));
+    st.gun = lerp(st.gun || 0, op.gun ? 1 : 0, k(14));
     const air = st.air * (1 - st.fly), f = st.fly;
     // jump tuck
     if (air > 0.01) {
@@ -308,6 +322,14 @@ export function makeRigged(o = {}) {
     if (st.parcel > 0.01 && st.bike < 0.5 && f < 0.5) for (const [sd, x] of [['Left', 1], ['Right', -1]]) { aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.25, -0.6, 0.75), st.parcel); aim(sd + 'ForeArm', sd + 'Hand', V(-x * 0.25, 0.15, 1), st.parcel); }
     // umbrella overhead (right arm)
     if (st.umb > 0.01 && f < 0.5) { aim('RightArm', 'RightForeArm', V(-0.35, 0.9, 0.1), st.umb); aim('RightForeArm', 'RightHand', V(0.15, 1, 0.1), st.umb); }
+    // two-handed aim: right arm points at the target, left hand supports, head follows the aim pitch
+    if (st.gun > 0.01 && st.bike < 0.5 && f < 0.5 && !op.drive) {
+      const ap = Math.max(-0.7, Math.min(0.7, op.aimPitch || 0)), two = op.gun !== 'pistol';
+      aim('RightArm', 'RightForeArm', V(-0.1, 0.02 + ap, 1), st.gun); aim('RightForeArm', 'RightHand', V(-0.06, 0.02 + ap, 1), st.gun);
+      aim('LeftArm', 'LeftForeArm', V(two ? 0.28 : 0.18, -0.02 + ap * 0.9, 1), st.gun * 0.95); aim('LeftForeArm', 'LeftHand', V(two ? 0.06 : 0.3, 0.02 + ap, 1), st.gun * 0.95);
+      aim('Neck', 'Head', V(0, 0.05 + ap * 0.6, 1), st.gun * 0.5);
+    }
+    if (st.gun > 0.01 && op.drive) { aim('RightArm', 'RightForeArm', V(-0.2, -0.05, 1), st.gun * 0.8); aim('RightForeArm', 'RightHand', V(-0.1, 0.1, 1), st.gun * 0.8); }
     // wave hello (right arm)
     if (st.wave > 0.01) { aim('RightArm', 'RightForeArm', V(-0.6, 0.85, 0.15), st.wave); aim('RightForeArm', 'RightHand', V(-0.15 + Math.sin(st.t * 11) * 0.45, 1, 0.25), st.wave); }
     // ---- whole-body: lean into turns, fly tilt, flip, squash & stretch
@@ -327,12 +349,16 @@ export function makeRigged(o = {}) {
     // wings with follow-through (they lag the body's motion)
     wings.g.visible = !!op.wings; if (op.wings) { const fl = op.flap ?? 1; const a2 = 0.2 + Math.sin(st.t * (6 + fl * 6)) * (0.15 + 0.5 * fl); wings.L.rotation.set(0, -0.35, a2); wings.R.rotation.set(0, 0.35, -a2); }
     parcel.visible = st.parcel > 0.5; umb.visible = st.umb > 0.5;
+    for (const [n, gm] of Object.entries(guns)) {
+      gm.visible = st.gun > 0.5 && op.gun === n;
+      if (gm.visible && atHand('RightHand', _h1)) { gm.position.copy(_h1).add(_h2.set(0.015, 0.0, 0.03)); gm.rotation.set(-(op.aimPitch || 0) * 1.1, 0, 0); }
+    }
     if (umb.visible && atHand('RightHand', _h1)) umb.position.copy(_h1).add(_h2.set(0, -0.08, 0));
     if (parcel.visible && atHand('LeftHand', _h1) && atHand('RightHand', _h2)) parcel.position.copy(_h1).add(_h2).multiplyScalar(0.5).add(_h2.set(0, 0.12, 0.04));
     return step;
   }
   return {
-    root, body, model, mixer, st, kind, animate, gesture,
+    root, body, model, mixer, st, kind, animate, gesture, guns,
     head: bones.Head || body,
     land() { st.land = 1; }, jump() { st.jump = 1; },
   };

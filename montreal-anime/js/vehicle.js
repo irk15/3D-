@@ -75,7 +75,14 @@ export class Vehicle {
     }
     // loose props and people
     for (const [cx, cz, cr] of this.circles(this.pos.x, this.pos.z, this.yaw)) ctx.props?.push(cx, cz, this.pos.y, this.pos.y + 1.4, cr, vx, vz, 1300);
-    if (ctx.peds && this.speed > 2.5) for (const n of ctx.peds) { const dx = n.pos.x - (this.pos.x + f.x * 3), dz = n.pos.z - (this.pos.z + f.z * 3); if (dx * dx + dz * dz < 9) n.dodge?.(r.x * Math.sign(dx * r.x + dz * r.z || 1), r.z * Math.sign(dx * r.x + dz * r.z || 1)); }
+    if (ctx.peds && this.speed > 2.5) for (const n of ctx.peds) {
+      if (n.rag) continue;
+      let hitIt = false, near = false;
+      for (const [cx, cz, cr] of this.circles(this.pos.x, this.pos.z, this.yaw)) { const d2 = (n.pos.x - cx) ** 2 + (n.pos.z - cz) ** 2; if (Math.abs(n.pos.y - this.pos.y) < 1.6 && d2 < (cr + 0.35) ** 2) hitIt = true; }
+      if (hitIt && this.speed > 3.2 && ctx.hitPed) { ctx.hitPed(n, vx, vz, this.speed, this); this.vF *= 0.985; continue; }
+      const dx = n.pos.x - (this.pos.x + f.x * 3), dz = n.pos.z - (this.pos.z + f.z * 3); if (dx * dx + dz * dz < 9) near = true;
+      if (near) n.dodge?.(r.x * Math.sign(dx * r.x + dz * r.z || 1), r.z * Math.sign(dx * r.x + dz * r.z || 1));
+    }
     // suspension: ground under each wheel → height, pitch and roll; airborne off ledges
     const W = this.m.wheels, hs = [];
     for (const w of W) { const lx = w.g.position.x, lz = w.g.position.z, wx = this.pos.x + f.x * lz + r.x * lx, wz = this.pos.z + f.z * lz + r.z * lx; hs.push(C.ground(wx, wz, this.pos.y + 0.6, 0)); }

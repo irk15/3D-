@@ -10,6 +10,7 @@ import { makeCharacter } from './actors.js';
 const TOPS = ['#d8473f', '#2f7fbf', '#3f9a6a', '#f2b43c', '#7b4fb0', '#e79cb4', '#2f3a44', '#f07c3c', '#5aa04a', '#8ec5b8'];
 const TINTS = ['#ffffff', '#ffe9e2', '#e6f1ff', '#fff3d6', '#efe6ff'];
 
+import { stepRag } from './combat.js';
 export class Crowd {
   constructor(scene, world) {
     this.list = []; this.w = world; this.fr = 0;
@@ -21,6 +22,7 @@ export class Crowd {
       ch.root.position.set(x, y, z); ch.root.rotation.y = yaw; scene.add(ch.root);
       const p = { ch, pos: ch.root.position, yaw, mode, home: new THREE.Vector3(x, y, z), t: R() * 6, gest: 0, wave: 0, adt: 0, id: this.list.length, ...o };
       p.dodge = (sx, sz) => { if (p.dodgeT > 0) return; p.dodgeT = 0.45; p.dv = new THREE.Vector3(sx, 0, sz).multiplyScalar(p.mode === 'sit' ? 0 : 5); ch.gesture?.('shake', 1.5); };
+      p.scare = (x, z) => { if (p.rag || p.mode === 'sit') return; p.flee = 5 + Math.random() * 3; p.fleeFrom = { x, z }; };
       this.list.push(p); return p;
     };
     const face = (x, z, tx, tz) => Math.atan2(tx - x, tz - z);
@@ -61,9 +63,19 @@ export class Crowd {
       const d2 = p.pos.distanceToSquared(camPos), vis = d2 < 125 * 125;
       p.ch.root.visible = vis; if (!vis) continue;
       p.adt += dt; p.t += dt;
+      if (p.rag && stepRag(p, dt, this.w.colliders)) { p.ch.root.visible = true; continue; }
+      if (p.ragEnded) { p.ragEnded = false; p.pos = p.ch.root.position; p.mode = p.mode === 'sit' ? 'stand' : p.mode; }
+      let running = false;
+      if (p.flee > 0) {
+        p.flee -= dt; running = true;
+        let fx = p.pos.x - p.fleeFrom.x, fz = p.pos.z - p.fleeFrom.z; const fl = Math.hypot(fx, fz) || 1; fx /= fl; fz /= fl;
+        const nx = p.pos.x + fx * 4.4 * dt, nz = p.pos.z + fz * 4.4 * dt;
+        if (!this.w.colliders.blocked(nx, nz, 0.3, p.pos.y, 0.45, p.pos.y + 1.5)) { p.pos.x = nx; p.pos.z = nz; p.pos.y = this.w.colliders.ground(nx, nz, p.pos.y + 0.5, 0.1); p.home.copy(p.pos); } else p.fleeFrom = { x: p.pos.x - fz, z: p.pos.z + fx };
+        p.yaw = Math.atan2(fx, fz);
+      }
       // dodging cars
       if (p.dodgeT > 0) { p.dodgeT -= dt; p.pos.addScaledVector(p.dv, dt); }
-      else if (p.pos.distanceToSquared(p.home) > 0.01 && p.mode !== 'sit') p.pos.lerp(p.home, 1 - Math.exp(-dt * 0.6));
+      else if (!running && p.pos.distanceToSquared(p.home) > 0.01 && p.mode !== 'sit') p.pos.lerp(p.home, 1 - Math.exp(-dt * 0.6));
       // little lives: shopkeepers wave at you, chatting friends nod and shake, queue shuffles
       let wave = 0;
       const dp = Math.hypot(player.pos.x - p.pos.x, player.pos.z - p.pos.z);
@@ -72,11 +84,11 @@ export class Crowd {
       if (p.mode === 'stand' && p.t > 6) { p.t = 0; if (Math.random() < 0.3) p.ch.gesture?.('nod', 1.6); }
       // face the player when they come close (people notice you)
       let yaw = p.yaw;
-      if (dp < 3.5 && p.mode !== 'sit') yaw = Math.atan2(player.pos.x - p.pos.x, player.pos.z - p.pos.z);
+      if (!running && dp < 3.5 && p.mode !== 'sit') yaw = Math.atan2(player.pos.x - p.pos.x, player.pos.z - p.pos.z);
       let dy = yaw - p.ch.root.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); p.ch.root.rotation.y += dy * (1 - Math.exp(-dt * 4));
       const every = d2 > 70 * 70 ? 4 : d2 > 25 * 25 ? 2 : 1;
       if ((this.fr + p.id) % every === 0) {
-        p.ch.animate(p.adt, 0, true, wave, { sit: p.mode === 'sit', phone: p.mode === 'phone' || p.phone });
+        p.ch.animate(p.adt, running ? 4.8 : 0, true, wave, { sit: p.mode === 'sit' && !running, phone: !running && (p.mode === 'phone' || p.phone) });
         p.adt = 0;
       }
     }

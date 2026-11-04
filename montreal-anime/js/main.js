@@ -13,6 +13,8 @@ import { buildDowntown } from './downtown.js';
 import { Props } from './physics.js';
 import { Vehicle } from './vehicle.js';
 import { Crowd } from './crowd.js';
+import { Combat, WEAPONS } from './combat.js';
+import { Police } from './police.js';
 import { carDrivable } from './cars.js';
 
 const $c = {};
@@ -43,13 +45,13 @@ async function boot() {
   scene.add(sun, sun.target, hemi);
   Object.assign(app, { renderer, scene, camera, sun, hemi, sky });
 
-  $('#loadMsg').textContent = 'On construit le Plateau…';
+  $('#loadMsg').textContent = 'Building the Plateau…';
   await new Promise((r) => setTimeout(r, 30));
   const world = app.world = buildWorld(scene);
   const roofs = app.roofs = findRoofs(world);
   roofProps(scene, world, roofs);
   const clouds = makeClouds(scene);
-  $('#loadMsg').textContent = 'Le centre-ville, le Stade, le fleuve…';
+  $('#loadMsg').textContent = 'Downtown, the Stadium, the river…';
   await new Promise((r) => setTimeout(r, 20));
   const downtown = app.downtown = buildDowntown(scene, world);
   const pipe = app.pipe = new Pipeline(renderer, scene, camera);
@@ -57,8 +59,8 @@ async function boot() {
 
   // ---- characters: Mixamo models (falls back to the procedural ones if the files can't load)
   if (!params.has('procedural')) {
-    $('#loadMsg').textContent = 'Les personnages arrivent…';
-    try { await loadRigs('models/', (f) => { $('#loadMsg').textContent = `Les personnages arrivent… ${Math.round(f * 100)} %`; }); } catch (e) { console.warn('[rig] Mixamo models unavailable, using procedural characters', e); }
+    $('#loadMsg').textContent = 'Characters arriving…';
+    try { await loadRigs('models/', (f) => { $('#loadMsg').textContent = `Characters arriving… ${Math.round(f * 100)}%`; }); } catch (e) { console.warn('[rig] Mixamo models unavailable, using procedural characters', e); }
   }
   if (!MODELS[save.model]) save.model = 'bot';
   const optsFor = (outfit, color, model = 'bot') => { const o = { ...(OUTFITS[outfit]?.o || {}) }; const c = COLORS[color | 0] || COLORS[0]; o.pack = c; if (o.scarf !== null) o.scarf = c; o.model = MODELS[model] ? model : 'bot'; o.top = c; o.pants = '#2b2550'; return o; };
@@ -78,11 +80,11 @@ async function boot() {
     spawnCar('sport', '#d0312d', px - 4, pz, 0); spawnCar('suv', '#2f3a44', px + 4, pz + 2, 0);
     spawnCar('sedan', '#2f7fbf', PARK.x1 - 4, PARK.z0 - 10, Math.PI / 2);
     if (world.pvmBeacon) spawnCar('sport', '#f2b43c', world.pvmBeacon.x + 52, world.pvmBeacon.z + 8, 0); }
-  let car = null, carView = 'chase', carCam = { yaw: 0, look: 0 };
+  let car = null, carView = 'chase', carCam = { yaw: 0, look: 0 }, combat = null;
   function enterCar(v) {
     if (player.bike) player.dismount();
     player.flying = false; car = v; v.driver = hero; player.driving = true; player.vel.set(0, 0, 0);
-    carCam.yaw = v.yaw + Math.PI; cam.yaw = carCam.yaw; sfx.door(); closeSay(); areaToast(v.kind === 'sport' ? '🏎️ En route!' : '🚗 En route!');
+    carCam.yaw = v.yaw + Math.PI; cam.yaw = carCam.yaw; sfx.door(); closeSay(); areaToast(v.kind === 'sport' ? '🏎️ Let\'s roll!' : '🚗 Let\'s roll!');
     $('#drive').classList.add('show'); ach.unlock('driver');
   }
   function exitCar() {
@@ -100,7 +102,7 @@ async function boot() {
     traffic.take(c);
     const yaw = c.L.axis === 'z' ? (c.L.dir > 0 ? 0 : Math.PI) : (c.L.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
     const v = new Vehicle(scene, world, c.kind, c.col, c.x, c.z, yaw); v.vF = c.v || 0; vehicles.push(v);
-    say('Conducteur', 'Hé! Ma voiture! … Bon, fais attention à elle.', 2); enterCar(v);
+    say('Driver', 'Hey! My car! … Fine, just take care of it.', 2); enterCar(v);
   }
   const pigeons = new Pigeons(scene, world);
   const catSpot = world.spots.balcony.filter((s) => s.street === -1).sort((a, b) => Math.abs(a.z - 20) - Math.abs(b.z - 20))[0] || { x: -80, y: h(20) + 0.2, z: 20 };
@@ -126,15 +128,15 @@ async function boot() {
   const ctxNow = () => ({ hour: clockH, rain: weather.precip === 'rain', season, delivery: deliveries.job?.short, bagels: bagels.count });
   const talkables = () => {
     const out = [];
-    if (car) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Sortir de la voiture', act: exitCar }); return out; }
-    for (const v of vehicles) { const d = v.doorPos(); out.push({ x: d.x, z: d.z, y: v.pos.y, label: v.kind === 'sport' ? '🏎️ Conduire' : '🚗 Conduire', act: () => enterCar(v) }); }
-    { const tc = traffic.nearest(player.pos.x, player.pos.z); if (tc) out.push({ x: tc.x, z: tc.z, y: player.pos.y, label: '🚕 Prendre cette voiture', act: () => takeTraffic(tc) }); }
-    { const pc = world.parked.nearest(player.pos.x, player.pos.z); if (pc) out.push({ x: pc.x, z: pc.z, y: player.pos.y, label: '🚙 Conduire cette voiture', act: () => takeParked(pc) }); }
-    if (player.bike) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Descendre du vélo', act: () => { player.dismount(); sfx.blip(); } }); return out; }
-    for (const n of npcs.list) if (n.out) out.push({ x: n.pos.x, z: n.pos.z, y: n.pos.y, label: `Parler à ${n.name}`, act: () => talkTo(n) });
+    if (car) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Get out of the car', act: exitCar }); return out; }
+    for (const v of vehicles) { const d = v.doorPos(); out.push({ x: d.x, z: d.z, y: v.pos.y, label: v.kind === 'sport' ? '🏎️ Drive' : '🚗 Drive', act: () => enterCar(v) }); }
+    { const tc = traffic.nearest(player.pos.x, player.pos.z); if (tc) out.push({ x: tc.x, z: tc.z, y: player.pos.y, label: '🚕 Take this car', act: () => takeTraffic(tc) }); }
+    { const pc = world.parked.nearest(player.pos.x, player.pos.z); if (pc) out.push({ x: pc.x, z: pc.z, y: player.pos.y, label: '🚙 Drive this car', act: () => takeParked(pc) }); }
+    if (player.bike) { out.push({ x: player.pos.x, z: player.pos.z, y: player.pos.y, label: 'Get off the bike', act: () => { player.dismount(); sfx.blip(); } }); return out; }
+    for (const n of npcs.list) if (n.out) out.push({ x: n.pos.x, z: n.pos.z, y: n.pos.y, label: `Talk to ${n.name}`, act: () => talkTo(n) });
     for (const s of world.shops) out.push({ x: s.x, z: s.z, y: h(s.z), label: shopLabel(s), act: () => shopAct(s) });
-    for (const d of world.docks) out.push({ x: d.x, z: d.z, y: h(d.z) + 0.15, label: 'Prendre un BIXI', act: () => { player.mountBike(bikeModel()); ach.unlock('bixi'); sfx.bell(); say(d.name, (isTouch ? 'Bon trajet! Utilise la piste cyclable de Saint-Denis. Touche la bulle pour descendre, 🔔 pour la sonnette.' : 'Bon trajet! Utilise la piste cyclable de Saint-Denis. (E pour descendre, B pour la sonnette)')); } });
-    out.push({ x: cat.g.position.x, z: cat.g.position.z, y: cat.g.position.y, label: 'Flatter le chat', act: () => { say('Le chat', 'Miaou! ♥  (Il ronronne et cligne des yeux.)', 3); sfx.meow(); ach.unlock('cat'); } });
+    for (const d of world.docks) out.push({ x: d.x, z: d.z, y: h(d.z) + 0.15, label: 'Take a BIXI', act: () => { player.mountBike(bikeModel()); ach.unlock('bixi'); sfx.bell(); say(d.name, (isTouch ? 'Enjoy the ride! Use the Saint-Denis bike lane. Tap the bubble to get off, 🔔 for the bell.' : 'Enjoy the ride! Use the Saint-Denis bike lane. (E to get off, B for the bell)')); } });
+    out.push({ x: cat.g.position.x, z: cat.g.position.z, y: cat.g.position.y, label: 'Pet the cat', act: () => { say('The cat', 'Meow! ♥  (It purrs and blinks slowly.)', 3); sfx.meow(); ach.unlock('cat'); } });
     return out;
   };
   function talkTo(n) {
@@ -145,30 +147,30 @@ async function boot() {
   }
   const special = { cafe: 1, bakery: 1, church: 1, thrift: 1 };
   function shopLabel(s) {
-    if (s.kind === 'church') return 'Écouter les cloches';
-    if (s.kind === 'cafe') return 'Commander un café';
-    if (s.kind === 'bakery') return 'Acheter un croissant';
-    if (s.kind === 'thrift') return 'Essayer des vêtements';
-    return deliveries.job ? `Entrer · ${s.name}` : `📦 Livraison · ${s.name}`;
+    if (s.kind === 'church') return 'Listen to the bells';
+    if (s.kind === 'cafe') return 'Order a coffee';
+    if (s.kind === 'bakery') return 'Buy a croissant';
+    if (s.kind === 'thrift') return 'Try on clothes';
+    return deliveries.job ? `Enter · ${s.name}` : `📦 Delivery · ${s.name}`;
   }
   function shopAct(s) {
-    if (s.kind === 'cafe') { player.boost = 30; say(s.name, 'Un allongé pour emporter! ☕ Tu cours plus vite pendant 30 secondes.'); sfx.collect(1.3); return; }
-    if (s.kind === 'bakery') { player.jumpBoost = 30; say(s.name, 'Un croissant au beurre! 🥐 Tu sautes beaucoup plus haut pendant 30 secondes.'); sfx.collect(1.2); return; }
+    if (s.kind === 'cafe') { player.boost = 30; say(s.name, 'One long black to go! ☕ You run faster for 30 seconds.'); sfx.collect(1.3); return; }
+    if (s.kind === 'bakery') { player.jumpBoost = 30; say(s.name, 'A butter croissant! 🥐 You jump much higher for 30 seconds.'); sfx.collect(1.2); return; }
     if (s.kind === 'church') { say(s.name, s.line); sfx.bell(); return; }
     if (s.kind === 'thrift') return wardrobe(s);
     if (deliveries.job) { say(s.name, s.line); return; }
     const job = deliveries.offer(s, player.pos);
-    if (!job) { say(s.name, 'Rien à livrer pour l\'instant. Repasse plus tard!'); return; }
+    if (!job) { say(s.name, 'Nothing to deliver right now. Come back later!'); return; }
     deliveries.start(job); player.parcel = true; sfx.collect(0.9);
-    say(s.name, `Peux-tu livrer ${job.item} à ${job.who}, au ${job.addr}${job.balcony ? ' (sur le balcon)' : ''}? Tu as ${job.time} secondes. Suis la lumière bleue!`);
+    say(s.name, `Can you deliver ${job.item} to ${job.who}, at ${job.addr}${job.balcony ? ' (on the balcony)' : ''}? You have ${job.time} seconds. Follow the blue light!`);
   }
   let wardI = save.outfit;
   function wardrobe(s) {
     wardI = (wardI + 1) % OUTFITS.length;
     const O = OUTFITS[wardI], owned = save.owned.includes(wardI);
-    if (owned) { setOutfit(wardI); say(s.name, `Tu portes « ${O.name} ». Reviens pour changer encore!`); return; }
-    if (save.money >= O.price) { save.money -= O.price; save.owned.push(wardI); setOutfit(wardI); ach.unlock('style'); say(s.name, `Vendu! « ${O.name} » pour ${O.price} $. Ça te va super bien.`); sfx.collect(1.1); updateMoney(); }
-    else say(s.name, `« ${O.name} » coûte ${O.price} $. Fais quelques livraisons et reviens! (Tu as ${save.money} $.)`);
+    if (owned) { setOutfit(wardI); say(s.name, `You\'re wearing "${O.name}". Come back to switch again!`); return; }
+    if (save.money >= O.price) { save.money -= O.price; save.owned.push(wardI); setOutfit(wardI); ach.unlock('style'); say(s.name, `Sold! "${O.name}" for $${O.price}. It suits you.`); sfx.collect(1.1); updateMoney(); }
+    else say(s.name, `"${O.name}" costs $${O.price}. Do a few deliveries and come back! (You have $${save.money}.)`);
   }
 
   // ---- camera rig
@@ -186,14 +188,17 @@ async function boot() {
     if (!player.flying && cam.pitch < -0.25) cam.pitch += (-0.25 - cam.pitch) * (1 - Math.exp(-dt * 4));
     const dir = new THREE.Vector3(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
     cam.flyK += ((player.flying ? 1 : 0) - cam.flyK) * (1 - Math.exp(-dt * 2.5));
-    const want = cam.dist * (player.bike ? 1.25 : 1) * (1 + cam.flyK * (0.55 + Math.min(0.5, player.speed / 40)));
+    cam.armK = (cam.armK || 0) + ((combat?.armed ? 1 : 0) - (cam.armK || 0)) * (1 - Math.exp(-dt * 8));
+    const want = Math.min(cam.dist * (player.bike ? 1.25 : 1) * (1 + cam.flyK * (0.55 + Math.min(0.5, player.speed / 40))), 6 - cam.armK * 2.6);
     let free = want;
     for (let s = 0.4; s <= want; s += 0.2) { const q = cam.target.clone().addScaledVector(dir, s); if (world.colliders.solid(q.x, q.y, q.z)) { free = Math.max(0.6, s - 0.35); break; } }
     cam.cur += (free - cam.cur) * (free < cam.cur ? 1 - Math.exp(-dt * 25) : 1 - Math.exp(-dt * 3));
     camera.position.copy(cam.target).addScaledVector(dir, cam.cur);
-    camera.lookAt(cam.target);
+    if (cam.armK > 0.01) { const sh = 0.75 * cam.armK; camera.position.x += Math.cos(cam.yaw) * sh; camera.position.z -= Math.sin(cam.yaw) * sh; camera.lookAt(cam.target.x + Math.cos(cam.yaw) * sh, cam.target.y, cam.target.z - Math.sin(cam.yaw) * sh); } else camera.lookAt(cam.target);
+    cam.shake = Math.max(0, (cam.shake || 0) - dt * 2.5);
+    if (cam.shake > 0 && !car) camera.position.add(new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(cam.shake * 0.25));
     // a little FOV kick with speed — the anime "whoosh"
-    const fovT = 52 + Math.min(12, Math.max(0, player.speed - 5) * 1.6) + (player.dashT > 0 ? 6 : 0);
+    const fovT = 52 + Math.min(12, Math.max(0, player.speed - 5) * 1.6) + (player.dashT > 0 ? 6 : 0) - (combat?.aimZoom ? 14 : 0);
     cam.fov += (fovT - cam.fov) * (1 - Math.exp(-dt * 5));
     if (Math.abs(camera.fov - cam.fov) > 0.01) { camera.fov = cam.fov; camera.updateProjectionMatrix(); }
   }
@@ -249,6 +254,7 @@ async function boot() {
     if (e.code === 'KeyP') togglePhoto();
     if (e.code === 'KeyT') cycleTime();
     if (e.code === 'KeyY') cycleSeason();
+    if (combat && combat.key(e.code)) { e.preventDefault(); return; }
     if (e.code === 'KeyR') { weather.cycle(); updateButtons(); sfx.blip(); }
     if (e.code === 'KeyB') { if (car) sfx.horn(); else sfx.bell(player.bike ? 2 : 1); }
     if (e.code === 'KeyX' && car) { carView = carView === 'chase' ? 'cabin' : 'chase'; carCam.look = 0; }
@@ -260,10 +266,11 @@ async function boot() {
   addEventListener('keyup', (e) => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
   const cv = renderer.domElement;
-  let drag = null;
-  cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
+  let drag = null, mouseFire = false;
+  cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; if (combat?.armed) { if (e.button === 2) combat.aimZoom = true; else if (e.button === 0) mouseFire = true; } drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
   cv.addEventListener('pointermove', (e) => { if (!drag) return; cam.yaw -= (e.clientX - drag.x) * 0.006; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + (e.clientY - drag.y) * 0.005)); drag = { x: e.clientX, y: e.clientY }; cam.lastInput = clock.elapsedTime; });
-  cv.addEventListener('pointerup', () => { drag = null; });
+  cv.addEventListener('pointerup', () => { drag = null; mouseFire = false; if (combat) combat.aimZoom = false; });
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
   cv.addEventListener('wheel', (e) => { cam.dist = Math.min(photoMode ? 16 : 10, Math.max(photoMode ? 1.2 : 2.4, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); e.preventDefault(); }, { passive: false });
   // ---- touch: floating joystick on the left (push to the edge to run), swipe to look and pinch to zoom
   // on the right, and a button pad that changes with what you're doing (walking, flying, biking, driving)
@@ -322,6 +329,7 @@ async function boot() {
   pad('tLand', () => { inp.fly = true; });
   pad('tBell', () => sfx.bell(2));
   pad('tHorn', () => sfx.horn());
+  pad('tShoot'); pad('tDraw', () => combat?.toggle()); pad('tReload', () => combat?.key('KeyR')); pad('tSwap', () => combat?.next());
   pad('tView', () => { carView = carView === 'chase' ? 'cabin' : 'chase'; carCam.look = 0; });
   for (const id of ['tUp', 'tDown', 'tBoost', 'tGas', 'tBrake', 'tHand']) pad(id);
   addEventListener('blur', () => { for (const k in tHeld) tHeld[k] = false; joyRelease(); looks.clear(); });
@@ -330,7 +338,7 @@ async function boot() {
   // the interaction bubble is the button on touch screens
   $('#prompt').addEventListener('pointerdown', (e) => { if (!isTouch) return; e.preventDefault(); buzz(15); interact(); });
   // menu: the icon column becomes a bottom sheet with labels
-  const LBL = { btnMission: 'Mission', btnInvite: 'Amis', btnHelp: 'Aide', btnTime: 'Heure', btnWeather: 'Météo', btnSeason: 'Saison', btnJournal: 'Carnet', btnCam: 'Caméra', btnPhoto: 'Photo', btnFull: 'Plein écran', btnSound: 'Musique' };
+  const LBL = { btnMission: 'Mission', btnInvite: 'Friends', btnHelp: 'Help', btnTime: 'Time', btnWeather: 'Weather', btnSeason: 'Season', btnJournal: 'Journal', btnCam: 'Camera', btnPhoto: 'Photo', btnFull: 'Fullscreen', btnSound: 'Music' };
   for (const [id, l] of Object.entries(LBL)) $('#' + id)?.setAttribute('data-l', l);
   $('#tMenu').addEventListener('click', () => { B.classList.toggle('menu'); buzz(); });
   document.querySelector('.icons').addEventListener('click', (e) => { if (isTouch && e.target.closest('.ic') && e.target.closest('.ic').id !== 'btnSound') setTimeout(() => B.classList.remove('menu'), 120); });
@@ -397,7 +405,7 @@ async function boot() {
     clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200);
   }
   function achToast(ic, name) {
-    const d = document.createElement('div'); d.className = 'ach'; d.innerHTML = `<i>${ic}</i><div><small>SUCCÈS DÉBLOQUÉ</small><b>${name}</b></div>`;
+    const d = document.createElement('div'); d.className = 'ach'; d.innerHTML = `<i>${ic}</i><div><small>ACHIEVEMENT UNLOCKED</small><b>${name}</b></div>`;
     $('#achs').appendChild(d); setTimeout(() => d.classList.add('out'), 3600); setTimeout(() => d.remove(), 4200);
   }
   function floatText(txt, cls = '') { const d = document.createElement('div'); d.className = 'float ' + cls; d.textContent = txt; $('#floats').appendChild(d); setTimeout(() => d.remove(), 1600); }
@@ -411,9 +419,9 @@ async function boot() {
   function cycleSeason() { season = SEASONS[(SEASONS.indexOf(season) + 1) % SEASONS.length]; updateButtons(); sfx.blip(); }
   function updateButtons() {
     $('#btnSeason').dataset.v = season;
-    $('#btnSeason').title = { summer: 'Été', autumn: 'Automne', winter: 'Hiver' }[season] + ' (Y)';
+    $('#btnSeason').title = { summer: 'Summer', autumn: 'Autumn', winter: 'Winter' }[season] + ' (Y)';
     $('#btnWeather').dataset.v = weather.state;
-    $('#btnWeather').title = { clear: 'Soleil', cloudy: 'Nuageux', rain: 'Pluie / neige' }[weather.state] + ' (R)';
+    $('#btnWeather').title = { clear: 'Sunny', cloudy: 'Cloudy', rain: 'Rain / snow' }[weather.state] + ' (R)';
   }
   $('#btnTime').onclick = cycleTime; $('#btnSeason').onclick = cycleSeason; $('#btnWeather').onclick = () => { weather.cycle(); updateButtons(); sfx.blip(); };
   updateButtons();
@@ -456,11 +464,11 @@ async function boot() {
   setting('#setAO', () => pipe.aoOn, (v) => { pipe.aoOn = v; });
   setting('#setFast', () => timeSpeed > 0.05, (v) => { timeSpeed = v ? 0.2 : 1 / 60; });
   setting('#setFreeze', () => timeSpeed === 0, (v) => { timeSpeed = v ? 0 : 1 / 60; });
-  $('#setReset').onclick = (e) => { e.stopPropagation(); if (confirm('Effacer ta progression?')) { localStorage.removeItem('plateau-montreal-v2'); location.reload(); } };
+  $('#setReset').onclick = (e) => { e.stopPropagation(); if (confirm('Erase your progress?')) { localStorage.removeItem('plateau-montreal-v2'); location.reload(); } };
 
   // ---- photo mode
   let photoMode = false, filter = 0, shot = false, pose = false;
-  const FILTERS = ['Normal', 'Manga', 'Pellicule'];
+  const FILTERS = ['Normal', 'Manga', 'Film'];
   function togglePhoto() { photoMode = !photoMode; document.body.classList.toggle('photo', photoMode); if (!photoMode) { pipe.U.uFilter.value = 0; } else { pipe.U.uFilter.value = filter; } sfx.blip(); }
   function cycleFilter() { filter = (filter + 1) % FILTERS.length; pipe.U.uFilter.value = filter; $('#pfName').textContent = FILTERS[filter]; sfx.blip(); }
   function snap() { shot = true; pipe.U.uFlash.value = 1; sfx.shutter(); }
@@ -470,7 +478,7 @@ async function boot() {
   $('#btnJournal').onclick = () => { $('#journal').classList.toggle('show'); drawJournal(); };
   $('#journal').onclick = (e) => { if (e.target.id === 'journal') $('#journal').classList.remove('show'); };
   function drawJournal() {
-    $('#jStats').innerHTML = `<div><b>${bagels.count}/12</b><small>bagels</small></div><div><b>${save.deliveries}</b><small>livraisons</small></div><div><b>${save.money} $</b><small>pourboires</small></div><div><b>${Object.keys(save.met).length}</b><small>voisins</small></div>`;
+    $('#jStats').innerHTML = `<div><b>${bagels.count}/12</b><small>bagels</small></div><div><b>${save.deliveries}</b><small>deliveries</small></div><div><b>$${save.money}</b><small>tips</small></div><div><b>${Object.keys(save.met).length}</b><small>neighbours</small></div>`;
     $('#jAch').innerHTML = Object.entries(ACH).map(([id, [ic, name, desc]]) => `<li class="${save.ach[id] ? 'got' : ''}"><i>${ic}</i><b>${name}</b><small>${desc}</small></li>`).join('');
   }
 
@@ -494,9 +502,9 @@ async function boot() {
   });
   function missionButton() {
     if (!started) return;
-    if (missions.active) { if (!multi) { missions.stop(); floatText('Mission annulée'); } return; }
+    if (missions.active) { if (!multi) { missions.stop(); floatText('Mission cancelled'); } return; }
     if (net.isHost) { $('#results').classList.remove('show'); missions.auto = true; missions.nextAt = 0; missions.start(); }
-    else chatLine('', 'Seul l\'hôte peut lancer une mission.');
+    else chatLine('', 'Only the host can start a mission.');
   }
   $('#btnMission').onclick = missionButton;
   $('#resNext').onclick = () => { $('#results').classList.remove('show'); if (net.isHost) { missions.nextAt = 0; missions.auto = true; missions.start(); } };
@@ -519,6 +527,17 @@ async function boot() {
     return r;
   }
   function dropRemote(id) { const r = remotes.get(id); if (!r) return; scene.remove(r.ch.root); if (r.car) scene.remove(r.car.g); for (const t of r.trails) scene.remove(t.mesh); r.tag.remove(); remotes.delete(id); }
+  const netF = { get peers() { return net.peers; }, get id() { return net.id; }, send: (m) => net.send(m), on: (t, f) => net.on(t, f) };
+  combat = app.combat = new Combat({
+    scene, camera, world, player, getHero: () => hero, getCar: () => car, cam, npcs, crowd, traffic, vehicles, props, remotes, net: netF, sfx, puffs, burst,
+    ui: { isTouch, pitchMin, buzz, floatText: (t, c) => floatText(t, c), exitCar: () => exitCar(), updateMoney: () => updateMoney(),
+      getMoney: () => save.money, addMoney: (v) => { save.money = Math.max(0, save.money + v); writeSave(save); updateMoney(); },
+      setArmed: (on) => document.body.classList.toggle('armed', on),
+      respawn: () => { const z = 112; player.pos.set(9, world.colliders.ground(9, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vel.set(0, 0, 0); player.vy = 0; player.grounded = true; player.unstick(); hero.root.position.copy(player.pos); } },
+  });
+  const police = app.police = new Police({ scene, world, player, getCar: () => car, combat, sfx, ui: combat.ui });
+  combat.police = police; police.mkctx = () => ({ vehicles: vehicles.concat(police.carVs), traffic, props, peds: null, night: look.night, clock: '' });
+  $('#pvpTag')?.addEventListener('click', () => combat.key('KeyK'));
   const DELAY = 150;
   function updateRemotes(dt) {
     const now = performance.now() - DELAY;
@@ -548,7 +567,9 @@ async function boot() {
       if (bike && !r.bike) { r.bike = bikeModel(); ch.root.add(r.bike.g); } else if (!bike && r.bike) { ch.root.remove(r.bike.g); r.bike = null; }
       if (r.bike) r.bike.spin(r.speed * dt);
       r.wave = Math.max(0, r.wave - dt);
-      ch.animate(dt, fly ? 0 : bike ? r.speed * 0.45 : r.speed, !!(r.flags & 1) || bike, r.wave > 0 ? 1 : 0, { wings: fly, fly: fly ? Math.min(1, r.speed / 14) : 0, flap: (r.flags & 32) ? 2 : 1, bike, parcel: !!(r.flags & 8), umbrella: !!(r.flags & 16) });
+      ch.animate(dt, fly ? 0 : bike ? r.speed * 0.45 : r.speed, !!(r.flags & 1) || bike, r.wave > 0 ? 1 : 0, { wings: fly, fly: fly ? Math.min(1, r.speed / 14) : 0, flap: (r.flags & 32) ? 2 : 1, bike, parcel: !!(r.flags & 8), umbrella: !!(r.flags & 16), gun: !fly && !bike && r.gw ? WEAPONS[r.gw]?.id : null, aimPitch: r.ap });
+      ch.root.rotation.order = 'YXZ'; r.tlS = (r.tlS || 0) + ((r.tl || 0) - (r.tlS || 0)) * Math.min(1, dt * 10);
+      if (Math.abs(r.tlS) > 0.02) { const lie = Math.min(1, Math.abs(r.tlS) / 1.5708), s2 = Math.sign(r.tlS); ch.root.rotation.x = r.tlS; ch.root.position.x -= Math.sin(r.yaw) * s2 * 0.8 * lie; ch.root.position.z -= Math.cos(r.yaw) * s2 * 0.8 * lie; ch.root.position.y += 0.1 * lie; } else ch.root.rotation.x = 0;
       ch.root.visible = r.pos.distanceTo(camera.position) < 420;
       wingTrails(r.trails, ch, r.yaw, fly && r.speed > 4, dt);
       r.tag.classList.toggle('idle', performance.now() - B[B.length - 1].t > 5000);   // their tab is in the background: keep them visible, dim the name
@@ -599,10 +620,11 @@ async function boot() {
 
   // ---- connecting
   function bindNet(n) {
-    n.on('join', (p) => { if (n !== net) return; chatLine('', `${p.name} a rejoint la partie! 👋`); sfx.mission('join'); ach.unlock('online'); updRoom(); sendState(); if (n.isHost && !missions.active) setTimeout(() => chatLine('', 'Tu es l\'hôte: appuie sur N (ou ⚑) pour lancer une mission!'), 1200); });
+    combat?.bind(n);
+    n.on('join', (p) => { if (n !== net) return; chatLine('', `${p.name} joined the game! 👋`); sfx.mission('join'); ach.unlock('online'); updRoom(); sendState(); if (n.isHost && !missions.active) setTimeout(() => chatLine('', 'You\'re the host: press N (or ⚑) to start a mission!'), 1200); });
     n.on('status', () => { if (n === net) updRoom(); });
-    n.on('leave', (p) => { if (n !== net) return; dropRemote(p.id); chatLine('', `${p.name} est parti.`); updRoom(); });
-    n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); r.vk = m.vk; r.vc = m.vc; r.vst = m.st || 0; if (r.buf.length > 30) r.buf.shift(); });
+    n.on('leave', (p) => { if (n !== net) return; dropRemote(p.id); chatLine('', `${p.name} left.`); updRoom(); });
+    n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); r.vk = m.vk; r.vc = m.vc; r.vst = m.st || 0; r.gw = m.gw | 0; r.ap = m.ap || 0; r.pvp = m.pv !== 0; r.tl = m.tl || 0; r.down = Math.abs(r.tl) > 0.8; r.hp = m.hp; if (r.buf.length > 30) r.buf.shift(); });
     n.on('chat', (m, p) => { if (n !== net) return; const t = String(m.text || '').slice(0, 120); chatLine(p.name, t, COLORS[p.color | 0]); bubble(p.id, t); sfx.blip(); });
     n.on('emo', (m, p) => { if (n !== net) return; const i = (m.i | 0) % 4; bubble(p.id, EMO[i], true); const r = remotes.get(p.id); if (r && i === 0) r.wave = 2.5; else r?.ch.gesture?.(GEST[i], i === 3 ? 5 : 2.2); });
   }
@@ -610,13 +632,13 @@ async function boot() {
     const el = $('#room');
     if (!multi) { el.innerHTML = ''; return; }
     el.innerHTML = `<span class="dot"></span>${roomCode} · 👥 ${net.count}`;
-    el.classList.toggle('local', net.status !== 'en ligne');
+    el.classList.toggle('local', net.status !== 'online');
     const d = net.diag?.();
     if (d) {
       const via = { relais: 'relais', direct: 'direct', onglet: 'onglet' };
       $('#invNet').innerHTML = `<b>Connexion</b> · relais ${d.brokers}/${d.brokerTotal} ${d.brokers ? '✅' : '❌'} · Nostr ${d.nostr ? '✅' : '❌'} · direct ${d.direct}` +
-        (d.peers.length ? `<br>${d.peers.map((p) => `${esc(p.name)} (${via[p.via] || p.via})`).join(' · ')}` : '<br>En attente d\'amis… partage le code!') +
-        (!d.brokers && !d.nostr ? '<br>⚠️ Aucun serveur public joignable depuis ce réseau (pare-feu?). Essaie un autre Wi-Fi ou les données mobiles.' : '');
+        (d.peers.length ? `<br>${d.peers.map((p) => `${esc(p.name)} (${via[p.via] || p.via})`).join(' · ')}` : '<br>Waiting for friends… share the code!') +
+        (!d.brokers && !d.nostr ? '<br>⚠️ No public server reachable from this network (firewall?). Try another Wi-Fi or mobile data.' : '');
     }
   }
   setInterval(() => { if (multi && ($('#invite').classList.contains('show') || net.status !== lastSt)) { lastSt = net.status; updRoom(); } }, 1000);
@@ -630,9 +652,9 @@ async function boot() {
     net = app.net = new Net(code, { name: myName(), color: save.color | 0, outfit: save.outfit, model: save.model });
     bindNet(net); missions.setNet(net); missions.pts = {}; missions.auto = true;
     try { const u = new URL(location.href); u.searchParams.set('room', code); history.replaceState(null, '', u); } catch (e) { /* file:// */ }
-    updRoom(); chatLine('', `Salle ${code} · connexion…`);
+    updRoom(); chatLine('', `Room ${code} · connecting…`);
     await net.connect();
-    updRoom(); chatLine('', net.status === 'en ligne' ? 'En ligne! Partage le code à tes amis. Entrée pour discuter.' : 'Mode local seulement.');
+    updRoom(); chatLine('', net.status === 'online' ? 'Online! Share the code with your friends. Press Enter to chat.' : 'Local mode only.');
   }
   const linkFor = (code) => `${location.origin}${location.pathname}?room=${code}`;
   function showInvite() {
@@ -644,8 +666,8 @@ async function boot() {
   $('#btnInvite').onclick = showInvite; $('#room').onclick = showInvite;
   $('#invClose').onclick = () => $('#invite').classList.remove('show');
   $('#invite').onclick = (e) => { if (e.target.id === 'invite') $('#invite').classList.remove('show'); };
-  $('#invCopy').onclick = () => { const l = linkFor(roomCode); (navigator.clipboard?.writeText(l) || Promise.reject()).then(() => { $('#invCopy').textContent = 'Copié ✓'; setTimeout(() => { $('#invCopy').textContent = 'Copier le lien'; }, 1800); }).catch(() => prompt('Copie ce lien:', l)); };
-  $('#invShare').onclick = () => navigator.share?.({ title: 'Plateau · Montréal', text: `Viens jouer avec moi! Code: ${roomCode}`, url: linkFor(roomCode) }).catch(() => {});
+  $('#invCopy').onclick = () => { const l = linkFor(roomCode); (navigator.clipboard?.writeText(l) || Promise.reject()).then(() => { $('#invCopy').textContent = 'Copied ✓'; setTimeout(() => { $('#invCopy').textContent = 'Copy link'; }, 1800); }).catch(() => prompt('Copy this link:', l)); };
+  $('#invShare').onclick = () => navigator.share?.({ title: 'Plateau · Montréal', text: `Come play with me! Code: ${roomCode}`, url: linkFor(roomCode) }).catch(() => {});
   let stT = 0;
   // a hidden tab stops animating, so keep reporting our position from a timer as well
   setInterval(() => { if (document.hidden) sendState(); }, 1000);
@@ -653,12 +675,12 @@ async function boot() {
     if (!multi || !net.peers.size) return;
     const p = hero.root.position;
     const f = (player.grounded ? 1 : 0) | (player.flying ? 2 : 0) | (player.bike ? 4 : 0) | (player.parcel ? 8 : 0) | ((inp.rain || player.gliding) && !player.bike && !player.flying && !car ? 16 : 0) | (player.flying && inp.run ? 32 : 0) | (car ? 64 : 0);
-    if (car) { const c = car.pos; net.send({ t: 'st', x: +c.x.toFixed(2), y: +c.y.toFixed(2), z: +c.z.toFixed(2), r: +car.yaw.toFixed(3), s: +car.speed.toFixed(2), f, o: save.outfit, md: save.model, vk: car.kind, vc: car.color, st: +car.steer.toFixed(2) }); return; }
-    net.send({ t: 'st', x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +player.yaw.toFixed(3), s: +player.speed.toFixed(2), f, o: save.outfit, md: save.model });
+    if (car) { const c = car.pos; net.send({ t: 'st', x: +c.x.toFixed(2), y: +c.y.toFixed(2), z: +c.z.toFixed(2), r: +car.yaw.toFixed(3), s: +car.speed.toFixed(2), f, o: save.outfit, md: save.model, vk: car.kind, vc: car.color, st: +car.steer.toFixed(2), pv: combat?.pvp ? 1 : 0, hp: Math.round(combat?.hp ?? 100) }); return; }
+    net.send({ t: 'st', x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +player.yaw.toFixed(3), s: +player.speed.toFixed(2), f, o: save.outfit, md: save.model, ...(combat ? combat.stateFields() : {}) });
   }
 
   // ---- lobby on the title screen
-  const NAMES = ['Écureuil', 'Raton', 'Huard', 'Castor', 'Orignal', 'Bernache', 'Mouffette', 'Harfang'];
+  const NAMES = ['Squirrel', 'Raton', 'Huard', 'Castor', 'Orignal', 'Bernache', 'Mouffette', 'Harfang'];
   const cols = $('#pCols');
   COLORS.forEach((c, i) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Couleur ' + (i + 1)); b.onclick = () => { save.color = i; writeSave(save); updCols(); setOutfit(save.outfit); }; cols.appendChild(b); });
   const updCols = () => [...cols.children].forEach((b, i) => b.classList.toggle('on', i === (save.color | 0)));
@@ -670,20 +692,20 @@ async function boot() {
   $('#pName').value = save.name || '';
   $('#pName').addEventListener('input', () => { save.name = $('#pName').value.trim().slice(0, 16); writeSave(save); });
   const invited = (params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
-  if (invited) { $('#pCode').value = invited; $('#lobby').classList.add('invited'); $('#join').textContent = 'Rejoindre ▸'; }
+  if (invited) { $('#pCode').value = invited; $('#lobby').classList.add('invited'); $('#join').textContent = 'Join ▸'; }
   let started = params.has('play');
   const begin = (room) => {
     if (!save.name) { save.name = NAMES[Math.floor(Math.random() * NAMES.length)] + ' ' + (10 + Math.floor(Math.random() * 89)); $('#pName').value = save.name; writeSave(save); }
     started = true; document.body.classList.add('playing'); sfx.start(); $('#btnSound').classList.remove('off');
     if (room) { goOnline(room); if (!invited) setTimeout(showInvite, 900); }
-    setTimeout(() => areaToast('Rue Saint-Denis'), 600);
-    if (!save.deliveries && !params.has('play')) setTimeout(() => say('Tutoriel', room ? (isTouch ? 'Bienvenue! Quand tes amis sont là, l\'hôte lance une mission depuis le menu ☰. Le premier qui réussit gagne! Touche 🕊 Voler pour t\'envoler.' : 'Bienvenue! Quand tes amis sont là, l\'hôte lance une mission (N). Le premier qui réussit gagne! Appuie sur V (ou saute trois fois) pour voler.') : (isTouch ? 'Bienvenue sur le Plateau! Pouce gauche pour marcher, glisse à droite pour regarder. Touche 🕊 Voler pour t\'envoler, et la bulle 👆 pour parler ou livrer. Trouve les 12 bagels dorés!' : 'Bienvenue sur le Plateau! Appuie sur V (ou saute trois fois) pour voler. N lance une mission. Entre dans un commerce (E) pour une livraison, et cherche les 12 bagels dorés.')), 2500);
+    setTimeout(() => areaToast('Saint-Denis Street'), 600);
+    if (!save.deliveries && !params.has('play')) setTimeout(() => say('Tutorial', room ? (isTouch ? 'Welcome! When your friends join, the host starts a mission from the ☰ menu. First to finish wins! Tap 🕊 Fly to take off.' : 'Welcome! When your friends join, the host starts a mission (N). First to finish wins! Press V (or jump three times) to fly.') : (isTouch ? 'Welcome to the Plateau! Left thumb to move, swipe right to look. Tap 🕊 Fly to take off, and the 👆 bubble to talk or deliver. Find the 12 golden bagels!' : 'Welcome to the Plateau! Press V (or jump three times) to fly. N starts a mission. Step into a shop (E) for a delivery, and look for the 12 golden bagels.')), 2500);
   };
   $('#play').onclick = () => begin();
   $('#host').onclick = () => begin(randomCode());
   $('#join').onclick = () => { const c = $('#pCode').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length < 4) { $('#pCode').focus(); $('#pCode').animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], 250); return; } begin(c); };
   $('#pCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#join').click(); });
-  if (save.deliveries || save.bagels.length) $('#play').textContent = 'Continuer en solo ▸';
+  if (save.deliveries || save.bagels.length) $('#play').textContent = 'Continue solo ▸';
   if (started) document.body.classList.add('playing');
   if (params.has('play') && params.get('room')) goOnline(invited);
   app.goOnline = goOnline; app.emote = emote; app.chat = (t) => { net.send({ t: 'chat', text: t }); chatLine(myName(), t, COLORS[save.color | 0]); bubble('me', t); };
@@ -733,7 +755,8 @@ async function boot() {
     readInput();
     if (!started || photoMode) { inp.x = inp.y = 0; inp.jump = false; inp.dash = false; if (!started) cam.yaw += dt * 0.05; }
     let stepped = false;
-    const vctx = { vehicles, traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list], night: look.night, clock: fmtHour(clockH) };
+    combat.trigger = !!(tHeld.tShoot || mouseFire); if (car) combat.trigger = false;
+    const vctx = { vehicles: police.carVs.length ? vehicles.concat(police.carVs) : vehicles, hitPed: (n, vx, vz, sp) => combat.hitByCar(n, vx, vz, sp), traffic, props, peds: [...npcs.list.filter((n) => n.out), ...crowd.list], night: look.night, clock: fmtHour(clockH) };
     if (car) {
       inp.fly = false; inp.dash = false;
       car.update(dt, started && !photoMode ? inp : null, vctx);
@@ -744,17 +767,22 @@ async function boot() {
       car.impact = 0;
       sfx.engine(car.rpm, Math.max(0, inp.y), car.speed);
       $('#driveSpd').textContent = Math.round(car.speed * 3.6); $('#driveGear').textContent = car.gear;
-    } else { stepped = player.update(dt, inp, cam.yaw); sfx.engine(0, 0, 0); }
+    } else {
+      combat.lockInput(inp); player.gun = combat.armed ? combat.weapon.id : null; player.aimPitch = combat.aimPitch();
+      stepped = player.update(dt, inp, cam.yaw); sfx.engine(0, 0, 0); combat.afterPlayer(dt);
+    }
+    if (car && car.speed > 5) for (const r of remotes.values()) { if (r.car || !r.ch.root.visible) continue; for (const [cx, cz, cr] of car.circles(car.pos.x, car.pos.z, car.yaw)) if ((r.pos.x - cx) ** 2 + (r.pos.z - cz) ** 2 < (cr + 0.5) ** 2 && Math.abs(r.pos.y - car.pos.y) < 1.8) { combat.carHitRemote(r, car.vF * Math.sin(car.yaw), car.vF * Math.cos(car.yaw), car.speed); break; } }
     for (const v of vehicles) if (v !== car) { if (v.speed > 0.05) v.update(dt, null, vctx); else v.place(0, vctx); }
     for (const v of vehicles) v.m.lod(v === car ? 0 : v.pos.distanceTo(camera.position));
     // fell into the St. Lawrence: splash, swim back to the quay
     if (!car && !player.flying && player.pos.z > RIVER_Z - 6 && player.pos.y < WATER_Y + 0.2) {
-      puffs.ring(player.pos.clone().setY(WATER_Y), 0xbfe3ff); sfx.land(); areaToast('Plouf! Le fleuve Saint-Laurent');
+      puffs.ring(player.pos.clone().setY(WATER_Y), 0xbfe3ff); sfx.land(); areaToast('Splash! The Saint Lawrence River');
       const z = RIVER_Z - 12; player.pos.set(player.pos.x, world.colliders.ground(player.pos.x, z, h(z) + 30, 0.2), z); player.visY = player.pos.y; player.vy = 0; player.grounded = true; player.unstick();
     }
     if (!car && player.speed > 0.5) props.push(player.pos.x, player.pos.z, player.pos.y, player.pos.y + 1.7, player.bike ? 0.55 : 0.35, player.vel.x, player.vel.z, player.bike ? 95 : 70);
     props.update(dt);
     crowd.update(dt, player, camera.position);
+    combat.update(dt, t); police.update(dt, t);
     if (photoMode && pose) hero.animate(0, 0, true, 1, { parcel: player.parcel });
     if (stepped) { sfx.step(season === 'winter' ? 'snow' : weather.wet > 0.5 ? 'wet' : 'dry'); if (player.speed > 4 || season === 'winter' || weather.wet > 0.5) puffs.at(player.pos, season === 'winter' ? 0xf2f6ff : weather.wet > 0.5 ? 0xbfd8ff : 0xd9cdb8, 3); }
     if (player.jumped) { sfx.jump(); player.jumped = false; }
@@ -788,15 +816,15 @@ async function boot() {
     if (dl && dl.done) {
       player.parcel = false; save.money += dl.tip; save.deliveries++; save.best = Math.max(save.best, dl.combo); writeSave(save); updateMoney();
       sfx.collect(1.25); burst.at(player.pos.clone().setY(player.pos.y + 1));
-      floatText(`+${dl.tip} $`, 'money'); if (dl.combo > 1) setTimeout(() => floatText(`Combo ×${dl.combo}!`, 'combo'), 300);
-      say(dl.job.who, dl.late ? 'Enfin! C\'est un peu en retard, mais merci quand même.' : dl.fast ? 'Déjà?! Wow, merci! Voici un beau pourboire.' : 'Merci beaucoup! Bonne journée!', 5);
+      floatText(`+$${dl.tip}`, 'money'); if (dl.combo > 1) setTimeout(() => floatText(`Combo ×${dl.combo}!`, 'combo'), 300);
+      say(dl.job.who, dl.late ? 'Finally! A bit late, but thanks anyway.' : dl.fast ? 'Already?! Wow, thanks! Here\'s a nice tip.' : 'Thank you so much! Have a great day!', 5);
       ach.unlock('firstDelivery'); if (save.deliveries >= 10) ach.unlock('tenDeliveries'); if (dl.fast) ach.unlock('speedy');
     }
     const job = deliveries.job;
     document.body.classList.toggle('onjob', !!job);
     if (job) {
       $('#jobWho').textContent = `${job.item} → ${job.who}`; $('#jobAddr').textContent = job.addr;
-      $('#jobTime').textContent = job.left > 0 ? `${Math.ceil(job.left)} s` : 'En retard!';
+      $('#jobTime').textContent = job.left > 0 ? `${Math.ceil(job.left)} s` : 'Late!';
       $('#jobBar').style.width = Math.max(0, job.left / job.time * 100) + '%';
       $('#jobBar').classList.toggle('late', job.left < job.time * 0.25);
       const d = Math.hypot(job.target.x - player.pos.x, job.target.z - player.pos.z);
@@ -816,7 +844,7 @@ async function boot() {
     pipe.U.uFlash.value = Math.max(0, pipe.U.uFlash.value - dt * 3);
     // nearest interactable
     let best = null, bd = 2.6;
-    if (started && !photoMode && !player.flying) for (const o of talkables()) { const d = Math.hypot(o.x - player.pos.x, o.z - player.pos.z); if ((d < bd || o.label === 'Descendre du vélo') && Math.abs(o.y - player.pos.y) < 2.2) { bd = d; best = o; } }
+    if (started && !photoMode && !player.flying) for (const o of talkables()) { const d = Math.hypot(o.x - player.pos.x, o.z - player.pos.z); if ((d < bd || o.label === 'Get off the bike') && Math.abs(o.y - player.pos.y) < 2.2) { bd = d; best = o; } }
     near = best;
     const prm = $('#prompt');
     if (best && !$('#say').classList.contains('show')) { $('#promptText').textContent = best.label; prm.classList.add('show'); } else prm.classList.remove('show');
@@ -1045,6 +1073,16 @@ function makeAudio() {
     metro() { if (!A || !on) return; const t = A.currentTime; [[0, 523.25], [0.32, 659.25], [0.64, 783.99]].forEach(([d, f]) => tone(f, t + d, 0.6, 0.06, 'sine')); },
     horn() { if (!A || !on) return; const t = A.currentTime; for (const f of [392, 494]) tone(f, t, 0.5, 0.07, 'square'); },
     crash(v = 1) { if (!A || !on) return; noise(A.currentTime, 0.35, 0.3 * v, 220, 0.5); noise(A.currentTime + 0.03, 0.25, 0.18 * v, 1800, 0.8); },
+    shot(k = 1, v = 1) { if (!A || !on) return; const t = A.currentTime, f = [0, 900, 1300, 650][k] || 900; noise(t, 0.12 + k * 0.03, 0.34 * v, f, 0.7); noise(t, 0.28, 0.2 * v, 220, 0.5); tone(120 - k * 12, t, 0.14, 0.18 * v, 'sine'); },
+    hit(hs) { if (!A || !on) return; const t = A.currentTime; tone(hs ? 1500 : 900, t, 0.06, 0.07, 'square'); noise(t, 0.05, 0.08, 2400, 1); },
+    thud(v = 1) { if (!A || !on) return; const t = A.currentTime; tone(85, t, 0.22, 0.34 * v, 'sine'); noise(t, 0.12, 0.2 * v, 320, 0.6); },
+    reload(v = 1) { if (!A || !on) return; const t = A.currentTime; noise(t, 0.04, 0.12, 2200, 2); noise(t + 0.22 * v, 0.05, 0.14, 1400, 2); },
+    empty() { if (!A || !on) return; noise(A.currentTime, 0.03, 0.1, 3000, 2); },
+    ping() { if (!A || !on) return; const t = A.currentTime; tone(2100, t, 0.1, 0.05, 'triangle'); noise(t, 0.04, 0.06, 3200, 3); },
+    hurt() { if (!A || !on) return; const t = A.currentTime; tone(180, t, 0.18, 0.12, 'sawtooth'); noise(t, 0.1, 0.12, 500, 1); },
+    wasted() { if (!A || !on) return; const t = A.currentTime; [330, 247, 196, 147].forEach((f, i) => tone(f, t + i * 0.28, 0.9, 0.07, 'triangle')); },
+    star(n = 1) { if (!A || !on) return; const t = A.currentTime; tone(880 + n * 120, t, 0.12, 0.05, 'square'); tone(1175 + n * 120, t + 0.12, 0.16, 0.05, 'square'); },
+    copSiren(far = 1) { if (!A || !on) return; const t = A.currentTime, o = A.createOscillator(), g = A.createGain(); o.type = 'square'; for (let i = 0; i < 6; i++) o.frequency.setValueAtTime(i % 2 ? 960 : 720, t + i * 0.3); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.025 * far, t + 0.1); g.gain.linearRampToValueAtTime(0.0001, t + 1.8); o.connect(g).connect(master); o.start(t); o.stop(t + 1.9); },
     door() { if (!A || !on) return; noise(A.currentTime, 0.08, 0.2, 500, 1.2); noise(A.currentTime + 0.09, 0.05, 0.12, 900, 1.2); },
     whoosh() { if (!A || !on) return; noise(A.currentTime, 0.45, 0.16, 700, 0.4); noise(A.currentTime + 0.1, 0.35, 0.1, 1500, 0.6); },
     wind(v) { if (!A) return; if (!windG) { const len = A.sampleRate * 2, buf = A.createBuffer(1, len, A.sampleRate), ch = buf.getChannelData(0); let l = 0; for (let i = 0; i < len; i++) { l = l * 0.97 + (Math.random() * 2 - 1) * 0.03; ch[i] = l * 6; } const s = A.createBufferSource(); s.buffer = buf; s.loop = true; windF = A.createBiquadFilter(); windF.type = 'bandpass'; windF.Q.value = 0.7; windF.frequency.value = 500; windG = A.createGain(); windG.gain.value = 0; s.connect(windF).connect(windG).connect(master); s.start(); } windG.gain.setTargetAtTime(on ? v * 0.18 : 0, A.currentTime, 0.3); windF.frequency.setTargetAtTime(400 + v * 900, A.currentTime, 0.3); },

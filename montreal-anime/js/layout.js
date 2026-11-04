@@ -7,16 +7,16 @@ export const h = (z) => -SLOPE * z;            // ground height (m)
 export const CURB = 0.15;                      // sidewalk height above the road
 
 // north–south streets x = 90k, east–west streets z = 60 + 110m
-const NS_NAMES = { '-2': 'Boulevard Saint-Laurent', '-1': 'Rue Drolet', '0': 'Rue Saint-Denis', '1': 'Rue Saint-Hubert', '2': 'Rue Saint-André' };
-const EW_NAMES = { '-3': 'Boulevard Saint-Joseph', '-2': 'Rue Gilford', '-1': 'Avenue du Mont-Royal', '0': 'Rue Marie-Anne', '1': 'Rue Rachel', '2': 'Rue Duluth', '3': 'Rue Sherbrooke' };
+const NS_NAMES = { '-2': 'Saint-Laurent Blvd', '-1': 'Drolet Street', '0': 'Saint-Denis Street', '1': 'Saint-Hubert Street', '2': 'Saint-André Street' };
+const EW_NAMES = { '-3': 'Saint-Joseph Blvd', '-2': 'Gilford Street', '-1': 'Mont-Royal Avenue', '0': 'Marie-Anne Street', '1': 'Rachel Street', '2': 'Duluth Street', '3': 'Sherbrooke Street' };
 export const nsX = (k) => 90 * k;
 export const ewZ = (m) => -160 + 110 * (m + 1);              // m=-1 → Mont-Royal (z=-160)
 export const nsHW = (k) => (k === 0 ? 7.5 : k === -1 ? 4.2 : k === -2 ? 8 : 5);
 export const nsSW = (k) => (k === 0 ? 4 : 3);
 export const ewHW = (m) => (m === -1 ? 7 : m === 1 ? 6 : m === 3 ? 8 : 5);
 export const ewSW = (m) => (m === -1 ? 4.5 : 3);
-export const nsName = (k) => NS_NAMES[k] || 'Rue du Plateau';
-export const ewName = (m) => EW_NAMES[m] || 'Rue du Plateau';
+export const nsName = (k) => NS_NAMES[k] || 'Plateau Street';
+export const ewName = (m) => EW_NAMES[m] || 'Plateau Street';
 export const nsIdx = (x) => Math.round(x / 90);
 export const ewIdx = (z) => Math.round((z + 160) / 110) - 1;
 export const ALLEY_HW = 2.6;
@@ -33,8 +33,8 @@ export const WALK = { x0: -950, x1: 1150, z0: -560, z1: RIVER_Z - 6 };   // wher
 export const FLY = { x0: -1150, x1: 1350, z0: -760, z1: 1950 };           // where you can fly
 
 // special places
-export const PARK = { x0: -90 + nsHW(-1) + nsSW(-1), x1: -nsHW(0) - nsSW(0), z0: ewZ(1) + ewHW(1) + ewSW(1), z1: ewZ(2) - ewHW(2) - ewSW(2), name: 'Carré Saint-Louis' };
-export const PLAZA = { x0: nsHW(0) + nsSW(0), x1: 44, z0: -214, z1: ewZ(-1) - ewHW(-1) - ewSW(-1), name: 'Place du métro Mont-Royal' };
+export const PARK = { x0: -90 + nsHW(-1) + nsSW(-1), x1: -nsHW(0) - nsSW(0), z0: ewZ(1) + ewHW(1) + ewSW(1), z1: ewZ(2) - ewHW(2) - ewSW(2), name: 'Saint-Louis Square' };
+export const PLAZA = { x0: nsHW(0) + nsSW(0), x1: 44, z0: -214, z1: ewZ(-1) - ewHW(-1) - ewSW(-1), name: 'Mont-Royal Metro Plaza' };
 export const CHURCH = { x0: nsHW(0) + nsSW(0), x1: 43, z0: -40, z1: 12 };
 export const GREEN_ALLEY = { x: 45, z0: ewZ(-1), z1: ewZ(0) };
 
@@ -51,7 +51,7 @@ export function whereIs(x, z) {
   const ka = Math.round((x - 45) / 90);
   if (Math.abs(x - alleyX(ka)) < ALLEY_HW + 0.5) {
     const green = Math.abs(x - GREEN_ALLEY.x) < 4 && z > GREEN_ALLEY.z0 && z < GREEN_ALLEY.z1;
-    return { kind: 'alley', name: green ? 'Ruelle verte' : 'Ruelle' };
+    return { kind: 'alley', name: green ? 'Green alley' : 'Alley' };
   }
   return { kind: 'block', name: null };
 }

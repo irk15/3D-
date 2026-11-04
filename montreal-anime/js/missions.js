@@ -8,14 +8,14 @@ import { toon, LAYER_FX } from './toon.js';
 
 export const COLORS = ['#e4402b', '#2f7fbf', '#3f9a6a', '#f2a93b', '#7b4fb0', '#ff6fa8', '#18b8d6', '#3d3a4f'];
 export const KINDS = {
-  stars: { ic: '⭐', name: 'Pluie d\'étoiles', dur: 100 },
-  race: { ic: '💫', name: 'Course des anneaux', dur: 160 },
-  hunt: { ic: '🔍', name: 'Chasse au trésor', dur: 150 },
-  king: { ic: '👑', name: 'Roi du toit', dur: 120 },
-  courier: { ic: '📦', name: 'Livraison éclair', dur: 150 },
+  stars: { ic: '⭐', name: 'Star Shower', dur: 100 },
+  race: { ic: '💫', name: 'Ring Race', dur: 160 },
+  hunt: { ic: '🔍', name: 'Treasure Hunt', dur: 150 },
+  king: { ic: '👑', name: 'King of the Roof', dur: 120 },
+  courier: { ic: '📦', name: 'Lightning Delivery', dur: 150 },
 };
 const ORDER = ['stars', 'race', 'hunt', 'king', 'courier'];
-const TREASURES = ['la tuque dorée', 'le bagel de cristal', 'la clé de la croix', 'le chat en porcelaine de Mme Tremblay', 'le BIXI miniature en or', 'la cuillère à sirop d\'érable'];
+const TREASURES = ['the golden toque', 'the crystal bagel', 'the key to the cross', 'Mrs. Tremblay\'s porcelain cat', 'the miniature gold BIXI', 'the maple syrup spoon'];
 const KING_T = 15, RINGS = 8, STARS = 18;
 const $c = {};
 const $ = (s) => $c[s] || ($c[s] = document.querySelector(s));
@@ -232,7 +232,7 @@ export class Missions {
       const it = c.items[c.step];
       if (it && near(it.p, 2.2, 2.6)) {
         c.step++; this.sendProg(c.step); this.hooks.sfx('ring', c.step * 3);
-        if (c.step === 1) { player.parcel = true; this.hooks.toast?.(`📦 Colis récupéré! Livre-le au ${c.addr}`); }
+        if (c.step === 1) { player.parcel = true; this.hooks.toast?.(`📦 Package picked up! Deliver it to ${c.addr}`); }
         if (c.step === 2) { player.parcel = false; this.claim('win', el); }
       }
     }
@@ -294,17 +294,17 @@ export class Missions {
 
   // ---------------------------------------------------------- UI
   goalText(c) {
-    if (c.kind === 'stars') return `Attrape le plus d'étoiles · ${c.items.length - c.awarded.size} restantes`;
-    if (c.kind === 'race') return c.step < RINGS ? `Traverse les anneaux dans l'ordre · ${c.step}/${RINGS}` : 'Arrivé!';
-    if (c.kind === 'hunt') return `Trouve ${c.treasure}`;
-    if (c.kind === 'king') return `Reste ${KING_T} s sur le toit doré · ${c.mine.toFixed(1)} s${c.onRoof ? ' 👑' : ''}`;
-    if (c.kind === 'courier') return c.step === 0 ? `Prends le colis chez ${c.shop}` : c.step === 1 ? `Livre-le au ${c.addr}` : 'Livré!';
+    if (c.kind === 'stars') return `Grab the most stars · ${c.items.length - c.awarded.size} left`;
+    if (c.kind === 'race') return c.step < RINGS ? `Fly through the rings in order · ${c.step}/${RINGS}` : 'Finished!';
+    if (c.kind === 'hunt') return `Find ${c.treasure}`;
+    if (c.kind === 'king') return `Stay ${KING_T} s on the golden roof · ${c.mine.toFixed(1)} s${c.onRoof ? ' 👑' : ''}`;
+    if (c.kind === 'courier') return c.step === 0 ? `Pick up the package at ${c.shop}` : c.step === 1 ? `Deliver it to ${c.addr}` : 'Delivered!';
     return '';
   }
   heat(player) {   // treasure hunt: hot / cold
     const c = this.cur; if (!c || c.kind !== 'hunt') return null;
     const d = player.pos.distanceTo(c.items[0].p);
-    return d < 12 ? ['Brûlant! 🔥', 1] : d < 30 ? ['Très chaud', 0.8] : d < 60 ? ['Chaud', 0.6] : d < 110 ? ['Tiède', 0.4] : d < 180 ? ['Froid', 0.22] : ['Glacial ❄', 0.08];
+    return d < 12 ? ['Burning hot! 🔥', 1] : d < 30 ? ['Very hot', 0.8] : d < 60 ? ['Hot', 0.6] : d < 110 ? ['Warm', 0.4] : d < 180 ? ['Cold', 0.22] : ['Freezing ❄', 0.08];
   }
   drawCard(el = 0) {
     const c = this.cur; if (!c) return;
@@ -312,7 +312,7 @@ export class Missions {
     $('#misIc').textContent = K.ic; $('#misName').textContent = K.name;
     $('#misGoal').textContent = this.goalText(c);
     const left = c.phase === 'count' ? c.dur : Math.max(0, c.dur - el);
-    $('#misTime').textContent = c.phase === 'done' ? 'Terminé' : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+    $('#misTime').textContent = c.phase === 'done' ? 'Finished' : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
     $('#misTime').classList.toggle('late', left < 15 && c.phase === 'play');
     $('#misBar').style.width = (c.phase === 'count' ? 100 : left / c.dur * 100) + '%';
     const heat = this.heat(this.hooks.player);
@@ -326,13 +326,13 @@ export class Missions {
     const ids = [this.me, ...this.net.peers.keys()];
     const rows = ids.map((id) => ({ id, pts: this.pts[id] || 0, sc: m.score?.[id] ?? 0 })).sort((a, b) => b.pts - a.pts);
     const wn = m.winner ? this.name(m.winner) : null;
-    $('#resTitle').textContent = m.winner === this.me ? 'Victoire!' : wn ? `${wn} gagne!` : 'Temps écoulé!';
+    $('#resTitle').textContent = m.winner === this.me ? 'Victory!' : wn ? `${wn} wins!` : 'Time\'s up!';
     $('#resTitle').className = m.winner === this.me ? 'win' : '';
-    const unit = { stars: '⭐', race: 'anneaux', king: 's', courier: 'étapes', hunt: '' }[c.kind];
+    const unit = { stars: '⭐', race: 'rings', king: 's', courier: 'steps', hunt: '' }[c.kind];
     $('#resSub').textContent = `${KINDS[c.kind].ic} ${KINDS[c.kind].name}` + (m.val && m.winner ? ` · ${(+m.val).toFixed(1)} s` : '') + (pb ? ` · ${pb}` : '');
-    $('#resList').innerHTML = rows.map((r, i) => `<li class="${r.id === this.me ? 'me' : ''}"><span class="rk">${['🥇', '🥈', '🥉'][i] || i + 1}</span><i style="background:${this.color(r.id)}"></i><b>${esc(this.name(r.id))}</b><small>${unit && c.kind !== 'hunt' ? `${r.sc} ${unit}` : r.id === m.winner ? 'trouvé!' : ''}</small><em>${r.pts} pts</em></li>`).join('');
+    $('#resList').innerHTML = rows.map((r, i) => `<li class="${r.id === this.me ? 'me' : ''}"><span class="rk">${['🥇', '🥈', '🥉'][i] || i + 1}</span><i style="background:${this.color(r.id)}"></i><b>${esc(this.name(r.id))}</b><small>${unit && c.kind !== 'hunt' ? `${r.sc} ${unit}` : r.id === m.winner ? 'found!' : ''}</small><em>${r.pts} pts</em></li>`).join('');
     const solo = this.net.count === 1;
-    $('#resNext').textContent = solo ? 'Mission suivante ▸' : this.net.isHost ? 'Lancer maintenant ▸' : 'Prochaine mission bientôt…';
+    $('#resNext').textContent = solo ? 'Next mission ▸' : this.net.isHost ? 'Start now ▸' : 'Next mission soon…';
     $('#resNext').disabled = !solo && !this.net.isHost;
     $('#results').classList.add('show');
   }
@@ -340,7 +340,7 @@ export class Missions {
     const ids = [this.me, ...this.net.peers.keys()];
     const c = this.cur;
     const rows = ids.map((id) => ({ id, pts: this.pts[id] || 0, live: c ? (c.kind === 'stars' ? c.score[id] || 0 : id === this.me ? (c.kind === 'king' ? +c.mine.toFixed(0) : c.step) : this.prog[id] || 0) : null })).sort((a, b) => b.pts - a.pts || (b.live || 0) - (a.live || 0));
-    $('#board').innerHTML = rows.map((r) => `<li class="${r.id === this.me ? 'me' : ''}"><i style="background:${this.color(r.id)}"></i><b>${esc(this.name(r.id))}${r.id === this.net.hostId && this.net.count > 1 ? ' <small>hôte</small>' : ''}</b>${c && c.phase !== 'done' && c.kind !== 'hunt' ? `<span>${r.live}</span>` : ''}<em>${r.pts}</em></li>`).join('');
+    $('#board').innerHTML = rows.map((r) => `<li class="${r.id === this.me ? 'me' : ''}"><i style="background:${this.color(r.id)}"></i><b>${esc(this.name(r.id))}${r.id === this.net.hostId && this.net.count > 1 ? ' <small>host</small>' : ''}</b>${c && c.phase !== 'done' && c.kind !== 'hunt' ? `<span>${r.live}</span>` : ''}<em>${r.pts}</em></li>`).join('');
   }
   // where should the arrow point for me?
   target() {

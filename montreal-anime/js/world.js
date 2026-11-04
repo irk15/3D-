@@ -484,22 +484,22 @@ export function buildWorld(scene) {
 
   // ---------------------------------------------------------- shops on Saint-Denis / Mont-Royal
   const SHOPS = [
-    ['CAFÉ LUMIÈRE', 'cafe', '#2f5a4a', '#f4e3c3', 'Un café? Ça te donne des ailes. (+ vitesse)'],
-    ['BOULANGERIE', 'bakery', '#f2d9a6', '#7a3d24', 'Croissants tout chauds, sortis du four!'],
-    ['DÉPANNEUR', 'dep', '#d8473f', '#ffffff', 'Chips, lait, billets de loterie… tout ce qu\'il faut.'],
-    ['POUTINERIE', 'poutine', '#f2b43c', '#3a2a1a', 'Frites, fromage en grains, sauce brune. Classique.'],
-    ['FRUITERIE', 'fruit', '#4f9a4a', '#ffffff', 'Pommes du Québec, bleuets du Lac-Saint-Jean!'],
-    ['LIBRAIRIE', 'books', '#3d3a6f', '#f4e3c3', 'Romans, BD et poésie… en français et en anglais.'],
-    ['FLEURISTE', 'flowers', '#e79cb4', '#5a1f3a', 'Des tulipes pour quelqu\'un de spécial?'],
-    ['DISQUAIRE', 'vinyl', '#1f1f2a', '#ff6fa8', 'Vinyles usagés: jazz, punk, chanson québécoise.'],
-    ['BAGELS', 'bagels', '#f4efe6', '#7a3d24', 'Bagels roulés à la main, cuits au feu de bois.'],
-    ['FROMAGERIE', 'cheese', '#f2d36b', '#3a5a2a', 'Plus de 300 fromages d\'ici.'],
-    ['FRIPERIE', 'thrift', '#8ec5b8', '#2a3a3a', 'Vêtements vintage, pas chers!'],
-    ['BARBIER', 'barber', '#2e5a7a', '#f4efe6', 'Une coupe? Assieds-toi.'],
-    ['SUSHI', 'sushi', '#f4efe6', '#c83a3a', 'Le comptoir ouvre à 11 h 30.'],
-    ['PHO SAIGON', 'pho', '#c83a3a', '#f8e08e', 'Un bol de pho pour se réchauffer.'],
-    ['BAR LE TUQUE', 'bar', '#3d3a4f', '#f2b43c', 'Spectacle ce soir à 21 h!'],
-    ['QUINCAILLERIE', 'hardware', '#c8573a', '#ffffff', 'Pelles à neige en solde.'],
+    ['LUMIERE CAFE', 'cafe', '#2f5a4a', '#f4e3c3', 'A coffee? It gives you wings. (+ speed)'],
+    ['BAKERY', 'bakery', '#f2d9a6', '#7a3d24', 'Hot croissants, fresh out of the oven!'],
+    ['CORNER STORE', 'dep', '#d8473f', '#ffffff', 'Chips, milk, lottery tickets… everything you need.'],
+    ['POUTINERIE', 'poutine', '#f2b43c', '#3a2a1a', 'Fries, cheese curds, brown gravy. A classic.'],
+    ['FRUIT SHOP', 'fruit', '#4f9a4a', '#ffffff', 'Quebec apples, blueberries from Lac-Saint-Jean!'],
+    ['BOOKSTORE', 'books', '#3d3a6f', '#f4e3c3', 'Novels, comics and poetry… in French and English.'],
+    ['FLORIST', 'flowers', '#e79cb4', '#5a1f3a', 'Tulips for someone special?'],
+    ['RECORDS', 'vinyl', '#1f1f2a', '#ff6fa8', 'Used vinyl: jazz, punk, Quebec chanson.'],
+    ['BAGELS', 'bagels', '#f4efe6', '#7a3d24', 'Hand-rolled bagels, baked in a wood fire.'],
+    ['CHEESE SHOP', 'cheese', '#f2d36b', '#3a5a2a', 'Over 300 local cheeses.'],
+    ['THRIFT STORE', 'thrift', '#8ec5b8', '#2a3a3a', 'Vintage clothes, cheap!'],
+    ['BARBER', 'barber', '#2e5a7a', '#f4efe6', 'A trim? Have a seat.'],
+    ['SUSHI', 'sushi', '#f4efe6', '#c83a3a', 'The counter opens at 11:30.'],
+    ['PHO SAIGON', 'pho', '#c83a3a', '#f8e08e', 'A bowl of pho to warm you up.'],
+    ['THE TOQUE BAR', 'bar', '#3d3a4f', '#f2b43c', 'Live show tonight at 9 pm!'],
+    ['HARDWARE', 'hardware', '#c8573a', '#ffffff', 'Snow shovels on sale.'],
   ];
   const shopDefs = SHOPS.map(([name, kind, bg, fg, line]) => {
     const rect = atlas.draw(512, 96, (x, w, hh) => {
@@ -820,10 +820,10 @@ export function buildWorld(scene) {
     const tx = cx - 5, tz = PLAZA.z1 - 6;
     foodTruck(B, C, S, atlas, tx, tz, SIDE, FONT);
     spots.truck = { x: tx, y: h(tz) + 3.3, z: tz };
-    shops.push({ x: tx + 2.6, z: tz, name: 'Camion à poutine', kind: 'poutine', line: 'Une poutine bien chaude? Mange-la sur la place.' });
+    shops.push({ x: tx + 2.6, z: tz, name: 'Poutine truck', kind: 'poutine', line: 'A nice hot poutine? Eat it out on the square.' });
     // bike-share dock
     for (let i = 0; i < 7; i++) { const z = PLAZA.z0 + 4 + i * 1.1, x = PLAZA.x1 - 2.2; bike(B, x, z); }
-    docks.push({ x: PLAZA.x1 - 3.2, z: PLAZA.z0 + 7.3, name: 'Station BIXI · Métro Mont-Royal' });
+    docks.push({ x: PLAZA.x1 - 3.2, z: PLAZA.z0 + 7.3, name: 'BIXI station · Mont-Royal Metro' });
     for (const [dx, dz, nm] of [[8.4, 36, 'Station BIXI · Saint-Denis / Rachel'], [-84.0, -66, 'Station BIXI · Drolet'], [96.0, 124, 'Station BIXI · Saint-Hubert']]) { for (let i = 0; i < 5; i++) bike(B, dx, dz + i * 1.1); docks.push({ x: dx + 1.1, z: dz + 2.2, name: nm }); }
     // bus shelter on Mont-Royal (with a bin and a bench to climb)
     const sx = 26, sz = ewZ(-1) - ewHW(-1) - 2.2, sy = h(sz) + CURB;
@@ -865,7 +865,7 @@ export function buildWorld(scene) {
     // front steps (walkable)
     for (let i = 0; i < 4; i++) { const sx = x0 - 0.6 * (i + 1); B.box(sx, x0, y0, base - 0.15 * i, zc - 5, zc + 5, L('#c9c2b6'), 2); C.add({ x0: sx, x1: x0, z0: zc - 5, z1: zc + 5, y0, y1: base - 0.15 * i }); }
     spots.church = { x: x0 - 0.5, y: base, z: zc };
-    shops.push({ x: x0 - 3, z: zc, name: 'Église Saint-Jean', kind: 'church', line: 'Les cloches sonnent à chaque heure. Bienvenue.' });
+    shops.push({ x: x0 - 3, z: zc, name: 'Saint-Jean Church', kind: 'church', line: 'The bells ring every hour. Welcome.' });
   }
 
   // ---------------------------------------------------------- street name plates + stop signs at corners

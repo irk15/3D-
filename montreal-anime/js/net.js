@@ -81,7 +81,7 @@ export class Net {
     this.id = null;
     this.peers = new Map();             // id -> { id, name, color, last, via }
     this.handlers = {};
-    this.status = 'connexion…';
+    this.status = 'connecting…';
     this.seq = 0; this.seen = new Map();
     this.rooms = [];                    // WebRTC rooms: { send, peers:Set, sockets() }
     this.links = [];                    // MQTT links
@@ -133,7 +133,7 @@ export class Net {
   relayHello() { const now = performance.now(); if (now - (this.lastHello || 0) < 1500) return; this.lastHello = now; this.send({ t: 'hi', ...this.me }); }
   get brokersUp() { return this.links.filter((l) => l.state === 1).length; }
   get online() { return this.brokersUp > 0 || (this.nostrOpen?.() || 0) > 0; }
-  updStatus() { const st = this.online ? 'en ligne' : this.peers.size ? 'local' : 'connexion…'; if (st !== this.status) { this.status = st; this.emit('status', st); } }
+  updStatus() { const st = this.online ? 'online' : this.peers.size ? 'local' : 'connecting…'; if (st !== this.status) { this.status = st; this.emit('status', st); } }
   diag() {
     return { brokers: this.brokersUp, brokerTotal: this.links.length, nostr: this.nostrOpen?.() || 0, direct: new Set(this.rooms.flatMap((r) => [...r.peers])).size, peers: [...this.peers.values()].map((p) => ({ name: p.name, via: p.via })) };
   }

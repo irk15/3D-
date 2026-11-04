@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Plateau · Montréal</title>
-<meta name="description" content="Une balade en 3D dans le Plateau-Mont-Royal, style anime: escaliers extérieurs, ruelles vertes, Saint-Denis, la montagne et sa croix. Three.js / WebGL.">
+<meta name="description" content="An open-world 3D Montréal sandbox: drive, fly, shoot and cause chaos across the Plateau and downtown. Multiplayer. Three.js / WebGL.">
 <meta name="theme-color" content="#3c9be8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -361,6 +361,37 @@ body.touch.mission #misCard{transform:translate(-50%,0);opacity:1;pointer-events
   body.touch .thint{margin-top:8px}
 }
 @media (max-width:420px){body.touch .counters{gap:6px}body.touch .counters .chip{font-size:14px;padding:7px 10px}body.touch #counter{font-size:16px;padding:5px 10px 5px 5px}body.touch #counter i{width:26px;height:26px}body.touch #tMenu{width:42px;height:42px}}
+
+/* ---- combat HUD */
+#hudC{position:absolute;inset:0;pointer-events:none}#hudC *{pointer-events:none}
+#hpBar{position:absolute;left:max(16px,env(safe-area-inset-left));top:calc(max(16px,env(safe-area-inset-top)) + 196px);width:150px;height:16px;border-radius:9px;background:rgba(43,37,80,.55);border:3px solid var(--ink);overflow:hidden}
+#hpFill{display:block;height:100%;width:100%;background:linear-gradient(#7be08a,#3fb35a);transition:width .15s}#hpFill.low{background:linear-gradient(#ff7a5f,#e4402b);animation:pulse .6s infinite alternate}
+@keyframes pulse{to{filter:brightness(1.4)}}
+#hpBar span{position:absolute;left:5px;top:-3px;font-size:11px;color:#fff;text-shadow:0 1px 0 var(--ink)}
+#weapBox{position:absolute;left:max(16px,env(safe-area-inset-left));top:calc(max(16px,env(safe-area-inset-top)) + 220px);background:var(--ink);color:#fff;padding:5px 12px;border-radius:12px;font-weight:700;display:none;gap:10px;align-items:center;font-size:14px}
+#weapBox.show{display:flex}#weapBox #ammo{color:var(--gold);font-variant-numeric:tabular-nums}
+#weapBox .rl{position:absolute;left:8px;right:8px;bottom:2px;height:3px;background:rgba(255,255,255,.2);opacity:0}#reloadBar{display:block;height:100%;width:0;background:var(--gold)}
+#xhair{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;opacity:0;transition:opacity .12s,transform .08s}#xhair.show{opacity:1}
+#xhair::before,#xhair::after{content:"";position:absolute;background:#fff;box-shadow:0 0 0 2px var(--ink)}#xhair::before{left:12px;top:0;width:2px;height:26px;clip-path:polygon(0 0,100% 0,100% 36%,0 36%,0 64%,100% 64%,100% 100%,0 100%)}
+#xhair::after{top:12px;left:0;height:2px;width:26px;clip-path:polygon(0 0,36% 0,36% 100%,0 100%,64% 0,100% 0,100% 100%,64% 100%)}
+#xhair.hit{transform:scale(1.35)}#xhair.hit::before,#xhair.hit::after{background:var(--red)}
+#hitm{position:absolute;left:50%;top:50%;margin:-14px 0 0 -14px;width:28px;height:28px;color:#fff;font-size:28px;line-height:28px;text-align:center;opacity:0;text-shadow:0 0 4px var(--red)}
+#feed{position:absolute;right:max(16px,env(safe-area-inset-right));top:calc(max(16px,env(safe-area-inset-top)) + 70px);display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+#feed div{background:rgba(43,37,80,.82);color:#fff;font-weight:600;font-size:13px;padding:4px 12px;border-radius:9px;border-left:4px solid #fff;transition:opacity .5s}#feed div.out{opacity:0}
+#hurt{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(228,64,43,.75) 100%)}
+#wasted{position:absolute;inset:0;display:grid;place-items:center;opacity:0;background:rgba(20,10,20,0);transition:opacity .6s,background .6s}
+#wasted b{font:700 clamp(48px,12vw,120px)/1 var(--f);color:#e4402b;letter-spacing:.08em;text-shadow:0 4px 0 var(--ink),0 0 30px rgba(0,0,0,.6);transform:scale(1.4);transition:transform .6s}
+#wasted.show{opacity:1;background:rgba(20,10,20,.45)}#wasted.show b{transform:scale(1)}
+body.armed #hudC #xhair.show{opacity:1}
+#pvpTag{position:absolute;left:max(16px,env(safe-area-inset-left));top:calc(max(16px,env(safe-area-inset-top)) + 254px);font-size:11px;font-weight:700;background:rgba(43,37,80,.7);color:#fff;padding:3px 10px;border-radius:9px;display:none;pointer-events:auto!important}
+body.multi #pvpTag{display:block}
+#stars{position:absolute;right:max(16px,env(safe-area-inset-right));top:calc(max(16px,env(safe-area-inset-top)) + 52px);display:flex;gap:3px;font-size:22px;filter:drop-shadow(0 2px 0 var(--ink))}
+#stars i{font-style:normal;opacity:.25;color:#fff}#stars i.on{opacity:1;color:#ffd447}#stars.flash i.on{animation:pulse .35s infinite alternate}
+#cops{position:absolute;left:50%;top:16%;transform:translateX(-50%);font-weight:700;color:#fff;background:rgba(228,64,43,.85);padding:6px 16px;border-radius:12px;opacity:0;transition:opacity .3s;font-size:14px}#cops.show{opacity:1}
+body:not(.armed) #tc #tShoot,body:not(.armed) #tc #tReload,body:not(.armed) #tc #tSwap{display:none!important}
+body.armed #tc #tFly,body.armed #tc #tDash{display:none!important}
+#tShoot{right:14px;bottom:100px;width:76px!important;height:76px!important;background:var(--red)!important;color:#fff!important}#tReload{right:100px;bottom:4px}#tSwap{right:86px;bottom:84px}#tDraw{right:180px;bottom:6px}
+@media (max-height:480px){#hpBar{top:calc(max(10px,env(safe-area-inset-top)) + 160px)}#weapBox{top:calc(max(10px,env(safe-area-inset-top)) + 184px)}#pvpTag{top:calc(max(10px,env(safe-area-inset-top)) + 214px)}}
 </style>
 </head>
 <body>
@@ -370,101 +401,108 @@ body.touch.mission #misCard{transform:translate(-50%,0);opacity:1;pointer-events
   <div class="counters"><div class="chip" id="money">0 $</div><div id="counter"><i></i><b id="bCount">0</b><span>/ <b id="bTotal">12</b></span></div><button id="tMenu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div>
   <div id="jobCard"><div class="row"><span id="jobWho">—</span><span id="jobTime">0 s</span></div><div class="row"><span id="jobAddr">—</span><span id="jobDist"></span></div><div class="bar"><div id="jobBar"></div></div></div>
   <ul id="board"></ul>
-  <div id="misCard"><span id="misIc">⭐</span><b id="misName">Mission</b><span id="misTime">0:00</span><span id="misGoal">—</span><div class="bar"><div id="misBar"></div></div><div id="misHeat"><span id="heatTxt">Froid</span><div class="bar"><div id="heatBar"></div></div></div></div>
-  <div id="drive"><b id="driveSpd">0</b><small>km/h</small><i id="driveGear">P</i><span>E sortir · X vue · Espace frein à main · B klaxon</span></div>
+  <div id="misCard"><span id="misIc">⭐</span><b id="misName">Mission</b><span id="misTime">0:00</span><span id="misGoal">—</span><div class="bar"><div id="misBar"></div></div><div id="misHeat"><span id="heatTxt">Cold</span><div class="bar"><div id="heatBar"></div></div></div></div>
+  <div id="drive"><b id="driveSpd">0</b><small>km/h</small><i id="driveGear">P</i><span>E exit · X view · Space handbrake · B horn</span></div>
   <div id="wingsHud"><span>🕊</span><div class="bar"><div id="energy"></div></div><span id="alt">0 m</span></div>
-  <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Écris un message… (Entrée)" autocomplete="off"><div class="chatHint">Entrée: discuter · 1–4: émotes</div></div>
+  <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Type a message… (Enter)" autocomplete="off"><div class="chatHint">Enter: chat · 1–4: emotes</div></div>
   <div id="marr"><span></span></div>
-  <div id="arrow"></div><div id="achs"></div><div id="floats"></div><div id="onBike"><span class="keyOnly">🚲 BIXI · E pour descendre · B sonnette</span><span class="touchOnly">🚲 BIXI · bulle pour descendre</span></div>
-  <div class="boosts" style="top:84px"><div class="boost" id="boostCafe">☕ Caféine!</div><div class="boost" id="boostJump">🥐 Super saut!</div></div>
+  <div id="arrow"></div><div id="achs"></div><div id="floats"></div><div id="onBike"><span class="keyOnly">🚲 BIXI · E to get off · B bell</span><span class="touchOnly">🚲 BIXI · tap the bubble to get off</span></div>
+  <div class="boosts" style="top:84px"><div class="boost" id="boostCafe">☕ Caffeine!</div><div class="boost" id="boostJump">🥐 Super jump!</div></div>
   <div class="icons">
-    <button class="ic" id="btnMission" title="Lancer une mission (N)"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
-    <button class="ic" id="btnInvite" title="Jouer avec des amis"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M17 8v6M14 11h6"/></svg></button>
-    <button class="ic" id="btnHelp" title="Aide (H)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-    <button class="ic" id="btnTime" data-v="day" title="Moment de la journée (T)"><svg viewBox="0 0 24 24"><g class="sun"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g><g class="set"><path d="M3 17h18M6 17a6 6 0 0112 0M12 4v4M5 9l2 2M19 9l-2 2M8 21h8"/></g><g class="moon"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></g></svg></button>
-    <button class="ic" id="btnWeather" data-v="clear" title="Météo (R)"><svg viewBox="0 0 24 24"><g class="wc"><circle cx="9" cy="9" r="3.5"/><path d="M9 2.5v1.5M2.5 9H4M4.4 4.4l1 1M13.6 4.4l-1 1M8 20h9a4 4 0 000-8 5 5 0 00-9.5 1.5A3.3 3.3 0 008 20z"/></g><g class="wn"><path d="M6 19h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 19z"/></g><g class="wr"><path d="M6 15h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></g></svg></button>
-    <button class="ic" id="btnSeason" data-v="autumn" title="Saison (Y)"><svg viewBox="0 0 24 24"><g class="su"><path d="M12 21v-7M12 14c-4 0-7-3-7-7 4 0 7 3 7 7zM12 14c4 0 7-3 7-7-4 0-7 3-7 7z"/></g><g class="au"><path d="M12 22v-6M12 3l2 4 4-1-1 4 3 2-4 1 1 3-5-2-5 2 1-3-4-1 3-2-1-4 4 1z"/></g><g class="wi"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2"/></g></svg></button>
-    <button class="ic" id="btnJournal" title="Carnet (J)"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11M9 8h6"/></svg></button>
-    <button class="ic" id="btnCam" title="Recentrer la caméra"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+    <button class="ic" id="btnMission" title="Start a mission (N)"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
+    <button class="ic" id="btnInvite" title="Play with friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M17 8v6M14 11h6"/></svg></button>
+    <button class="ic" id="btnHelp" title="Help (H)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <button class="ic" id="btnTime" data-v="day" title="Time of day (T)"><svg viewBox="0 0 24 24"><g class="sun"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g><g class="set"><path d="M3 17h18M6 17a6 6 0 0112 0M12 4v4M5 9l2 2M19 9l-2 2M8 21h8"/></g><g class="moon"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></g></svg></button>
+    <button class="ic" id="btnWeather" data-v="clear" title="Weather (R)"><svg viewBox="0 0 24 24"><g class="wc"><circle cx="9" cy="9" r="3.5"/><path d="M9 2.5v1.5M2.5 9H4M4.4 4.4l1 1M13.6 4.4l-1 1M8 20h9a4 4 0 000-8 5 5 0 00-9.5 1.5A3.3 3.3 0 008 20z"/></g><g class="wn"><path d="M6 19h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 19z"/></g><g class="wr"><path d="M6 15h11a4.5 4.5 0 000-9 6 6 0 00-11.4 2A3.6 3.6 0 006 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></g></svg></button>
+    <button class="ic" id="btnSeason" data-v="autumn" title="Season (Y)"><svg viewBox="0 0 24 24"><g class="su"><path d="M12 21v-7M12 14c-4 0-7-3-7-7 4 0 7 3 7 7zM12 14c4 0 7-3 7-7-4 0-7 3-7 7z"/></g><g class="au"><path d="M12 22v-6M12 3l2 4 4-1-1 4 3 2-4 1 1 3-5-2-5 2 1-3-4-1 3-2-1-4 4 1z"/></g><g class="wi"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2"/></g></svg></button>
+    <button class="ic" id="btnJournal" title="Journal (J)"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11M9 8h6"/></svg></button>
+    <button class="ic" id="btnCam" title="Recentre camera"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
     <button class="ic" id="btnPhoto" title="Photo (P)"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
-    <button class="ic" id="btnFull" title="Plein écran"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-    <button class="ic off" id="btnSound" title="Musique (M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
+    <button class="ic" id="btnFull" title="Fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="ic off" id="btnSound" title="Music (M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
   </div>
   <div id="area"><small>LE PLATEAU-MONT-ROYAL</small><span id="areaName">Rue Saint-Denis</span></div>
   <div id="prompt"><kbd>E</kbd><i class="hand">👆</i><span id="promptText">Parler</span></div>
   <div id="say"><span id="sayName">Nom</span><span id="sayHearts"></span><div id="sayText"></div></div>
+  <div id="hudC"><div id="hud2"></div><div id="hpBar"><i id="hpFill"></i><span>♥</span></div><div id="weapBox"><span id="weapName"></span><span id="ammo"></span><div class="rl"><i id="reloadBar"></i></div></div><span id="pvpTag"></span><div id="stars"></div><div id="cops"></div><div id="xhair"></div><div id="hitm">✕</div><div id="feed"></div><div id="hurt"></div><div id="wasted"><b id="wastedTxt">WASTED</b></div></div>
   <div id="tc">
     <button class="tb mp" id="tChat" data-m="walk bike">💬</button><button class="tb mp" id="tEmo" data-m="walk bike">👋</button>
     <div class="pad">
-      <button class="tb sm" id="tFly" data-m="walk"><i>🕊</i><b>Voler</b></button>
-      <button class="tb sm" id="tDash" data-m="walk fly"><i>💨</i><b>Élan</b></button>
-      <button class="tb big" id="tJump" data-m="walk bike"><i>⤒</i><b>Sauter</b></button>
-      <button class="tb sm" id="tBell" data-m="bike"><i>🔔</i><b>Sonnette</b></button>
-      <button class="tb sm" id="tLand" data-m="fly"><i>🛬</i><b>Atterrir</b></button>
+      <button class="tb big hold" id="tShoot" data-m="walk"><i>🔫</i><b>Fire</b></button>
+      <button class="tb sm" id="tReload" data-m="walk"><i>⟳</i><b>Reload</b></button>
+      <button class="tb sm" id="tSwap" data-m="walk"><i>⇄</i><b>Weapon</b></button>
+      <button class="tb sm" id="tDraw" data-m="walk"><i>🔫</i><b>Gun</b></button>
+      <button class="tb sm" id="tFly" data-m="walk"><i>🕊</i><b>Fly</b></button>
+      <button class="tb sm" id="tDash" data-m="walk fly"><i>💨</i><b>Dash</b></button>
+      <button class="tb big" id="tJump" data-m="walk bike"><i>⤒</i><b>Jump</b></button>
+      <button class="tb sm" id="tBell" data-m="bike"><i>🔔</i><b>Bell</b></button>
+      <button class="tb sm" id="tLand" data-m="fly"><i>🛬</i><b>Land</b></button>
       <button class="tb sm hold" id="tBoost" data-m="fly"><i>⚡</i><b>Turbo</b></button>
-      <button class="tb mid hold" id="tDown" data-m="fly"><i>▼</i><b>Descendre</b></button>
-      <button class="tb big hold" id="tUp" data-m="fly"><i>▲</i><b>Monter</b></button>
-      <button class="tb sm" id="tView" data-m="car"><i>👁</i><b>Vue</b></button>
-      <button class="tb sm" id="tHorn" data-m="car"><i>📯</i><b>Klaxon</b></button>
-      <button class="tb sm hold" id="tHand" data-m="car"><i>⟲</i><b>Frein à main</b></button>
-      <button class="tb mid hold pedal" id="tBrake" data-m="car"><i>⏷</i><b>Frein</b></button>
-      <button class="tb big hold pedal" id="tGas" data-m="car"><i>⏶</i><b>Gaz</b></button>
+      <button class="tb mid hold" id="tDown" data-m="fly"><i>▼</i><b>Down</b></button>
+      <button class="tb big hold" id="tUp" data-m="fly"><i>▲</i><b>Up</b></button>
+      <button class="tb sm" id="tView" data-m="car"><i>👁</i><b>View</b></button>
+      <button class="tb sm" id="tHorn" data-m="car"><i>📯</i><b>Horn</b></button>
+      <button class="tb sm hold" id="tHand" data-m="car"><i>⟲</i><b>Handbrake</b></button>
+      <button class="tb mid hold pedal" id="tBrake" data-m="car"><i>⏷</i><b>Brake</b></button>
+      <button class="tb big hold pedal" id="tGas" data-m="car"><i>⏶</i><b>Gas</b></button>
     </div>
   </div>
-  <div id="rotate">↻ Tourne ton téléphone pour un meilleur angle <button id="rotOk">OK</button></div>
+  <div id="rotate">↻ Rotate your phone for a better view <button id="rotOk">OK</button></div>
 </div>
 </div>
-<div id="photoBar"><button id="pFilter">Filtre: <span id="pfName">Normal</span></button><button id="pPose">Pose ✌</button><button id="pSnap" title="Photo"></button><button id="pExit">Quitter</button></div>
-<div id="journal"><div class="card" style="max-width:min(640px,calc(100vw - 32px))"><h3>Mon carnet du Plateau</h3><div id="jStats"></div><ul id="jAch"></ul></div></div>
+<div id="photoBar"><button id="pFilter">Filter: <span id="pfName">Normal</span></button><button id="pPose">Pose ✌</button><button id="pSnap" title="Photo"></button><button id="pExit">Exit</button></div>
+<div id="journal"><div class="card" style="max-width:min(640px,calc(100vw - 32px))"><h3>My Plateau journal</h3><div id="jStats"></div><ul id="jAch"></ul></div></div>
 <div id="joy"><div id="joyKnob"></div><span id="joyRun">COURSE</span></div>
 <div id="title"><div class="logo">
   <div class="k">MONTRÉAL · LE PLATEAU</div>
   <h1>PLATEAU<em>.</em></h1>
-  <p>vole au-dessus du Plateau · missions entre amis · le premier qui gagne!</p>
+  <p>drive · fly · shoot · cause chaos — with your friends</p>
   <div class="lobby" id="lobby">
-    <div><label>TON NOM</label><div class="row2"><input id="pName" maxlength="16" placeholder="Ton nom" autocomplete="off"></div></div>
-    <div><label>TA COULEUR</label><div id="pCols"></div></div>
-    <div><label>TON PERSONNAGE · MIXAMO</label><div id="pChars"><button data-m="bot">🤖 X Bot</button><button data-m="michelle">💃 Michelle</button><button data-m="soldier">🪖 Vanguard</button></div></div>
-    <div class="modes"><button class="btn red" id="play">Solo ▸</button><button class="btn gold" id="host">Créer une partie</button></div>
-    <div class="or">— ou rejoins tes amis avec un code —</div>
-    <div class="row2" id="joinRow"><input id="pCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn blue" id="join">Rejoindre</button></div>
+    <div><label>YOUR NAME</label><div class="row2"><input id="pName" maxlength="16" placeholder="Your name" autocomplete="off"></div></div>
+    <div><label>YOUR COLOUR</label><div id="pCols"></div></div>
+    <div><label>YOUR CHARACTER</label><div id="pChars"><button data-m="bot">🤖 X Bot</button><button data-m="michelle">💃 Michelle</button><button data-m="soldier">🪖 Vanguard</button></div></div>
+    <div class="modes"><button class="btn red" id="play">Solo ▸</button><button class="btn gold" id="host">Host a game</button></div>
+    <div class="or">— or join your friends with a code —</div>
+    <div class="row2" id="joinRow"><input id="pCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn blue" id="join">Join</button></div>
   </div>
-  <div class="thint">🕹 joystick à gauche · boutons à droite · glisse pour regarder</div><div class="hint">WASD + Espace · triple saut ou V pour voler · E interagir · N mission · H aide</div>
+  <div class="thint">🕹 joystick on the left · buttons on the right · swipe to look</div><div class="hint">WASD + Space · V to fly · E interact · N mission · H help</div>
 </div></div>
 <div id="help"><div class="card">
-  <h3>Comment jouer</h3>
+  <h3>How to play</h3>
   <dl class="touchHelp">
-    <dt>🕹 Gauche</dt><dd>Pose ton pouce n'importe où à gauche: joystick. Pousse à fond pour courir.</dd>
-    <dt>👆 Droite</dt><dd>Glisse pour tourner la caméra · pince avec deux doigts pour zoomer.</dd>
-    <dt>⤒ Sauter</dt><dd>Deux fois pour un salto · trois fois pour s'envoler · maintenir en l'air pour planer au parapluie.</dd>
-    <dt>🕊 Voler</dt><dd>▲ Monter, ▼ Descendre, ⚡ Turbo (maintenir). La caméra donne la direction. Les ailes se fatiguent: pose-toi pour recharger.</dd>
-    <dt>👆 Bulle</dt><dd>Quand une bulle apparaît en haut à droite (parler, conduire, prendre un BIXI, livrer…), touche-la.</dd>
-    <dt>🚗 Voiture</dt><dd>Joystick: diriger · ⏶ Gaz · ⏷ Frein et marche arrière · ⟲ Frein à main pour déraper · 👁 vue intérieure.</dd>
-    <dt>☰ Menu</dt><dd>Missions, amis, heure, météo, saison, carnet, photo, musique, plein écran.</dd>
-    <dt>But</dt><dd>Livre des colis à temps, trouve les 12 bagels dorés, gagne les missions contre tes amis.</dd>
+    <dt>🕹 Left</dt><dd>Put your thumb anywhere on the left: joystick. Push to the edge to run.</dd>
+    <dt>👆 Right</dt><dd>Swipe to turn the camera · pinch with two fingers to zoom.</dd>
+    <dt>⤒ Jump</dt><dd>Twice for a flip · three times to take off · hold in the air to glide with the umbrella.</dd>
+    <dt>🕊 Fly</dt><dd>▲ Up, ▼ Down, ⚡ Turbo (hold). The camera sets the direction. Wings get tired: land to recharge.</dd>
+    <dt>👆 Bubble</dt><dd>When a bubble appears on the right (talk, drive, take a BIXI, deliver…), tap it.</dd>
+    <dt>🚗 Car</dt><dd>Joystick: steer · ⏶ Gas · ⏷ Brake and reverse · ⟲ Handbrake to drift · 👁 interior view.</dd>
+    <dt>🔫 Gun</dt><dd>Tap Gun to draw · Fire (aim assist) · ⟳ reload · ⇄ switch pistol / SMG / rifle. Cars knock people over; the police notice.</dd>
+    <dt>☰ Menu</dt><dd>Missions, friends, time, weather, season, journal, photo, music, fullscreen.</dd>
+    <dt>Goal</dt><dd>Deliver parcels on time, find the 12 golden bagels, win missions against your friends.</dd>
   </dl>
   <dl class="keyHelp">
-    <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Marcher · <kbd>Maj</kbd> courir</dd>
-    <dt><kbd>Espace</kbd></dt><dd>Sauter · deux fois pour un salto · maintenir en l'air pour planer au parapluie</dd>
-    <dt><kbd>F</kbd></dt><dd>Élan (dash), même en l'air</dd>
-    <dt><kbd>V</kbd></dt><dd>Voler! (ou 3e saut) · <kbd>Espace</kbd> monter · <kbd>C</kbd> descendre · <kbd>Maj</kbd> turbo · la caméra donne la direction. Les ailes se fatiguent: pose-toi pour les recharger.</dd>
-    <dt>🚗 <kbd>E</kbd></dt><dd>Près d'une voiture: conduire (ou prendre une voiture arrêtée). <kbd>W</kbd>/<kbd>S</kbd> gaz et frein, <kbd>Espace</kbd> frein à main (dérapages!), <kbd>X</kbd> vue intérieure, <kbd>B</kbd> klaxon, <kbd>E</kbd> sortir.</dd>
-    <dt><kbd>N</kbd></dt><dd>Lancer une mission: étoiles, anneaux, trésor, roi du toit, livraison éclair. Le premier qui réussit gagne!</dd>
-    <dt><kbd>Entrée</kbd> <kbd>1</kbd>–<kbd>4</kbd></dt><dd>En ligne: discuter · émotes 👋 ❤️ 😂 🏆</dd>
-    <dt><kbd>E</kbd></dt><dd>Parler, prendre une livraison dans un commerce, prendre un BIXI, flatter le chat</dd>
-    <dt><kbd>B</kbd></dt><dd>Sonnette du vélo</dd>
-    <dt><kbd>T</kbd> <kbd>R</kbd> <kbd>Y</kbd></dt><dd>Avancer l'heure · changer la météo · changer de saison</dd>
-    <dt><kbd>P</kbd> <kbd>J</kbd> <kbd>M</kbd></dt><dd>Mode photo (filtres manga et pellicule) · carnet de succès · musique</dd>
-    <dt>But</dt><dd>Livre des colis à temps pour gagner des pourboires, achète des tenues à la friperie, trouve les 12 bagels dorés. Le café fait courir plus vite, le croissant fait sauter plus haut.</dd>
+    <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Walk · <kbd>Shift</kbd> run</dd>
+    <dt><kbd>G</kbd> <kbd>U</kbd> <kbd>R</kbd></dt><dd>Draw / holster the gun · switch weapon · reload · click to fire · right-click to zoom · <kbd>K</kbd> PvP on/off</dd>
+    <dt><kbd>Space</kbd></dt><dd>Jump · twice for a flip · hold in the air to glide with the umbrella</dd>
+    <dt><kbd>F</kbd></dt><dd>Dash, even in mid-air</dd>
+    <dt><kbd>V</kbd></dt><dd>Fly! (or 3rd jump) · <kbd>Space</kbd> up · <kbd>C</kbd> down · <kbd>Shift</kbd> turbo · the camera sets the direction. Wings get tired: land to recharge.</dd>
+    <dt>🚗 <kbd>E</kbd></dt><dd>Next to a car: drive it (or carjack a moving one). <kbd>W</kbd>/<kbd>S</kbd> gas and brake, <kbd>Space</kbd> handbrake (drifts!), <kbd>X</kbd> interior view, <kbd>B</kbd> horn, <kbd>E</kbd> exit.</dd>
+    <dt><kbd>N</kbd></dt><dd>Start a mission: stars, rings, treasure, king of the roof, lightning delivery. First to finish wins!</dd>
+    <dt><kbd>Enter</kbd> <kbd>1</kbd>–<kbd>4</kbd></dt><dd>Online: chat · emotes 👋 ❤️ 😂 🏆</dd>
+    <dt><kbd>E</kbd></dt><dd>Talk, pick up a delivery in a shop, take a BIXI, pet the cat</dd>
+    <dt><kbd>B</kbd></dt><dd>Bike bell · car horn</dd>
+    <dt><kbd>T</kbd> <kbd>R</kbd> <kbd>Y</kbd></dt><dd>Advance the time · change the weather · change the season</dd>
+    <dt><kbd>P</kbd> <kbd>J</kbd> <kbd>M</kbd></dt><dd>Photo mode (manga and film filters) · achievements journal · music</dd>
+    <dt>Goal</dt><dd>Deliver parcels on time for tips, buy outfits at the thrift store, find the 12 golden bagels. Coffee makes you run faster, croissants make you jump higher.</dd>
   </dl>
-  <div class="sets"><button class="set" id="setVoice">🗣 Voix des voisins</button><button class="set" id="setBloom">✨ Lueur</button><button class="set" id="setAO">🌓 Ombrage doux</button><button class="set" id="setFast">⏩ Temps rapide</button><button class="set" id="setFreeze">⏸ Figer l'heure</button><button class="set" id="setReset">↺ Recommencer</button></div>
+  <div class="sets"><button class="set" id="setVoice">🗣 Neighbour voices</button><button class="set" id="setBloom">✨ Glow</button><button class="set" id="setAO">🌓 Soft shading</button><button class="set" id="setFast">⏩ Fast time</button><button class="set" id="setFreeze">⏸ Freeze time</button><button class="set" id="setReset">↺ Start over</button></div>
 </div></div>
-<div id="win"><div class="card"><h3>Bravo!</h3><p style="font-size:19px;margin:0 0 6px">Tu as trouvé les 12 bagels dorés du Plateau.</p><p style="color:var(--ink2);margin:0 0 18px">Temps: <b id="winTime"></b></p><button id="winClose" class="tb big" style="width:auto;padding:0 28px;border-radius:999px;height:56px">Continuer la balade</button></div></div>
-<div id="results"><div class="card"><h3 id="resTitle">Victoire!</h3><div id="resSub"></div><ol id="resList"></ol><div class="btns"><button class="btn red" id="resNext">Mission suivante ▸</button><button class="btn" id="resClose">Explorer</button></div></div></div>
-<div id="invite"><div class="card"><h3>Joue avec tes amis</h3><p style="margin:0;color:var(--ink2)">Partage ce code ou ce lien. Tes amis peuvent être n'importe où dans le monde.</p><div class="code" id="invCode">—</div><div class="link" id="invLink"></div><div class="btns"><button class="btn gold" id="invCopy">Copier le lien</button><button class="btn" id="invShare">Partager…</button><button class="btn" id="invClose">Fermer</button></div><p id="invNet" style="font-size:13px;color:var(--ink2);margin:14px 0 0"></p></div></div>
+<div id="win"><div class="card"><h3>Well done!</h3><p style="font-size:19px;margin:0 0 6px">You found all 12 golden bagels of the Plateau.</p><p style="color:var(--ink2);margin:0 0 18px">Time: <b id="winTime"></b></p><button id="winClose" class="tb big" style="width:auto;padding:0 28px;border-radius:999px;height:56px">Keep exploring</button></div></div>
+<div id="results"><div class="card"><h3 id="resTitle">Victory!</h3><div id="resSub"></div><ol id="resList"></ol><div class="btns"><button class="btn red" id="resNext">Next mission ▸</button><button class="btn" id="resClose">Explore</button></div></div></div>
+<div id="invite"><div class="card"><h3>Play with your friends</h3><p style="margin:0;color:var(--ink2)">Share this code or link. Your friends can be anywhere in the world.</p><div class="code" id="invCode">—</div><div class="link" id="invLink"></div><div class="btns"><button class="btn gold" id="invCopy">Copy link</button><button class="btn" id="invShare">Share…</button><button class="btn" id="invClose">Close</button></div><p id="invNet" style="font-size:13px;color:var(--ink2);margin:14px 0 0"></p></div></div>
 <div id="count"></div>
 <div id="tags"></div>
-<div id="loader"><div><b>PLATEAU.</b><span id="loadMsg">Chargement…</span></div></div>
+<div id="loader"><div><b>PLATEAU.</b><span id="loadMsg">Loading…</span></div></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module" src="js/main.js"></script>
 </body>

@@ -119,14 +119,207 @@ const REFRAMES=[
  "What part of this is in my control right now?"
 ];
 
+/* ---------- local understanding engine (no network, no API key) ----------
+   Lexicon + pattern matching over whatever you type, run entirely on-device.
+   This is a self-coaching aid, not therapy or a diagnosis — see the Tools tab. */
+const EMO_LEX={
+ anger:{words:["angry","furious","pissed","mad","rage","irritated","annoyed","fuming","resentful","snapped"],label:"Angry"},
+ anxiety:{words:["anxious","nervous","on edge","panicky","worried sick","can't breathe","tight chest","dread","panicking"],label:"Anxious"},
+ fear:{words:["scared","afraid","terrified","frightened"],label:"Afraid"},
+ sadness:{words:["sad","down","low","heavy","empty","numb","blue","tearful","crying","cried"],label:"Sad"},
+ overwhelm:{words:["overwhelmed","too much","drowning","can't keep up","buried","swamped"],label:"Overwhelmed"},
+ shame:{words:["embarrassed","ashamed","humiliated"],label:"Embarrassed"},
+ disrespect:{words:["disrespected","dismissed","talked down","ignored me","not heard","unheard","disregarded"],label:"Disrespected"},
+ restless:{words:["restless","can't sit still","antsy","wired","jittery"],label:"Restless"},
+ jealousy:{words:["jealous","envious","envy"],label:"Jealous"},
+ tired:{words:["exhausted","drained","tired","burnt out","burned out","no energy"],label:"Tired"},
+ hurt:{words:["hurt","wounded","betrayed","let down","stung"],label:"Hurt"},
+ loneliness:{words:["lonely","isolated","nobody gets","no one understands"],label:"Lonely"}
+};
+const INTENSIFIERS=["very","really","so","extremely","totally","completely","absolutely","incredibly"];
+const NEGATORS=["not","n't","no longer","never felt","stopped feeling"];
+const DISTORTIONS=[
+ {type:"all-or-nothing",re:/\b(always|never|every (single )?time|everyone|no one ever|nothing ever|everything('s| is) (ruined|wrong))\b/i,
+  label:"All-or-nothing thinking",explain:"One moment got sized up to ‘always’ or ‘everyone.’ That's a common stress reflex, and it's rarely literally true.",
+  question:"Is this really every time — or just this time?"},
+ {type:"catastrophizing",re:/\b(disaster|ruined|the end|can'?t handle this|this is (awful|terrible)|worst (day|thing))\b/i,
+  label:"Catastrophizing",explain:"The mind jumped straight to the worst possible ending.",
+  question:"What's the most likely outcome here — not the worst one?"},
+ {type:"mind-reading",re:/\b(they must think|they think i'?m|they hate me|everyone thinks|he thinks i'?m|she thinks i'?m|they'?re judging)\b/i,
+  label:"Mind-reading",explain:"This guesses at what's in someone else's head without them actually saying it.",
+  question:"What did they actually say, versus what you're assuming they meant?"},
+ {type:"fortune-telling",re:/\b(going to fail|will never|it'?s never going to|no point( in)? trying|always (going to )?be like this)\b/i,
+  label:"Fortune-telling",explain:"This treats a predicted bad outcome as if it's already decided.",
+  question:"What's one version of this that could still go okay?"},
+ {type:"should",re:/\b(should(n't)? have|supposed to|should be able to)\b/i,
+  label:"Should-statement",explain:"Rules like ‘should’ tend to produce guilt more than change.",
+  question:"What would you say to a friend who did the exact same thing?"},
+ {type:"personalization",re:/\b(my fault|because of me|i ruined|i always mess|i always screw)\b/i,
+  label:"Personalization",explain:"This takes full ownership of something that likely had more than one cause.",
+  question:"What part of this was actually yours, and what wasn't?"},
+ {type:"labeling",re:/\bi'?m (so )?(stupid|an idiot|worthless|pathetic|a failure|useless)\b/i,
+  label:"Labeling",explain:"One action just got turned into a verdict on your whole identity.",
+  question:"Is this what you did, or who you are?"}
+];
+const TRIGGER_LEX={
+ "Someone's tone":["tone","snapped at","yelled","raised his voice","raised her voice","talked to me like"],
+ "Being ignored":["ignored","ignores me","ignoring me","left on read","no reply","didn't respond","left out"],
+ "Criticism":["criticiz","judged","called out","pointed out my","feedback on"],
+ "Delays / waiting":["waiting","running late","delayed","stuck in traffic","taking forever"],
+ "Money worry":["money","bill","rent","paycheck","afford","debt"],
+ "Future worry":["future","what if i","career","don't know what i'm doing","no direction"],
+ "Work pressure":["deadline","my boss","at work","the meeting","the project","the client"],
+ "Family":["my mom","my dad","my family","my brother","my sister","my parents"],
+ "Feeling behind":["behind everyone","everyone else is","should be further","not where i"],
+ "Tiredness / hunger":["exhausted","hadn't eaten","no sleep","didn't sleep"],
+ "Social media":["instagram","twitter","tiktok","scrolling","social media"]
+};
+const TRIG2GROUP={"Someone's tone":"Rude tone","Criticism":"Unfair claim","Work pressure":"Pressure","Delays / waiting":"Buy time"};
+const CRISIS_RE=/\b(kill myself|killing myself|end my life|ending my life|want to die|wish i (was|were) dead|better off dead|no reason to live|can'?t go on|suicide|hurt myself|self[- ]harm)\b/i;
+function analyzeText(raw){
+  if(CRISIS_RE.test(raw))return{crisis:true};
+  const t=" "+raw.toLowerCase()+" ";
+  const emo={};
+  Object.entries(EMO_LEX).forEach(([k,v])=>{
+    v.words.forEach(w=>{
+      const i=t.indexOf(w);
+      if(i>-1){
+        const before=t.slice(Math.max(0,i-16),i);
+        const neg=NEGATORS.some(n=>before.includes(n));
+        const boost=INTENSIFIERS.some(n=>before.includes(n));
+        emo[k]=(emo[k]||0)+(neg?-1:1)+(boost&&!neg?0.5:0);
+      }
+    });
+  });
+  const ranked=Object.entries(emo).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const top=ranked[0];
+  const intensity=top?(top[1]>=2?"strong":top[1]>=1.5?"moderate":"mild"):null;
+  let trig=null,trigScore=0;
+  Object.entries(TRIGGER_LEX).forEach(([k,ws])=>{
+    const s=ws.filter(w=>t.includes(w)).length;
+    if(s>trigScore){trigScore=s;trig=k}
+  });
+  const found=DISTORTIONS.filter(d=>d.re.test(raw)).slice(0,2);
+  return{crisis:false,emotions:ranked.map(([k])=>EMO_LEX[k].label),topEmotion:top?EMO_LEX[top[0]].label:null,intensity,trigger:trig,distortions:found};
+}
+function flagged(s){return CRISIS_RE.test(s||"")}
+function crisisHTML(){
+  return `<div class="card" style="text-align:left;border-color:var(--warn)">
+   <div class="mut" style="color:var(--warn)">Pause here with me</div>
+   <div class="big" style="margin:8px 0">What you just wrote matters — you don't have to carry it alone right now.</div>
+   <div class="mut" style="margin-bottom:10px">In Canada you can call or text <b>988</b> any time, free and confidential (Talk Suicide Canada). If you're in immediate danger, call <b>911</b>.</div>
+   <div class="row"><a href="tel:988" style="flex:1"><button style="width:100%">Call 988</button></a><a href="sms:988" style="flex:1"><button class="sec" style="width:100%">Text 988</button></a></div>
+   <div class="mut" style="margin-top:10px">Is there one person you trust who you could message right now, even just to say you're struggling?</div>
+  </div>`;
+}
+function showCrisis(){
+  clearInterval(pTimer);
+  $("#pause").classList.add("on");
+  $("#pauseBody").innerHTML=crisisHTML()+`<button class="sec" id="crClose" style="width:100%;margin-top:14px">Close</button>`;
+  $("#crClose").onclick=closePause;
+}
+
+/* ---------- optional AI companion (bring-your-own key) ----------
+   Separate storage key on purpose: never touches S, so it's never in
+   "Export my data" or wiped by "Reset all". Crisis text never reaches
+   this — callers always run flagged()/showCrisis() first. */
+const AIKEY="calm_ai_v1";
+function loadAI(){try{return JSON.parse(localStorage.getItem(AIKEY))||{}}catch(e){return{}}}
+function saveAI(cfg){try{localStorage.setItem(AIKEY,JSON.stringify(cfg))}catch(e){}}
+const DEFAULT_SYS="You are a sharp, emotionally intelligent self-coaching companion inside a personal app called Calm, used by one person who wants real, specific help — not an intake form. Voice: warm but direct, like a perceptive friend who already gets it — 4 to 7 short sentences, no bullet lists, no clinical jargon, no generic advice ('try to relax', 'take a few deep breaths') unless tied to the exact specifics they described. Hard rule: do NOT ask a clarifying question before helping. Work with whatever they gave you, even if it's thin — make your best accurate read of what's really going on (often what's underneath the surface complaint, not just the literal words — e.g. this usually isn't really about the dishes, it's about feeling disrespected) and act on that read. Structure: (1) one sharp sentence naming what's actually going on, in plain specific terms, not a generic emotion label; (2) one or two concrete, specific suggestions for what to do or say next — an actual line they could say, a specific next move — grounded in their exact situation; (3) only if something is genuinely unclear and you truly cannot give useful help without it, you may end on one short question — otherwise always end on the suggestion, never on a question, and never stack more than one question in a reply. Never diagnose, never suggest medication, never claim to be a licensed therapist or psychologist. If it sounds like a longstanding pattern rather than one moment, add one short, non-preachy line that a real therapist or doctor would be a strong move.";
+function aiTurnContext(an){
+  const base=aiContext();
+  if(!an||an.crisis)return base;
+  const bits=[base];
+  if(an.topEmotion)bits.push("local analysis already flagged this specific message as feeling "+an.topEmotion.toLowerCase()+(an.intensity?" ("+an.intensity+" intensity)":""));
+  if(an.trigger)bits.push("likely trigger category: "+an.trigger);
+  if(an.distortions&&an.distortions.length)bits.push("possible thinking pattern: "+an.distortions[0].label+" — "+an.distortions[0].explain);
+  bits.push("use these as a head start, not gospel — trust what they actually wrote over the label if they conflict");
+  return bits.filter(Boolean).join("; ");
+}
+/* ---------- voice: mic input (browser speech-to-text) + spoken replies (browser text-to-speech) ----------
+   Both are built into the browser, no API key. The mic sends audio to your browser vendor's own
+   speech service to transcribe (not to the AI provider above); text-to-speech runs fully offline. */
+function supportsSTT(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition)}
+function wireMic(btnSel,taSel){
+  const btn=$(btnSel);if(!btn)return;
+  if(!supportsSTT()){btn.style.display="none";return}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  let rec=null,on=false;
+  btn.onclick=()=>{
+    if(on){rec&&rec.stop();return}
+    rec=new SR();rec.lang="en-US";rec.interimResults=false;rec.maxAlternatives=1;
+    rec.onstart=()=>{on=true;btn.textContent="⏹";btn.classList.add("on")};
+    rec.onend=()=>{on=false;btn.textContent="🎙";btn.classList.remove("on")};
+    rec.onerror=()=>{on=false;btn.textContent="🎙";btn.classList.remove("on");toast("Mic error — check mic permission")};
+    rec.onresult=(e)=>{
+      const txt=e.results[0][0].transcript;
+      const ta=$(taSel);if(!ta)return;
+      ta.value=(ta.value.trim()?ta.value.trim()+" ":"")+txt;
+    };
+    try{rec.start()}catch(e){toast("Couldn't start mic")}
+  };
+}
+function speak(text,ov){
+  if(!("speechSynthesis" in window))return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    const cfg=Object.assign({},loadAI(),ov||{});
+    const voices=speechSynthesis.getVoices();
+    const v=cfg.voiceName&&voices.find(x=>x.name===cfg.voiceName);
+    if(v)u.voice=v;
+    u.rate=+cfg.rate||0.92;
+    u.pitch=+cfg.pitch||0.92;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function populateVoices(sel,current){
+  if(!sel||!("speechSynthesis" in window))return;
+  const fill=()=>{
+    const voices=speechSynthesis.getVoices();
+    if(!voices.length)return;
+    sel.innerHTML='<option value="">Default calming voice</option>'+voices.map(v=>`<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`).join("");
+    sel.value=current||"";
+  };
+  fill();
+  speechSynthesis.onvoiceschanged=fill;
+}
+function aiContext(){
+  const bits=[];
+  const topT=cnt(S.triggers,t=>t.trigger)[0],topE=cnt(S.triggers,t=>t.emotion)[0];
+  if(topT)bits.push("their most common recent trigger is '"+topT[0]+"'");
+  if(topE)bits.push("the feeling that comes up most for them lately is "+topE[0].toLowerCase());
+  return bits.join("; ");
+}
+async function callAI(userText,extra){
+  const cfg=loadAI();
+  if(!cfg.key)throw new Error("no key saved");
+  const sys=(cfg.sys&&cfg.sys.trim())||DEFAULT_SYS;
+  const sysFull=sys+(extra?("\n\nQuiet context on this person, for your awareness only — don't recite it back: "+extra):"");
+  if(cfg.provider==="openai"){
+    const res=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+cfg.key},
+      body:JSON.stringify({model:cfg.model||"gpt-5-nano",max_tokens:220,messages:[{role:"system",content:sysFull},{role:"user",content:userText}]})});
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    const d=await res.json();
+    return (d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim();
+  }
+  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":cfg.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",max_tokens:220,system:sysFull,messages:[{role:"user",content:userText}]})});
+  if(!res.ok)throw new Error("HTTP "+res.status);
+  const d=await res.json();
+  return (d.content&&d.content[0]&&d.content[0].text||"").trim();
+}
+
 let S=load();
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d)return d}catch(e){}return{promises:{},challenge:{},triggers:[],worries:[],wins:[],pauses:[],identity:{},custom:{}}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d){d.distortionLog=d.distortionLog||[];return d}}catch(e){}return{promises:{},challenge:{},triggers:[],worries:[],wins:[],pauses:[],identity:{},custom:{},distortionLog:[]}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 const $=(s,r=document)=>r.querySelector(s);
 const dk=(d=new Date())=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
 const today=()=>dk();
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1800)}
+const cnt=(arr,f)=>{const m={};arr.forEach(x=>{const k=f(x);if(k)m[k]=(m[k]||0)+1});return Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,3)};
 function hashDay(){let h=0;for(const c of today())h=(h*31+c.charCodeAt(0))>>>0;return h}
 
 /* ---------- tabs ---------- */
@@ -196,7 +389,7 @@ function startPause(){
   S.pauses.push(Date.now());save();
   stepBreath(60);
 }
-function closePause(){clearInterval(pTimer);$("#pause").classList.remove("on");render()}
+function closePause(){clearInterval(pTimer);if("speechSynthesis" in window)speechSynthesis.cancel();$("#pause").classList.remove("on");render()}
 function stepBreath(total){
   const b=$("#pauseBody");
   b.innerHTML=`<div class="mut">Step 1 of 3 · Slow the body first</div><div class="orb" id="orb"></div><div class="big" id="bt">Breathe in…</div><div class="mut" id="bc"></div>
@@ -219,31 +412,75 @@ function stepBreath(total){
   $("#skip").onclick=()=>{clearInterval(pTimer);stepName()};
 }
 function stepName(){
-  const b=$("#pauseBody");let sel=null;
+  const b=$("#pauseBody");let sel=null,trig=null;
   b.innerHTML=`<div class="mut">Step 2 of 3 · Name it</div><div class="big">What am I feeling right now?</div>
   <div class="mut">Feeling it is fine. Naming it calms the alarm part of the brain.</div>
   <div class="chips" id="ch" style="justify-content:center">${EMOTIONS.map(e=>`<button class="chip">${e}</button>`).join("")}</div>
-  <button id="nx" style="width:100%;margin-top:10px">Next</button>`;
-  b.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{b.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");sel=c.textContent});
-  $("#nx").onclick=()=>stepChoose(sel);
+  <div class="mut" style="margin-top:10px">About (tap, optional)</div>
+  <div class="chips" id="chT" style="justify-content:center">${TRIGGERS.map(t=>`<button class="chip">${t}</button>`).join("")}</div>
+  <textarea id="nameFree" placeholder="Or type/speak a few words — optional, sharpens what comes next"></textarea>
+  <div class="row"><button id="nx" style="flex:1;margin-top:10px">Next</button><button class="sec" id="mic2" type="button" style="flex:0 0 52px;margin-top:10px">🎙</button></div>`;
+  b.querySelectorAll("#ch .chip").forEach(c=>c.onclick=()=>{b.querySelectorAll("#ch .chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");sel=c.textContent});
+  b.querySelectorAll("#chT .chip").forEach(c=>c.onclick=()=>{const was=c.classList.contains("on");b.querySelectorAll("#chT .chip").forEach(x=>x.classList.remove("on"));if(!was){c.classList.add("on");trig=c.textContent}else trig=null});
+  wireMic("#mic2","#nameFree");
+  $("#nx").onclick=async ()=>{
+    const free=$("#nameFree").value.trim();
+    if(flagged(free))return showCrisis();
+    let an=free?analyzeText(free):null;
+    if(!an&&(sel||trig))an={crisis:false,emotions:sel?[sel]:[],topEmotion:sel,intensity:null,trigger:trig,distortions:[]};
+    const msg=free||(sel?`I'm feeling ${sel.toLowerCase()}${trig?" about "+trig.toLowerCase():""}.`:null);
+    const cfg=loadAI();
+    if(msg&&cfg.useAI&&cfg.key){
+      b.innerHTML=`<div class="mut">Step 3 of 3 · Choose</div><div class="mut" style="margin-top:24px">Thinking…</div>`;
+      try{const reply=await callAI(msg,aiTurnContext(an));stepChoose(sel,an,reply)}
+      catch(e){toast("AI unavailable, using local reflection");stepChoose(sel,an)}
+    }else stepChoose(sel,an);
+  };
 }
-function stepChoose(emo){
+function stepChoose(emo,an,aiReply){
   const b=$("#pauseBody");
-  const q=REFRAMES[Math.floor(Math.random()*REFRAMES.length)];
-  const r=REPLIES[Math.floor(Math.random()*REPLIES.length)];
+  let q,distNote="";
+  if(aiReply){
+    q=aiReply;
+  }else if(an&&an.distortions&&an.distortions.length){
+    q=an.distortions[0].question;
+    distNote=`<div class="mut" style="margin-top:8px">${esc(an.distortions[0].label)}: ${esc(an.distortions[0].explain)}</div>`;
+    S.distortionLog.push({ts:Date.now(),type:an.distortions[0].type});save();
+  }else q=REFRAMES[Math.floor(Math.random()*REFRAMES.length)];
+  const group=an&&an.trigger&&TRIG2GROUP[an.trigger];
+  const pool=group?REPLIES.filter(x=>x[0]===group):REPLIES;
+  const r=pool[Math.floor(Math.random()*pool.length)];
+  const label=emo||(an&&an.topEmotion)||null;
   b.innerHTML=`<div class="mut">Step 3 of 3 · Choose</div>
-  <div class="big">${emo?`I'm feeling ${esc(emo.toLowerCase())}. That's okay.`:"That's okay."}</div>
-  <div class="card" style="text-align:left"><div class="mut">Look at it differently</div><div class="quote" style="font-size:17px">${esc(q)}</div></div>
+  <div class="big">${label?`I'm feeling ${esc(label.toLowerCase())}${an&&an.intensity?" ("+an.intensity+")":""}. That's okay.`:"That's okay."}</div>
+  <div class="card" style="text-align:left"><div class="row" style="justify-content:space-between;align-items:flex-start"><div class="mut">${aiReply?"Your companion":"Look at it differently"}</div>${aiReply?'<button class="ghost sm" id="replay2">🔊</button>':""}</div><div class="quote" style="font-size:17px">${esc(q)}</div>${distNote}</div>
   <div class="card" style="text-align:left"><div class="mut">A calm line you can use</div><div class="quote" style="font-size:17px">"${esc(r[1])}"</div></div>
   <div class="mut">What would the strong version of me do next?</div>
   <div class="row" style="justify-content:center;margin-top:14px"><button id="done">I'm ready</button><button class="sec" id="lg">Log trigger</button></div>`;
   $("#done").onclick=()=>{toast("That pause is a win.");closePause()};
-  $("#lg").onclick=()=>{closePause();tab="log";render();setTimeout(()=>{const e=$("#tEmo");if(e&&emo)e.value=emo},0)};
+  $("#lg").onclick=()=>{closePause();tab="log";render();setTimeout(()=>{const e=$("#tEmo");if(e&&label&&EMOTIONS.includes(label))e.value=label},0)};
+  if(aiReply){
+    const rp=$("#replay2");if(rp)rp.onclick=()=>speak(aiReply);
+    if(loadAI().voice)speak(aiReply);
+  }
 }
 
 /* ---------- Log ---------- */
 function rLog(a){
   a.innerHTML=`<h1>Log</h1><div class="mut">Patterns you can see are patterns you can change.</div>
+  <div class="card"><h2>Quick tap</h2><div class="mut">No writing needed — just tap what fits.</div>
+  <div class="mut" style="margin-top:10px;font-size:13px">Feeling</div>
+  <div class="chips" id="qpEmo" style="justify-content:center">${EMOTIONS.map(e=>`<button class="chip">${e}</button>`).join("")}</div>
+  <div class="mut" style="margin-top:10px;font-size:13px">How strong (optional)</div>
+  <div class="chips" id="qpInt" style="justify-content:center">${["Mild","Moderate","Strong"].map(x=>`<button class="chip">${x}</button>`).join("")}</div>
+  <div class="mut" style="margin-top:10px;font-size:13px">About (optional)</div>
+  <div class="chips" id="qpTrig" style="justify-content:center">${TRIGGERS.map(x=>`<button class="chip">${x}</button>`).join("")}</div>
+  <button id="qpGo" style="width:100%;margin-top:12px">Reflect</button>
+  <div id="qpOut"></div></div>
+  <div class="card"><h2>Talk it out <span class="mut" style="font-size:12px">(if you'd rather type or talk)</span></h2><div class="mut">Skip the categories — just say what happened. I'll help you name it.</div>
+  <textarea id="freeT" placeholder="e.g. My manager cut me off in the meeting again and I just went quiet, but I was fuming all day"></textarea>
+  <div class="row"><button id="freeB" style="flex:1">Reflect</button><button class="sec" id="mic1" type="button" style="flex:0 0 52px">🎙</button></div>
+  <div id="freeOut"></div></div>
   <div class="card"><h2>Trigger log</h2>
   <div class="mut">What set it off?</div><div class="chips" id="tTr">${TRIGGERS.map(x=>`<button class="chip">${x}</button>`).join("")}</div>
   <select id="tEmo"><option value="">How did it feel?</option>${EMOTIONS.map(e=>`<option>${e}</option>`).join("")}</select>
@@ -257,19 +494,78 @@ function rLog(a){
   <div id="wExtra"></div></div>
   <div class="card"><h2>Worry window</h2><div class="mut">15 minutes in the evening. Everything else waits.</div><div id="wList"></div></div>`;
   let tr=null;
+  wireMic("#mic1","#freeT");
+  function distortionHtml(an){
+    return an.distortions.length?an.distortions.map(d=>{S.distortionLog.push({ts:Date.now(),type:d.type});return `<div class="card" style="text-align:left;margin:8px 0"><div class="mut">${esc(d.label)}</div><div style="font-size:14px;line-height:1.4;margin:4px 0">${esc(d.explain)}</div><div class="quote" style="font-size:16px">${esc(d.question)}</div></div>`}).join(""):"";
+  }
+  function localReflection(an){
+    return `<div class="card" style="text-align:left;margin-top:10px"><div class="mut">What this sounds like</div>
+     <div class="quote" style="margin:6px 0">${an.topEmotion?esc(an.topEmotion)+(an.intensity?" · "+an.intensity:"")+(an.trigger?" · "+esc(an.trigger):""):"Hard to tell from this alone — that's okay, add it below as-is."}</div></div>
+     ${distortionHtml(an)}`;
+  }
+  function wireUseIt(an,v,sfx){
+    $("#useIt"+sfx).onclick=()=>{
+      if(an.trigger){const c=[...a.querySelectorAll("#tTr .chip")].find(x=>x.textContent===an.trigger);if(c)c.click()}
+      if(an.topEmotion&&EMOTIONS.includes(an.topEmotion))$("#tEmo").value=an.topEmotion;
+      $("#tReact").value=v;
+      $("#tSave").scrollIntoView({behavior:"smooth",block:"center"});
+      toast("Filled in — edit if needed, then Save");
+    };
+  }
+  async function runReflection(v,an,out,sfx){
+    const cfg=loadAI();
+    if(cfg.useAI&&cfg.key){
+      out.innerHTML=`<div class="mut" style="margin-top:10px">Thinking…</div>`;
+      try{
+        const reply=await callAI(v,aiTurnContext(an));
+        out.innerHTML=`<div class="card" style="text-align:left;margin-top:10px"><div class="row" style="justify-content:space-between;align-items:flex-start"><div class="mut">Your companion</div><button class="ghost sm" id="replay${sfx}">🔊</button></div>
+         <div class="quote" style="font-size:16px;font-weight:500;margin:6px 0">${esc(reply)}</div>
+         ${an.topEmotion?`<div class="mut">Detected: ${esc(an.topEmotion)}${an.intensity?" · "+an.intensity:""}${an.trigger?" · "+esc(an.trigger):""}</div>`:""}</div>
+         ${distortionHtml(an)}<button id="useIt${sfx}" class="sec" style="width:100%">Fill this into the log below</button>`;
+        $("#replay"+sfx).onclick=()=>speak(reply);
+        if(cfg.voice)speak(reply);
+      }catch(e){
+        out.innerHTML=`<div class="mut" style="margin-top:10px">Couldn't reach the AI companion (${esc(e.message)}). Showing the local reflection instead.</div>${localReflection(an)}<button id="useIt${sfx}" class="sec" style="width:100%">Fill this into the log below</button>`;
+      }
+    }else{
+      out.innerHTML=`${localReflection(an)}<button id="useIt${sfx}" class="sec" style="width:100%">Fill this into the log below</button>`;
+    }
+    if(an.distortions.length)save();
+    wireUseIt(an,v,sfx);
+  }
+  $("#freeB").onclick=()=>{
+    const v=$("#freeT").value.trim();if(!v)return toast("Write a few words first");
+    if(flagged(v))return showCrisis();
+    runReflection(v,analyzeText(v),$("#freeOut"),"1");
+  };
+  let qEmo=null,qInt=null,qTrig=null;
+  a.querySelectorAll("#qpEmo .chip").forEach(c=>c.onclick=()=>{a.querySelectorAll("#qpEmo .chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");qEmo=c.textContent});
+  a.querySelectorAll("#qpInt .chip").forEach(c=>c.onclick=()=>{const was=c.classList.contains("on");a.querySelectorAll("#qpInt .chip").forEach(x=>x.classList.remove("on"));if(!was){c.classList.add("on");qInt=c.textContent}else qInt=null});
+  a.querySelectorAll("#qpTrig .chip").forEach(c=>c.onclick=()=>{const was=c.classList.contains("on");a.querySelectorAll("#qpTrig .chip").forEach(x=>x.classList.remove("on"));if(!was){c.classList.add("on");qTrig=c.textContent}else qTrig=null});
+  $("#qpGo").onclick=()=>{
+    if(!qEmo)return toast("Tap how you're feeling first");
+    const an={crisis:false,emotions:[qEmo],topEmotion:qEmo,intensity:qInt?qInt.toLowerCase():null,trigger:qTrig,distortions:[]};
+    const v=`I'm feeling ${qEmo.toLowerCase()}${qInt?" ("+qInt.toLowerCase()+")":""}${qTrig?" about "+qTrig.toLowerCase():""}.`;
+    runReflection(v,an,$("#qpOut"),"Q");
+  };
   a.querySelectorAll("#tTr .chip").forEach(c=>c.onclick=()=>{a.querySelectorAll("#tTr .chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");tr=c.textContent});
   $("#tSave").onclick=()=>{
-    if(!tr&&!$("#tReact").value.trim())return toast("Add a trigger or note");
-    S.triggers.push({ts:Date.now(),trigger:tr||"Other",emotion:$("#tEmo").value,react:$("#tReact").value.trim().slice(0,300),better:$("#tBetter").value.trim().slice(0,300)});
-    save();toast("Logged");render();
+    const react=$("#tReact").value.trim(),better=$("#tBetter").value.trim();
+    if(!tr&&!react)return toast("Add a trigger or note");
+    S.triggers.push({ts:Date.now(),trigger:tr||"Other",emotion:$("#tEmo").value,react:react.slice(0,300),better:better.slice(0,300)});
+    save();
+    if(flagged(react)||flagged(better)){showCrisis();return}
+    toast("Logged");render();
   };
   $("#wY").onclick=()=>{
-    if(!$("#wT").value.trim())return toast("Write the worry first");
+    const w=$("#wT").value.trim();if(!w)return toast("Write the worry first");
+    if(flagged(w))return showCrisis();
     $("#wExtra").innerHTML=`<input id="wStep" placeholder="What's one tiny step? (5 minutes or less)"><button id="wS" style="width:100%">Save step</button>`;
-    $("#wS").onclick=()=>{const st=$("#wStep").value.trim();if(!st)return;S.worries.push({ts:Date.now(),text:$("#wT").value.trim().slice(0,300),act:true,step:st.slice(0,200),done:false});save();toast("One step is enough for now");render()};
+    $("#wS").onclick=()=>{const st=$("#wStep").value.trim();if(!st)return;S.worries.push({ts:Date.now(),text:w.slice(0,300),act:true,step:st.slice(0,200),done:false});save();toast("One step is enough for now");render()};
   };
   $("#wN").onclick=()=>{
     const v=$("#wT").value.trim();if(!v)return toast("Write the worry first");
+    if(flagged(v))return showCrisis();
     S.worries.push({ts:Date.now(),text:v.slice(0,300),act:false,done:false});save();toast("Parked. Not today's job.");render();
   };
   const wl=$("#wList"),open=S.worries.filter(w=>!w.done);
@@ -280,19 +576,80 @@ function rLog(a){
 /* ---------- Tools ---------- */
 function rTools(a){
   const groups={};REPLIES.forEach(r=>(groups[r[0]]=groups[r[0]]||[]).push(r[1]));
+  const aiCfg=loadAI();
   a.innerHTML=`<h1>Tools</h1>
   <div class="card"><h2>Calm lines</h2><div class="mut">Tap to copy. Use one instead of improvising while upset.</div>
   ${Object.entries(groups).map(([g,ls])=>`<h3>${g}</h3>${ls.map(l=>`<div class="item" data-c="${esc(l)}">“${esc(l)}”</div>`).join("")}`).join("")}</div>
   <div class="card"><h2>Win vault</h2><div class="mut">Your proof that you're changing.</div><div id="wv" class="quote" style="font-size:17px;margin:10px 0"></div><button id="wvB" class="sec">Show a random win</button></div>
-  <div class="card"><h2>Reality check</h2><div class="mut" style="font-size:15px;line-height:1.5">The goal isn't to feel nothing. Suppressing emotion makes it come back louder. The goal is to feel it, name it, and choose your response. That's what strong, intelligent people actually do, and it's trainable.<br><br>If anger or low mood feels constant or out of your control, talking to a doctor or therapist is a strong move, not a weak one.</div></div>`;
+  <div class="card"><h2>AI companion <span class="mut" style="font-size:12px">(optional, bring your own key)</span></h2>
+  <div class="mut">Off by default: feelings/triggers/thinking-pattern detection stays 100% on this device. Turn this on and "Talk it out" / Pause will also send what you type to the API below to get a real generated reflection instead of the local template. Your key is stored only in this browser — never in Export my data, never wiped by Reset all.</div>
+  ${aiCfg.key?`<div class="mut" style="color:var(--acc);margin-top:6px">Key saved ✓ (leave the field blank to keep it)</div>`:""}
+  <select id="aiProv"><option value="anthropic">Anthropic (Claude)</option><option value="openai">OpenAI</option></select>
+  <input id="aiModel" placeholder="Model id, e.g. claude-haiku-5-5">
+  <input id="aiKey" type="password" placeholder="API key">
+  <textarea id="aiSys" placeholder="Override the companion's style (optional)"></textarea>
+  <div class="row"><button class="sec sm" id="aiSave">Save</button><button class="ghost sm" id="aiClear">Clear key</button></div>
+  <div class="row" style="margin-top:10px"><label class="mut" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="aiOn" style="width:auto;margin:0"> Use AI companion in Talk it out / Pause</label></div>
+  <div class="row" style="margin-top:8px"><label class="mut" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="aiVoice" style="width:auto;margin:0"> Speak the companion's replies aloud</label></div>
+  <div class="mut" style="margin-top:10px;font-size:13px">Voice</div>
+  <select id="aiVoiceName"><option value="">Default calming voice</option></select>
+  <div class="mut" style="margin-top:8px;font-size:13px">Speed</div><input type="range" id="aiRate" min="0.7" max="1.15" step="0.01" style="width:100%">
+  <div class="mut" style="margin-top:8px;font-size:13px">Pitch</div><input type="range" id="aiPitch" min="0.7" max="1.15" step="0.01" style="width:100%">
+  <button class="ghost sm" id="aiVoiceTest" type="button" style="margin-top:8px">▶ Preview voice</button>
+  <div class="mut" style="margin-top:10px;font-size:13px">${supportsSTT()?"The 🎙 mic button (Talk it out, Pause) uses your browser's own speech-to-text — that audio goes to your browser vendor (e.g. Google) to transcribe, separately from the AI provider above.":"Your browser doesn't support voice input here — the mic button is hidden."} Spoken replies use on-device text-to-speech and never leave your browser.</div>
+  </div>
+  <div class="card"><h2>Reality check</h2><div class="mut" style="font-size:15px;line-height:1.5">The goal isn't to feel nothing. Suppressing emotion makes it come back louder. The goal is to feel it, name it, and choose your response. That's what strong, intelligent people actually do, and it's trainable.<br><br>"Talk it out" and the Pause flow read your words for feelings, triggers, and common thinking traps (like catastrophizing or mind-reading). That detection always runs locally on this device. Only if you turn on the AI companion above does your text also go to the API provider you chose. Either way, this is a self-coaching aid, not therapy and not a diagnosis — including when the AI companion is on; it's instructed not to diagnose or prescribe, but it's still a general-purpose model, not a clinician.<br><br>If anger or low mood feels constant or out of your control, talking to a doctor or therapist is a strong move, not a weak one.</div></div>
+  <div class="card"><h2>Need to talk to someone now?</h2><div class="mut" style="margin-bottom:10px">In Canada: call or text <b>988</b> any time, free and confidential. In immediate danger: call <b>911</b>.</div>
+  <div class="row"><a href="tel:988" style="flex:1"><button class="sec" style="width:100%">Call 988</button></a><a href="sms:988" style="flex:1"><button class="sec" style="width:100%">Text 988</button></a></div></div>`;
   a.querySelectorAll("[data-c]").forEach(e=>e.onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(e.dataset.c);toast("Copied")});
   $("#wvB").onclick=()=>{
     if(!S.wins.length){$("#wv").textContent="No wins yet. Add one in the evening review.";return}
     $("#wv").textContent="“"+S.wins[Math.floor(Math.random()*S.wins.length)].text+"”";
   };
+  $("#aiProv").value=aiCfg.provider||"anthropic";
+  $("#aiModel").value=aiCfg.model||"";
+  $("#aiSys").value=aiCfg.sys||"";
+  $("#aiOn").checked=!!aiCfg.useAI;
+  $("#aiVoice").checked=!!aiCfg.voice;
+  $("#aiRate").value=aiCfg.rate||0.92;
+  $("#aiPitch").value=aiCfg.pitch||0.92;
+  populateVoices($("#aiVoiceName"),aiCfg.voiceName);
+  $("#aiVoiceTest").onclick=()=>speak("This is how I'll sound when I talk you down.",{voiceName:$("#aiVoiceName").value,rate:parseFloat($("#aiRate").value),pitch:parseFloat($("#aiPitch").value)});
+  $("#aiSave").onclick=()=>{
+    const cur=loadAI();
+    const key=$("#aiKey").value.trim()||cur.key||"";
+    saveAI({provider:$("#aiProv").value,model:$("#aiModel").value.trim(),key,sys:$("#aiSys").value.trim(),useAI:$("#aiOn").checked,voice:$("#aiVoice").checked,voiceName:$("#aiVoiceName").value,rate:parseFloat($("#aiRate").value)||0.92,pitch:parseFloat($("#aiPitch").value)||0.92});
+    $("#aiKey").value="";
+    toast("Saved");render();
+  };
+  $("#aiOn").onchange=()=>{const c=loadAI();c.useAI=$("#aiOn").checked;saveAI(c)};
+  $("#aiVoice").onchange=()=>{const c=loadAI();c.voice=$("#aiVoice").checked;saveAI(c)};
+  $("#aiClear").onclick=()=>{const c=loadAI();c.key="";c.useAI=false;saveAI(c);toast("Key cleared");render()};
 }
 
 /* ---------- Progress ---------- */
+function buildInsight(hours,mx){
+  const lines=[];
+  const topHour=hours.indexOf(mx>1?mx:-1);
+  if(mx>=3&&topHour>-1){
+    const band=topHour<11?"morning":topHour<17?"afternoon":topHour<21?"evening":"late night";
+    lines.push(`Most of your logged triggers land in the ${band}, around ${topHour}:00. If tiredness or hunger shows up often too, part of the trigger may be low fuel, not just the situation.`);
+  }
+  const pair={};S.triggers.forEach(t=>{if(t.trigger&&t.emotion){const k=t.trigger+"|"+t.emotion;pair[k]=(pair[k]||0)+1}});
+  const topPair=Object.entries(pair).sort((a,b)=>b[1]-a[1])[0];
+  if(topPair&&topPair[1]>=2){const[tg,em]=topPair[0].split("|");lines.push(`"${tg}" has shown up with feeling ${em.toLowerCase()} ${topPair[1]}× now. That's a pattern — worth having one go-to calm line ready specifically for that situation.`);}
+  if(S.distortionLog&&S.distortionLog.length){
+    const dcnt={};S.distortionLog.forEach(d=>dcnt[d.type]=(dcnt[d.type]||0)+1);
+    const topD=Object.entries(dcnt).sort((a,b)=>b[1]-a[1])[0];
+    const meta=DISTORTIONS.find(d=>d.type===topD[0]);
+    if(meta&&topD[1]>=2)lines.push(`Your most common thinking pattern lately is ${meta.label.toLowerCase()} (${topD[1]}×). ${meta.explain}`);
+  }
+  const week=Date.now()-7*864e5;
+  const pausesWk=S.pauses.filter(t=>t>week).length,winsWk=S.wins.filter(w=>Date.now()-w.ts<7*864e5).length;
+  if(pausesWk>=3&&winsWk<2)lines.push(`You're pausing often (${pausesWk}× this week) but logging few wins. Pausing is the hard part, and you're doing it — go credit yourself for a couple of those in the evening review.`);
+  if(!lines.length)lines.push("Log a few more triggers and check-ins this week — patterns usually become visible after 5-7 entries.");
+  return lines.slice(0,3);
+}
 function rProgress(a){
   const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return dk(d)});
   let kept=0,total=0;days.forEach(d=>(S.promises[d]||[]).forEach(p=>{total++;if(p.d)kept++}));
@@ -307,16 +664,19 @@ function rProgress(a){
     if(ok)streak++;else if(i>0)break;}
   const hours=Array(24).fill(0);S.triggers.forEach(t=>hours[new Date(t.ts).getHours()]++);
   const mx=Math.max(1,...hours);
-  const cnt=(arr,f)=>{const m={};arr.forEach(x=>{const k=f(x);if(k)m[k]=(m[k]||0)+1});return Object.entries(m).sort((x,y)=>y[1]-x[1]).slice(0,3)};
   const topT=cnt(S.triggers,t=>t.trigger),topE=cnt(S.triggers,t=>t.emotion);
+  const topD=cnt(S.distortionLog||[],d=>d.type).map(x=>{const m=DISTORTIONS.find(d=>d.type===x[0]);return[m?m.label:x[0],x[1]]});
+  const insight=buildInsight(hours,mx);
   a.innerHTML=`<h1>Progress</h1><div class="mut">The line that matters: promises kept.</div>
   <div class="card"><div class="score"><div><b>${pct}%</b><span>promises kept (7d)</span></div><div><b>${streak}</b><span>day streak</span></div></div>
   <div class="score" style="margin-top:10px"><div><b>${pauses}</b><span>pauses this week</span></div><div><b>${reps}/7</b><span>challenge reps</span></div></div></div>
+  <div class="card"><h2>Your patterns, read back to you</h2>${insight.map(l=>`<div class="item">${esc(l)}</div>`).join("")}</div>
   <div class="card"><h2>When triggers happen</h2>
   ${S.triggers.length?`<div class="hist">${hours.map(v=>`<i style="height:${v/mx*100}%"></i>`).join("")}</div><div class="row" style="justify-content:space-between" ><span class="mut">12am</span><span class="mut">12pm</span><span class="mut">11pm</span></div>`:`<div class="mut">Log a few triggers to see your pattern.</div>`}</div>
   <div class="card"><h2>Top patterns</h2>
   ${topT.length?`<h3>Triggers</h3>${topT.map(x=>`<div class="item">${esc(x[0])} <span class="mut">×${x[1]}</span></div>`).join("")}`:`<div class="mut">No data yet.</div>`}
-  ${topE.length?`<h3>Feelings</h3>${topE.map(x=>`<div class="item">${esc(x[0])} <span class="mut">×${x[1]}</span></div>`).join("")}`:""}</div>
+  ${topE.length?`<h3>Feelings</h3>${topE.map(x=>`<div class="item">${esc(x[0])} <span class="mut">×${x[1]}</span></div>`).join("")}`:""}
+  ${topD.length?`<h3>Thinking patterns</h3>${topD.map(x=>`<div class="item">${esc(x[0])} <span class="mut">×${x[1]}</span></div>`).join("")}`:""}</div>
   <div class="card"><h2>Recent wins</h2>${S.wins.length?S.wins.slice(-5).reverse().map(w=>`<div class="item">${esc(w.text)}</div>`).join(""):`<div class="mut">Wins you log show up here.</div>`}</div>
   <div class="card"><button class="sec sm" id="exp">Export my data</button> <button class="ghost sm" id="rst">Reset all</button></div>`;
   $("#exp").onclick=()=>{const b=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download="calm-data.json";l.click()};

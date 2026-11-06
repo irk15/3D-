@@ -138,6 +138,7 @@ export class Combat {
     this._o = new THREE.Vector3(); this._d = new THREE.Vector3(); this._p = new THREE.Vector3(); this.shotCount = 0; this.heard = 0;
     this.el = {}; for (const id of ['lock', 'hpFill', 'weapName', 'ammo', 'xhair', 'hurt', 'wasted', 'wastedTxt', 'feed', 'hitm', 'hud2', 'reloadBar', 'pvpTag']) this.el[id] = document.getElementById(id);
   }
+  get raised() { return this.armed && (this.aiming || this.trigger || this.t - (this.lastShot ?? -9) < 1.4); }
   get armed() { return this.drawn && !this.pd && !this.getCar() && !this.player.flying && !this.player.bike; }
   get weapon() { return WEAPONS[this.cur]; }
   get down() { return !!this.pd; }
@@ -151,6 +152,7 @@ export class Combat {
   }
   toggle(force) {
     this.drawn = force ?? !this.drawn;
+    if (this.drawn && !this.hinted && !this.ui.isTouch) { this.hinted = true; this.ui.floatText?.('Hold RIGHT mouse to aim · LEFT to shoot'); }
     if (this.drawn && (this.getCar() || this.player.bike)) { this.drawn = false; return; }
     if (this.drawn) { this.sfx.reload?.(0.5); if (this.cam.pitch > 0.35) this.cam.pitch = 0.12; }
     this.ui.setArmed?.(this.drawn); this.refreshHud();
@@ -277,7 +279,7 @@ export class Combat {
     const w = this.weapon, a = this.ammo[this.cur];
     if (!this.armed || this.t < this.nextShot || this.reload > 0) return;
     if (a.mag <= 0) { this.startReload(); if (a.res <= 0) this.sfx.empty?.(); this.nextShot = this.t + 0.3; return; }
-    a.mag--; this.nextShot = this.t + w.rate; this.shotCount++;
+    a.mag--; this.nextShot = this.t + w.rate; this.shotCount++; this.lastShot = this.t;
     const tg = this.targets(), cam = this.camera, dir = this.aimDir(w, tg);
     const spread = w.spread * (this.aiming || this.aimZoom ? 0.45 : 1) * (this.player.speed > 2 ? 1.6 : 1) * (this.lock ? 0.7 : 1);
     dir.x += (Math.random() - 0.5) * spread * 2; dir.y += (Math.random() - 0.5) * spread * 2; dir.z += (Math.random() - 0.5) * spread * 2; dir.normalize();
@@ -411,6 +413,8 @@ export class Combat {
   }
   refreshHud() {
     const e = this.el, w = this.weapon, a = this.ammo[this.cur];
+    document.querySelectorAll('#wslots button').forEach((b) => b.classList.toggle('on', +b.dataset.w === (this.drawn ? this.cur : 0)));
+    for (const k of [1, 2, 3]) { const el = document.getElementById('ws' + k); if (el) el.textContent = this.ammo[k].mag + this.ammo[k].res; }
     if (e.weapName) { e.weapName.textContent = `${w.ic} ${w.name}`; e.ammo.innerHTML = this.reload > 0 ? '<small>reloading…</small>' : `${a.res} <small>${a.mag}</small>`; }
     this.dirtyHp = true;
   }
@@ -433,7 +437,7 @@ export class Combat {
   // ---------------------------------------------------------------- network
   // what to add to the periodic state message
   stateFields() {
-    const o = { gw: this.armed ? this.cur : 0, hp: Math.round(this.hp), pv: this.pvp ? 1 : 0 };
+    const o = { gw: this.armed ? this.cur : 0, hp: Math.round(this.hp), pv: this.pvp ? 1 : 0, rz: this.raised ? 1 : 0 };
     if (this.armed) o.ap = +this.aimPitch().toFixed(2);
     if (this.pd) { const hero = this.getHero(); o.tl = +hero.root.rotation.x.toFixed(2); }
     return o;

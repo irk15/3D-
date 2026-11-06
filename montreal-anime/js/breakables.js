@@ -6,7 +6,22 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { gradient } from './toon.js';
 
+// a leafy street tree: trunk + clustered, jittered crown blobs, all vertex-coloured
+function treeGeo() {
+  const parts = [], paint = (g, f) => { const P = g.attributes.position, cols = []; for (let i = 0; i < P.count; i++) cols.push(...f(P.getX(i), P.getY(i), P.getZ(i))); g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); return g; };
+  const trunk = new THREE.CylinderGeometry(0.14, 0.2, 2.8, 7).translate(0, 1.4, 0).toNonIndexed(); trunk.deleteAttribute('uv'); parts.push(paint(trunk, () => [0.36, 0.27, 0.2]));
+  const BL = [[0, 3.7, 0, 1.55], [0.9, 4.2, 0.3, 1.1], [-0.8, 4.3, -0.4, 1.15], [0.2, 5.0, -0.2, 1.0], [-0.3, 3.4, 0.9, 1.0], [0.6, 3.5, -0.9, 0.95], [-0.1, 5.6, 0.3, 0.7]];
+  for (const [bx, by, bz, br] of BL) {
+    const g = new THREE.IcosahedronGeometry(br, 1), P = g.attributes.position; g.deleteAttribute('uv');
+    for (let i = 0; i < P.count; i++) { const j = 0.84 + 0.3 * Math.abs(Math.sin(P.getX(i) * 7.1 + P.getY(i) * 3.3 + P.getZ(i) * 5.7 + bx * 9)); P.setXYZ(i, P.getX(i) * j, P.getY(i) * j * 0.92, P.getZ(i) * j); }
+    paint(g, (x, y) => { const sh = 0.55 + 0.45 * ((y / br + 1) / 2); return [0.3 * sh, (0.55 + 0.08 * Math.sin(bx * 5)) * sh, 0.2 * sh]; });
+    g.translate(bx, by, bz); g.computeVertexNormals(); parts.push(g);
+  }
+  return mergeGeometries(parts);
+}
 const TYPES = {
+  tree: { geo: treeGeo, col: '#ffffff', vc: true, mass: 0.7, h: 6 },
+  signal: { geo: () => mergeGeometries([new THREE.CylinderGeometry(0.09, 0.11, 5.6, 6).translate(0, 2.8, 0), new THREE.BoxGeometry(0.36, 1.1, 0.32).translate(0, 5.0, 0)]), col: '#2b3036', mass: 0.8, h: 5.6 },
   lamp: { geo: () => mergeGeometries([new THREE.CylinderGeometry(0.07, 0.1, 7.2, 8).translate(0, 3.6, 0), new THREE.BoxGeometry(1.75, 0.09, 0.09).translate(0.85, 7.1, 0), new THREE.BoxGeometry(0.64, 0.26, 0.4).translate(1.7, 6.98, 0)]), col: '#5c6369', mass: 0.82, h: 7.2 },
   hydrant: { geo: () => mergeGeometries([new THREE.CylinderGeometry(0.15, 0.18, 0.6, 10).translate(0, 0.3, 0), new THREE.SphereGeometry(0.16, 10, 6).translate(0, 0.62, 0), new THREE.CylinderGeometry(0.06, 0.06, 0.42, 6).rotateZ(Math.PI / 2).translate(0, 0.4, 0)]), col: '#d23a2a', mass: 0.93, small: true },
   bin: { geo: () => new THREE.CylinderGeometry(0.3, 0.27, 0.95, 12).translate(0, 0.48, 0), col: '#2f5a3a', mass: 0.96, small: true },
@@ -23,7 +38,7 @@ export class Breakables {
     for (const it of list) (by[it.type] ||= []).push(it);
     for (const [type, arr] of Object.entries(by)) {
       const T = TYPES[type]; if (!T) continue;
-      const mat = new THREE.MeshToonMaterial({ color: T.col, gradientMap: gradient }); if (type === 'lamp') { mat.userData.rough = 0.45; mat.userData.metal = 0.6; }
+      const mat = new THREE.MeshToonMaterial({ color: T.col, gradientMap: gradient, vertexColors: !!T.vc }); if (type === 'lamp') { mat.userData.rough = 0.45; mat.userData.metal = 0.6; }
       const im = new THREE.InstancedMesh(T.geo(), mat, arr.length); im.castShadow = true; im.receiveShadow = true;
       const tinted = arr.some((a) => a.col); if (tinted) mat.color.set('#ffffff');
       arr.forEach((it, i) => {
@@ -59,6 +74,7 @@ export class Breakables {
   knock(it, vx, vz, speed) {
     const sp = Math.hypot(vx, vz) || 1, dx = vx / sp, dz = vz / sp;
     if (it.c) it.c.dead = true;
+    it.onBreak?.();
     if (it.glow !== undefined && it.glow >= 0) this.w.glows.set(it.glow, 0, -9999, 0), this.w.glows.g.attributes.iPos.needsUpdate = true;
     if (it.T.small) {   // tumbles away
       it.state = 2; it.pos = new THREE.Vector3(it.x, it.y, it.z); it.vel = new THREE.Vector3(dx * speed * 0.7 + (Math.random() - 0.5) * 2, 2 + speed * 0.18, dz * speed * 0.7 + (Math.random() - 0.5) * 2); it.rot = new THREE.Euler(); it.spin = new THREE.Vector3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 12); it.t = 0;

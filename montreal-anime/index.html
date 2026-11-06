@@ -522,6 +522,19 @@ body.touch #pCity button{min-height:44px}
 #act{position:absolute;left:50%;top:max(18px,env(safe-area-inset-top));transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;border-radius:4px;padding:6px 16px;text-align:center;font-family:var(--g);opacity:0;transition:opacity .3s;pointer-events:none}
 #act.show{opacity:1}#act small{display:block;font:600 12px var(--g);letter-spacing:.2em;color:#ffd447;text-transform:uppercase}#act #actInfo{font:500 15px var(--g)}#act b{font:700 22px var(--g)}
 body.touch #act{top:calc(max(12px,env(safe-area-inset-top)) + 46px)}
+
+/* weapon slots: always one click / key away */
+#wslots{position:absolute;right:calc(max(26px,env(safe-area-inset-right)) + 52px);bottom:calc(max(26px,env(safe-area-inset-bottom)) + 96px);display:flex;gap:6px;pointer-events:auto!important;opacity:.55;transition:opacity .2s}
+#wslots:hover,body.armed #wslots{opacity:1}
+#wslots button{pointer-events:auto;position:relative;display:grid;justify-items:center;gap:0;min-width:64px;padding:6px 8px 5px;border-radius:5px;background:rgba(10,12,16,.68);border:2px solid transparent;color:#fff;font:600 12px var(--g);cursor:pointer}
+#wslots button i{font-style:normal;font-size:22px;line-height:1.1}#wslots button small{font-size:11px;color:#ccc;letter-spacing:.04em}
+#wslots button kbd{position:absolute;left:4px;top:2px;font:700 10px var(--g);color:#999;background:none}
+#wslots button em{font-style:normal;font-size:10px;color:#f2c13b}
+#wslots button.on{border-color:#f2c13b;background:rgba(30,28,20,.85)}
+body.driving #wslots{display:none}
+body.touch #wslots{bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 200px);left:auto;right:max(12px,env(safe-area-inset-right));transform:none;flex-direction:column;opacity:.9}
+body.touch #wslots button{min-width:52px;padding:4px}body.touch #wslots button kbd{display:none}body.touch #wslots button small{display:none}
+body.touch:not(.armed) #wslots{display:none}
 </style>
 </head>
 <body>
@@ -555,7 +568,7 @@ body.touch #act{top:calc(max(12px,env(safe-area-inset-top)) + 46px)}
   <div id="area"><small>LE PLATEAU-MONT-ROYAL</small><span id="areaName">Rue Saint-Denis</span></div>
   <div id="prompt"><kbd>E</kbd><i class="hand">👆</i><span id="promptText">Parler</span></div>
   <div id="say"><span id="sayName">Nom</span><span id="sayHearts"></span><div id="sayText"></div></div>
-  <div id="hudC"><div id="hud2"></div><div id="hpBar"><i id="hpFill"></i><span>♥</span></div><div id="arBar"><i id="arFill"></i></div><div id="radioName" class="gtxt"><small>RADIO</small><b id="radioTxt"></b></div><div id="act"><small id="actName">Race</small><div id="actInfo"></div></div><div id="passed"><b id="passedTxt">mission passed</b><small id="passedSub"></small></div><div id="weapBox"><span id="weapName"></span><span id="ammo"></span><div class="rl"><i id="reloadBar"></i></div></div><span id="pvpTag"></span><div id="stars"></div><div id="cops"></div><div id="xhair"></div><div id="lock"></div><div id="hitm">✕</div><div id="feed"></div><div id="hurt"></div><div id="wasted"><b id="wastedTxt">WASTED</b></div></div>
+  <div id="hudC"><div id="hud2"></div><div id="hpBar"><i id="hpFill"></i><span>♥</span></div><div id="arBar"><i id="arFill"></i></div><div id="radioName" class="gtxt"><small>RADIO</small><b id="radioTxt"></b></div><div id="act"><small id="actName">Race</small><div id="actInfo"></div></div><div id="passed"><b id="passedTxt">mission passed</b><small id="passedSub"></small></div><div id="weapBox"><span id="weapName"></span><span id="ammo"></span><div class="rl"><i id="reloadBar"></i></div></div><span id="pvpTag"></span><div id="stars"></div><div id="cops"></div><div id="wslots"><button data-w="0"><kbd>1</kbd><i>✊</i><small>Fists</small></button><button data-w="1"><kbd>2</kbd><i>🔫</i><small>Pistol</small><em id="ws1"></em></button><button data-w="2"><kbd>3</kbd><i>🔫</i><small>SMG</small><em id="ws2"></em></button><button data-w="3"><kbd>4</kbd><i>🎯</i><small>Rifle</small><em id="ws3"></em></button></div><div id="xhair"></div><div id="lock"></div><div id="hitm">✕</div><div id="feed"></div><div id="hurt"></div><div id="wasted"><b id="wastedTxt">WASTED</b></div></div>
   <div id="wheel"><div class="ring"><button data-w="0" style="left:50%;top:16%"><i>✊</i>Fists<small>—</small></button><button data-w="1" style="left:84%;top:50%"><i>🔫</i>Pistol<small id="ww1"></small></button><button data-w="2" style="left:50%;top:84%"><i>🔫</i>SMG<small id="ww2"></small></button><button data-w="3" style="left:16%;top:50%"><i>🎯</i>Rifle<small id="ww3"></small></button><div class="mid">WEAPONS</div></div></div>
   <div id="tc">
     <button class="tb mp" id="tChat" data-m="walk bike">💬</button><button class="tb mp" id="tEmo" data-m="walk bike">👋</button>
@@ -622,7 +635,7 @@ body.touch #act{top:calc(max(12px,env(safe-area-inset-top)) + 46px)}
     <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Walk · <kbd>Shift</kbd> run</dd>
     <dt>✈ Travel</dt><dd>Montréal · Toronto · Ottawa — VIA Rail stations or the ✈ button. Drive into a yellow marker to start a race.</dd>
     <dt><kbd>Tab</kbd> <kbd>O</kbd></dt><dd>Weapon wheel (time slows) · change radio station</dd>
-    <dt><kbd>G</kbd> <kbd>U</kbd> <kbd>R</kbd></dt><dd>Draw / holster the gun · switch weapon · reload · click to fire · right-click to zoom · <kbd>K</kbd> PvP on/off</dd>
+    <dt><kbd>G</kbd> <kbd>U</kbd> <kbd>R</kbd></dt><dd>Draw / holster · switch · reload. Hold <b>right mouse</b> to aim (locks on), click <b>left</b> to shoot — both at once. <kbd>1</kbd>–<kbd>4</kbd> or the mouse wheel pick a weapon (Shift+1–4: emotes) · <kbd>K</kbd> PvP on/off</dd>
     <dt><kbd>Space</kbd></dt><dd>Jump · twice for a flip · hold in the air to glide with the umbrella</dd>
     <dt><kbd>F</kbd></dt><dd>Dash, even in mid-air</dd>
     <dt><kbd>V</kbd></dt><dd>Fly! (or 3rd jump) · <kbd>Space</kbd> up · <kbd>C</kbd> down · <kbd>Shift</kbd> turbo · the camera sets the direction. Wings get tired: land to recharge.</dd>
@@ -635,7 +648,7 @@ body.touch #act{top:calc(max(12px,env(safe-area-inset-top)) + 46px)}
     <dt><kbd>P</kbd> <kbd>J</kbd> <kbd>M</kbd></dt><dd>Photo mode (manga and film filters) · achievements journal · music</dd>
     <dt>Goal</dt><dd>Deliver parcels on time for tips, buy outfits at the thrift store, find the 12 golden bagels. Coffee makes you run faster, croissants make you jump higher.</dd>
   </dl>
-  <div class="sets"><button class="set" id="setVoice">🗣 Neighbour voices</button><button class="set" id="setBloom">✨ Glow</button><button class="set" id="setAO">🌓 Soft shading</button><button class="set" id="setFast">⏩ Fast time</button><button class="set" id="setFreeze">⏸ Freeze time</button><button class="set" id="setReset">↺ Start over</button></div>
+  <div class="sets"><button class="set" id="setVoice">🗣 Neighbour voices</button><button class="set" id="setPerf">⚡ Performance mode</button><button class="set" id="setBloom">✨ Glow</button><button class="set" id="setAO">🌓 Soft shading</button><button class="set" id="setFast">⏩ Fast time</button><button class="set" id="setFreeze">⏸ Freeze time</button><button class="set" id="setReset">↺ Start over</button></div>
 </div></div>
 <div id="win"><div class="card"><h3>Well done!</h3><p style="font-size:19px;margin:0 0 6px">You found all 12 golden bagels of the Plateau.</p><p style="color:var(--ink2);margin:0 0 18px">Time: <b id="winTime"></b></p><button id="winClose" class="tb big" style="width:auto;padding:0 28px;border-radius:999px;height:56px">Keep exploring</button></div></div>
 <div id="results"><div class="card"><h3 id="resTitle">Victory!</h3><div id="resSub"></div><ol id="resList"></ol><div class="btns"><button class="btn red" id="resNext">Next mission ▸</button><button class="btn" id="resClose">Explore</button></div></div></div>

@@ -138,7 +138,7 @@ export class Police {
       if (armed && !down) { c.shootT -= dt; if (c.shootT <= 0) { c.shootT = 0.8 + Math.random() * 0.8; const m = new THREE.Vector3(c.pos.x + Math.sin(yaw) * 0.6, c.pos.y + 1.3, c.pos.z + Math.cos(yaw) * 0.6), tgt = new THREE.Vector3(p.x + (Math.random() - 0.5) * 1.2, p.y + 1.0, p.z + (Math.random() - 0.5) * 1.2);
           this.combat.fx.tracer(m, tgt, 0.08); this.combat.fx.flash(m, 0.9); this.sfx.shot?.(1, Math.max(0.15, 1 - d / 60));
           if (Math.random() < 0.45) this.combat.damage(4 + this.stars * 1.5, 'cop', dx / (d || 1) * 2, dz / (d || 1) * 2); } }
-      c.ch.animate(dt, sp, true, 0, { gun: armed ? 'pistol' : null, aimPitch: 0 });
+      c.ch.animate(dt, sp, true, 0, { gun: this.stars >= 2 ? 'pistol' : null, raise: armed && d < 22, aimPitch: 0 });
     }
     for (let i = this.foot.length - 1; i >= 0; i--) if (this.foot[i].gone) { this.scene.remove(this.foot[i].ch.root); this.foot.splice(i, 1); }
     // busted: an officer holding you while you're not getting away

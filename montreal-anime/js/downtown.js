@@ -307,9 +307,8 @@ export function buildDowntown(scene, world) {
       if (!cityArea(x, z) && !(x > DOWNTOWN.x0 && x < DOWNTOWN.x1 && z > DOWNTOWN.z0 && z < DOWNTOWN.z1)) continue;
       spots.push([x, C.ground(x, z, h(z) + 1, 0), z]);
     }
-    const im = new THREE.InstancedMesh(hg, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradient }), spots.length), m4 = new THREE.Matrix4();
-    spots.forEach(([x, y, z], i) => { im.setMatrixAt(i, m4.makeTranslation(x, y, z)); C.add({ x0: x - 0.2, x1: x + 0.2, z0: z - 0.2, z1: z + 0.2, y0: y, y1: y + 0.7, nowalk: true }); });
-    im.castShadow = true; im.computeBoundingSphere(); scene.add(im);
+    // drawn by breakables.js: hit one with a car and it snaps off with a jet of water
+    void hg; for (const [x, y, z] of spots) world.breakList.push({ type: 'hydrant', x, y, z, col: '#c8312a', c: C.add({ x0: x - 0.2, x1: x + 0.2, z0: z - 0.2, z1: z + 0.2, y0: y, y1: y + 0.7, nowalk: true }) });
   }
 
   const g = B.build(batchMaterial(), 'downtown'); scene.add(g);

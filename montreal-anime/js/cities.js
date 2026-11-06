@@ -52,6 +52,7 @@ function buildCity(scene, world, def) {
   WATERS.push({ x0: r.x0 - 400, x1: r.x1 + 400, z0: def.waterZ, z1: def.waterZ + 2000, y: h(def.waterZ) - 1.6, back: def.waterZ - 10 });
 
   const box = (x0, x1, y0, y1, z0, z1, col, kind = 0, solid = true, extra) => {
+    if (x0 > x1) [x0, x1] = [x1, x0]; if (z0 > z1) [z0, z1] = [z1, z0];
     B.box(x0, x1, y0, y1, z0, z1, L(col), kind);
     if (solid) C.add(Object.assign({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), y0, y1 }, extra));
   };
@@ -86,7 +87,7 @@ function buildCity(scene, world, def) {
   const special = new Map();   // "k,m" -> 'park' | 'landmark'
   const pad = (b, col = '#cfcac0') => {
     const off = CURB, P = (x, z) => [x, h(z) + off, z], { x0, x1, z0, z1 } = b;
-    B.quad(P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1), [0, 1, 0], L(col), 0);
+    B.quad(P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1), [0, 1, 0], L(col), 13);
     for (const [a, c, n] of [[[x0, z0], [x1, z0], [0, 0, -1]], [[x0, z1], [x1, z1], [0, 0, 1]], [[x0, z0], [x0, z1], [-1, 0, 0]], [[x1, z0], [x1, z1], [1, 0, 0]]])
       B.quad([a[0], h(a[1]) - 0.4, a[1]], [c[0], h(c[1]) - 0.4, c[1]], P(c[0], c[1]), P(a[0], a[1]), n, L('#a9a49a'), 0);
     C.add({ x0, x1, z0, z1, y0: h(z1) - 1, t: 'h', off });
@@ -103,6 +104,7 @@ function buildCity(scene, world, def) {
 
   // ------------------------------------------------------------- building kit
   // podium + shaft (glass curtain wall or punched stone) + setbacks + crown
+  const sd0 = (x) => x / 2;
   function tower(cx, cz, w, d, H, o = {}) {
     const g0 = Math.min(h(cz - d / 2 - 6), h(cz + d / 2 + 6)) - 1.2, base = h(cz) + CURB, top = base + H;
     const glass = o.glass ?? R() < 0.7;
@@ -125,6 +127,15 @@ function buildCity(scene, world, def) {
       box(cx - sw / 2, cx + sw / 2, y, y1, cz - sd / 2, cz + sd / 2, tint, glass ? 11 : 12);
       if (s < steps) { box(cx - sw / 2 - 0.5, cx + sw / 2 + 0.5, y1 - 0.2, y1 + 0.6, cz - sd / 2 - 0.5, cz + sd / 2 + 0.5, '#e8e4dc', 0, false); sw *= 0.8; sd *= 0.8; }
       y = y1;
+    }
+    // condo balconies: a slab with a glass railing on every floor, on the two long faces (Toronto's signature look)
+    if (o.balc) {
+      const y0 = (o.podium !== 0 ? y : g0) , b0 = Math.max(base + 12, base + 3.1 * 4), long = w >= d, depth = 1.5;
+      for (let fy = b0; fy < top - 4; fy += 3.1) for (const sd of [-1, 1]) {
+        if (long) { const zf = cz + sd * sd0(d); box(cx - w * 0.42, cx + w * 0.42, fy, fy + 0.22, zf, zf + sd * depth, '#d9dbdc', 0, false); B.box(cx - w * 0.42, cx + w * 0.42, fy + 0.22, fy + 1.15, sd > 0 ? zf + depth - 0.05 : zf - depth, sd > 0 ? zf + depth : zf - depth + 0.05, L('#9fb4c2'), 5); }
+        else { const xf = cx + sd * sd0(w); box(xf, xf + sd * depth, fy, fy + 0.22, cz - d * 0.42, cz + d * 0.42, '#d9dbdc', 0, false); B.box(sd > 0 ? xf + depth - 0.05 : xf - depth, sd > 0 ? xf + depth : xf - depth + 0.05, fy + 0.22, fy + 1.15, cz - d * 0.42, cz + d * 0.42, L('#9fb4c2'), 5); }
+      }
+      void y0;
     }
     if (o.crown !== false) {
       box(cx - sw * 0.32, cx + sw * 0.32, top, top + 5, cz - sd * 0.32, cz + sd * 0.32, '#8d939b', 10);
@@ -193,11 +204,11 @@ function buildCity(scene, world, def) {
     if (isTO) {
       if (tall > 0.62) {   // Financial District: 1–2 big office towers on plazas
         const n = rr < 0.55 ? 1 : 2;
-        for (let i = 0; i < n; i++) { const w = (b.ix1 - b.ix0) * (n === 1 ? 0.5 : 0.38), dd = (b.iz1 - b.iz0) * (0.4 + R() * 0.2); tower(n === 1 ? b.cx : i ? b.ix1 - w / 2 - 5 : b.ix0 + w / 2 + 5, b.cz + (R() - 0.5) * 12, w, dd, 120 + tall * (110 + R() * 70), { podium: 6 }); }
+        for (let i = 0; i < n; i++) { const w = (b.ix1 - b.ix0) * (n === 1 ? 0.5 : 0.38), dd = (b.iz1 - b.iz0) * (0.4 + R() * 0.2); tower(n === 1 ? b.cx : i ? b.ix1 - w / 2 - 5 : b.ix0 + w / 2 + 5, b.cz + (R() - 0.5) * 12, w, dd, 150 + tall * (120 + R() * 90), { podium: 6 }); }
       } else if (tall > 0.18 || rr < 0.35) {   // the condo forest: slim glass towers on brick podiums
         streetWall(b, 8, 18, BRICK, 11);
         const n = 1 + (R() < 0.6 ? 1 : 0) + (tall > 0.4 && R() < 0.5 ? 1 : 0);
-        for (let i = 0; i < n; i++) { const w = 18 + R() * 8, x = b.ix0 + 22 + (b.ix1 - b.ix0 - 44) * (n === 1 ? 0.5 : i / (n - 1)), z = b.cz + (R() - 0.5) * 20; tower(x, z, w, w * (0.8 + R() * 0.5), 60 + tall * 120 + R() * 70, { podium: 0, glass: R() < 0.85 }); }
+        for (let i = 0; i < n; i++) { const w = 18 + R() * 8, x = b.ix0 + 22 + (b.ix1 - b.ix0 - 44) * (n === 1 ? 0.5 : i / (n - 1)), z = b.cz + (R() - 0.5) * 20; tower(x, z, w, w * (0.8 + R() * 0.5), 75 + tall * 150 + R() * 90, { podium: 0, glass: R() < 0.85, ...(R() < 0.75 ? { balc: true, setbacks: 0 } : {}) }); }
       } else if (rr < 0.12) parkInside(b);
       else streetWall(b, 7, 16, BRICK, 14);
     } else {
@@ -235,25 +246,8 @@ function buildCity(scene, world, def) {
     const y = h(z) + CURB, c = C.add({ x0: x - 0.12, x1: x + 0.12, z0: z - 0.12, z1: z + 0.12, y0: y - 0.2, y1: y + 5.5, nowalk: true });
     world.breakList.push({ type: 'lamp', x, y, z, ry, s: 0.76, c });
   }
-  // street trees: instanced (trunk + two-tier canopy) — two draw calls for the whole city
-  {
-    const tr = trees.filter(([x, z]) => !near(x, z));
-    const trunk = new THREE.CylinderGeometry(0.14, 0.2, 2.6, 6).translate(0, 1.3, 0);
-    // a leafy crown: clustered, jittered blobs with light and dark greens (vertex colours), not one faceted ball
-    const blobs = [];
-    const BL = [[0, 3.7, 0, 1.55], [0.9, 4.2, 0.3, 1.1], [-0.8, 4.3, -0.4, 1.15], [0.2, 5.0, -0.2, 1.0], [-0.3, 3.4, 0.9, 1.0], [0.6, 3.5, -0.9, 0.95], [-0.1, 5.6, 0.3, 0.7]];
-    for (const [bx, by, bz, br] of BL) {
-      const g = new THREE.IcosahedronGeometry(br, 1), P = g.attributes.position, cols = [];
-      for (let i = 0; i < P.count; i++) { const j = 0.84 + 0.3 * Math.abs(Math.sin(P.getX(i) * 7.1 + P.getY(i) * 3.3 + P.getZ(i) * 5.7 + bx * 9)); P.setXYZ(i, P.getX(i) * j, P.getY(i) * j * 0.92, P.getZ(i) * j); const top = (P.getY(i) / br + 1) / 2, sh = 0.55 + 0.45 * top; cols.push(0.36 * sh, (0.62 + 0.1 * Math.sin(bx * 5)) * sh, 0.24 * sh); }
-      g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); g.translate(bx, by, bz); g.computeVertexNormals(); blobs.push(g.toNonIndexed());
-    }
-    const crown = mergeGeometries(blobs);
-    const m1 = new THREE.InstancedMesh(trunk, new THREE.MeshToonMaterial({ color: 0x6b4f3a, gradientMap: gradient }), tr.length);
-    const m2 = new THREE.InstancedMesh(crown, new THREE.MeshToonMaterial({ vertexColors: true, color: isTO ? 0xd8f0c8 : 0xe0f0c8, gradientMap: gradient }), tr.length);
-    const m4 = new THREE.Matrix4();
-    tr.forEach(([x, z, s], i) => { m4.compose(new THREE.Vector3(x, h(z) + CURB, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), R() * 6), new THREE.Vector3(s, s, s)); m1.setMatrixAt(i, m4); m2.setMatrixAt(i, m4); C.add({ x0: x - 0.2, x1: x + 0.2, z0: z - 0.2, z1: z + 0.2, y0: h(z), y1: h(z) + 3, thin: true }); });
-    for (const m of [m1, m2]) { m.castShadow = true; m.receiveShadow = true; m.computeBoundingSphere(); scene.add(m); }
-  }
+  // street trees: drawn by breakables.js (instanced, and a car can knock them over)
+  for (const [x, z, sc] of trees) { if (near(x, z)) continue; const y = h(z) + CURB; world.breakList.push({ type: 'tree', x, y, z, ry: R() * 6, s: sc, c: C.add({ x0: x - 0.2, x1: x + 0.2, z0: z - 0.2, z1: z + 0.2, y0: h(z), y1: h(z) + 3, thin: true }) }); }
 
   const g = B.build(batchMaterial(), def.key); scene.add(g);
   const map = radar(def, blocks, r);

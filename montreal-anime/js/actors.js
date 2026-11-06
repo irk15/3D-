@@ -279,7 +279,7 @@ export class Player {
         this.vel.set(Math.sin(this.yaw) * sp, 0, Math.cos(this.yaw) * sp);
       } else {
         this.vel.x += (mx * top - this.vel.x) * k; this.vel.z += (mz * top - this.vel.z) * k;
-        if (this.gun) { let d = camYaw + Math.PI - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 14)); }
+        if (this.gun && this.raise) { let d = camYaw + Math.PI - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 14)); }
         else if (mag > 0.05) { const ty = Math.atan2(mx, mz); let d = ty - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.yaw += d * (1 - Math.exp(-dt * 12)); }
       }
     }
@@ -309,7 +309,7 @@ export class Player {
     this.gliding = false;
     if (!this.grounded) {
       this.vy -= 15 * dt;
-      if (!bike && inp.jumpHeld && this.vy < -1.0 && this.jumps >= 1 && this.flip === 0) { this.vy = Math.max(this.vy, -1.7); this.gliding = true; this.fx.glide = true; }
+      // (no umbrella glide any more: falling is falling)
       if (this.dashT > 0) this.vy = Math.max(this.vy, 0);
       this.vy = Math.max(this.vy, -38);
       const prevY = p.y;
@@ -327,7 +327,7 @@ export class Player {
     this.c.root.position.set(p.x, this.visY, p.z); this.c.root.rotation.y = this.yaw;
     if (bike) { this.bike.spin(this.speed * dt); this.c.root.rotation.z = 0; let dy = this.yaw - (this.prevYaw ?? this.yaw); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); this.bikeSteer = (this.bikeSteer || 0) + (Math.max(-0.5, Math.min(0.5, dy / Math.max(dt, 1e-3) * 0.25)) - (this.bikeSteer || 0)) * (1 - Math.exp(-dt * 8)); this.bike.steer?.(this.bikeSteer); }
     this.prevYaw = this.yaw;
-    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: this.gliding || (inp.rain && !bike), bike, flip: this.flip, parcel: this.parcel, gun: bike || this.ko ? null : this.gun, aimPitch: this.aimPitch, ko: this.ko });
+    return this.c.animate(dt, bike ? this.speed * 0.45 : this.speed, this.grounded || bike, this.waveT > 0 ? 1 : 0, { umbrella: !this.ko && !this.gun && this.grounded && inp.rain && !bike, bike, flip: this.flip, parcel: this.parcel, gun: bike || this.ko ? null : this.gun, raise: !!this.raise, aimPitch: this.aimPitch, ko: this.ko });
   }
 }
 // BIXI — Montréal's shared bike: step-through grey frame with the red accents, front rack and basket,
@@ -544,8 +544,7 @@ export class Traffic {
     for (const m of [-1, 1]) this.signal(scene, ewZ(m), m);
   }
   cityLights(scene, list) {
-    const n = list.length * 4, poleIM = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.09, 0.11, 5.6, 6).translate(0, 2.8, 0), toon('#2f343a'), n);
-    const boxIM = new THREE.InstancedMesh(new THREE.BoxGeometry(0.36, 1.1, 0.32).translate(0, 5.0, 0), toon('#23262b'), n);
+    const n = list.length * 4;   // poles and housings are breakables (breakables.js); the lamps live here
     const lampG = new THREE.SphereGeometry(0.11, 8, 6), lamps = {};
     for (const set of ['ns', 'ew']) lamps[set] = this.mats[set].map((mat) => new THREE.InstancedMesh(lampG, mat, n / 2));
     const m4 = new THREE.Matrix4(), cnt = { ns: 0, ew: 0 }; let i = 0;
@@ -553,13 +552,14 @@ export class Traffic {
       const ox = nsHW(k) + 0.7, oz = ewHW(m) + 0.7, y = h(z) + CURB;
       for (const [sx, sz, set] of [[1, 1, 'ns'], [-1, -1, 'ns'], [1, -1, 'ew'], [-1, 1, 'ew']]) {
         const px = x + sx * ox, pz = z + sz * oz;
-        m4.makeTranslation(px, y, pz); poleIM.setMatrixAt(i, m4); boxIM.setMatrixAt(i, m4); i++;
+        i++;
         const j = cnt[set]++, fx = set === 'ew' ? -sx * 0.17 : 0, fz = set === 'ns' ? -sz * 0.17 : 0;
         lamps[set].forEach((im, li) => { m4.makeTranslation(px + fx, y + 5.36 - li * 0.36, pz + fz); im.setMatrixAt(j, m4); });
-        this.w.colliders.add({ x0: px - 0.12, x1: px + 0.12, z0: pz - 0.12, z1: pz + 0.12, y0: y, y1: y + 5.6, thin: true });
+        const c = this.w.colliders.add({ x0: px - 0.12, x1: px + 0.12, z0: pz - 0.12, z1: pz + 0.12, y0: y, y1: y + 5.6, thin: true });
+        this.w.breakList.push({ type: 'signal', x: px, y, z: pz, c, onBreak: () => { const z0 = new THREE.Matrix4().makeScale(0, 0, 0); lamps[set].forEach((im) => { im.setMatrixAt(j, z0); im.instanceMatrix.needsUpdate = true; }); } });
       }
     }
-    for (const im of [poleIM, boxIM, ...lamps.ns, ...lamps.ew]) { im.computeBoundingSphere(); im.castShadow = im === poleIM || im === boxIM; scene.add(im); }
+    void i; for (const im of [...lamps.ns, ...lamps.ew]) { im.computeBoundingSphere(); scene.add(im); }
   }
   lightMats() { return ['#ff3b30', '#ffcc00', '#34d058'].map((c) => new THREE.MeshToonMaterial({ color: c, emissive: c, emissiveIntensity: 0, gradientMap: gradient })); }
   signal(scene, z, m) {

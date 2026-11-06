@@ -50,6 +50,7 @@ export class Walkers {
     this.fr++; const C = this.w.colliders, px = player.pos.x, pz = player.pos.z;
     let spawned = 0;
     for (const p of this.list) {
+      if (p.id >= (this.max ?? 999)) { if (p.live) { p.live = false; p.ch.root.visible = false; } continue; }
       const d = Math.hypot(p.pos.x - px, p.pos.z - pz);
       if (!p.live || (d > 150 && !p.rag)) { if (spawned < 2) { spawned++; this.spawn(p, px, pz, camYaw, p.live ? 70 : 20, p.live ? 130 : 110); } else { p.ch.root.visible = false; p.live = false; } continue; }
       if (p.rag) { if (stepRag(p, dt, C)) { p.ch.root.visible = true; continue; } }

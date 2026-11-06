@@ -291,7 +291,8 @@ async function boot() {
     if (e.code === 'KeyE') interact();
     if (e.code === 'Enter') { if (multi) { openChat(); e.preventDefault(); } else interact(); }
     if (e.code === 'KeyN') missionButton();
-    if (/^Digit[1-4]$/.test(e.code)) emote(+e.code.slice(5) - 1);
+    // 1–4: weapon slots like GTA (fists, pistol, SMG, rifle); Shift+1–4: emotes
+    if (/^Digit[1-4]$/.test(e.code)) { if (e.shiftKey || car) emote(+e.code.slice(5) - 1); else combat?.select(+e.code.slice(5) - 1); }
     if (e.code === 'KeyP') togglePhoto();
     if (e.code === 'KeyT') cycleTime();
     if (e.code === 'KeyY') cycleSeason();
@@ -312,13 +313,19 @@ async function boot() {
   let drag = null, mouseFire = false;
   // armed on desktop: the mouse is captured (pointer lock) so it aims like a shooter; right button = aim / lock on
   const locked = () => document.pointerLockElement === cv;
+  // mouse buttons use mousedown/mouseup (one event per button), so you can hold RIGHT to aim and click LEFT
+  // to shoot at the same time; pointer events only report the first button of a chord
+  cv.addEventListener('mousedown', (e) => {
+    if (isTouch || !combat || car) return;
+    if (e.button === 2) { if (!combat.drawn) combat.toggle(true); combat.aiming = true; }
+    else if (e.button === 0 && combat.armed) mouseFire = true;
+    else return;
+    if (combat.armed && !locked()) { try { cv.requestPointerLock?.(); } catch (err) { /* not allowed */ } }
+  });
+  addEventListener('mouseup', (e) => { if (e.button === 2 && combat) combat.aiming = false; if (e.button === 0) mouseFire = false; });
   cv.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') return;
-    if (combat?.armed) {
-      if (!locked() && !isTouch) { try { cv.requestPointerLock?.(); } catch (err) { /* not allowed */ } }
-      if (e.button === 2) combat.aiming = true; else if (e.button === 0) mouseFire = true;
-      if (locked()) return;
-    }
+    if (locked() || (combat?.armed && (e.button === 0 || e.button === 2))) return;
     drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId);
   });
   document.addEventListener('mousemove', (e) => {
@@ -328,11 +335,10 @@ async function boot() {
     combat?.flick(Math.abs(e.movementX) + Math.abs(e.movementY));
   });
   document.addEventListener('pointerlockchange', () => { if (!locked()) { mouseFire = false; if (combat) combat.aiming = false; } });
-  addEventListener('mouseup', (e) => { if (e.button === 2 && combat) combat.aiming = false; if (e.button === 0) mouseFire = false; });
   cv.addEventListener('pointermove', (e) => { if (!drag) return; cam.yaw -= (e.clientX - drag.x) * 0.006; cam.pitch = Math.min(1.25, Math.max(pitchMin(), cam.pitch + (e.clientY - drag.y) * 0.005)); drag = { x: e.clientX, y: e.clientY }; cam.lastInput = clock.elapsedTime; });
-  cv.addEventListener('pointerup', (e) => { drag = null; if (e.button === 0) mouseFire = false; if (e.button === 2 && combat) combat.aiming = false; });
+  cv.addEventListener('pointerup', () => { drag = null; });
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
-  cv.addEventListener('wheel', (e) => { cam.dist = Math.min(photoMode ? 16 : 10, Math.max(photoMode ? 1.2 : 2.4, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); e.preventDefault(); }, { passive: false });
+  cv.addEventListener('wheel', (e) => { if (combat?.armed && !photoMode) { combat.next(Math.sign(e.deltaY) || 1); e.preventDefault(); return; } cam.dist = Math.min(photoMode ? 16 : 10, Math.max(photoMode ? 1.2 : 2.4, cam.dist * (1 + Math.sign(e.deltaY) * 0.1))); e.preventDefault(); }, { passive: false });
   // ---- touch: floating joystick on the left (push to the edge to run), swipe to look and pinch to zoom
   // on the right, and a button pad that changes with what you're doing (walking, flying, biking, driving)
   const isTouch = app.isTouch = touch || params.has('touch') || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches);
@@ -502,7 +508,7 @@ async function boot() {
     su.uCloudCol.value.copy(mixG(look.cloud, 0.6)); su.uCloudShade.value.copy(mixG(look.shade, 0.8)); su.uCloud.value = weather.cover;
     scene.fog.color.copy(mixG(look.fog, 0.75)); const altF = Math.max(0, player.pos.y - h(player.pos.z)); scene.fog.near = (ws === 'rain' ? 60 : 180) + altF * 1.5; scene.fog.far = (ws === 'rain' ? 450 : 1150) + altF * 3;
     U.uNight.value = look.night;
-    pipe.U.uInk.value.copy(look.ink); pipe.U.uSun.value.copy(look.lightDir); pipe.U.uCloud.value = (1 - look.night) * dim * (ws === 'cloudy' ? 1.3 : 1);
+    pipe.U.uInk.value.copy(look.ink); pipe.U.uSun.value.copy(look.lightDir); pipe.U.uHazeC.value.copy(sky.material.uniforms.uHor.value); pipe.U.uSunC.value.copy(look.sunC); pipe.U.uCloud.value = (1 - look.night) * dim * (ws === 'cloudy' ? 1.3 : 1);
     const k = 1 - Math.exp(-dt * 2.2);
     const snowT = season === 'winter' ? 1 : 0, autT = season === 'autumn' ? 1 : 0;
     U.uSnow.value += (snowT - U.uSnow.value) * k; U.uAutumn.value += (autT - U.uAutumn.value) * k;
@@ -523,6 +529,14 @@ async function boot() {
   $('#btnSound').onclick = toggleSound;
   const setting = (id, get, set) => { const el = $(id); const upd = () => el.classList.toggle('on', get()); el.onclick = (e) => { e.stopPropagation(); set(!get()); upd(); }; upd(); };
   setting('#setVoice', () => voice.on, (v) => { voice.on = v; save.voice = v; writeSave(save); if (!v) voice.stop(); });
+  // performance mode: lower render scale, smaller shadow map, fewer pedestrians, no AO/glow
+  function applyPerf() {
+    const on = !!save.perf;
+    prMax = on ? Math.min(pr, 0.85) : pr; renderer.setPixelRatio(Math.min(renderer.getPixelRatio(), prMax)); if (!on) renderer.setPixelRatio(prMax); resize();
+    const sm = on ? 1024 : SM; if (sun.shadow.mapSize.x !== sm) { sun.shadow.mapSize.set(sm, sm); sun.shadow.map?.dispose(); sun.shadow.map = null; }
+    walkers.max = on ? 12 : walkers.list.length; pipe.aoOn = !on; pipe.bloomOn = !on;
+  }
+  setting('#setPerf', () => !!save.perf, (v) => { save.perf = v; writeSave(save); applyPerf(); });
   setting('#setBloom', () => pipe.bloomOn, (v) => { pipe.bloomOn = v; });
   setting('#setAO', () => pipe.aoOn, (v) => { pipe.aoOn = v; });
   setting('#setFast', () => timeSpeed > 0.05, (v) => { timeSpeed = v ? 0.2 : 1 / 60; });
@@ -670,6 +684,8 @@ async function boot() {
     for (const o of vehicles.concat(police.carVs)) if (o !== v && !o.wreck && o.pos.distanceTo(v.pos) < 7) o.dmg = Math.min(1, (o.dmg || 0) + 0.35);
     police.crime(v.cop ? 2 : 1.2, 'boom', player.pos);
   }
+  document.querySelectorAll('#wslots button').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); combat.select(+b.dataset.w); }));
+  combat.refreshHud();
   $('#pvpTag')?.addEventListener('click', () => combat.key('KeyK'));
   const DELAY = 150;
   function updateRemotes(dt) {
@@ -700,7 +716,7 @@ async function boot() {
       if (bike && !r.bike) { r.bike = bikeModel(); ch.root.add(r.bike.g); } else if (!bike && r.bike) { ch.root.remove(r.bike.g); r.bike = null; }
       if (r.bike) r.bike.spin(r.speed * dt);
       r.wave = Math.max(0, r.wave - dt);
-      ch.animate(dt, fly ? 0 : bike ? r.speed * 0.45 : r.speed, !!(r.flags & 1) || bike, r.wave > 0 ? 1 : 0, { wings: fly, fly: fly ? Math.min(1, r.speed / 14) : 0, flap: (r.flags & 32) ? 2 : 1, bike, parcel: !!(r.flags & 8), umbrella: !!(r.flags & 16), gun: !fly && !bike && r.gw ? WEAPONS[r.gw]?.id : null, aimPitch: r.ap });
+      ch.animate(dt, fly ? 0 : bike ? r.speed * 0.45 : r.speed, !!(r.flags & 1) || bike, r.wave > 0 ? 1 : 0, { wings: fly, fly: fly ? Math.min(1, r.speed / 14) : 0, flap: (r.flags & 32) ? 2 : 1, bike, parcel: !!(r.flags & 8), umbrella: !!(r.flags & 16), gun: !fly && !bike && r.gw ? WEAPONS[r.gw]?.id : null, raise: !!r.rz, aimPitch: r.ap });
       ch.root.rotation.order = 'YXZ'; r.tlS = (r.tlS || 0) + ((r.tl || 0) - (r.tlS || 0)) * Math.min(1, dt * 10);
       if (Math.abs(r.tlS) > 0.02) { const lie = Math.min(1, Math.abs(r.tlS) / 1.5708), s2 = Math.sign(r.tlS); ch.root.rotation.x = r.tlS; ch.root.position.x -= Math.sin(r.yaw) * s2 * 0.8 * lie; ch.root.position.z -= Math.cos(r.yaw) * s2 * 0.8 * lie; ch.root.position.y += 0.1 * lie; } else ch.root.rotation.x = 0;
       ch.root.visible = r.pos.distanceTo(camera.position) < 420;
@@ -757,7 +773,7 @@ async function boot() {
     n.on('join', (p) => { if (n !== net) return; chatLine('', `${p.name} joined the game! 👋`); sfx.mission('join'); ach.unlock('online'); updRoom(); sendState(); if (n.isHost && !missions.active) setTimeout(() => chatLine('', 'You\'re the host: press N (or ⚑) to start a mission!'), 1200); });
     n.on('status', () => { if (n === net) updRoom(); });
     n.on('leave', (p) => { if (n !== net) return; dropRemote(p.id); chatLine('', `${p.name} left.`); updRoom(); });
-    n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); r.vk = m.vk; r.vc = m.vc; r.vst = m.st || 0; r.gw = m.gw | 0; r.ap = m.ap || 0; r.pvp = m.pv !== 0; r.tl = m.tl || 0; r.down = Math.abs(r.tl) > 0.8; r.hp = m.hp; if (r.buf.length > 30) r.buf.shift(); });
+    n.on('st', (m, p) => { if (n !== net || typeof m.x !== 'number') return; const r = remoteFor(p, m); r.buf.push({ t: performance.now(), x: m.x, y: m.y, z: m.z, r: m.r || 0, s: m.s || 0, f: m.f | 0 }); r.vk = m.vk; r.vc = m.vc; r.vst = m.st || 0; r.gw = m.gw | 0; r.ap = m.ap || 0; r.pvp = m.pv !== 0; r.tl = m.tl || 0; r.rz = m.rz | 0; r.down = Math.abs(r.tl) > 0.8; r.hp = m.hp; if (r.buf.length > 30) r.buf.shift(); });
     n.on('chat', (m, p) => { if (n !== net) return; const t = String(m.text || '').slice(0, 120); chatLine(p.name, t, COLORS[p.color | 0]); bubble(p.id, t); sfx.blip(); });
     n.on('emo', (m, p) => { if (n !== net) return; const i = (m.i | 0) % 4; bubble(p.id, EMO[i], true); const r = remotes.get(p.id); if (r && i === 0) r.wave = 2.5; else r?.ch.gesture?.(GEST[i], i === 3 ? 5 : 2.2); });
   }
@@ -807,7 +823,7 @@ async function boot() {
   function sendState() {
     if (!multi || !net.peers.size) return;
     const p = hero.root.position;
-    const f = (player.grounded ? 1 : 0) | (player.flying ? 2 : 0) | (player.bike ? 4 : 0) | (player.parcel ? 8 : 0) | ((inp.rain || player.gliding) && !player.bike && !player.flying && !car ? 16 : 0) | (player.flying && inp.run ? 32 : 0) | (car ? 64 : 0);
+    const f = (player.grounded ? 1 : 0) | (player.flying ? 2 : 0) | (player.bike ? 4 : 0) | (player.parcel ? 8 : 0) | (inp.rain && player.grounded && !player.bike && !player.flying && !car && !combat?.armed ? 16 : 0) | (player.flying && inp.run ? 32 : 0) | (car ? 64 : 0);
     if (car) { const c = car.pos; net.send({ t: 'st', x: +c.x.toFixed(2), y: +c.y.toFixed(2), z: +c.z.toFixed(2), r: +car.yaw.toFixed(3), s: +car.speed.toFixed(2), f, o: save.outfit, md: save.model, vk: car.kind, vc: car.color, st: +car.steer.toFixed(2), pv: combat?.pvp ? 1 : 0, hp: Math.round(combat?.hp ?? 100) }); return; }
     net.send({ t: 'st', x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +player.yaw.toFixed(3), s: +player.speed.toFixed(2), f, o: save.outfit, md: save.model, ...(combat ? combat.stateFields() : {}) });
   }
@@ -862,8 +878,9 @@ async function boot() {
   let boardT = 0, mmT = 0; const amb = { siren: 40, gull: 2, metro: false, hour: undefined };
   // dynamic resolution: only when the GPU can't keep up, the render scale steps down a little
   // (never below 1.0 on desktop), and it climbs back to full sharpness as soon as there is headroom
-  const prMax = renderer.getPixelRatio(), prMin = Math.min(prMax, touch ? 0.7 : 0.8);
+  let prMax = renderer.getPixelRatio(); const prMin = Math.min(prMax, touch ? 0.7 : 0.8);
   let frameAvg = 1 / 60, slowT = 0, fastT = 0;
+  if (save.perf) applyPerf();
   function adaptResolution(raw) {
     if (params.has('manual')) return;
     frameAvg += (raw - frameAvg) * 0.05;
@@ -905,7 +922,7 @@ async function boot() {
       sfx.engine(car.rpm, Math.max(0, inp.y), car.speed);
       $('#driveSpd').textContent = Math.round(car.speed * 3.6); $('#driveGear').textContent = car.gear;
     } else {
-      combat.lockInput(inp); player.gun = combat.armed ? combat.weapon.id : null; player.aimPitch = combat.aimPitch();
+      combat.lockInput(inp); player.gun = combat.armed ? combat.weapon.id : null; player.raise = combat.raised; player.aimPitch = combat.aimPitch();
       stepped = player.update(dt, inp, cam.yaw); sfx.engine(0, 0, 0); combat.afterPlayer(dt);
     }
     if (car && car.speed > 5) for (const r of remotes.values()) { if (r.car || !r.ch.root.visible) continue; for (const [cx, cz, cr] of car.circles(car.pos.x, car.pos.z, car.yaw)) if ((r.pos.x - cx) ** 2 + (r.pos.z - cz) ** 2 < (cr + 0.5) ** 2 && Math.abs(r.pos.y - car.pos.y) < 1.8) { combat.carHitRemote(r, car.vF * Math.sin(car.yaw), car.vF * Math.cos(car.yaw), car.speed); break; } }

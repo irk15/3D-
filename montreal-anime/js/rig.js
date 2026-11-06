@@ -220,11 +220,23 @@ export function makeRigged(o = {}) {
   const umb = makeUmbrella(o.hatCol || '#e4402b'); body.add(umb);
   const guns = { pistol: makeGun('pistol'), smg: makeGun('smg'), rifle: makeGun('rifle') }; for (const g of Object.values(guns)) body.add(g);
   const _h1 = new THREE.Vector3(), _h2 = new THREE.Vector3();
+  const _h3 = new THREE.Vector3();
   const atHand = (name, out) => { const b = bones[name]; if (!b) return null; b.updateWorldMatrix(true, false); out.setFromMatrixPosition(b.matrixWorld); return body.worldToLocal(out); };
   const st = { t: Math.random() * 10, air: 0, fly: 0, bike: 0, wave: 0, umb: 0, parcel: 0, land: 0, jump: 0, gest: null, gestT: 0, gestW: 0, lean: 0, prevYaw: 0, ph: 0, w: { idle: 1, walk: 0, run: 0 } };
   const walkD = act.walk?.getClip().duration || 1, runD = act.run?.getClip().duration || 0.7;
   const WALK = kind === 'soldier' ? 1.5 : 1.6, RUN = kind === 'soldier' ? 4.2 : 4.6;   // native clip speeds (m/s)
 
+  // two-bone IK in body space: shoulder a, elbow b, hand c reach the target T (body-local), elbow bends toward pole
+  const _ikS = new THREE.Vector3(), _ikE = new THREE.Vector3(), _ikH = new THREE.Vector3();
+  function ik(a, b, c, T, pole, w) {
+    if (w <= 0.001 || !atHand(a, _ikS) || !atHand(b, _ikE) || !atHand(c, _ikH)) return;
+    const L1 = _ikS.distanceTo(_ikE), L2 = _ikE.distanceTo(_ikH), dir = T.clone().sub(_ikS); let d = dir.length();
+    d = Math.max(Math.abs(L1 - L2) + 1e-3, Math.min(d, (L1 + L2) * 0.999)); dir.normalize();
+    const ax = (L1 * L1 - L2 * L2 + d * d) / (2 * d), hh = Math.sqrt(Math.max(0, L1 * L1 - ax * ax));
+    const pp = pole.clone().addScaledVector(dir, -pole.dot(dir)).normalize();
+    const E = _ikS.clone().addScaledVector(dir, ax).addScaledVector(pp, hh), H = _ikS.clone().addScaledVector(dir, d);
+    aim(a, b, E.clone().sub(_ikS).normalize(), w); aim(b, c, H.sub(E).normalize(), w);
+  }
   function aim(a, b, dirBody, w) {
     if (w <= 0.001) return;
     const A = bones[a], B = bones[b]; if (!A || !B) return;
@@ -322,12 +334,34 @@ export function makeRigged(o = {}) {
     if (st.parcel > 0.01 && st.bike < 0.5 && f < 0.5) for (const [sd, x] of [['Left', 1], ['Right', -1]]) { aim(sd + 'Arm', sd + 'ForeArm', V(x * 0.25, -0.6, 0.75), st.parcel); aim(sd + 'ForeArm', sd + 'Hand', V(-x * 0.25, 0.15, 1), st.parcel); }
     // umbrella overhead (right arm)
     if (st.umb > 0.01 && f < 0.5) { aim('RightArm', 'RightForeArm', V(-0.35, 0.9, 0.1), st.umb); aim('RightForeArm', 'RightHand', V(0.15, 1, 0.1), st.umb); }
-    // two-handed aim: right arm points at the target, left hand supports, head follows the aim pitch
+    // weapons, like a real person holds them:
+    //  pistol — one hand; raised: arm out at the target; lowered: hangs by the thigh. The free hand is left alone.
+    //  SMG / rifle — two hands; the support hand sits on the foregrip (solved with 2-bone IK), stock at the
+    //  shoulder when aiming, held low across the body otherwise.
+    st.raise = lerp(st.raise || 0, op.gun && op.raise ? 1 : 0, k(op.raise ? 16 : 7));
+    st.gunPitch = 0;
     if (st.gun > 0.01 && st.bike < 0.5 && f < 0.5 && !op.drive) {
-      const ap = Math.max(-0.7, Math.min(0.7, op.aimPitch || 0)), two = op.gun !== 'pistol';
-      aim('RightArm', 'RightForeArm', V(-0.1, 0.02 + ap, 1), st.gun); aim('RightForeArm', 'RightHand', V(-0.06, 0.02 + ap, 1), st.gun);
-      aim('LeftArm', 'LeftForeArm', V(two ? 0.28 : 0.18, -0.02 + ap * 0.9, 1), st.gun * 0.95); aim('LeftForeArm', 'LeftHand', V(two ? 0.06 : 0.3, 0.02 + ap, 1), st.gun * 0.95);
-      aim('Neck', 'Head', V(0, 0.05 + ap * 0.6, 1), st.gun * 0.5);
+      const ap = Math.max(-0.7, Math.min(0.7, op.aimPitch || 0)), R = st.raise, w = st.gun, long = op.gun !== 'pistol';
+      const ca = Math.cos(ap), sa = Math.sin(ap);
+      if (!long) {
+        if (R > 0.01) { aim('RightArm', 'RightForeArm', V(-0.08, sa, ca), w * R); aim('RightForeArm', 'RightHand', V(-0.05, sa, ca), w * R); }
+        st.gunPitch = ap * R + (1 - R) * -1.25;   // lowered: muzzle to the ground
+      } else {
+        const RS = atHand('RightArm', _h3) && _h3.clone();
+        if (RS) {
+          // right hand: at the shoulder pocket when aiming, at the hip when lowered
+          const hiT = new THREE.Vector3(RS.x + 0.1, RS.y - 0.1 + sa * 0.25, RS.z + 0.3 * ca + 0.05), loT = new THREE.Vector3(RS.x + 0.12, RS.y - 0.42, RS.z + 0.22);
+          ik('RightArm', 'RightForeArm', 'RightHand', hiT.lerp(loT, 1 - R), V(-0.7, -1, -0.2), w);
+          st.gunPitch = ap * R + (1 - R) * -0.55;
+          // left hand on the foregrip
+          if (atHand('RightHand', _h1)) {
+            const off = op.gun === 'rifle' ? 0.4 : 0.22, gp = st.gunPitch;
+            const T = _h1.clone().add(_h2.set(0.03, Math.sin(gp) * off - 0.04, Math.cos(gp) * off));
+            ik('LeftArm', 'LeftForeArm', 'LeftHand', T, V(0.8, -1, -0.1), w);
+          }
+        }
+      }
+      aim('Neck', 'Head', V(0, 0.05 + ap * 0.6 * R, 1), w * 0.45 * (0.3 + R * 0.7));
     }
     if (st.gun > 0.01 && op.drive) { aim('RightArm', 'RightForeArm', V(-0.2, -0.05, 1), st.gun * 0.8); aim('RightForeArm', 'RightHand', V(-0.1, 0.1, 1), st.gun * 0.8); }
     // hands up (someone's pointing a gun at them) and cowering (crouched, arms over the head)
@@ -372,7 +406,7 @@ export function makeRigged(o = {}) {
     parcel.visible = st.parcel > 0.5; umb.visible = st.umb > 0.5;
     for (const [n, gm] of Object.entries(guns)) {
       gm.visible = st.gun > 0.5 && op.gun === n;
-      if (gm.visible && atHand('RightHand', _h1)) { gm.position.copy(_h1).add(_h2.set(0.015, 0.0, 0.03)); gm.rotation.set(-(op.aimPitch || 0) * 1.1, 0, 0); }
+      if (gm.visible && atHand('RightHand', _h1)) { gm.position.copy(_h1).add(_h2.set(0.015, 0.0, 0.03)); gm.rotation.set(-(op.drive ? (op.aimPitch || 0) : st.gunPitch), 0, 0); }
     }
     if (umb.visible && atHand('RightHand', _h1)) umb.position.copy(_h1).add(_h2.set(0, -0.08, 0));
     if (parcel.visible && atHand('LeftHand', _h1) && atHand('RightHand', _h2)) parcel.position.copy(_h1).add(_h2).multiplyScalar(0.5).add(_h2.set(0, 0.12, 0.04));

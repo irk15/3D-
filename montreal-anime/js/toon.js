@@ -145,6 +145,11 @@ gEmit = vec3(0.0); gRough = 0.88; gMetal = 0.0; gBumpW = vec3(0.0);
     #ifdef STANDARD
     c = mix(c, vec3(0.04, 0.06, 0.09), win * 0.6 * (1.0 - uNight)); gBumpW = inset(fract(u / 2.1), fract(vWP.y / 3.7), 0.2, 0.8, 0.28, 0.86, T) * vis(0.5, fw);
     #endif
+  } else if (k > 12.5 && k < 13.5) {         // paving slabs: joints every 1.5 m, a little staining, a kerb line
+    vec2 q2 = vWP.xz / 1.5; vec2 f2 = abs(fract(q2) - 0.5);
+    float joint = smoothstep(0.465, 0.5, max(f2.x, f2.y));
+    c *= 0.93 + 0.12 * vn(vWP.xz * 0.6) + 0.05 * vn(floor(q2) * 3.1) - joint * 0.16;
+    gRough = mix(0.8, 0.3, uWet);
   } else if (k > 8.5 && k < 9.5) {           // roofs
     c *= 0.9 + 0.12 * vn(vWP.xz * 1.7); gRough = 0.95;
   } else if (k > 9.5 && k < 10.5) {          // metal
@@ -394,11 +399,11 @@ void main(){
       tC: { value: this.color.texture }, tN: { value: this.normal.texture }, tB: { value: this.b1.texture },
       uPx: { value: new THREE.Vector2() }, uLW: { value: 1 }, uInk: { value: new THREE.Color(0.10, 0.08, 0.20) }, uNight: U.uNight, uTime: U.uTime,
       uGrade: { value: new THREE.Vector3(1.08, 1, 0) }, uTan: { value: new THREE.Vector2(1, 1) }, uCamM: { value: new THREE.Matrix4() },
-      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 }, uReal: { value: REAL ? 1 : 0 }, uExpo: { value: 0.88 }, tD: { value: REAL ? this.color.depthTexture : null }, uNF: { value: new THREE.Vector2(0.25, 2600) },
+      uCloud: { value: 0.4 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSpeed: { value: 0 }, uFilter: { value: 0 }, uWet: U.uWet, uAO: { value: 1 }, uBloom: { value: 0.8 }, uFlash: { value: 0 }, uDesat: { value: 0 }, uHurt: { value: 0 }, uReal: { value: REAL ? 1 : 0 }, uExpo: { value: 0.88 }, tD: { value: REAL ? this.color.depthTexture : null }, uNF: { value: new THREE.Vector2(0.25, 2600) }, uHazeC: { value: new THREE.Color(0.75, 0.82, 0.9) }, uSunC: { value: new THREE.Color(1, 0.9, 0.75) },
     };
     this.quad = pass(/* glsl */`
 uniform sampler2D tC, tN, tB, tD; uniform vec2 uPx, uTan, uNF; uniform float uLW, uNight, uTime, uCloud, uSpeed, uFilter, uWet, uAO, uBloom, uFlash, uDesat, uHurt, uReal, uExpo;
-vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); } uniform vec3 uInk, uGrade, uSun; uniform mat4 uCamM; varying vec2 vUv;
+vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); } uniform vec3 uInk, uGrade, uSun, uHazeC, uSunC; uniform mat4 uCamM; varying vec2 vUv;
 ${GLSL_NOISE}
 #ifdef DEPTHTEX
 float D(vec2 uv){ float z = texture2D(tD, uv).x; if (z > 0.99999) return 1e4; float nd = z * 2.0 - 1.0; return 2.0 * uNF.x * uNF.y / (uNF.y + uNF.x - nd * (uNF.y - uNF.x)); }
@@ -462,8 +467,21 @@ void main(){
   ink = mix(ink, c * 0.55 + vec3(0.02, 0.02, 0.06), uNight * 0.5);
   c = mix(c, ink, edge * 0.92);
   // glow
+  // aerial perspective: distance haze that glows warm toward the sun (big-city air, like a modern open-world game)
+  if (uReal > 0.5 && !sky) {
+    vec2 ndc2 = vUv * 2.0 - 1.0; vec3 vd = normalize((uCamM * vec4(ndc2.x * uTan.x, ndc2.y * uTan.y, -1.0, 0.0)).xyz);
+    float hz = (1.0 - exp(-d0 * 0.0012)) * (1.0 - uNight * 0.5) * 0.6;
+    float sc = pow(max(dot(vd, normalize(uSun)), 0.0), 6.0);
+    c = mix(c, mix(uHazeC, uSunC * 1.3, sc * 0.7), hz);
+  }
   c += texture2D(tB, vUv).rgb * uBloom * (uReal > 0.5 ? 0.6 : 1.0);
-  if (uReal > 0.5) { c = aces(c * uExpo); c = pow(c, vec3(1.0 / 1.04)); }   // filmic tone mapping
+  if (uReal > 0.5) {
+    c = aces(c * uExpo); c = pow(c, vec3(1.0 / 1.04));   // filmic tone mapping
+    // grade: a touch of S-curve contrast, warm highlights, cool shadows
+    float lg2 = dot(c, vec3(0.299, 0.587, 0.114));
+    c = mix(c, c * c * (3.0 - 2.0 * c), 0.22);
+    c += vec3(0.035, 0.015, -0.025) * smoothstep(0.45, 1.0, lg2) + vec3(-0.012, 0.0, 0.022) * (1.0 - smoothstep(0.0, 0.35, lg2));
+  }
   // rain tint
   c = mix(c, c * vec3(0.86, 0.9, 1.0), uWet * 0.35);
   // anime speed lines when sprinting / dashing / biking

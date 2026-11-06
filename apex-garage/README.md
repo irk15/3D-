@@ -15,6 +15,11 @@ An interactive 3D supercar garage in the style of Need for Speed, built with Thr
 - **Launch**: the bay door opens, the car revs and accelerates out through the gears while a chase camera follows
 - Turntable, hydraulic lift, 7 camera angles (including a cinematic orbit), clickable hotspots on the car and a photo mode that saves a PNG
 - Your paint, finish and tuning choices for each car are saved in the browser
+- **Race mode (APEX // NIGHT RUN):** press RACE (or Enter) to drive the selected car on a 2.3 km neon night-city circuit against the other three cars as AI rivals. It has 3 laps, a countdown, positions, lap and best-lap times, a minimap and a results screen
+  - Arcade handling with handbrake drifts, skid marks and tyre smoke, nitro that refills while you drift, body roll, and wall and car collisions
+  - Your paint and tuning carry over to the race. Three cameras: chase, far chase and hood
+  - Keyboard, gamepad (RT/LT, A = nitro, B = drift) and on-screen touch controls
+  - Graphics quality adjusts automatically so the frame rate stays smooth
 
 ## Controls
 | Key | Action |
@@ -26,6 +31,9 @@ An interactive 3D supercar garage in the style of Need for Speed, built with Thr
 | R / L | Turntable / Lift |
 | H / G | Headlights / Underglow |
 | P / M | Photo mode / Mute |
+| Enter | Race the selected car |
+
+**In a race:** W/↑ gas · S/↓ brake/reverse · A D / ← → steer · Space drift · Shift nitro · C camera · R reset to the track · Esc pause
 
 ## Run locally
 Any static server works, for example `python3 -m http.server`, then open http://localhost:8000.

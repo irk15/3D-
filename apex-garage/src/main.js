@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CARS, PAINTS, FINISHES, MOODS, UNDERGLOW } from './cars.js';
 import { EngineAudio } from './audio.js';
+import { createRace } from './race.js';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -53,7 +54,8 @@ const composer = new EffectComposer(
   renderer,
   new THREE.WebGLRenderTarget(innerWidth, innerHeight, { samples: 4, type: THREE.HalfFloatType })
 );
-composer.addPass(new RenderPass(scene, camera));
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.2, 0.3, 2.4);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -1003,6 +1005,7 @@ function buildUI() {
   $('#btnRotate').addEventListener('click', () => toggleSpin());
   $('#btnLift').addEventListener('click', toggleLift);
   $('#btnLaunch').addEventListener('click', launch);
+  $('#btnRace').addEventListener('click', startRace);
   const rev = $('#btnRev');
   const revOn = async (e) => { e.preventDefault(); if (!state.engineOn) await startEngine(); state.revving = true; rev.classList.add('held'); };
   const revOff = () => { state.revving = false; rev.classList.remove('held'); };
@@ -1017,12 +1020,13 @@ function buildUI() {
   $('#credits').innerHTML = CARS.map((c) => `<li><b>${c.credit.title}</b> by ${c.credit.author}: <a href="${c.credit.url}" target="_blank" rel="noopener">source</a> · ${c.credit.license}</li>`).join('');
 
   addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || $('#info').open) return;
+    if (e.target.tagName === 'INPUT' || $('#info').open || race.active || state.raceLoading) return;
     const k = e.key.toLowerCase();
     if (k === 'arrowright' || k === 'e') selectCar((state.index + 1) % CARS.length);
     else if (k === 'arrowleft' || k === 'q') selectCar((state.index + CARS.length - 1) % CARS.length);
     else if (k === ' ') { e.preventDefault(); if (!e.repeat) revOn(e); }
     else if (k === 'n') launch();
+    else if (k === 'enter') startRace();
     else if (k === 'r') toggleSpin();
     else if (k === 'l') toggleLift();
     else if (k === 'h') setLights(!state.lights);
@@ -1090,6 +1094,12 @@ function loop() {
   clock.update();
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.getElapsed();
+  if (race.active) {
+    race.update(dt);
+    composer.render();
+    requestAnimationFrame(loop);
+    return;
+  }
   stepTweens(dt);
 
   // turntable
@@ -1150,6 +1160,7 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
+  race.resize();
   reflector.getRenderTarget().setSize(Math.floor(innerWidth * 0.5), Math.floor(innerHeight * 0.5));
 });
 controls.addEventListener('start', () => {
@@ -1157,6 +1168,46 @@ controls.addEventListener('start', () => {
   state.camMoving = false;
   if (state.cam === 'cine') { state.cam = 'orbit'; $$('#cams button').forEach((b) => b.classList.toggle('active', b.dataset.cam === 'orbit')); }
 });
+
+/* ───────────────────────── Race mode ───────────────────────── */
+const race = createRace({
+  renderer, composer, renderPass, bloom, audio, CARS, loadCar, computeStats,
+  getEnv: () => scene.environment,
+  onExit: () => {
+    renderPass.scene = scene;
+    renderPass.camera = camera;
+    clipPlane.constant = 100;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    composer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    composer.setSize(innerWidth, innerHeight);
+    bloom.enabled = true;
+    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+    controls.enabled = true;
+    if (state.current) { audio.setCar(state.current.cfg.engine); state.rpm = state.current.cfg.engine.idle; }
+    clock.update();
+  }
+});
+async function startRace() {
+  if (race.active || state.busy || state.launching || state.raceLoading || !state.current) return;
+  state.raceLoading = true;
+  toast('Loading the circuit');
+  try {
+    if (!state.engineOn) await startEngine();
+    if (state.liftTarget > 0) { state.liftTarget = 0; $('#btnLift').classList.remove('on'); }
+    if (document.body.classList.contains('photo')) togglePhoto();
+    clipPlane.constant = 1000;
+    controls.enabled = false;
+    $('#fade').classList.add('on');
+    await new Promise((r) => setTimeout(r, 450));
+    await race.start(state.index);
+  } catch (err) {
+    console.error(err);
+    toast('Could not start the race');
+    controls.enabled = true;
+  }
+  $('#fade').classList.remove('on');
+  state.raceLoading = false;
+}
 
 /* ───────────────────────── Boot ───────────────────────── */
 async function boot() {
@@ -1193,4 +1244,4 @@ async function boot() {
 boot();
 
 // expose for debugging
-window.__garage = { state, camera, controls, setCam, selectCar, setMood, setGlow, setLights, launch, toggleLift, setColor, setFinish };
+window.__garage = { race, startRace, state, camera, controls, setCam, selectCar, setMood, setGlow, setLights, launch, toggleLift, setColor, setFinish };

@@ -8,7 +8,7 @@
 
 export const LANE_Z = {
   main: { 1: 4.83, '-1': 5.57 },   /* cars, autos, buses, carts: one lane each way */
-  kerb: { 1: 4.31, '-1': 6.07 }    /* two-wheelers keep to the kerb, in their own lane */
+  kerb: { 1: 4.36, '-1': 6.04 }    /* two-wheelers keep to the kerb, in their own lane */
 };
 
 const MIN_GAP  = 0.10;  /* bumper-to-bumper gap vehicles settle at when queuing */

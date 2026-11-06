@@ -1,42 +1,47 @@
 # APEX // GARAGE
 
-An interactive 3D supercar garage in the style of Need for Speed, built with Three.js (WebGL 2) and plain ES modules. There's no build step.
+A high-end 3D garage and racing game in the browser, built with Three.js (WebGL 2) and plain ES modules. There's no build step.
 
-**Live:** https://irk15.github.io/3D-/apex-garage/
+**Play:** https://irk15.github.io/3D-/apex-garage/
 
-## Features
-- Four real 3D car models: Ferrari 458 Italia, Porsche 911 Carrera 4S, Dodge Challenger SRT and a Concept GT
-- A detailing-studio garage with a honeycomb ceiling light, neon strips, a mirror-polished floor, a roll-up door and a night street outside
-- A scan-line effect that builds each car when you switch to it
-- A paint shop with 12 colours plus a custom colour picker, and five finishes (gloss, metallic, matte, chrome, pearl)
-- Underglow in six colours, headlights, and three garage moods (Neon Night, Showroom, Sunset)
-- Tuning (engine, turbo, weight, tires) that changes the stats live and gives each car a performance class (C to S+)
-- A synthesised engine sound with Web Audio, a hold-to-rev control and a live tachometer
-- **Launch**: the bay door opens, the car revs and accelerates out through the gears while a chase camera follows
-- Turntable, hydraulic lift, 7 camera angles (including a cinematic orbit), clickable hotspots on the car and a photo mode that saves a PNG
-- Your paint, finish and tuning choices for each car are saved in the browser
-- **Race mode (APEX // NIGHT RUN):** press RACE (or Enter) to drive the selected car on a 2.3 km neon night-city circuit against the other three cars as AI rivals. It has 3 laps, a countdown, positions, lap and best-lap times, a minimap and a results screen
-  - Arcade handling with handbrake drifts, skid marks and tyre smoke, nitro that refills while you drift, body roll, and wall and car collisions
-  - Your paint and tuning carry over to the race. Three cameras: chase, far chase and hood
-  - Keyboard, gamepad (RT/LT, A = nitro, B = drift) and on-screen touch controls
-  - Graphics quality adjusts automatically so the frame rate stays smooth
+## Garage
+- 7 real 3D vehicles: Ferrari 458 Italia, Porsche 911 Carrera 4S, Dodge Challenger SRT, Apex Concept GT, Ducati Panigale V4 R, Ducati Streetfighter V4 S and the Apex Street 890 R
+- Bikes carry a rider posed with inverse kinematics (IK), so hands are on the grips, feet on the pegs and knees against the tank, fitted to each bike
+- Paint (12 colours plus custom), 5 finishes, underglow, headlights, 3 lighting moods, tuning stages, rev, lift, turntable, 7 cameras and photo mode
+
+## Racing
+- **3 tracks:** Neon Downtown (night city), Sunset Coast (golden hour, hills, ocean) and Harbor Docks (dusk, containers, cranes)
+- **3 modes:** Race (up to 7 AI rivals), Time Trial (with a saved ghost of your best lap) and Drift Attack (score and combo)
+- **Car physics:** tyre slip curves, weight transfer, grip shared between cornering and acceleration, downforce, drag and slipstream. A launch test tunes each vehicle so its in-game 0–100 time and top speed match its spec sheet
+- **Bike physics:** lean-to-turn, grip-limited lean angle, wheelie and stoppie limits, and crashes that respawn you
+- **Handling presets:** Arcade (guided drifts and full assists), Sport (traction and stability control) and Simulation (raw tyre physics, no assists)
+- **Gearbox:** automatic or manual (Q/E), with rev limiter and launch control (keep the revs in the green zone at GO for a perfect start)
+- **Racing extras:** nitro that refills from drifts, slipstream, overtakes, wheelies and clean laps. Rain makes the road wet and slippery
+- **AI:** drivers race through the same physics as you, with 4 difficulty levels
+- **HUD:** tachometer with shift lights, live lap delta against your best, leaderboard with gaps and a rotating minimap
+- **Cameras:** chase, far chase, hood (helmet on bikes, leaning with the bike), bumper and TV, plus look back (B)
+- **Replays:** a full replay after each race, with trackside TV cameras, slow motion and a choice of car to follow
+- **Controllers:** gamepad support with rumble, plus touch controls
+- **Performance:** physics runs at a fixed 240 Hz and graphics quality adjusts automatically, so the frame rate stays smooth
+
+## Online multiplayer
+Press **RACE → Online**, then **Create room**, and share the 5-character code (or the invite link). Friends choose **Online**, enter the code, pick a car or bike in the garage and press **Ready**. The host picks the track, laps, weather and how many AI racers fill the grid (up to 8 racers in total). Each player keeps their own handling and gearbox settings.
+
+Players connect directly to each other with WebRTC (PeerJS), so no game server is needed. You can test locally with two tabs and `?net=local`.
 
 ## Controls
-| Key | Action |
-| --- | --- |
-| ← → | Switch car |
-| 1–7 | Camera angles |
-| Space (hold) | Rev the engine |
-| N | Launch |
-| R / L | Turntable / Lift |
-| H / G | Headlights / Underglow |
-| P / M | Photo mode / Mute |
-| Enter | Race the selected car |
-
-**In a race:** W/↑ gas · S/↓ brake/reverse · A D / ← → steer · Space drift · Shift nitro · C camera · R reset to the track · Esc pause
+| | Keyboard | Gamepad |
+|---|---|---|
+| Throttle / brake | W S / ↑ ↓ | RT / LT |
+| Steer / lean | A D / ← → | Left stick |
+| Handbrake (drift) / rear brake | Space | X |
+| Nitro | Shift | A |
+| Shift down / up (manual) | Q / E | LB / RB |
+| Camera / look back | C / B | B / Y |
+| Reset to track / pause | R / Esc | – / Start |
 
 ## Run locally
-Any static server works, for example `python3 -m http.server`, then open http://localhost:8000.
+`python3 -m http.server` and open http://localhost:8000.
 
 ## Credits
-See [CREDITS.md](CREDITS.md). The car models are by their original authors and are used under their licenses.
+See [CREDITS.md](CREDITS.md).

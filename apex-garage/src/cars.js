@@ -2,9 +2,11 @@
 // rotY: rotation that makes the model's nose point toward +Z.
 // paint: material names that make up the body paint.
 
-export const CARS = [
+export const CARS = [ // cars and bikes
   {
     id: 'ferrari',
+    type: 'car',
+    drive: 'rwd',
     make: 'Ferrari',
     name: '458 Italia',
     tag: 'V8 · Mid-engine · RWD',
@@ -25,6 +27,8 @@ export const CARS = [
   },
   {
     id: 'porsche',
+    type: 'car',
+    drive: 'awd',
     make: 'Porsche',
     name: '911 Carrera 4S',
     tag: 'Flat-6 · Twin-turbo · AWD',
@@ -45,6 +49,8 @@ export const CARS = [
   },
   {
     id: 'challenger',
+    type: 'car',
+    drive: 'rwd',
     make: 'Dodge',
     name: 'Challenger SRT',
     tag: 'Supercharged V8 · Muscle · RWD',
@@ -65,6 +71,8 @@ export const CARS = [
   },
   {
     id: 'concept',
+    type: 'car',
+    drive: 'awd',
     make: 'Apex',
     name: 'Concept GT',
     tag: 'Hybrid V10 · Prototype · AWD',
@@ -82,6 +90,60 @@ export const CARS = [
       url: 'https://sketchfab.com/3d-models/concept-sport-car-566075bdb499404b908895a5f4dc6aa0',
       license: 'CC BY 4.0'
     }
+  }
+  ,{
+    id: 'panigale',
+    type: 'bike',
+    drive: 'rwd',
+    make: 'Ducati',
+    name: 'Panigale V4 R',
+    tag: 'V4 · 1000cc · Superbike',
+    file: 'models/v4r.glb',
+    rotY: Math.PI / 2,
+    length: 2.1,
+    paint: ['BaseColour'],
+    color: '#c1121f',
+    finish: 'gloss',
+    rider: { seat: [-0.31, 0.85], bar: [0.47, 0.93, 0.3], peg: [-0.22, 0.41, 0.17] },
+    stats: { hp: 237, torque: 112, zero100: 2.6, top: 318, weight: 172, handling: 0.94 },
+    engine: { cyl: 4, idle: 1600, redline: 16000, tone: 0.62 },
+    credit: { title: 'DucatiV4R', author: 'IrfanMuaz', url: 'https://sketchfab.com/3d-models/ducativ4r-3f1067a86c4c4c3bbfddf61ec0232446', license: 'CC BY 4.0' }
+  },
+  {
+    id: 'streetfighter',
+    type: 'bike',
+    drive: 'rwd',
+    make: 'Ducati',
+    name: 'Streetfighter V4 S',
+    tag: 'V4 · Hypernaked · 2024',
+    file: 'models/sfv4.glb',
+    rotY: -Math.PI / 2,
+    length: 2.12,
+    paint: ['MAT_Ducati_StreetFighter_V4S_Carpaint_Red.028', 'MAT_Ducati_StreetFighter_V4S_Carpaint_Red', 'MAT_Ducati_StreetFighter_V4S_Carpaint.008'],
+    color: '#c1121f',
+    finish: 'gloss',
+    rider: { seat: [-0.33, 0.81], bar: [0.41, 1.0, 0.36], peg: [-0.23, 0.43, 0.17] },
+    stats: { hp: 208, torque: 123, zero100: 2.9, top: 290, weight: 189, handling: 0.9 },
+    engine: { cyl: 4, idle: 1500, redline: 14500, tone: 0.6 },
+    credit: { title: '2024 Ducati StreetFighter V4 S', author: 'OUTPISTON', url: 'https://sketchfab.com/3d-models/2024-ducati-streetfighter-v4-s-c501252f8af64c559bf91dc306c3a550', license: 'CC BY-NC-SA 4.0 (non-commercial)' }
+  },
+  {
+    id: 'naked',
+    type: 'bike',
+    drive: 'rwd',
+    make: 'Apex',
+    name: 'Street 890 R',
+    tag: 'Parallel twin · Naked · Street',
+    file: 'models/naked.glb',
+    rotY: 0,
+    length: 2.08,
+    paint: ['tanque'],
+    color: '#ff5a00',
+    finish: 'metallic',
+    rider: { seat: [-0.31, 0.86], bar: [0.29, 1.02, 0.37], peg: [-0.18, 0.42, 0.18] },
+    stats: { hp: 121, torque: 99, zero100: 3.2, top: 240, weight: 166, handling: 0.88 },
+    engine: { cyl: 2, idle: 1300, redline: 10500, tone: 0.9 },
+    credit: { title: 'Motorcycle', author: 'eriklys', url: 'https://skfb.ly/oVrTZ', license: 'CC BY 4.0' }
   }
 ];
 

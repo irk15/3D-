@@ -10,7 +10,9 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CARS, PAINTS, FINISHES, MOODS, UNDERGLOW } from './cars.js';
 import { EngineAudio } from './audio.js';
-import { createRace } from './race.js';
+import { createRace } from './race/index.js';
+import { loadRider, attachRider } from './rider.js';
+import { createSetup } from './ui/setup.js';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -545,7 +547,8 @@ function makePaint(cfg) {
 function loadCar(i, onProgress) {
   const cfg = CARS[i];
   if (state.loaded[cfg.id]) return Promise.resolve(state.loaded[cfg.id]);
-  return new Promise((resolve, reject) => {
+  const riderReady = cfg.type === 'bike' ? loadRider(loader).catch((e) => console.warn('rider', e)) : Promise.resolve();
+  return riderReady.then(() => new Promise((resolve, reject) => {
     loader.load(cfg.file, (gltf) => {
       const model = gltf.scene;
       const fit = new THREE.Group();
@@ -564,9 +567,10 @@ function loadCar(i, onProgress) {
       holder.add(fit);
       const size = b.getSize(new THREE.Vector3());
 
+      if (cfg.type === 'bike') attachRider(holder, cfg);
       const paint = makePaint(cfg);
       const mats = new Set([paint]);
-      model.traverse((o) => {
+      holder.traverse((o) => {
         if (!o.isMesh) return;
         o.castShadow = true;
         o.receiveShadow = true;
@@ -585,7 +589,7 @@ function loadCar(i, onProgress) {
       state.loaded[cfg.id] = entry;
       resolve(entry);
     }, (e) => { if (onProgress && e.total) onProgress(e.loaded / e.total); }, reject);
-  });
+  }));
 }
 
 /* ───────────────────────── Customisation ───────────────────────── */
@@ -721,6 +725,7 @@ async function selectCar(i, first = false) {
   state.busy = true;
   state.index = i;
   const cfg = CARS[i];
+  setup?.vehicleChanged(i);
   $$('.carCard').forEach((c, j) => c.classList.toggle('active', j === i));
   const card = $$('.carCard')[i];
   card.classList.add('loading');
@@ -958,7 +963,8 @@ function buildUI() {
   CARS.forEach((c, i) => {
     const b = document.createElement('button');
     b.className = 'carCard';
-    b.innerHTML = `<div class="n">0${i + 1}</div><div class="t">${c.make} ${c.name}</div><div class="s">${c.stats.hp} HP · ${c.stats.top} KM/H</div><b class="cls">S</b>`;
+    b.innerHTML = `<div class="n">0${i + 1} · ${c.type === 'bike' ? 'BIKE' : 'CAR'}</div><div class="t">${c.make} ${c.name}</div><div class="s">${c.stats.hp} HP · ${c.stats.top} KM/H</div><b class="cls">S</b>`;
+    if (c.type === 'bike') b.classList.add('bike');
     b.addEventListener('click', () => selectCar(i));
     list.appendChild(b);
   });
@@ -1020,7 +1026,7 @@ function buildUI() {
   $('#credits').innerHTML = CARS.map((c) => `<li><b>${c.credit.title}</b> by ${c.credit.author}: <a href="${c.credit.url}" target="_blank" rel="noopener">source</a> · ${c.credit.license}</li>`).join('');
 
   addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || $('#info').open || race.active || state.raceLoading) return;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || $('#info').open || race.active || state.raceLoading || setup.isOpen) return;
     const k = e.key.toLowerCase();
     if (k === 'arrowright' || k === 'e') selectCar((state.index + 1) % CARS.length);
     else if (k === 'arrowleft' || k === 'q') selectCar((state.index + CARS.length - 1) % CARS.length);
@@ -1172,8 +1178,7 @@ controls.addEventListener('start', () => {
 /* ───────────────────────── Race mode ───────────────────────── */
 const race = createRace({
   renderer, composer, renderPass, bloom, audio, CARS, loadCar, computeStats,
-  getEnv: () => scene.environment,
-  onExit: () => {
+  onExit: ({ toLobby, room }) => {
     renderPass.scene = scene;
     renderPass.camera = camera;
     clipPlane.constant = 100;
@@ -1182,13 +1187,27 @@ const race = createRace({
     composer.setSize(innerWidth, innerHeight);
     bloom.enabled = true;
     camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+    camera.up.set(0, 1, 0);
     controls.enabled = true;
     if (state.current) { audio.setCar(state.current.cfg.engine); state.rpm = state.current.cfg.engine.idle; }
     clock.update();
+    if (toLobby) setup.backToLobby(room);
   }
 });
-async function startRace() {
+const setup = createSetup({
+  CARS,
+  getVehicle: () => state.index,
+  getColor: () => (state.current ? custom(state.current.cfg).color : '#ffffff'),
+  toast,
+  startRace: (opts) => beginRace(opts)
+});
+function startRace() {
   if (race.active || state.busy || state.launching || state.raceLoading || !state.current) return;
+  if (setup.room && setup.room.state === 'lobby') { toast(setup.room.isHost ? 'Press Start in the room panel' : 'Waiting for the host to start'); return; }
+  setup.open();
+}
+async function beginRace(opts) {
+  if (race.active || state.raceLoading) return;
   state.raceLoading = true;
   toast('Loading the circuit');
   try {
@@ -1199,11 +1218,12 @@ async function startRace() {
     controls.enabled = false;
     $('#fade').classList.add('on');
     await new Promise((r) => setTimeout(r, 450));
-    await race.start(state.index);
+    await race.start(opts);
   } catch (err) {
     console.error(err);
     toast('Could not start the race');
     controls.enabled = true;
+    clipPlane.constant = 100;
   }
   $('#fade').classList.remove('on');
   state.raceLoading = false;
@@ -1244,4 +1264,4 @@ async function boot() {
 boot();
 
 // expose for debugging
-window.__garage = { race, startRace, state, camera, controls, setCam, selectCar, setMood, setGlow, setLights, launch, toggleLift, setColor, setFinish };
+window.__garage = { race, startRace, beginRace, setup, state, camera, controls, setCam, selectCar, setMood, setGlow, setLights, launch, toggleLift, setColor, setFinish };

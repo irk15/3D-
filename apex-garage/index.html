@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>APEX Garage: Interactive 3D Supercar Garage</title>
+  <meta name="description" content="A high-end interactive 3D garage with four real supercar models. Customize the paint, finish, underglow and tuning, rev the engine and launch out of the garage." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8F%81%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js",
+        "three/addons/": "./vendor/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="speedlines"></div>
+  <div id="fade"></div>
+  <div id="hotspots"></div>
+
+  <!-- Loader -->
+  <div id="loader">
+    <div class="loader-inner">
+      <div class="logo big">APEX<span>//</span>GARAGE</div>
+      <div class="loader-bar"><i id="loadFill"></i></div>
+      <div class="loader-text"><span id="loadText">Opening the garage</span> <b id="loadPct">0%</b></div>
+      <button id="enterBtn" class="btn primary" hidden>ENTER GARAGE</button>
+      <p class="loader-hint">Best on desktop with sound on 🔊</p>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="ui">
+    <header class="topbar">
+      <div class="logo">APEX<span>//</span>GARAGE</div>
+      <div class="carTitle">
+        <div class="make" id="carMake">—</div>
+        <div class="model" id="carName">—</div>
+        <div class="tag" id="carTag"></div>
+      </div>
+      <div class="topActions">
+        <button class="icon" id="btnSound" title="Engine sound (M)">🔊</button>
+        <button class="icon" id="btnPhoto" title="Photo mode (P)">📷</button>
+        <button class="icon" id="btnFull" title="Fullscreen (F)">⛶</button>
+        <button class="icon" id="btnInfo" title="Controls &amp; credits (I)">ⓘ</button>
+      </div>
+    </header>
+
+    <!-- Car selector -->
+    <aside class="carList" id="carList"></aside>
+
+    <!-- Customization -->
+    <aside class="panel" id="panel">
+      <nav class="tabs">
+        <button data-tab="paint" class="active">Paint</button>
+        <button data-tab="lights">Lights</button>
+        <button data-tab="tune">Tune</button>
+      </nav>
+
+      <section class="tab active" data-tab="paint">
+        <h4>Body colour</h4>
+        <div class="swatches" id="swatches"></div>
+        <label class="custom">Custom <input type="color" id="customColor" value="#c1121f" /></label>
+        <h4>Finish</h4>
+        <div class="seg" id="finishes"></div>
+      </section>
+
+      <section class="tab" data-tab="lights">
+        <h4>Underglow</h4>
+        <div class="row">
+          <button class="toggle" id="tglGlow">OFF</button>
+          <div class="dots" id="glowColors"></div>
+        </div>
+        <h4>Headlights</h4>
+        <div class="row"><button class="toggle" id="tglLights">OFF</button><span class="hint">Key H</span></div>
+        <h4>Garage mood</h4>
+        <div class="seg" id="moods"></div>
+      </section>
+
+      <section class="tab" data-tab="tune">
+        <div class="tuneRow" data-k="engine"><span>Engine</span><div class="levels"></div></div>
+        <div class="tuneRow" data-k="turbo"><span>Turbo</span><div class="levels"></div></div>
+        <div class="tuneRow" data-k="weight"><span>Weight reduction</span><div class="levels"></div></div>
+        <div class="tuneRow" data-k="tires"><span>Tires</span><div class="levels"></div></div>
+        <p class="hint">Each upgrade changes the stats and the performance class.</p>
+      </section>
+    </aside>
+
+    <!-- Stats -->
+    <section class="stats">
+      <div class="pi"><b id="piClass">S</b><span id="piVal">850</span></div>
+      <div class="bars">
+        <div class="bar"><label>Top speed</label><i><em id="barSpeed"></em></i></div>
+        <div class="bar"><label>Acceleration</label><i><em id="barAccel"></em></i></div>
+        <div class="bar"><label>Handling</label><i><em id="barHandle"></em></i></div>
+        <div class="bar"><label>Nitrous</label><i><em id="barNitro"></em></i></div>
+      </div>
+      <div class="nums">
+        <div><b id="numHp">0</b><span>HP</span></div>
+        <div><b id="numTq">0</b><span>NM</span></div>
+        <div><b id="num0">0</b><span>0-100 S</span></div>
+        <div><b id="numTop">0</b><span>KM/H</span></div>
+      </div>
+    </section>
+
+    <!-- Dock -->
+    <nav class="dock">
+      <div class="cams" id="cams">
+        <button data-cam="orbit" class="active">Orbit</button>
+        <button data-cam="front">Front</button>
+        <button data-cam="side">Side</button>
+        <button data-cam="rear">Rear</button>
+        <button data-cam="wheel">Wheel</button>
+        <button data-cam="top">Top</button>
+        <button data-cam="cine">Cinematic</button>
+      </div>
+      <div class="actions">
+        <button id="btnRotate" class="act on" title="Turntable (R)">⟳ Spin</button>
+        <button id="btnLift" class="act" title="Hydraulic lift (L)">⇡ Lift</button>
+        <button id="btnRev" class="act rev" title="Hold to rev (Space)">◉ Hold to Rev</button>
+        <button id="btnLaunch" class="act launch" title="Launch (N)">LAUNCH ▶</button>
+      </div>
+    </nav>
+
+    <!-- Tacho -->
+    <div class="tacho">
+      <canvas id="tach" width="220" height="220"></canvas>
+      <div class="tachRead"><b id="tachSpeed">0</b><span>km/h</span><i id="tachGear">N</i></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="photoBar">
+    <span>PHOTO MODE · drag to frame</span>
+    <button class="btn" id="btnSnap">Save PNG</button>
+    <button class="btn ghost" id="btnPhotoExit">Exit (P)</button>
+  </div>
+
+  <dialog id="info">
+    <h2>Controls</h2>
+    <ul class="keys">
+      <li><kbd>←</kbd><kbd>→</kbd> Switch car</li>
+      <li><kbd>1</kbd>–<kbd>7</kbd> Camera angles</li>
+      <li><kbd>Space</kbd> Hold to rev</li>
+      <li><kbd>N</kbd> Launch out of the garage</li>
+      <li><kbd>R</kbd> Turntable · <kbd>L</kbd> Lift</li>
+      <li><kbd>H</kbd> Headlights · <kbd>G</kbd> Underglow</li>
+      <li><kbd>P</kbd> Photo mode · <kbd>M</kbd> Mute</li>
+      <li>Drag to orbit · scroll to zoom · click the hotspots on the car</li>
+    </ul>
+    <h2>3D model credits</h2>
+    <ul id="credits" class="credits"></ul>
+    <p class="small">Built with Three.js (WebGL 2), ES modules, PBR materials, real-time reflections, bloom and a Web Audio engine synth.</p>
+    <form method="dialog"><button class="btn primary">Close</button></form>
+  </dialog>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

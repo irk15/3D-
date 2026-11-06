@@ -28,6 +28,7 @@ export function createHud(actions) {
       <div class="rAssist" id="rAssist"></div>
     </div>
     <div class="rNet" id="rNet"></div>
+    <div class="rHelp" id="rHelp"></div>
     <div class="rKeys" id="rKeys"></div>
     <div class="rTouch" id="rTouch">
       <div class="tl"><button data-k="left">◀</button><button data-k="right">▶</button></div>
@@ -47,7 +48,7 @@ export function createHud(actions) {
   document.body.appendChild(el);
   const $ = (id) => el.querySelector('#' + id);
   const E = {};
-  ['rPos', 'rOf', 'rLap', 'rLapLbl', 'rTime', 'rBest', 'rDelta', 'rCount', 'rMsg', 'rPops', 'rScore', 'rSpd', 'rGear', 'rNos', 'rAssist', 'rBoard', 'rNet', 'rKeys', 'rPause', 'rResult', 'rResTitle', 'rResSub', 'rResTable', 'rReplay', 'rRepTime', 'rRepSeek', 'rCamName', 'rAgain', 'rExit', 'rPauseRestart'].forEach((k) => (E[k] = $(k)));
+  ['rPos', 'rOf', 'rLap', 'rLapLbl', 'rTime', 'rBest', 'rDelta', 'rCount', 'rMsg', 'rPops', 'rScore', 'rSpd', 'rGear', 'rNos', 'rAssist', 'rBoard', 'rNet', 'rKeys', 'rPause', 'rResult', 'rResTitle', 'rResSub', 'rResTable', 'rReplay', 'rRepTime', 'rRepSeek', 'rCamName', 'rAgain', 'rExit', 'rPauseRestart', 'rHelp'].forEach((k) => (E[k] = $(k)));
   el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => actions(b.dataset.a, b)));
   E.rRepSeek.addEventListener('input', () => actions('rp-seek', E.rRepSeek));
   const touch = {};
@@ -157,6 +158,19 @@ export function createHud(actions) {
       E.rCount.textContent = ''; E.rMsg.classList.remove('show'); E.rPops.innerHTML = '';
       lastTach = '';
       this.laps = laps;
+    },
+    help(bike, manual, on = true) {
+      if (!on) { E.rHelp.classList.remove('show'); return; }
+      const k = (x) => x.split(' ').map((t) => `<kbd>${t}</kbd>`).join('');
+      const rows = [
+        ['Throttle', k('W ↑'), 'RT'], ['Brake / reverse', k('S ↓'), 'LT'], [bike ? 'Lean' : 'Steer', k('A D ← →'), 'Left stick'],
+        [bike ? 'Rear brake' : 'Handbrake · drift', k('Space'), 'X'], ['Nitro', k('Shift'), 'A'],
+        ...(manual ? [['Shift down / up', k('Q E'), 'LB / RB']] : []),
+        ['Camera · look back', k('C B'), 'B · Y'], ['Reset · pause', k('R Esc'), 'Start']
+      ];
+      E.rHelp.innerHTML = `<h3>CONTROLS</h3><table>${rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>
+        <p>${bike ? 'Lean into corners and brake before you turn in. Hard launches lift the front wheel.' : 'Brake before the corner, turn in, then power out. Tap Space mid-corner to start a drift, steer to hold it, and straighten up to end it.'}<br/>Launch control: hold throttle so the shift lights turn green at GO.</p>`;
+      E.rHelp.classList.add('show');
     },
     count(n) { E.rCount.textContent = n; E.rCount.className = ''; void E.rCount.offsetWidth; E.rCount.className = 'go'; },
     msg(text, t = 1.4) { E.rMsg.textContent = text; E.rMsg.classList.add('show'); msgT = t; },

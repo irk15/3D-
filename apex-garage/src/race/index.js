@@ -94,10 +94,6 @@ export function createRace(ctx) {
 
   /* ───────── vehicles ───────── */
   const ghostMat = new THREE.MeshBasicMaterial({ color: hdr('#5fd8ff', 0.9), transparent: true, opacity: 0.22, depthWrite: false });
-  const headMat = new THREE.MeshBasicMaterial({ map: glowTex, color: hdr('#e6eeff', 2.4), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  const tailMat = new THREE.MeshBasicMaterial({ map: glowTex, color: hdr('#ff1a1a', 1.8), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  const brakeMat = new THREE.MeshBasicMaterial({ map: glowTex, color: hdr('#ff1a1a', 4.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 });
-  const cardGeo = new THREE.PlaneGeometry(1, 1);
 
   function makeVisual(entry, { ghost = false, paintColor: color = null, headlight = false } = {}) {
     const root = new THREE.Group(), body = new THREE.Group();
@@ -114,23 +110,20 @@ export function createRace(ctx) {
     const sz = entry.size, bike = entry.cfg.type === 'bike';
     const brakes = [], flames = [];
     if (!ghost) {
-      const hx = bike ? [0] : [-1, 1];
-      for (const s of hx) {
-        const hl = new THREE.Mesh(cardGeo, headMat); hl.scale.set(bike ? 0.45 : 0.6, bike ? 0.3 : 0.35, 1);
-        hl.position.set(s * sz.x * 0.34, sz.y * (bike ? 0.62 : 0.42), sz.z * 0.5 + 0.03); body.add(hl);
-        const tl = new THREE.Mesh(cardGeo, tailMat); tl.scale.set(bike ? 0.25 : 0.42, bike ? 0.15 : 0.22, 1); tl.rotation.y = Math.PI;
-        tl.position.set(s * sz.x * 0.36, sz.y * (bike ? 0.6 : 0.55), -sz.z * 0.5 - 0.03); body.add(tl);
-        const bl = new THREE.Mesh(cardGeo, brakeMat.clone()); bl.scale.set(bike ? 0.4 : 0.7, bike ? 0.25 : 0.38, 1); bl.rotation.y = Math.PI;
-        bl.position.copy(tl.position); bl.position.z -= 0.02; body.add(bl); brakes.push(bl);
-      }
+      // no glow cards: real lights only (road beam + brake glow), so nothing floats in front of the bodywork
       const fm = new THREE.SpriteMaterial({ map: glowTex, color: hdr('#4fb4ff', 5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 });
       for (const s of bike ? [0.12] : [-1, 1]) {
         const f = new THREE.Sprite(fm); f.position.set(s * sz.x * (bike ? 1 : 0.18), sz.y * (bike ? 0.4 : 0.28), -sz.z * 0.53); f.scale.set(0.6, 0.6, 1); body.add(f); flames.push(f);
       }
       if (headlight) {
-        const spot = new THREE.SpotLight(0xeaf1ff, 300, 110, 0.48, 0.5, 1.3);
-        spot.position.set(0, sz.y * 0.5, sz.z * 0.45); spot.target.position.set(0, -0.5, sz.z * 0.5 + 30);
+        // beam starts just ahead of the bumper so it lights the road, not the car's own bonnet
+        const spot = new THREE.SpotLight(0xeaf1ff, 260, 120, 0.46, 0.6, 1.25);
+        spot.position.set(0, bike ? 0.9 : 0.62, sz.z * 0.5 + 0.35); spot.target.position.set(0, 0, sz.z * 0.5 + 28);
         body.add(spot, spot.target);
+        const brake = new THREE.PointLight(0xff1a1a, 0, 7, 1.6);
+        brake.position.set(0, 0.55, -sz.z * 0.5 - 0.6);
+        body.add(brake);
+        brakes.push(brake);
       }
     }
     const wheels = [];
@@ -199,7 +192,7 @@ export function createRace(ctx) {
       const cfg = CARS[g.veh];
       const r = makeRacer(entries.get(g.veh), {
         id: g.id, isPlayer: isMe, isBot: isBot && local, isRemote: !local, color: isMe ? '#00e5ff' : COLORS[slot % COLORS.length],
-        label: isMe ? 'YOU' : g.name || cfg.name.toUpperCase(), name: g.name, seed: seed + slot * 131, headlight: isMe && W.track.def.theme !== 'coast',
+        label: isMe ? 'YOU' : g.name || cfg.name.toUpperCase(), name: g.name, seed: seed + slot * 131, headlight: isMe,
         paintColor: g.color
       });
       r.slot = slot;
@@ -228,6 +221,7 @@ export function createRace(ctx) {
     });
     hud.camName(CAMS[camMode]);
     hud.setRestartAllowed(!room);
+    hud.help(me.p.bike, opts.transmission === 'manual');
     Object.assign(race, { phase: 'countdown', time: 0, paused: false, endT: 0, lastBeep: 9, finishOrder: [], countStart: performance.now() });
     race.startAt = room ? opts.mp.startAt : null;
     lapTrace = new Float32Array(W.track.N).fill(-1);
@@ -578,7 +572,7 @@ export function createRace(ctx) {
     const nitro = s.nitroOn ? 1 : 0;
     for (const f of r.flames) { f.material.opacity = lerp(f.material.opacity, nitro, 0.35); const k = 0.55 + Math.random() * 0.5 * nitro; f.scale.set(k, k, 1); }
     const brk = r.isPlayer ? (lastInp?.brake || 0) : s.ax < -6 ? 1 : 0;
-    for (const b of r.brakes) b.material.opacity = lerp(b.material.opacity, brk, 0.4);
+    for (const b of r.brakes) b.intensity = lerp(b.intensity, brk * 9, 0.4);
   }
 
   function effects(r, dt) {
@@ -641,7 +635,8 @@ export function createRace(ctx) {
     if (race.phase === 'finished' || api.autopilot) { /* autopilot steers */ }
     else if (inp.analog) s.steer = lerp(s.steer, inp.steer, 1 - Math.exp(-18 * dt));
     else {
-      const rate = (inp.steer !== 0 && Math.sign(inp.steer) === Math.sign(s.steer || inp.steer) ? 4.2 : 8) / (1 + Math.max(0, s.u) / (me.p.bike ? 55 : 45));
+      const toward = inp.steer !== 0 && Math.sign(inp.steer) === Math.sign(s.steer || inp.steer);
+      const rate = (inp.steer === 0 ? 12 : toward ? 7.5 : 14) / (1 + Math.max(0, s.u) / (me.p.bike ? 60 : 85));
       s.steer += clamp(inp.steer - s.steer, -rate * dt, rate * dt);
     }
 
@@ -661,6 +656,7 @@ export function createRace(ctx) {
         if (inp.gas && k > 0.6 && k < 0.82) { s.boostT = 1.4; hud.pop('PERFECT START', 'nos'); rumble(0.3, 0.8, 300); }
         else if (inp.gas && k >= 0.82) hud.pop('WHEELSPIN START', 'bad');
         setTimeout(() => hud.count(''), 800);
+        setTimeout(() => hud.help(false, false, false), 2500);
       }
     } else race.time += dt;
 

@@ -58,7 +58,7 @@ export function aiInput(racer, track, others, time, leadProgress, dt, cruise = f
     if (u < 6) steer = clamp(-alpha * 2, -1, 1);
   } else {
     const delta = Math.atan(kappa * p.wb) * 1.15;
-    const lim = p.steerMax / (1 + u * p.H.steerSens);
+    const lim = p.steerMax / (1 + u * p.H.steerSens * (p.H.grip ? 0.8 : 1));
     steer = clamp(-delta / lim, -1, 1);
     // damp oversteer slides
     steer += clamp(s.beta * 1.4, -0.5, 0.5);
@@ -68,7 +68,7 @@ export function aiInput(racer, track, others, time, leadProgress, dt, cruise = f
   if (b.wobble > 0) { b.wobble -= dt; steer += Math.sin(time * 9) * 0.25; }
   // speed: look at the speed profile a little ahead (reaction + braking)
   const look = (i + Math.round((u * 0.35 + 4) / SEG)) % N;
-  const gripG = p.mu * G * b.skill * (p.bike ? 0.74 : 0.88) * rubber;
+  const gripG = p.mu * G * b.skill * (p.bike ? 0.74 : 0.86 * (p.H.grip || 1)) * rubber;
   let vt = Math.min(VP[look], VP[i]) * Math.sqrt(gripG);
   if (cruise) vt = Math.min(vt, 30);
   vt = Math.min(vt, p.vmax * 1.2);

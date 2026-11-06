@@ -5,8 +5,8 @@ const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 const lerp = (a, b, t) => a + (b - a) * t;
 
 export const HANDLING = {
-  arcade: { id: 'arcade', label: 'Arcade', mu: 1.2, tcs: true, abs: true, esc: 0.5, steerAssist: 0.75, drift: 0.85, steerSens: 0.05, crash: 2.2 },
-  sport: { id: 'sport', label: 'Sport', mu: 1.06, tcs: true, abs: true, esc: 0.4, steerAssist: 0.4, drift: 0.4, steerSens: 0.038, crash: 1.4 },
+  arcade: { id: 'arcade', label: 'Arcade', grip: 1.32, yawK: 9, slide: 0.55, mu: 1.2, tcs: true, abs: true, esc: 0.5, steerAssist: 0.75, drift: 0.85, steerSens: 0.05, crash: 2.2 },
+  sport: { id: 'sport', label: 'Sport', grip: 1.16, yawK: 7, slide: 0.8, mu: 1.06, tcs: true, abs: true, esc: 0.4, steerAssist: 0.4, drift: 0.4, steerSens: 0.038, crash: 1.4 },
   sim: { id: 'sim', label: 'Simulation', mu: 1.0, tcs: false, abs: false, esc: 0, steerAssist: 0.1, drift: 0, steerSens: 0.026, crash: 1 }
 };
 
@@ -19,7 +19,7 @@ export function createParams(cfg, stats, { handling = 'sport', wet = false, auto
   const frontShare = bike ? 0.5 : cfg.id === 'challenger' ? 0.56 : cfg.drive === 'awd' ? 0.44 : 0.42;
   const b = wb * frontShare, a = wb - b; // a: CG→front axle, b: CG→rear axle
   const h = bike ? 0.62 : cfg.id === 'challenger' ? 0.52 : 0.45;
-  const mu = H.mu * (wet ? 0.78 : 1) * (0.9 + 0.12 * stats.handling);
+  const mu = H.mu * (wet ? 0.78 : 1) * (0.9 + 0.12 * stats.handling) * (bike && H.grip ? 1 + (H.grip - 1) * 0.9 : 1);
   const vmax = stats.top / 3.6;
   const P = stats.hp * 745.7;
   const crr = 0.012 * m * G;
@@ -74,7 +74,7 @@ function calibrate(p, target) {
 }
 
 export function step(s, p, inp, dt) {
-  if (p.bike) stepBike(s, p, inp, dt); else stepCar(s, p, inp, dt);
+  if (p.bike) stepBike(s, p, inp, dt); else if (p.H.grip) stepGrip(s, p, inp, dt); else stepCar(s, p, inp, dt);
   s.x += s.vx * dt;
   s.z += s.vz * dt;
 }
@@ -228,6 +228,80 @@ function stepCar(s, p, inp, dt) {
   if (s.boostT > 0) s.boostT -= dt;
 }
 
+// Grip model (arcade/sport): the car goes where it's pointed. Yaw follows the steering, capped by
+// the tyres' lateral grip, so cornering is planted and predictable. It only slides past the limit or in a drift.
+function stepGrip(s, p, inp, dt) {
+  const H = p.H;
+  const sh = Math.sin(s.h), ch = Math.cos(s.h);
+  let u = s.vx * sh + s.vz * ch;
+  let v = s.vx * ch - s.vz * sh;
+  const au = Math.abs(u);
+  gearbox(s, p, inp, dt, u);
+  const beta = Math.atan2(v, Math.max(au, 1.5));
+  if (inp.hand && au > 9) s.driftArm = 1;
+  else if (Math.abs(beta) < 0.09) s.driftArm = Math.max(0, (s.driftArm || 0) - dt * 2.5);
+  const armed = H.drift > 0 && (s.driftArm || 0) > 0.3 && au > 7;
+  s.drifting = armed;
+  if (armed) {
+    if (!s.dr) s.dr = { side: Math.sign(s.r || -s.steer || 1), b: Math.abs(beta), lowK: 0, noGas: 0 };
+    if (driftStep(s, p, inp, dt, u, v)) return;
+  } else s.dr = null;
+
+  // longitudinal
+  let Fdrive = engine(s, p, inp, u, dt);
+  const Fdown = p.down * u * u;
+  const Fzr = (p.m * G * p.a) / p.wb + (p.m * s.ax * p.h) / p.wb + Fdown * 0.55;
+  const Fzf = (p.m * G * p.b) / p.wb - (p.m * s.ax * p.h) / p.wb + Fdown * 0.45;
+  const muLong = p.mu * p.kLong;
+  const traction = muLong * (p.drive[0] * Math.max(Fzf, 0) + p.drive[1] * Math.max(Fzr, 0)) / Math.max(p.drive[0] + p.drive[1] - (p.drive[0] && p.drive[1] ? 0 : 0), 1) + (p.drive[0] && p.drive[1] ? muLong * 0 : 0);
+  const latUse = clamp(Math.abs(s.ay) / (p.mu * H.grip * G), 0, 1);
+  const tracCap = (p.drive[0] ? muLong * Math.max(Fzf, 0) : 0) + muLong * Math.max(Fzr, 0) * (p.drive[1] ? 1 : 0);
+  let spin = 0;
+  const cap = tracCap * Math.sqrt(Math.max(0.15, 1 - latUse * latUse * 0.6));
+  if (Fdrive > cap) { spin = (Fdrive - cap) / cap; Fdrive = cap; }
+  void traction;
+  const sgn = u > 0.05 ? 1 : u < -0.05 ? -1 : 0;
+  let Fb = 0;
+  if (inp.brake > 0 && s.gear !== -1) Fb = inp.brake * p.m * G * p.mu * 1.08;
+  const Faero = p.cd * (1 - 0.35 * s.draft) * u * Math.abs(u);
+  const Froll = au > 0.3 ? p.crr * sgn : 0;
+  const prevU = u;
+  u += ((Fdrive - Fb * sgn - Faero - Froll) / p.m) * dt;
+  if (sgn !== 0 && Math.sign(u) !== sgn && (inp.brake > 0 || !inp.gas) && s.gear !== -1) u = 0;
+
+  // steering → yaw rate (kinematic at low speed, grip-limited at speed)
+  const steerLim = p.steerMax / (1 + au * H.steerSens * 0.8);
+  const delta = -s.steer * steerLim;
+  s.delta = delta;
+  let rCmd = (u * Math.tan(delta)) / p.wb;
+  const aLat = p.mu * H.grip * G * (1 + Fdown / (p.m * G) * 0.6) * (inp.brake > 0.3 ? 0.92 : 1);
+  const rMax = aLat / Math.max(au, 4);
+  const over = Math.abs(rCmd) / Math.max(rMax, 1e-3); // >1 means asking for more than the tyres give
+  rCmd = clamp(rCmd, -rMax, rMax);
+  // trail-braking rotates the car a touch, throttle at the limit pushes wide
+  if (inp.brake > 0.2 && au > 10) rCmd *= 1.06;
+  const k = 1 - Math.exp(-H.yawK * dt * (au < 6 ? 1.6 : 1));
+  s.r = lerp(s.r, rCmd, k);
+  s.h += s.r * dt;
+  // lateral velocity: grip pulls the velocity back in line with the nose; a little slide at the limit
+  const slideK = over > 1 ? 9 - Math.min(5, (over - 1) * 6) * H.slide : 11;
+  v *= Math.exp(-slideK * dt);
+  if (over > 1.05 && au > 15) v += -Math.sign(rCmd) * Math.min(over - 1, 0.6) * H.slide * 2.2 * dt * au * 0.1;
+  const nh = Math.sin(s.h), nc = Math.cos(s.h);
+  s.vx = nh * u + nc * v;
+  s.vz = nc * u - nh * v;
+  s.u = u; s.v = v;
+  s.ax = lerp(s.ax, (u - prevU) / dt, 1 - Math.exp(-10 * dt));
+  s.ay = lerp(s.ay, u * s.r, 1 - Math.exp(-10 * dt));
+  s.beta = Math.atan2(v, Math.max(au, 1.5));
+  s.spin = spin;
+  s.lock = false;
+  s.useF = s.useR = Math.min(1, over);
+  s.slip = Math.max(over > 0.95 && au > 12 ? (over - 0.95) * 0.8 + 0.1 : 0, spin > 0.3 ? 0.25 : 0, Math.abs(s.beta) > 0.12 ? Math.abs(s.beta) : 0);
+  s.wheelRot += (u * dt) / 0.34;
+  if (s.boostT > 0) s.boostT -= dt;
+}
+
 // Guided drift (arcade/sport): the handbrake starts it, steering sets the angle and line,
 // throttle keeps the momentum. Returns false when the drift ends (normal physics resumes).
 function driftStep(s, p, inp, dt, u, v) {
@@ -236,6 +310,8 @@ function driftStep(s, p, inp, dt, u, v) {
   const k = clamp(0.5 - 0.5 * s.steer * d.side, 0, 1); // 1 = steering into the drift, 0 = full countersteer
   d.lowK = k < 0.12 ? d.lowK + dt : 0;
   d.noGas = inp.gas < 0.2 && !inp.hand ? d.noGas + dt : 0;
+  d.neutral = Math.abs(s.steer) < 0.2 && !inp.hand ? (d.neutral || 0) + dt : 0;
+  if (d.neutral > 0.55) { s.driftArm = 0; s.dr = null; return false; }
   if (d.lowK > 0.22 || d.noGas > 0.45 || V < 9 || inp.brake > 0.6) { s.driftArm = 0; s.dr = null; return false; }
   const bTarget = (0.3 + 0.36 * k + (inp.hand ? 0.14 : 0)) * (0.6 + 0.4 * H.drift);
   const bPrev = d.b;

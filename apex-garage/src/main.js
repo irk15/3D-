@@ -516,6 +516,9 @@ const loader = new GLTFLoader(manager).setDRACOLoader(draco).setMeshoptDecoder(M
 
 function enhanceMaterial(mat, cfg) {
   const n = (mat.name || '').toLowerCase();
+  // the model's own lamps glow (real headlight/taillight parts, not overlays)
+  if (/projector|headl|^lights$|lamp/.test(n)) { mat.emissive = new THREE.Color(0xdfe8ff); mat.emissiveIntensity = 0.9; }
+  else if (/taillight/.test(n)) { mat.emissive = new THREE.Color(0xff1020); mat.emissiveIntensity = 0.8; }
   mat.envMapIntensity = 1;
   // transmission forces an extra full-scene render pass; fake it with alpha instead
   if (mat.transmission > 0) { mat.transmission = 0; mat.transparent = true; mat.opacity = Math.min(mat.opacity, 0.3); mat.roughness = 0.05; mat.depthWrite = false; }

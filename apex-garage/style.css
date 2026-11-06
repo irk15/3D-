@@ -340,3 +340,14 @@ body.inLobby #panel { display: none; }
 #lbChatForm input { flex: 1; padding: 7px 10px; font-size: 13px; }
 #lbChatForm .btn { padding: 7px 12px; font-size: 10px; }
 @media (max-width: 760px) { .tracks { grid-template-columns: 1fr 1fr 1fr; } .trk svg { width: 70px; height: 70px; } #lobby { left: 8px; right: 8px; width: auto; top: 90px; transform: none; max-height: 60vh; } }
+
+.rHelp { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: none; padding: 14px 20px; background: rgba(6,8,14,.8); border: 1px solid var(--line); backdrop-filter: blur(8px); clip-path: var(--cut); max-width: 560px; }
+.rHelp.show { display: block; animation: fadeUp .4s ease; }
+.rHelp h3 { font-family: 'Orbitron'; font-size: 11px; letter-spacing: .3em; color: var(--acc); margin-bottom: 8px; }
+.rHelp table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.rHelp td { padding: 3px 10px 3px 0; white-space: nowrap; }
+.rHelp td:first-child { color: #cfd6e4; letter-spacing: .06em; }
+.rHelp td:last-child { color: var(--mute); font-size: 12px; letter-spacing: .1em; }
+.rHelp kbd { margin-right: 3px; }
+.rHelp p { margin-top: 8px; font-size: 13px; color: var(--mute); line-height: 1.4; }
+#race.touch .rHelp { display: none !important; }

@@ -14,7 +14,7 @@ A high-end 3D garage and racing game in the browser, built with Three.js (WebGL 
 - **3 modes:** Race (up to 7 AI rivals), Time Trial (with a saved ghost of your best lap) and Drift Attack (score and combo)
 - **Car physics:** tyre slip curves, weight transfer, grip shared between cornering and acceleration, downforce, drag and slipstream. A launch test tunes each vehicle so its in-game 0–100 time and top speed match its spec sheet
 - **Bike physics:** lean-to-turn, grip-limited lean angle, wheelie and stoppie limits, and crashes that respawn you
-- **Handling presets:** Arcade (guided drifts and full assists), Sport (traction and stability control) and Simulation (raw tyre physics, no assists)
+- **Handling presets:** Arcade and Sport use a planted grip model in the style of the big console racers. The car goes where you point it, corners right up to the grip limit (about 1.3 g in Sport, 1.65 g in Arcade) and only slides past the limit or in a handbrake drift. Simulation uses the full tyre model with no assists
 - **Gearbox:** automatic or manual (Q/E), with rev limiter and launch control (keep the revs in the green zone at GO for a perfect start)
 - **Racing extras:** nitro that refills from drifts, slipstream, overtakes, wheelies and clean laps. Rain makes the road wet and slippery
 - **AI:** drivers race through the same physics as you, with 4 difficulty levels

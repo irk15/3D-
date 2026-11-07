@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TEF Oral">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1024">
+<title>TEF Oral Studio</title>
+<style>
+:root{
+  --bg:#0d1024; --bg2:#151a3a; --card:rgba(255,255,255,.06); --card2:rgba(255,255,255,.1);
+  --line:rgba(255,255,255,.1); --tx:#eef0ff; --mut:#9aa1c9;
+  --you:#5eead4; --youbg:rgba(94,234,212,.13); --ex:#fbbf24; --exbg:rgba(255,255,255,.07);
+  --acc:#8b9bff; --r:20px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+body{min-height:100vh;background:
+  radial-gradient(900px 500px at 85% -10%,rgba(139,155,255,.22),transparent 60%),
+  radial-gradient(700px 500px at -10% 30%,rgba(94,234,212,.12),transparent 60%),var(--bg);background-attachment:fixed}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.app{max-width:600px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+h1{font-size:28px;margin:14px 0 4px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0}
+.sub{color:var(--mut);font-size:14px;line-height:1.45;margin:0 0 16px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.chip{padding:7px 14px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;color:var(--mut)}
+.chip.on{background:var(--acc);color:#0d1024;border-color:var(--acc);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px;backdrop-filter:blur(8px)}
+.trk{display:flex;gap:14px;align-items:center;width:100%;text-align:left}
+.badge{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:20px;background:linear-gradient(135deg,var(--acc),#6ee7d8);color:#0d1024}
+.badge.b{background:linear-gradient(135deg,#fbbf24,#fb7185)}
+.trk .t{font-weight:650;font-size:16px;line-height:1.25}
+.trk .m{color:var(--mut);font-size:12.5px;margin-top:4px}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--card2);color:var(--mut);margin-left:6px}
+.tag.ok{background:rgba(94,234,212,.18);color:var(--you)}
+.btn{display:block;width:100%;padding:14px;border-radius:16px;background:var(--card2);border:1px solid var(--line);font-weight:600;text-align:center}
+.btn.pri{background:var(--acc);color:#0d1024;border-color:var(--acc)}
+.btn.sm{display:inline-block;width:auto;padding:9px 14px;font-size:13px;border-radius:12px}
+.btn.danger{color:#fda4af}
+.top{display:flex;align-items:center;gap:10px;margin:6px 0 12px}
+.back{width:38px;height:38px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:18px}
+.top .ttl{font-weight:650;font-size:15px;line-height:1.2;flex:1}
+.top .sec{font-size:11px;color:var(--mut);display:block;font-weight:500;margin-bottom:2px}
+details.sc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin-bottom:12px}
+details.sc summary{cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;justify-content:space-between}
+details.sc summary::after{content:"▾";color:var(--mut)}
+details.sc[open] summary::after{content:"▴"}
+.ad{margin:12px 0;padding:14px;border-radius:14px;background:#fffbea;color:#3b2f0b;font-size:14px;line-height:1.5;white-space:pre-line}
+.ad b{display:block;font-size:16px;margin-bottom:4px}
+.sc p{font-size:14px;line-height:1.5;color:#d6d9f5;margin:8px 0}
+.kp{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.kp div{font-size:13px;padding:8px 10px;border-radius:10px;background:var(--card)}
+.kp i{color:var(--mut);font-style:normal;display:block;font-size:12px;margin-top:2px}
+/* stage */
+.stage{border-radius:24px;padding:20px 18px;margin-bottom:12px;min-height:170px;background:linear-gradient(160deg,rgba(139,155,255,.2),rgba(94,234,212,.08));border:1px solid var(--line);position:relative;cursor:pointer}
+.stage .who{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--ex)}
+.stage.ca .who{color:var(--you)}
+.stage .fr{font-size:21px;line-height:1.38;font-weight:600;margin-top:8px;letter-spacing:-.01em}
+.stage .en{font-size:15.5px;line-height:1.45;color:#c4c9f2;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);display:none}
+.stage.showen .en{display:block}
+.stage .hint{position:absolute;right:14px;bottom:10px;font-size:11px;color:var(--mut)}
+.stage .note{margin-top:10px;font-size:12px;color:var(--you);display:none}
+.stage.showen .note{display:block}
+#app[data-view=listen] .stage:not(.peek) .fr{filter:blur(9px);user-select:none}
+.stage.hid .fr,.stage.hid .en{display:none}
+.stage .ph{display:none;font-size:19px;font-weight:600;margin-top:10px;color:var(--you)}
+.stage.hid .ph{display:block}
+/* segmented */
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;padding:9px 4px;border-radius:11px;font-size:13px;color:var(--mut)}
+.seg button.on{background:var(--acc);color:#0d1024;font-weight:700}
+/* controls */
+.ctl{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom));z-index:5;background:rgba(21,26,58,.92);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:24px;padding:12px 14px;margin-top:14px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.row{display:flex;align-items:center;justify-content:center;gap:18px}
+.rb{width:44px;height:44px;border-radius:50%;background:var(--card2);font-size:18px}
+.rb.play{width:58px;height:58px;background:var(--acc);color:#0d1024;font-size:24px}
+.rb.on{background:var(--you);color:#0d1024}
+.prog{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--mut);margin-bottom:10px}
+.prog input{flex:1;accent-color:var(--acc);height:4px}
+.tools{display:flex;gap:6px;justify-content:center;margin-top:8px}
+.pill{padding:7px 11px;white-space:nowrap;border-radius:99px;font-size:12px;background:var(--card);border:1px solid var(--line);color:var(--mut)}
+.pill.on{background:var(--youbg);border-color:var(--you);color:var(--you)}
+/* waiting banner */
+.wait{display:none;border-radius:18px;padding:14px;margin-bottom:10px;background:var(--youbg);border:1px solid var(--you);text-align:center}
+.wait.on{display:block}
+.wait b{display:block;margin-bottom:10px;color:var(--you)}
+.wait .r{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+/* transcript */
+.list{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.msg{display:flex;gap:8px;align-items:flex-end;max-width:94%}
+.msg.ca{align-self:flex-end;flex-direction:row-reverse}
+.bub{border-radius:18px;padding:11px 14px;background:var(--exbg);border:1px solid transparent;cursor:pointer;transition:.2s}
+.msg.ca .bub{background:var(--youbg)}
+.msg.act .bub{border-color:var(--acc);box-shadow:0 0 0 3px rgba(139,155,255,.18)}
+.bub .sp{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ex);margin-bottom:3px}
+.msg.ca .bub .sp{color:var(--you)}
+.bub .f{font-size:15.5px;line-height:1.42}
+.bub .e{font-size:13.5px;line-height:1.4;color:#c4c9f2;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:none}
+.bub .n{font-size:11.5px;color:var(--you);margin-top:6px;display:none}
+.msg.open .e,.msg.open .n,#app[data-view=both] .e,#app[data-view=both] .n{display:block}
+#app[data-view=listen] .msg:not(.peek):not(.open) .f{filter:blur(7px)}
+#app.prac .msg.ca:not(.rev) .f,#app.prac .msg.ca:not(.rev) .e,#app.prac .msg.ca:not(.rev) .n{filter:blur(8px)}
+.jump{flex:none;width:30px;height:30px;border-radius:50%;background:var(--card);font-size:11px;color:var(--mut)}
+/* forms */
+label{display:block;font-size:13px;color:var(--mut);margin:14px 0 6px}
+input[type=text],textarea,select{width:100%;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--tx);font:inherit;font-size:15px}
+textarea{min-height:240px;line-height:1.45;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(215px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#fff;color:#0d1024;padding:10px 16px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.3s;z-index:20;max-width:90%;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.sync{display:none;margin-bottom:10px;text-align:center}
+.sync.on{display:block}
+.sync .big{padding:18px;font-size:17px;font-weight:700;background:var(--ex);color:#0d1024;border-radius:18px;width:100%}
+.sync p{font-size:12.5px;color:var(--mut);margin:0 0 8px}
+.file{display:none}
+</style>
+</head>
+<body>
+<div class="app" id="root"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONTENT — TEF Canada Expression orale, niveau cible NCLC/CLB 7
+   Ligne = [orateur, français, anglais, note optionnelle]
+   E = examinateur, V = vous
+   ============================================================ */
+const DATA = [
+{
+  id:'a-photo', section:'A', title:'Atelier de photographie pour débutants', est:5,
+  kind:'Section A — Obtenir des informations',
+  ad:{title:'ATELIER DE PHOTOGRAPHIE POUR DÉBUTANTS',
+      text:'Centre communautaire Riverdale\nApprenez les bases de la photographie en 8 semaines.\nMatériel fourni · Places limitées\nRenseignements : 416-555-0142'},
+  task:'Vous avez vu cette annonce et vous téléphonez au centre. Posez un maximum de questions pour obtenir des informations (dates, horaire, matériel, prix, formateur, inscription…). Visez au moins 10 questions variées, en vouvoyant l\'examinatrice.',
+  phrases:[
+    ['Pourriez-vous m\'expliquer en quoi consiste…?','Could you explain what … involves?'],
+    ['Est-ce qu\'il serait possible de…?','Would it be possible to…?'],
+    ['En ce qui concerne le matériel / le prix…','As for the equipment / the price…'],
+    ['Passons au prix : combien coûte… ?','Let\'s move on to price: how much is…?'],
+    ['Pardon, c\'était bien… ? Je veux être certain d\'avoir bien compris.','Sorry, was it … ? I want to be sure I understood.'],
+    ['Ça m\'arrange beaucoup.','That works really well for me.'],
+    ['Dans ce cas, j\'aimerais m\'inscrire.','In that case, I\'d like to sign up.']
+  ],
+  lines:[
+  ['E','Centre communautaire Riverdale, bonjour! Comment puis-je vous aider?','Riverdale Community Centre, hello! How can I help you?'],
+  ['V','Bonjour, madame. Je vous appelle au sujet de l\'annonce pour l\'atelier de photographie que j\'ai vue sur votre site Web. Est-ce qu\'il reste encore des places?','Hello, ma\'am. I\'m calling about the ad for the photography workshop that I saw on your website. Are there still spots left?','Ouverture polie : « au sujet de » + question directe'],
+  ['E','Oui, il nous en reste quelques-unes. Qu\'est-ce que vous aimeriez savoir?','Yes, we have a few left. What would you like to know?'],
+  ['V','Pour commencer, pourriez-vous m\'expliquer en quoi consiste exactement l\'atelier? Je n\'ai jamais fait de photographie, alors j\'aimerais savoir si c\'est vraiment adapté aux débutants.','To start, could you explain what exactly the workshop involves? I\'ve never done photography, so I\'d like to know if it\'s really suited to beginners.','Conditionnel de politesse + « en quoi consiste »'],
+  ['E','Oui, tout à fait. C\'est un cours de huit semaines. On commence par les bases : la lumière, la composition et le fonctionnement de l\'appareil. Ensuite, on fait des sorties sur le terrain.','Yes, absolutely. It\'s an eight-week course. We start with the basics: light, composition and how the camera works. Then we go on field outings.'],
+  ['V','Ah, d\'accord, ça m\'intéresse beaucoup. Et quand est-ce que le cours commence? Et à quel moment de la semaine a-t-il lieu?','Ah, okay, that interests me a lot. And when does the course start? And at what point in the week does it take place?','Inversion à l\'oral : « a-t-il lieu »'],
+  ['E','Le prochain groupe commence le 18 janvier. Les séances ont lieu le mardi soir, de dix-huit heures trente à vingt et une heures.','The next group starts on January 18th. Sessions are on Tuesday evenings, from 6:30 to 9:00 p.m.'],
+  ['V','Pardon, c\'était bien le dix-huit janvier? Je veux être certain d\'avoir bien compris.','Sorry, was it indeed January 18th? I want to be sure I understood properly.','Vérifier / reformuler : technique clé au TEF'],
+  ['E','Oui, c\'est ça, le dix-huit janvier.','Yes, that\'s right, January 18th.'],
+  ['V','Parfait, merci. Le mardi soir me convient très bien, parce que je travaille jusqu\'à dix-sept heures. Est-ce que les séances ont toujours lieu en salle, ou est-ce qu\'il y a aussi des activités à l\'extérieur?','Perfect, thank you. Tuesday evening suits me very well, because I work until 5 p.m. Are the sessions always held indoors, or are there also outdoor activities?','Justifier avec « parce que » + question à deux choix'],
+  ['E','Il y a quatre séances en salle et quatre sorties. Les sorties se font dans le quartier ou au centre-ville, selon la météo.','There are four indoor sessions and four outings. The outings are in the neighbourhood or downtown, depending on the weather.'],
+  ['V','Très bien. Et si je devais m\'absenter une semaine, par exemple à cause du travail, est-ce qu\'il serait possible de rattraper la séance?','Very good. And if I had to be absent for a week, for example because of work, would it be possible to make up the session?','Hypothèse : si + imparfait → conditionnel'],
+  ['E','Euh… on n\'offre pas de reprise, mais le formateur envoie les notes de cours par courriel. Alors vous ne manquez pas la matière.','Uh… we don\'t offer make-ups, but the instructor emails the course notes. So you don\'t miss the material.'],
+  ['V','D\'accord, c\'est bon à savoir. Maintenant, en ce qui concerne le matériel : est-ce que je dois apporter mon propre appareil photo? Pour l\'instant, je n\'ai que mon téléphone.','Okay, good to know. Now, as for the equipment: do I have to bring my own camera? For now, I only have my phone.','« En ce qui concerne » pour changer de sujet'],
+  ['E','Le matériel est fourni : on prête un appareil pendant les séances. Vous pouvez aussi utiliser votre téléphone pour certaines activités.','The equipment is provided: we lend a camera during the sessions. You can also use your phone for some activities.'],
+  ['V','Parfait. Est-ce que je pourrais l\'emprunter à la maison pour m\'exercer entre les séances? Je pense que ce serait important pour progresser.','Perfect. Could I borrow it at home to practise between sessions? I think that would be important in order to improve.','Conditionnel + opinion personnelle'],
+  ['E','Non, malheureusement, les appareils restent au centre. Mais il y a une salle de pratique qui est ouverte le samedi matin.','No, unfortunately, the cameras stay at the centre. But there\'s a practice room that\'s open Saturday mornings.'],
+  ['V','C\'est une bonne solution. Passons au prix : combien coûte l\'atelier au complet? Et est-ce qu\'il y a des frais supplémentaires, comme des frais d\'inscription ou de matériel?','That\'s a good solution. Let\'s move on to price: how much does the whole workshop cost? And are there any extra fees, like registration or equipment fees?','Transition : « Passons à… »'],
+  ['E','Le cours coûte cent quatre-vingt-quinze dollars, taxes incluses. Il n\'y a pas d\'autres frais. Par contre, si vous voulez imprimer vos photos à la fin, c\'est en supplément.','The course costs one hundred ninety-five dollars, taxes included. There are no other fees. However, if you want to print your photos at the end, that\'s extra.'],
+  ['V','Je vois. Est-ce qu\'on peut payer en plusieurs versements? Cent quatre-vingt-quinze dollars, c\'est un certain budget pour moi en ce moment.','I see. Can one pay in several instalments? A hundred and ninety-five dollars is a bit of a budget for me right now.','Demander une facilité de paiement avec tact'],
+  ['E','Oui, c\'est possible. On peut diviser le montant en deux paiements : le premier à l\'inscription et le deuxième à la quatrième semaine.','Yes, that\'s possible. We can split the amount into two payments: the first at registration and the second in the fourth week.'],
+  ['V','Ça m\'arrange beaucoup. Et combien de personnes y a-t-il par groupe? Je préfère les petits groupes, parce qu\'on peut poser plus de questions au formateur.','That works really well for me. And how many people are there per group? I prefer small groups, because you can ask the instructor more questions.','Réaction naturelle + nouvelle question'],
+  ['E','Le maximum est de douze personnes. En ce moment, il y en a déjà huit d\'inscrites.','The maximum is twelve people. Right now, eight are already registered.'],
+  ['V','Donc il reste quatre places. Je devrais m\'inscrire assez vite, alors. Qui donne le cours? Est-ce que le formateur est un photographe professionnel?','So there are four spots left. I should sign up fairly quickly, then. Who teaches the course? Is the instructor a professional photographer?','Déduire à voix haute : « Donc… alors »'],
+  ['E','Oui, c\'est Marc Lefebvre. Il est photographe de mariage et de portrait depuis plus de quinze ans, et il enseigne chez nous depuis trois ans.','Yes, it\'s Marc Lefebvre. He\'s been a wedding and portrait photographer for over fifteen years, and he\'s been teaching with us for three years.'],
+  ['V','Excellent. Est-ce qu\'on reçoit une attestation à la fin du cours? Et le cours est-il donné seulement en français?','Excellent. Do we receive a certificate at the end of the course? And is the course given only in French?'],
+  ['E','On remet une attestation de participation, oui. Et le cours est entièrement en français, mais le formateur parle aussi anglais. Donc, s\'il y a un mot que vous ne comprenez pas, il peut vous aider.','We do give a certificate of participation, yes. And the course is entirely in French, but the instructor also speaks English. So if there\'s a word you don\'t understand, he can help you.'],
+  ['V','C\'est rassurant, merci. Alors, comment est-ce que je peux m\'inscrire? Faut-il venir sur place, ou est-ce que je peux le faire par téléphone?','That\'s reassuring, thank you. So, how can I sign up? Do I need to come in person, or can I do it by phone?','« Faut-il » : structure plus soutenue'],
+  ['E','Vous pouvez le faire tout de suite par téléphone, avec une carte de crédit, ou encore sur notre site Web.','You can do it right now by phone, with a credit card, or else on our website.'],
+  ['V','Dans ce cas, j\'aimerais m\'inscrire maintenant, si c\'est possible. Est-ce que je recevrai une confirmation par la suite?','In that case, I\'d like to sign up now, if that\'s possible. Will I receive a confirmation afterwards?','Futur simple : « je recevrai »'],
+  ['E','Bien sûr. Je vous l\'envoie par courriel. Il me faudrait votre nom complet et votre adresse courriel.','Of course. I\'ll send it to you by email. I\'d need your full name and your email address.'],
+  ['V','Avec plaisir. Et merci beaucoup pour toutes ces informations, madame. Vous m\'avez vraiment été très utile.','With pleasure. And thank you very much for all this information, ma\'am. You were really very helpful.','Clôture chaleureuse et naturelle']
+  ]
+},
+{
+  id:'b-garden', section:'B', title:'Convaincre un ami : le jardin communautaire', est:5,
+  kind:'Section B — Convaincre',
+  task:'Vous avez lu que la ville ouvre un jardin communautaire dans votre quartier. Vous voulez vous inscrire et convaincre un(e) ami(e) de le faire avec vous. Il/elle est réticent(e) : répondez à chaque objection avec des arguments, des exemples et des solutions. Vous tutoyez votre ami(e).',
+  phrases:[
+    ['Je comprends tout à fait, mais…','I completely understand, but…'],
+    ['Justement, c\'est ça l\'avantage.','That\'s precisely the advantage.'],
+    ['Il y a même des études qui montrent que…','There are even studies showing that…'],
+    ['Rien à voir avec…','Nothing like…'],
+    ['De toute façon, ce qui compte, c\'est…','Anyway, what matters is…'],
+    ['Tu ne prends aucun risque.','You\'re taking no risk at all.'],
+    ['Qu\'est-ce que tu en dis?','What do you say?'],
+    ['Marché conclu!','Deal!']
+  ],
+  lines:[
+  ['E','Salut! Alors, c\'est quoi cette idée dont tu voulais me parler? Tu m\'as dit au téléphone que c\'était important.','Hey! So, what\'s this idea you wanted to talk to me about? You told me on the phone it was important.'],
+  ['V','Salut! Merci d\'être venu. Alors voilà : j\'ai vu une annonce hier. La ville ouvre un jardin communautaire dans notre quartier, et les inscriptions sont ouvertes jusqu\'à la fin du mois. J\'aimerais beaucoup m\'inscrire, et je voudrais que tu le fasses avec moi.','Hey! Thanks for coming. So here\'s the thing: I saw an ad yesterday. The city is opening a community garden in our neighbourhood, and registration is open until the end of the month. I\'d really like to sign up, and I\'d like you to do it with me.','Subjonctif après « vouloir que »'],
+  ['E','Un jardin? Moi? Franchement, je n\'ai jamais planté quoi que ce soit de ma vie. Je réussirais même à tuer un cactus.','A garden? Me? Honestly, I\'ve never planted anything in my life. I\'d manage to kill even a cactus.'],
+  ['V','Ha! Justement, personne ne s\'attend à ce que tu sois un expert. Bien que ce soit nouveau pour toi, le programme est fait pour les débutants, et il y a des jardiniers bénévoles qui donnent des conseils chaque semaine. Tu apprendrais en faisant, c\'est tout.','Ha! Precisely, nobody expects you to be an expert. Even though it\'s new to you, the program is made for beginners, and there are volunteer gardeners who give advice every week. You\'d learn by doing, that\'s all.','Subjonctif : « s\'attendre à ce que », « bien que »'],
+  ['E','Ouais, mais bon… je suis déjà débordé. Entre le travail, le gym et le reste, je n\'ai vraiment pas le temps de m\'occuper de plantes.','Yeah, but still… I\'m already swamped. Between work, the gym and everything else, I really don\'t have time to look after plants.'],
+  ['V','Je comprends tout à fait, moi aussi j\'ai un horaire chargé. Mais ça ne prend pas beaucoup de temps : deux ou trois heures par semaine, et on peut s\'organiser à deux. Si tu ne peux pas venir une semaine, j\'irai à ta place, et la fois suivante, ce sera ton tour.','I completely understand, I have a busy schedule too. But it doesn\'t take much time: two or three hours a week, and we can share it between the two of us. If you can\'t come one week, I\'ll go in your place, and the next time it\'ll be your turn.','Concession → contre-argument → solution concrète'],
+  ['E','Deux ou trois heures, c\'est quand même beaucoup. Moi, je préfère garder mes fins de semaine pour me reposer.','Two or three hours is still a lot. Me, I prefer to keep my weekends for resting.'],
+  ['V','Je sais, mais justement, ça pourrait te servir de repos. Tu passes ta semaine devant un écran, non? Être dehors, les mains dans la terre, ça aide vraiment à décompresser. Il y a même des études qui montrent que le jardinage réduit le stress.','I know, but actually, it could serve as rest for you. You spend your week in front of a screen, right? Being outside, hands in the soil, really helps you unwind. There are even studies showing that gardening reduces stress.','Retourner l\'objection + appui sur des faits'],
+  ['E','Peut-être, mais moi, pour décompresser, je préfère aller marcher ou regarder un film. Et puis, à quoi ça sert? On peut acheter des légumes à l\'épicerie, c\'est plus simple.','Maybe, but me, to unwind I prefer going for a walk or watching a movie. And besides, what\'s the point? You can buy vegetables at the grocery store, it\'s simpler.'],
+  ['V','C\'est vrai que c\'est plus simple, mais avec les prix actuels, ce n\'est pas si économique. Un panier de légumes frais coûte cher! Si on fait pousser nos propres tomates, nos herbes et nos salades, on dépensera beaucoup moins, et en plus, ce sera bien meilleur. Rien à voir avec ce qu\'on trouve au supermarché.','It\'s true that it\'s simpler, but with today\'s prices, it\'s not that economical. A basket of fresh vegetables is expensive! If we grow our own tomatoes, herbs and salads, we\'ll spend a lot less, and on top of that, it\'ll taste much better. Nothing like what you find at the supermarket.','si + présent → futur ; « Rien à voir avec »'],
+  ['E','Mouais… Et ça coûte combien, ton jardin? Parce que s\'il faut payer une fortune, je ne suis pas intéressé.','Meh… And how much does your garden cost? Because if I have to pay a fortune, I\'m not interested.'],
+  ['V','Pas du tout. L\'inscription est de quarante dollars pour toute la saison, et l\'outillage est fourni. Si on se partage une parcelle, ça fait vingt dollars chacun. C\'est moins cher qu\'un repas au restaurant.','Not at all. Registration is forty dollars for the whole season, and the tools are provided. If we share a plot, that\'s twenty dollars each. That\'s cheaper than a meal at a restaurant.','Chiffres + comparaison parlante'],
+  ['E','Vingt dollars, ça va. Mais il y a un autre problème : l\'été, je pars souvent en voyage. Qui va s\'occuper du jardin quand je serai parti?','Twenty dollars, that\'s fine. But there\'s another problem: in the summer, I often go travelling. Who\'s going to look after the garden when I\'m away?'],
+  ['V','Bonne question, mais ce n\'est pas un problème. Comme on serait deux, je m\'en occuperais pendant ton absence. Et puis, les autres membres s\'entraident : quand quelqu\'un part en vacances, un voisin s\'occupe de ses plantes. C\'est un vrai esprit de communauté.','Good question, but it\'s not a problem. Since there\'d be two of us, I\'d take care of it while you\'re away. And besides, the other members help each other out: when someone goes on vacation, a neighbour looks after their plants. It\'s a real community spirit.','Pronom « en » : s\'en occuper'],
+  ['E','Ah, tu penses? Moi, je ne connais personne là-bas. Je ne suis pas très à l\'aise pour rencontrer du monde comme ça.','Oh, you think? Me, I don\'t know anyone there. I\'m not very comfortable meeting people like that.'],
+  ['V','Moi non plus, au début. Mais c\'est justement l\'avantage : le jardin, c\'est une excuse naturelle pour parler aux gens. On a tous quelque chose en commun, les plantes. Et honnêtement, tu m\'as dit que tu te sentais un peu isolé depuis ton déménagement. Ça pourrait t\'aider à te faire des amis dans le quartier.','Me neither, at first. But that\'s precisely the advantage: the garden is a natural excuse to talk to people. We all have something in common: plants. And honestly, you told me you\'ve been feeling a bit isolated since your move. It could help you make friends in the neighbourhood.','Argument personnel et empathique'],
+  ['E','C\'est vrai que je ne connais pas grand monde depuis que j\'ai déménagé… Mais j\'ai peur de me planter. Si mes légumes ne poussent pas, je vais me sentir ridicule.','It\'s true I don\'t know many people since I moved… But I\'m afraid of messing up. If my vegetables don\'t grow, I\'m going to feel ridiculous.'],
+  ['V','Mais non, voyons! Même les jardiniers expérimentés ont des échecs. Et de toute façon, ce n\'est pas la récolte qui compte le plus, c\'est l\'expérience. Imagine : dans quelques mois, on pourrait cuisiner ensemble avec des légumes qu\'on a fait pousser nous-mêmes. Tu ne trouves pas que ce serait génial?','Oh come on! Even experienced gardeners have failures. And anyway, it\'s not the harvest that matters most, it\'s the experience. Imagine: in a few months, we could cook together with vegetables we grew ourselves. Don\'t you think that would be great?','Appel à l\'émotion + hypothèse'],
+  ['E','Hmm, c\'est vrai que ça fait rêver, je dois l\'avouer. Mais la saison commence quand? Parce qu\'il fait encore froid, non?','Hmm, it\'s true that it sounds dreamy, I have to admit. But when does the season start? Because it\'s still cold, no?'],
+  ['V','La saison officielle commence en mai, mais il y a trois ateliers de préparation en avril pour apprendre les bases. Donc, on aurait le temps de se préparer tranquillement, sans pression.','The official season starts in May, but there are three preparation workshops in April to learn the basics. So we\'d have time to get ready calmly, without pressure.'],
+  ['E','Et si je m\'inscris et que je change d\'avis après un mois? Je ne veux pas m\'engager pour rien.','And what if I sign up and change my mind after a month? I don\'t want to commit for nothing.'],
+  ['V','C\'est tout à fait raisonnable. Je me suis renseigné : on peut annuler dans les deux premières semaines et être remboursé. Donc, tu ne prends aucun risque. Tu essaies, et si ça ne te plaît pas, tu arrêtes.','That\'s completely reasonable. I looked into it: you can cancel within the first two weeks and get a refund. So you\'re taking no risk at all. You try it, and if you don\'t like it, you stop.','Passé composé réflexif : je me suis renseigné'],
+  ['E','Ah, ça change un peu les choses… Tu as déjà tout vérifié, on dirait.','Ah, that changes things a bit… You\'ve already checked everything, it seems.'],
+  ['V','Oui, parce que j\'y tiens vraiment. Je pense que ça nous ferait du bien à tous les deux, et ce serait beaucoup plus motivant de le faire ensemble que tout seul. Alors, qu\'est-ce que tu en dis? Tu es prêt à essayer?','Yes, because I really care about it. I think it would do us both good, and it would be much more motivating to do it together than alone. So, what do you say? Are you ready to try?','Pronom « y » : j\'y tiens ; conclusion + question directe'],
+  ['E','Bon… d\'accord, mais à une condition : que tu me montres comment faire, parce que je n\'y connais vraiment rien.','Well… okay, but on one condition: that you show me how, because I really don\'t know anything about it.'],
+  ['V','Ça marche, promis! On commence par aller à la séance d\'information, samedi prochain. Tu viens voir, et si tu n\'aimes pas l\'endroit, tu ne t\'inscris pas. Ça te va?','Deal, I promise! We\'ll start by going to the information session next Saturday. You come and see, and if you don\'t like the place, you don\'t sign up. Is that okay with you?'],
+  ['E','Ça me va. Mais c\'est toi qui apportes les cafés.','That works for me. But you\'re the one bringing the coffees.'],
+  ['V','Marché conclu! Merci, tu vas voir, tu ne le regretteras pas.','Deal! Thanks, you\'ll see, you won\'t regret it.']
+  ]
+}
+];
+
+/* ============================================================
+   Helpers & storage
+   ============================================================ */
+const root=document.getElementById('root');
+const h=(tag,a={},...kids)=>{const e=document.createElement(tag);for(const k in a){const v=a[k];if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(k==='html')e.innerHTML=v;else e.setAttribute(k,v)}for(const c of kids.flat()){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c))}return e};
+const $=s=>root.querySelector(s);
+let toastT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2200)}
+const fmt=s=>{s=Math.max(0,s|0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const ls={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('tef-oral',1);r.onupgradeneeded=()=>r.result.createObjectStore('audio');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function putAudio(id,blob){const db=await idb();return new Promise((res,rej)=>{const tx=db.transaction('audio','readwrite');tx.objectStore('audio').put(blob,id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+async function getAudio(id){const db=await idb();return new Promise((res,rej)=>{const r=db.transaction('audio').objectStore('audio').get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function delAudio(id){const db=await idb();return new Promise((res,rej)=>{const tx=db.transaction('audio','readwrite');tx.objectStore('audio').delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+function audioIds(){
+  const work=(async()=>{try{const db=await idb();return await new Promise(res=>{const r=db.transaction('audio').objectStore('audio').getAllKeys();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>res([])})}catch(e){return[]}})();
+  return Promise.race([work,new Promise(res=>setTimeout(()=>res([]),1200))]);
+}
+
+let TRACKS=[];
+const norm=t=>({...t,lines:t.lines.map(l=>({s:l[0]==='E'?'ex':'ca',fr:l[1],en:l[2],note:l[3]||''}))});
+function loadTracks(){TRACKS=DATA.map(norm).concat(ls.get('tef.custom',[]).map(t=>({...t,custom:true})))}
+
+/* ============================================================
+   Library
+   ============================================================ */
+let filter='all';
+async function showLibrary(){
+  stopAll();loadTracks();
+  const have=new Set(await audioIds());
+  root.innerHTML='';
+  root.append(
+    h('h1',{},'TEF Oral Studio'),
+    h('p',{class:'sub'},'Écoute des dialogues authentiques (niveau NCLC 7), lis les sous-titres en français et touche une réplique pour voir l\'anglais.'),
+    h('div',{class:'chips'},
+      [['all','Tout'],['A','Section A'],['B','Section B']].map(([k,l])=>h('button',{class:'chip'+(filter===k?' on':''),onclick:()=>{filter=k;showLibrary()}},l))
+    ),
+    ...TRACKS.filter(t=>filter==='all'||t.section===filter).map(t=>
+      h('div',{class:'card'},
+        h('button',{class:'trk',onclick:()=>openTrack(t.id)},
+          h('div',{class:'badge '+(t.section==='B'?'b':'')},t.section),
+          h('div',{},
+            h('div',{class:'t'},t.title),
+            h('div',{class:'m'},(t.kind||'Section '+t.section)+' · '+t.lines.length+' répliques',
+              h('span',{class:'tag'+(have.has(t.id)?' ok':'')},have.has(t.id)?'Ton audio ✓':'Voix de l\'appareil'))
+          )
+        )
+      )
+    ),
+    h('button',{class:'btn',onclick:showAdd},'＋ Ajouter un exercice (mon audio + mon script)'),
+    h('p',{class:'sub',style:'margin-top:18px;font-size:12.5px'},'Astuce iPhone : ouvre cette page dans Safari → Partager → « Sur l\'écran d\'accueil » pour l\'installer comme une app. Tes audios restent enregistrés sur ton téléphone.')
+  );
+}
+
+/* ============================================================
+   Add custom exercise
+   ============================================================ */
+function parseScript(txt){
+  const out=[];
+  for(const raw of txt.split('\n')){
+    const m=raw.trim().match(/^([EV]):\s*(.*)$/i);if(!m)continue;
+    const p=m[2].split('|');const fr=p[0].trim(),en=(p[1]||'').trim();
+    if(fr)out.push({s:m[1].toUpperCase()==='E'?'ex':'ca',fr,en,note:''});
+  }
+  return out;
+}
+function showAdd(){
+  stopAll();root.innerHTML='';
+  const title=h('input',{type:'text',placeholder:'Ex. Section B — Convaincre : télétravail'});
+  const sec=h('select',{},h('option',{value:'A'},'Section A — Obtenir des informations'),h('option',{value:'B'},'Section B — Convaincre'));
+  const task=h('textarea',{style:'min-height:80px',placeholder:'La consigne / la situation (facultatif)'});
+  const txt=h('textarea',{placeholder:'E: Bonjour, que puis-je faire pour vous? | Hello, how can I help you?\nV: Bonjour, je vous appelle au sujet de… | Hello, I\'m calling about…\nE: …'});
+  root.append(
+    h('div',{class:'top'},h('button',{class:'back',onclick:showLibrary},'‹'),h('div',{class:'ttl'},'Nouvel exercice')),
+    h('p',{class:'sub'},'Une réplique par ligne. Commence par E: (examinateur) ou V: (vous), puis le français, une barre verticale |, puis l\'anglais. Tu pourras ensuite joindre ton fichier audio.'),
+    h('label',{},'Titre'),title,h('label',{},'Section'),sec,h('label',{},'Consigne'),task,h('label',{},'Script'),txt,
+    h('div',{style:'height:14px'}),
+    h('button',{class:'btn pri',onclick:()=>{
+      const lines=parseScript(txt.value);
+      if(!title.value.trim()||lines.length<2){toast('Ajoute un titre et au moins 2 répliques');return}
+      const list=ls.get('tef.custom',[]);
+      const id='c-'+Date.now();
+      list.push({id,section:sec.value,title:title.value.trim(),kind:sec.value==='A'?'Section A — Obtenir des informations':'Section B — Convaincre',task:task.value.trim(),phrases:[],lines,est:Math.max(2,Math.round(lines.reduce((a,l)=>a+l.fr.length,0)/900))});
+      ls.set('tef.custom',list);toast('Exercice ajouté');openTrack(id);
+    }},'Enregistrer')
+  );
+}
+
+/* ============================================================
+   Player
+   ============================================================ */
+let P=null;
+function stopAll(){
+  if(!P)return;
+  try{speechSynthesis.cancel()}catch(e){}
+  cancelAnimationFrame(P.raf);
+  if(P.audio){P.audio.pause();P.audio.src=''}
+  if(P.url)URL.revokeObjectURL(P.url);
+  P=null;
+}
+function openTrack(id){
+  stopAll();
+  const t=TRACKS.find(x=>x.id===id)||(loadTracks(),TRACKS.find(x=>x.id===id));
+  if(!t){showLibrary();return}
+  P={t,idx:0,playing:false,waiting:false,practice:false,loop:false,rate:1,src:'tts',audio:null,url:null,hasAudio:false,starts:[],dur:0,modelPlay:null,tok:0,sync:null,raf:0,view:ls.get('tef.view','fr')};
+  t.lines.forEach(l=>{l.rev=false});
+  renderPlayer();
+  Promise.race([getAudio(t.id),new Promise(r=>setTimeout(()=>r(null),1500))]).then(b=>{if(b&&P&&P.t===t)attachAudio(b,true)}).catch(()=>{});
+}
+
+function renderPlayer(){
+  const t=P.t;root.innerHTML='';
+  const app=h('div',{id:'app'});
+  app.dataset.view=P.view;
+  root.append(app);
+  app.append(
+    h('div',{class:'top'},
+      h('button',{class:'back',onclick:showLibrary},'‹'),
+      h('div',{class:'ttl'},h('span',{class:'sec'},t.kind||('Section '+t.section)),t.title)
+    )
+  );
+  // scenario
+  const sc=h('details',{class:'sc'},h('summary',{},'Consigne & phrases utiles'));
+  if(t.ad)sc.append(h('div',{class:'ad'},h('b',{},t.ad.title),t.ad.text));
+  if(t.task)sc.append(h('p',{},t.task));
+  if(t.phrases&&t.phrases.length)sc.append(h('div',{class:'kp'},t.phrases.map(p=>h('div',{},p[0],h('i',{},p[1])))));
+  if(!t.ad&&!t.task&&!(t.phrases&&t.phrases.length))sc.append(h('p',{},'Pas de consigne pour cet exercice.'));
+  app.append(sc);
+  // view seg
+  app.append(h('div',{class:'seg',id:'viewseg'},
+    [['listen','Écoute'],['fr','Français'],['both','FR + EN']].map(([k,l])=>h('button',{'data-k':k,class:P.view===k?'on':'',onclick:()=>setView(k)},l))
+  ));
+  // stage
+  app.append(h('div',{class:'stage',id:'stage',onclick:()=>{
+    const s=$('#stage');
+    if(P.view==='listen'&&!s.classList.contains('peek')){s.classList.add('peek');return}
+    s.classList.toggle('showen');
+  }},
+    h('div',{class:'who',id:'st-who'}),h('div',{class:'fr',id:'st-fr'}),h('div',{class:'ph',id:'st-ph'},'🎤 À vous de parler…'),h('div',{class:'en',id:'st-en'}),h('div',{class:'note',id:'st-note'}),
+    h('div',{class:'hint',id:'st-hint'},'Touche pour voir l\'anglais')
+  ));
+  // waiting + sync
+  app.append(h('div',{class:'wait',id:'wait'},h('b',{},'À vous de parler! Dites votre réplique à voix haute.'),
+    h('div',{class:'r'},
+      h('button',{class:'btn sm',onclick:revealModel},'Voir le modèle'),
+      h('button',{class:'btn sm',onclick:listenModel},'Écouter le modèle'),
+      h('button',{class:'btn sm pri',onclick:doContinue},'Continuer ▶')
+    )));
+  app.append(h('div',{class:'sync',id:'sync'},h('p',{id:'sync-p'}),h('button',{class:'big',onclick:syncTap},'Réplique suivante ▶'),h('button',{class:'btn sm',style:'margin-top:8px',onclick:cancelSync},'Annuler')));
+  // transcript
+  const list=h('div',{class:'list',id:'list'});
+  t.lines.forEach((l,i)=>{
+    const m=h('div',{class:'msg '+l.s,'data-i':i},
+      h('div',{class:'bub',onclick:()=>{
+        if(P.view==='listen'&&!m.classList.contains('peek')){m.classList.add('peek');return}
+        m.classList.toggle('open');
+      }},
+        h('div',{class:'sp'},l.s==='ex'?'Examinateur':'Vous'),
+        h('div',{class:'f'},l.fr),h('div',{class:'e'},l.en||'—'),l.note?h('div',{class:'n'},'✦ CLB 7 · '+l.note):null),
+      h('button',{class:'jump',title:'Lire cette réplique',onclick:()=>jump(i)},'▶')
+    );
+    list.append(m);
+  });
+  app.append(list);
+  // controls
+  app.append(h('div',{class:'ctl'},
+    h('div',{class:'prog'},h('span',{id:'p-l'},'0:00'),h('input',{type:'range',id:'p-r',min:0,max:100,value:0,step:'any',oninput:e=>seekSlider(+e.target.value)}),h('span',{id:'p-r2'},'')),
+    h('div',{class:'row'},
+      h('button',{class:'rb',onclick:()=>jump(P.idx-1),'aria-label':'Réplique précédente'},'⏮'),
+      h('button',{class:'rb play',id:'playbtn',onclick:togglePlay},'▶'),
+      h('button',{class:'rb',onclick:()=>jump(P.idx+1),'aria-label':'Réplique suivante'},'⏭')
+    ),
+    h('div',{class:'tools'},
+      h('button',{class:'pill',id:'t-prac',onclick:togglePractice},'🎤 Pratique'),
+      h('button',{class:'pill',id:'t-loop',onclick:toggleLoop},'🔁 Boucle'),
+      h('button',{class:'pill',id:'t-rate',onclick:cycleRate},'1×'),
+      h('button',{class:'pill',id:'t-src',onclick:openSource},'🔊 Voix')
+    )
+  ));
+  // source panel
+  const file=h('input',{type:'file',class:'file',id:'file',accept:'audio/*,.mp3,.m4a,.wav,.aac,.ogg',onchange:async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{await putAudio(P.t.id,f)}catch(err){toast('Stockage impossible — lecture seulement pendant cette session')}
+    localStorage.removeItem('tef.sync.'+P.t.id);
+    attachAudio(f,true);toast('Audio ajouté — touche « Synchroniser » pour caler les sous-titres');
+  }});
+  app.append(h('div',{class:'card',id:'srcpanel',style:'display:none;margin-top:12px'},
+    h('h2',{},'Source audio'),
+    h('p',{class:'sub',style:'margin:6px 0 12px'},'Par défaut, ton téléphone lit le script avec une voix française. Tu peux joindre ton propre enregistrement (10–20 min OK).'),
+    h('div',{class:'seg'},h('button',{id:'s-tts',onclick:()=>setSource('tts')},'Voix de l\'appareil'),h('button',{id:'s-aud',onclick:()=>setSource('audio')},'Mon audio')),
+    file,
+    h('div',{style:'display:flex;gap:8px;flex-wrap:wrap'},
+      h('button',{class:'btn sm',onclick:()=>file.click()},'📎 Choisir un fichier audio'),
+      h('button',{class:'btn sm',id:'b-sync',onclick:startSync},'⏱ Synchroniser'),
+      h('button',{class:'btn sm',id:'b-rm',onclick:removeAudio},'Retirer l\'audio')),
+    h('p',{class:'sub',style:'margin:12px 0 0;font-size:12.5px'},'Synchroniser : écoute ton audio et touche « Réplique suivante » au début de chaque réplique. Une seule fois suffit, c\'est mémorisé.'),
+    P.t.custom?h('button',{class:'btn sm danger',style:'margin-top:12px',onclick:deleteTrack},'Supprimer cet exercice'):null
+  ));
+  $('#app').classList.toggle('prac',P.practice);
+  setIdx(0,false);updateSource();updateProgress();updatePlay();
+}
+
+function setView(k){
+  P.view=k;ls.set('tef.view',k);$('#app').dataset.view=k;
+  document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  $('#stage').classList.remove('peek');
+  updateStage();
+}
+
+/* -------- stage / index -------- */
+function setIdx(i,scroll=true){
+  const n=P.t.lines.length;i=Math.max(0,Math.min(n-1,i));
+  const changed=i!==P.idx;P.idx=i;
+  document.querySelectorAll('.msg.act').forEach(e=>e.classList.remove('act'));
+  const el=document.querySelector('.msg[data-i="'+i+'"]');
+  if(el){el.classList.add('act');if(scroll)el.scrollIntoView({block:'center',behavior:'smooth'})}
+  if(changed){const s=$('#stage');if(s){s.classList.remove('peek','showen')}}
+  updateStage();updateProgress();
+}
+function updateStage(){
+  const L=P.t.lines[P.idx],s=$('#stage');if(!s)return;
+  s.classList.toggle('ca',L.s==='ca');
+  $('#st-who').textContent=(L.s==='ex'?'Examinateur':'Vous')+' · '+(P.idx+1)+'/'+P.t.lines.length;
+  $('#st-fr').textContent=L.fr;
+  $('#st-en').textContent=L.en||'—';
+  $('#st-note').textContent=L.note?('✦ CLB 7 · '+L.note):'';
+  s.classList.toggle('hid',P.practice&&L.s==='ca'&&!L.rev);
+  s.classList.toggle('showen',P.view==='both'||s.classList.contains('showen'));
+  $('#st-hint').textContent=(P.view==='listen'&&!s.classList.contains('peek'))?'Touche pour voir le français':'Touche pour voir l\'anglais';
+}
+
+/* -------- audio source -------- */
+function attachAudio(blob,switchTo){
+  if(P.audio){P.audio.pause()}
+  if(P.url)URL.revokeObjectURL(P.url);
+  P.url=URL.createObjectURL(blob);
+  const a=new Audio();a.preload='metadata';a.src=P.url;a.playbackRate=P.rate;P.audio=a;P.hasAudio=true;
+  a.addEventListener('loadedmetadata',()=>{P.dur=a.duration;computeStarts();updateProgress()});
+  a.addEventListener('ended',()=>{if(P.src==='audio')onFinished()});
+  if(switchTo)setSource('audio');else updateSource();
+}
+function computeStarts(){
+  const n=P.t.lines.length,saved=ls.get('tef.sync.'+P.t.id,null);
+  if(saved&&saved.length===n){P.starts=saved;P.synced=true;return}
+  P.synced=false;
+  const w=P.t.lines.map(l=>l.fr.length+22),tot=w.reduce((a,b)=>a+b,0);let c=0;
+  P.starts=w.map(x=>{const s=(c/tot)*(P.dur||0);c+=x;return s});
+}
+const lineEnd=i=>i+1<P.starts.length?P.starts[i+1]:(P.dur||0);
+function indexAt(t){for(let i=P.starts.length-1;i>=0;i--)if(P.starts[i]<=t+0.02)return i;return 0}
+
+function setSource(s){
+  if(s==='audio'&&!P.hasAudio){toast('Choisis d\'abord un fichier audio');return}
+  pauseAll();P.src=s;P.waiting=false;P.modelPlay=null;
+  if(s==='audio'&&P.audio&&P.starts.length)P.audio.currentTime=P.starts[P.idx]||0;
+  updateSource();updatePlay();updateProgress();
+}
+function updateSource(){
+  const q=id=>document.getElementById(id);if(!q('s-tts'))return;
+  q('s-tts').classList.toggle('on',P.src==='tts');q('s-aud').classList.toggle('on',P.src==='audio');
+  q('b-sync').style.display=P.hasAudio?'inline-block':'none';q('b-rm').style.display=P.hasAudio?'inline-block':'none';
+  q('t-src').textContent=P.src==='audio'?'🎧 Audio':'🔊 Voix';
+  q('s-aud').style.opacity=P.hasAudio?1:.45;
+  q('wait').classList.toggle('on',P.waiting);
+}
+function openSource(){const p=$('#srcpanel');p.style.display=p.style.display==='none'?'block':'none';if(p.style.display==='block')p.scrollIntoView({behavior:'smooth',block:'center'})}
+async function removeAudio(){
+  if(!confirm('Retirer cet audio de l\'appli ?'))return;
+  pauseAll();try{await delAudio(P.t.id)}catch(e){}
+  localStorage.removeItem('tef.sync.'+P.t.id);
+  if(P.url)URL.revokeObjectURL(P.url);P.audio=null;P.url=null;P.hasAudio=false;P.src='tts';updateSource();updatePlay();updateProgress();toast('Audio retiré');
+}
+function deleteTrack(){
+  if(!confirm('Supprimer cet exercice ?'))return;
+  const id=P.t.id;ls.set('tef.custom',ls.get('tef.custom',[]).filter(t=>t.id!==id));
+  delAudio(id).catch(()=>{});localStorage.removeItem('tef.sync.'+id);showLibrary();
+}
+
+/* -------- TTS voices -------- */
+let VOICES=[];
+function loadVoices(){try{VOICES=speechSynthesis.getVoices().filter(v=>v.lang.toLowerCase().startsWith('fr'))}catch(e){}}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+function voiceFor(s){
+  if(!VOICES.length)loadVoices();if(!VOICES.length)return null;
+  const fem=/am[ée]lie|chantal|audrey|aur[ée]lie|marie|julie|virginie|denise|sylvie|c[ée]line|amelie|female|femme/i;
+  const mal=/thomas|nicolas|jacques|daniel|henri|antoine|male|homme|paul/i;
+  const ca=VOICES.filter(v=>/ca/i.test(v.lang));
+  const pool=ca.length?ca.concat(VOICES.filter(v=>!ca.includes(v))):VOICES;
+  if(s==='ex')return pool.find(v=>fem.test(v.name))||pool[0];
+  return pool.find(v=>mal.test(v.name))||VOICES.find(v=>!fem.test(v.name))||pool[pool.length>1?1:0];
+}
+function speakLine(i,once){
+  const tok=++P.tok;try{speechSynthesis.cancel()}catch(e){}
+  if(i>=P.t.lines.length){onFinished();return}
+  const L=P.t.lines[i];setIdx(i);
+  if(!once&&P.practice&&L.s==='ca'){enterWaiting(i);return}
+  P.playing=true;P.waiting=false;updatePlay();updateSource();
+  setTimeout(()=>{
+    if(tok!==P.tok)return;
+    const u=new SpeechSynthesisUtterance(L.fr),v=voiceFor(L.s);
+    if(v){u.voice=v;u.lang=v.lang}else u.lang='fr-CA';
+    u.rate=Math.min(1.6,P.rate*0.95);
+    if(!v||(VOICES.length<2))u.pitch=L.s==='ex'?1.15:0.85;
+    u.onend=()=>{
+      if(tok!==P.tok)return;
+      if(once){enterWaiting(i);return}
+      if(P.loop){speakLine(i);return}
+      speakLine(i+1);
+    };
+    try{speechSynthesis.speak(u)}catch(e){toast('Voix non disponible sur cet appareil')}
+  },40);
+}
+
+/* -------- transport -------- */
+function updatePlay(){const b=document.getElementById('playbtn');if(b)b.textContent=(P.playing&&!P.waiting)?'⏸':'▶'}
+function pauseAll(){
+  if(!P)return;P.tok++;try{speechSynthesis.cancel()}catch(e){}
+  if(P.audio)P.audio.pause();cancelAnimationFrame(P.raf);P.playing=false;updatePlay();
+}
+function togglePlay(){
+  if(P.sync)return;
+  if(P.waiting){doContinue();return}
+  if(P.playing){pauseAll();return}
+  play();
+}
+function play(){
+  if(P.src==='audio'){
+    if(!P.audio||!P.starts.length){toast('Chargement de l\'audio…');return}
+    const L=P.t.lines[P.idx];
+    if(P.audio.currentTime>=P.dur-0.1||P.audio.ended)P.audio.currentTime=P.starts[0];
+    else if(Math.abs(indexAt(P.audio.currentTime)-P.idx)>0)P.audio.currentTime=P.starts[P.idx];
+    P.audio.playbackRate=P.rate;
+    P.audio.play().then(()=>{P.playing=true;updatePlay();tick()}).catch(()=>toast('Touche ▶ pour autoriser la lecture'));
+  }else{
+    if(!('speechSynthesis' in window)){toast('Voix non supportée ici');return}
+    speakLine(P.idx>=P.t.lines.length-1&&false?0:P.idx);
+  }
+}
+function jump(i){
+  if(P.sync)return;
+  const n=P.t.lines.length;if(i<0)i=0;if(i>=n)i=n-1;
+  P.waiting=false;P.modelPlay=null;updateSource();
+  if(P.src==='audio'&&P.audio&&P.starts.length){
+    const wasPlaying=P.playing||true;
+    P.audio.currentTime=P.starts[i]+0.03;setIdx(i);
+    if(P.practice&&P.t.lines[i].s==='ca'){P.audio.pause();enterWaiting(i);return}
+    if(!P.playing)play();
+  }else{
+    P.tok++;try{speechSynthesis.cancel()}catch(e){}
+    setIdx(i);speakLine(i);
+  }
+}
+function tick(){
+  if(!P||P.src!=='audio'||!P.audio)return;
+  const a=P.audio;
+  if(P.sync){updateProgress();P.raf=requestAnimationFrame(tick);return}
+  const t=a.currentTime,i=indexAt(t);
+  if(i!==P.idx&&!P.waiting){
+    setIdx(i);
+    if(P.practice&&P.t.lines[i].s==='ca'&&P.modelPlay!==i){a.pause();enterWaiting(i);return}
+  }
+  const end=lineEnd(P.idx);
+  if(P.modelPlay===P.idx&&t>=end-0.05){a.pause();a.currentTime=P.starts[P.idx];P.modelPlay=null;enterWaiting(P.idx);return}
+  if(P.loop&&P.modelPlay==null&&t>=end-0.05)a.currentTime=P.starts[P.idx];
+  updateProgress();
+  if(!a.paused&&P.playing)P.raf=requestAnimationFrame(tick);
+}
+function onFinished(){
+  P.playing=false;P.waiting=false;cancelAnimationFrame(P.raf);updatePlay();updateSource();
+  P.t.lines.forEach((l,i)=>{if(l.s==='ca')l.rev=true});refreshRev();
+  toast('Dialogue terminé 🎉');
+}
+function seekSlider(v){
+  if(P.src==='audio'&&P.audio&&P.starts.length){
+    P.audio.currentTime=v;const i=indexAt(v);setIdx(i,false);
+    document.getElementById('p-l').textContent=fmt(v);
+  }else{
+    const i=Math.round(v);if(i!==P.idx){setIdx(i);if(P.playing)speakLine(i)}
+  }
+}
+function updateProgress(){
+  const r=document.getElementById('p-r');if(!r)return;
+  if(P.src==='audio'&&P.audio&&P.dur){
+    r.max=P.dur;if(document.activeElement!==r)r.value=P.audio.currentTime;
+    document.getElementById('p-l').textContent=fmt(P.audio.currentTime);
+    document.getElementById('p-r2').textContent=fmt(P.dur)+(P.synced?' ✓':' ≈');
+  }else{
+    r.max=P.t.lines.length-1;if(document.activeElement!==r)r.value=P.idx;
+    document.getElementById('p-l').textContent=(P.idx+1)+'/'+P.t.lines.length;
+    document.getElementById('p-r2').textContent='≈'+P.t.est+' min';
+  }
+}
+
+/* -------- practice mode -------- */
+function togglePractice(){
+  P.practice=!P.practice;
+  document.getElementById('t-prac').classList.toggle('on',P.practice);
+  $('#app').classList.toggle('prac',P.practice);
+  if(!P.practice){P.waiting=false;updateSource()}
+  else {P.t.lines.forEach(l=>{l.rev=false});refreshRev();toast('Pratique : réponds à voix haute, puis compare avec le modèle')}
+  updateStage();
+}
+function toggleLoop(){P.loop=!P.loop;document.getElementById('t-loop').classList.toggle('on',P.loop)}
+function cycleRate(){
+  const rs=[0.75,0.9,1,1.15];let i=rs.indexOf(P.rate);P.rate=rs[(i+1)%rs.length];
+  document.getElementById('t-rate').textContent=P.rate+'×';
+  if(P.audio)P.audio.playbackRate=P.rate;
+}
+function enterWaiting(i){
+  P.tok++;try{speechSynthesis.cancel()}catch(e){}
+  if(P.audio)P.audio.pause();cancelAnimationFrame(P.raf);
+  P.waiting=true;P.playing=false;setIdx(i);updatePlay();updateSource();
+  document.getElementById('wait').scrollIntoView({block:'nearest'});
+}
+function refreshRev(){document.querySelectorAll('.msg.ca').forEach(m=>m.classList.toggle('rev',!!P.t.lines[+m.dataset.i].rev));updateStage()}
+function revealModel(){const L=P.t.lines[P.idx];L.rev=true;refreshRev();$('#stage').classList.add('showen')}
+function listenModel(){
+  const i=P.idx;P.t.lines[i].rev=true;refreshRev();P.waiting=false;updateSource();
+  if(P.src==='audio'&&P.audio&&P.starts.length){P.modelPlay=i;P.audio.currentTime=P.starts[i]+0.03;P.audio.playbackRate=P.rate;P.audio.play().then(()=>{P.playing=true;updatePlay();tick()})}
+  else speakLine(i,true);
+}
+function doContinue(){
+  const i=P.idx;P.t.lines[i].rev=true;refreshRev();
+  P.waiting=false;updateSource();
+  const next=i+1;
+  if(next>=P.t.lines.length){onFinished();return}
+  if(P.src==='audio'&&P.audio&&P.starts.length){
+    P.audio.currentTime=P.starts[next]+0.03;setIdx(next);
+    P.audio.play().then(()=>{P.playing=true;updatePlay();tick()});
+  }else speakLine(next);
+}
+
+/* -------- sync -------- */
+function startSync(){
+  if(!P.audio||!P.dur){toast('Audio pas encore chargé');return}
+  pauseAll();document.getElementById('srcpanel').style.display='none';
+  P.src='audio';P.sync={i:0,marks:[]};
+  P.audio.currentTime=0;P.audio.playbackRate=1;
+  P.audio.play().then(()=>{P.playing=true;updatePlay();tick()});
+  const s=document.getElementById('sync');s.classList.add('on');syncMsg();s.scrollIntoView({behavior:'smooth',block:'center'});
+  setIdx(0);
+}
+function syncMsg(){
+  const L=P.t.lines[P.sync.i];
+  document.getElementById('sync-p').textContent='Touche quand cette réplique commence ('+(P.sync.i+1)+'/'+P.t.lines.length+') : « '+L.fr.slice(0,60)+(L.fr.length>60?'…':'')+' »';
+}
+function syncTap(){
+  if(!P.sync)return;
+  const t=P.audio.currentTime;
+  P.sync.marks.push(Math.max(t,(P.sync.marks[P.sync.marks.length-1]||0)+0.05));
+  P.sync.i++;
+  if(P.sync.i>=P.t.lines.length){
+    P.starts=P.sync.marks;P.starts[0]=Math.max(0,P.starts[0]-0.1);
+    ls.set('tef.sync.'+P.t.id,P.starts);P.synced=true;
+    P.sync=null;document.getElementById('sync').classList.remove('on');
+    P.audio.pause();P.audio.currentTime=0;P.playing=false;setIdx(0);updatePlay();updateProgress();
+    toast('Synchronisation enregistrée ✓');return;
+  }
+  setIdx(P.sync.i);syncMsg();
+}
+function cancelSync(){
+  P.sync=null;document.getElementById('sync').classList.remove('on');
+  pauseAll();computeStarts();updateProgress();
+}
+
+/* ============================================================
+   Init + home-screen icon
+   ============================================================ */
+(function icon(){
+  try{
+    const c=document.createElement('canvas');c.width=c.height=180;const x=c.getContext('2d');
+    const g=x.createLinearGradient(0,0,180,180);g.addColorStop(0,'#8b9bff');g.addColorStop(1,'#5eead4');
+    x.fillStyle=g;x.fillRect(0,0,180,180);x.fillStyle='#0d1024';x.font='800 64px -apple-system,Helvetica,Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('TEF',90,98);
+    const l=document.createElement('link');l.rel='apple-touch-icon';l.href=c.toDataURL('image/png');document.head.append(l);
+  }catch(e){}
+})();
+showLibrary();
+</script>
+</body>
+</html>

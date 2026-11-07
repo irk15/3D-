@@ -144,7 +144,7 @@ const tags = o => (L(o, 'sectors') || '').split(',').map(s => s.trim()).filter(B
 /* ---------- views ---------- */
 function dirPill(d) { const c = dirCls(d); return h('span', { class: 'pill ' + c }, h('span', { 'aria-hidden': 'true' }, DIR_MARK[c]), t('dir')[d] || d); }
 function confEl(c) { const n = { High: 3, Medium: 2, Low: 1 }[c] || 0; return h('span', { class: 'conf' }, t('confidence'), h('b', { 'aria-hidden': 'true' }, '●'.repeat(n) + '○'.repeat(3 - n)), h('span', null, t('conf')[c] || c)); }
-function speakBtn(item) { if (!canSpeak) return null; return h('button', { class: 'icon-btn', 'aria-label': t('listenThis'), onclick: () => startTTS([item]) }, icon(IC.speaker), t('listenThis')); }
+function speakBtn(item) { if (!canListen()) return null; return h('button', { class: 'icon-btn', 'aria-label': t('listenThis'), onclick: () => startTTS([item]) }, icon(IC.speaker), t('listenThis')); }
 
 function topbar() {
   return h('header', { class: 'top' },
@@ -167,14 +167,14 @@ function band(sc) {
     h('p', { class: 'band-hint' }, t('tapBand')));
 }
 function hero() {
-  const sc = scenarios(); const noHi = S.lang === 'hi' && TTS.voicesLoaded && !voiceFor('hi');
+  const sc = scenarios(); const noHi = S.lang === 'hi' && TTS.voicesLoaded && !voiceFor('hi') && !AUD.map;
   return h('section', { class: 'hero' },
     h('p', { class: 'hero-date' }, fmtDate(meta('brief_date'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })),
     h('h1', { class: 'hero-line' }, meta('today_in_one_line')),
     h('p', { class: 'hero-meta' }, meta('market_status')),
     sc.length ? band(sc) : null,
     freshness(),
-    canSpeak ? h('button', { class: 'listen', onclick: () => (TTS.on ? stopTTS() : startTTS(briefingItems())) }, icon(TTS.on ? IC.stop : IC.speaker), TTS.on ? t('stop') : t('listen')) : h('p', { class: 'hint' }, t('noSpeech')),
+    canListen() ? h('button', { class: 'listen', onclick: () => (TTS.on ? stopTTS() : startTTS(briefingItems())) }, icon(TTS.on ? IC.stop : IC.speaker), TTS.on ? t('stop') : t('listen')) : h('p', { class: 'hint' }, t('noSpeech')),
     noHi ? h('p', { class: 'hint' }, t('noVoiceHi')) : null);
 }
 function pulse() {
@@ -285,10 +285,29 @@ function chunk(text) {
   for (const p of parts) { if (cur && (cur + ' ' + p).length > 170) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; }
   if (cur) out.push(cur); return out;
 }
+/* Natural neural-voice clips (made daily by a GitHub Action, see tools/make_audio.py). Same text hash on both sides; if a clip is missing the device voice is used. */
+const AUD = { map: null }; const AU = new Audio(); AU.preload = 'auto';
+function fnv(s) { s = s.replace(/\s+/g, ' ').trim(); let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16) + '-' + s.length; }
+function audioFor(text) { return AUD.map ? AUD.map[S.lang + '-' + fnv(text)] : null; }
+const canListen = () => canSpeak || !!AUD.map;
+function haltAudio() { AU.onended = AU.onerror = null; try { AU.pause(); } catch (e) {} }
 function speakItem(i, tok) {
   if (tok !== TTS.tok) return;
   if (i >= TTS.items.length) { stopTTS(); return; }
-  TTS.idx = i; updatePlayer(); const parts = chunk(TTS.items[i].text); let k = 0; const lang = S.lang;
+  TTS.idx = i; updatePlayer();
+  const clip = audioFor(TTS.items[i].text);
+  if (clip) {
+    AU.onended = () => { if (tok === TTS.tok) speakItem(i + 1, tok); };
+    AU.onerror = () => { if (tok === TTS.tok) speakDevice(i, tok); };
+    AU.src = 'audio/' + clip; AU.playbackRate = RATES[TTS.rateIdx];
+    const pr = AU.play(); if (pr && pr.catch) pr.catch(() => { if (tok === TTS.tok) speakDevice(i, tok); });
+    return;
+  }
+  speakDevice(i, tok);
+}
+function speakDevice(i, tok) {
+  if (!canSpeak) { speakItem(i + 1, tok); return; }
+  AU.onended = AU.onerror = null; const parts = chunk(TTS.items[i].text); let k = 0; const lang = S.lang;
   const step = () => {
     if (tok !== TTS.tok) return;
     if (k >= parts.length) { speakItem(i + 1, tok); return; }
@@ -298,15 +317,15 @@ function speakItem(i, tok) {
   };
   step();
 }
-function startTTS(items) { if (!canSpeak || !items.length) return; speechSynthesis.cancel(); TTS.tok++; TTS.on = true; TTS.items = items; TTS.idx = 0; render(); speakItem(0, TTS.tok); }
-function stopTTS() { if (!canSpeak) return; TTS.tok++; speechSynthesis.cancel(); const was = TTS.on; TTS.on = false; TTS.items = []; TTS.idx = 0; if (was && S.data) render(); }
-function nextTTS() { if (!TTS.on) return; const tok = ++TTS.tok; speechSynthesis.cancel(); speakItem(TTS.idx + 1, tok); }
-function cycleRate() { TTS.rateIdx = (TTS.rateIdx + 1) % 3; try { localStorage.setItem(LS.rate, String(TTS.rateIdx)); } catch (e) {} updatePlayer(); }
+function startTTS(items) { if (!canListen() || !items.length) return; haltAudio(); if (canSpeak) speechSynthesis.cancel(); TTS.tok++; TTS.on = true; TTS.items = items; TTS.idx = 0; render(); speakItem(0, TTS.tok); }
+function stopTTS() { TTS.tok++; haltAudio(); if (canSpeak) speechSynthesis.cancel(); const was = TTS.on; TTS.on = false; TTS.items = []; TTS.idx = 0; if (was && S.data) render(); }
+function nextTTS() { if (!TTS.on) return; const tok = ++TTS.tok; haltAudio(); if (canSpeak) speechSynthesis.cancel(); speakItem(TTS.idx + 1, tok); }
+function cycleRate() { TTS.rateIdx = (TTS.rateIdx + 1) % 3; try { localStorage.setItem(LS.rate, String(TTS.rateIdx)); } catch (e) {} AU.playbackRate = RATES[TTS.rateIdx]; updatePlayer(); }
 function updatePlayer() { const old = $('#player'); if (old) old.replaceWith(player()); }
 function firstSentence(s) { const m = /^.*?[.।](\s|$)/.exec(s || ''); return m ? m[0].trim() : s; }
 function briefingItems() {
   const items = []; const D = meta('brief_date');
-  items.push({ title: t('brand'), text: t('brand') + '. ' + fmtDate(D, { weekday: 'long', day: 'numeric', month: 'long' }) + '.' });
+  items.push({ title: t('brand'), text: t('brand') + '.' });
   items.push({ title: t('oneLine'), text: meta('today_in_one_line') });
   const ps = rows('Pulse').filter(p => ['nifty', 'sensex', 'brent', 'usdinr'].includes(p.key));
   if (ps.length) items.push({ title: t('numbers'), text: t('keyNumbers') + ' ' + ps.map(p => L(p, 'label') + ': ' + p.value + '.').join(' ') });
@@ -319,7 +338,8 @@ function briefingItems() {
 
 /* ---------- boot ---------- */
 if (canSpeak) { loadVoices(); if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', loadVoices); }
-window.addEventListener('pagehide', () => { if (canSpeak) speechSynthesis.cancel(); });
+window.addEventListener('pagehide', () => { haltAudio(); if (canSpeak) speechSynthesis.cancel(); });
+fetch('audio/manifest.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).then(m => { if (m && m.items) { AUD.map = m.items; if (S.data) render(); } }).catch(() => {});
 try { const c = JSON.parse(localStorage.getItem(LS.cache)); if (c && c.data) { S.data = c.data; S.source = 'cache'; } } catch (e) {}
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !params.get('local')) navigator.serviceWorker.register('sw.js').catch(() => {});
 load();

@@ -2,7 +2,7 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v8';
+const VERSION = 'v9';
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -209,10 +209,20 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch
 const rand = n => Math.floor(Math.random() * n);
 
 /* shuffle bag so lines do not repeat until all have been seen */
+const FEELS = {
+  Angry: { m: ['Calm', 'Reframe', 'Brilliant'], c: '#F28B82', t: 'Let it cool' },
+  Anxious: { m: ['Calm', 'Aware'], c: '#9AD7C4', t: 'Come back to now' },
+  Low: { m: ['Bright', 'Osho', 'Reframe'], c: '#FFD166', t: 'Lift gently' },
+  Overthinking: { m: ['Aware', 'Brilliant'], c: '#C7B8FF', t: 'Quiet the loop' },
+  Tired: { m: ['Calm', 'Bright'], c: '#8FD3FF', t: 'Rest your mind' },
+  Okay: { m: ['Brilliant', 'Aware', 'Bright'], c: '#B8D8A8', t: 'Stay sharp' },
+  Strong: { m: ['Osho', 'Brilliant'], c: '#FF9A3C', t: 'Ride it' }
+};
+const poolOf = () => { if (!S.feel || !FEELS[S.feel]) return LINES[S.mode]; const seen = new Set(), out = []; FEELS[S.feel].m.forEach(m => LINES[m].forEach(l => { if (!seen.has(l[0])) { seen.add(l[0]); out.push(l); } })); return out; };
 function nextLine(mode) {
-  const all = LINES[mode]; let bag = (S.bag[mode] || []).filter(i => i < all.length);
+  const all = poolOf(); mode = S.feel && FEELS[S.feel] ? 'f:' + S.feel : mode; let bag = (S.bag[mode] || []).filter(i => i < all.length);
   if (!bag.length) { bag = all.map((_, i) => i); for (let i = bag.length - 1; i > 0; i--) { const j = rand(i + 1);[bag[i], bag[j]] = [bag[j], bag[i]]; } if (S.last && bag[bag.length - 1] === S.lastIdx && bag.length > 1) bag.unshift(bag.pop()); }
-  const i = bag.pop(); S.bag[mode] = bag; S.lastIdx = i; S.last = mode; S.pos = all.length - bag.length; save(); return all[i];
+  const i = bag.pop(); S.bag[mode] = bag; S.lastIdx = i; S.last = mode; S.pos = all.length - bag.length; S.posN = all.length; save(); return all[i];
 }
 
 /* ---------- time-of-day sky ---------- */
@@ -501,7 +511,7 @@ const CARET = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" strok
 const ARROW = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg>';
 function moodSheet() {
   const bg = sheet([h('h2', { style: 'margin-bottom:10px' }, 'Choose a mood'),
-    MODES.map(m => h('button', { class: 'moodcard' + (S.mode === m ? ' on' : ''), onclick: () => { S.mode = m; save(); bg.remove(); render(); } },
+    MODES.map(m => h('button', { class: 'moodcard' + (S.mode === m ? ' on' : ''), onclick: () => { S.mode = m; S.feel = null; save(); bg.remove(); render(); } },
       h('i', { class: 'dot big', style: 'background:' + MOOD_DOT[m] }), h('span', { class: 'grow' }, h('b', null, m), h('small', null, MOOD_INFO[m][0] + '. ' + MOOD_INFO[m][1] + '.'))))]);
 }
 function autoRow() {
@@ -524,12 +534,31 @@ function coach() {
     document.body.append(bg);
   }, 900);
 }
+function pickFeel(f) {
+  if (navigator.vibrate) try { navigator.vibrate(10); } catch (e) {}
+  S.feel = S.feel === f ? null : f; S.feelAt = Date.now(); save(); stopAudio(); render();
+}
+function feelRow() {
+  const w = h('div', { class: 'feelrow', role: 'group', 'aria-label': 'How do you feel?' }, h('span', { class: 'feelq' }, 'I feel'));
+  Object.keys(FEELS).forEach(f => w.append(h('button', { class: 'fchip' + (S.feel === f ? ' on' : ''), style: '--c:' + FEELS[f].c, onclick: () => pickFeel(f) }, h('i'), f)));
+  return w;
+}
+function checkin() {
+  if (!S.coach || document.querySelector('.sheet-bg')) return;
+  if (S.feelAt && Date.now() - S.feelAt < 6 * 3600e3) return;
+  setTimeout(() => {
+    if (document.querySelector('.sheet-bg')) return;
+    const bg = sheet([h('h2', { class: 'big' }, 'How are you feeling?'), h('p', { style: 'color:var(--mut);margin:0 0 6px' }, 'Tap one. Your lines will match it.'),
+      h('div', { class: 'fgrid' }, Object.keys(FEELS).map(f => h('button', { class: 'fcard', style: '--c:' + FEELS[f].c, onclick: () => { bg.remove(); pickFeel(f); } }, h('i'), h('b', null, f), h('small', null, FEELS[f].t)))),
+      h('button', { class: 'link', style: 'padding:14px 0 4px', onclick: () => { S.feelAt = Date.now(); save(); bg.remove(); } }, 'Skip for now')]);
+  }, 700);
+}
 function render() {
   applyTheme(); stopAudio();
   const app = $('#app'); app.innerHTML = '';
   const q = h('div', { class: 'quote', id: 'q', 'aria-live': 'polite' }), by = h('div', { class: 'by', id: 'by' });
   const heart = h('button', { class: 'icon heart', 'aria-label': 'Save this line', html: HEART, onclick: toggleFav });
-  const pill = h('button', { class: 'mood', 'aria-label': 'Change mood', onclick: moodSheet }, h('i', { class: 'dot', style: 'background:' + MOOD_DOT[S.mode] }), h('span', null, S.mode), h('span', { html: CARET }));
+  const pill = h('button', { class: 'mood', 'aria-label': 'Change mood', onclick: moodSheet }, h('i', { class: 'dot', style: 'background:' + (S.feel && FEELS[S.feel] ? FEELS[S.feel].c : MOOD_DOT[S.mode]) }), h('span', null, S.feel && FEELS[S.feel] ? 'Feeling ' + S.feel.toLowerCase() : S.mode), h('span', { html: CARET }));
   const stage = h('div', { class: 'stage' }, q, by);
   let sx = 0, sy = 0, mv = false, lastTap = 0;
   stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; mv = false; }, { passive: true });
@@ -541,12 +570,13 @@ function render() {
     const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     q.classList.remove('drag'); q.style.transform = ''; q.style.opacity = '';
     if (Math.abs(dy) > 70 && Math.abs(dy) > Math.abs(dx)) { change(); return; }
-    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)) { const i = MODES.indexOf(S.mode) + (dx < 0 ? 1 : -1); if (i >= 0 && i < MODES.length) { S.mode = MODES[i]; save(); if (navigator.vibrate) try { navigator.vibrate(8); } catch (er) {} render(); } return; }
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)) { const i = MODES.indexOf(S.mode) + (dx < 0 ? 1 : -1); if (i >= 0 && i < MODES.length) { S.mode = MODES[i]; S.feel = null; save(); if (navigator.vibrate) try { navigator.vibrate(8); } catch (er) {} render(); } return; }
     if (!mv && Math.abs(dx) < 10 && Math.abs(dy) < 10) { const n = Date.now(); if (n - lastTap < 320) { lastTap = 0; if (cur && !isFav(cur)) toggleFav(); burst(t.clientX, t.clientY); } else lastTap = n; }
   });
   app.append(
     h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('div', { style: 'display:flex' }, h('button', { class: 'icon', 'aria-label': 'Settings', html: SLIDERS, onclick: voiceSheet }), h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs }))),
     h('div', { class: 'moodrow' }, pill, h('span', { class: 'count', id: 'count' })),
+    feelRow(),
     stage,
     h('div', { class: 'dock' },
       h('button', { class: 'help', onclick: openSituations }, 'Something’s bothering me'),
@@ -554,10 +584,10 @@ function render() {
         h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }),
         h('button', { class: 'next', onclick: change, html: '<span>Next</span>' + ARROW }))));
   show(nextLine(S.mode), false);
-  coach();
+  coach(); checkin();
 }
 function show(line, animate = true) {
-  const q = $('#q'), by = $('#by'); cur = line; const cn = $('#count'); if (cn && S.pos) cn.textContent = S.pos + ' / ' + LINES[S.mode].length;
+  const q = $('#q'), by = $('#by'); cur = line; const cn = $('#count'); if (cn && S.pos) cn.textContent = S.pos + ' / ' + (S.posN || LINES[S.mode].length);
   const set = () => {
     q.innerHTML = '';
     const two = !!line[2];

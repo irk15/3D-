@@ -18,6 +18,8 @@ const HEART = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" strok
 const PLAY = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const STOP = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>';
 const MIC = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg>';
+const SHARE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 002 2h10a2 2 0 002-2v-5"/></svg>';
+const SLIDERS = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>';
 const LIST = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>';
 const XI = '<svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l12 12M15 3L3 15"/></svg>';
 
@@ -237,23 +239,48 @@ function applyTheme() {
   if (mind) { skyInfo = { night: true, accent: '#8FD3FF' }; if (m) m.content = '#070D1C'; }
 }
 
-/* soft drifting light */
-(function glow() {
-  const cv = $('#glow'), ctx = cv.getContext('2d'); let W, H, dots = [];
+/* living background: embers (Osho), stars (Brilliant), soft light (the rest) */
+(function fx() {
+  const cv = $('#glow'), ctx = cv.getContext('2d'); let W, H, P = [], mode = '';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function size() { const d = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0); dots = Array.from({ length: 22 }, () => ({ x: Math.random() * W, y: Math.random() * H, r: 18 + Math.random() * 60, v: .08 + Math.random() * .22, a: .05 + Math.random() * .1, p: Math.random() * 6 })); }
+  const rnd = (a, b) => a + Math.random() * (b - a), hx = a => Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0');
+  const modeNow = () => { const c = document.body.classList; return c.contains('fire') ? 'fire' : c.contains('mind') ? 'mind' : 'soft'; };
+  function init() {
+    mode = modeNow(); const n = mode === 'fire' ? 64 : mode === 'mind' ? 80 : 22;
+    P = Array.from({ length: n }, () => mode === 'fire' ? { x: rnd(0, W), y: rnd(0, H), r: rnd(.6, 2.3), v: rnd(10, 40), p: rnd(0, 6), s: rnd(.4, 1.3) }
+      : mode === 'mind' ? { x: rnd(0, W), y: rnd(0, H), r: rnd(.5, 1.8), vx: rnd(-4, 4), vy: rnd(-3, 3), p: rnd(0, 6) }
+      : { x: rnd(0, W), y: rnd(0, H), r: rnd(18, 78), v: rnd(.08, .3), a: rnd(.05, .15), p: rnd(0, 6) });
+  }
+  function size() { const d = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0); init(); }
   size(); addEventListener('resize', size);
   let last = performance.now();
   function f(now) {
-    const dt = Math.min(.05, (now - last) / 1000); last = now; ctx.clearRect(0, 0, W, H);
-    const col = skyInfo.accent;
-    dots.forEach(d => {
-      if (!reduce) { d.y -= d.v * dt * 20; d.p += dt * .4; if (d.y < -d.r) { d.y = H + d.r; d.x = Math.random() * W; } }
-      const a = d.a * (.7 + .3 * Math.sin(d.p)), g = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r);
-      g.addColorStop(0, col + Math.round(a * 255).toString(16).padStart(2, '0')); g.addColorStop(1, col + '00');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.3); ctx.fill();
-    });
-    if (!document.hidden) requestAnimationFrame(f); else document.addEventListener('visibilitychange', () => requestAnimationFrame(f), { once: true });
+    const dt = Math.min(.05, (now - last) / 1000) * (reduce ? .2 : 1); last = now; ctx.clearRect(0, 0, W, H);
+    if (modeNow() !== mode) init(); const col = skyInfo.accent;
+    if (mode === 'fire') {
+      const g = ctx.createLinearGradient(0, H * .55, 0, H); g.addColorStop(0, col + '00'); g.addColorStop(1, col + '2a'); ctx.fillStyle = g; ctx.fillRect(0, H * .55, W, H * .45);
+      P.forEach(d => {
+        d.y -= d.v * dt; d.x += Math.sin(d.p) * 14 * dt; d.p += dt * d.s * 2; if (d.y < -10) { d.y = H + 10; d.x = rnd(0, W); }
+        const a = .25 + .75 * Math.abs(Math.sin(d.p * 1.3)), gr = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 7);
+        gr.addColorStop(0, col + hx(a * .45)); gr.addColorStop(1, col + '00'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 7, 0, 6.3); ctx.fill();
+        ctx.fillStyle = col + hx(a); ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.3); ctx.fill();
+      });
+    } else if (mode === 'mind') {
+      P.forEach(d => { d.x += d.vx * dt; d.y += d.vy * dt; d.p += dt; if (d.x < -5) d.x = W + 5; if (d.x > W + 5) d.x = -5; if (d.y < -5) d.y = H + 5; if (d.y > H + 5) d.y = -5; });
+      ctx.lineWidth = 1;
+      for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+        const dx = P[i].x - P[j].x, dy = P[i].y - P[j].y, dd = dx * dx + dy * dy;
+        if (dd < 8100) { ctx.strokeStyle = col + hx((1 - Math.sqrt(dd) / 90) * .16); ctx.beginPath(); ctx.moveTo(P[i].x, P[i].y); ctx.lineTo(P[j].x, P[j].y); ctx.stroke(); }
+      }
+      P.forEach(d => { ctx.fillStyle = col + hx(.35 + .55 * Math.abs(Math.sin(d.p))); ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.3); ctx.fill(); });
+    } else {
+      P.forEach(d => {
+        d.y -= d.v * dt * 20; d.p += dt * .4; if (d.y < -d.r) { d.y = H + d.r; d.x = rnd(0, W); }
+        const a = d.a * (.7 + .3 * Math.sin(d.p)), g = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r);
+        g.addColorStop(0, col + hx(a)); g.addColorStop(1, col + '00'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.3); ctx.fill();
+      });
+    }
+    if (!document.hidden) requestAnimationFrame(f); else document.addEventListener('visibilitychange', () => { last = performance.now(); requestAnimationFrame(f); }, { once: true });
   }
   requestAnimationFrame(f);
 })();
@@ -287,7 +314,7 @@ function stopAudio(keepSession) {
   syncAudio();
 }
 function syncAudio() {
-  const b = $('#listen'); if (b) { b.classList.toggle('on', TTS.speaking); b.innerHTML = (TTS.speaking ? STOP : PLAY) + '<span>' + (TTS.speaking ? 'Stop' : 'Listen') + '</span>'; }
+  const b = $('#listen'); if (b) { b.classList.toggle('on', TTS.speaking); b.innerHTML = (TTS.speaking ? '<span class="eq"><i></i><i></i><i></i></span>' : PLAY) + '<span>' + (TTS.speaking ? 'Stop' : 'Listen') + '</span>'; }
   const s = $('#sess'); if (s) s.textContent = TTS.session ? 'Stop session' : 'Play session';
 }
 function toggleListen() { if (TTS.speaking) { stopAudio(); } else { TTS.session = false; speakLine(cur); } }
@@ -304,12 +331,50 @@ function voiceSheet() {
   const list = h('div');
   const draw = () => { list.innerHTML = ''; TTS.voices.slice(0, 40).forEach(v => list.append(h('button', { class: 'opt', style: 'font:600 16px var(--sans);padding:14px 18px' + (TTS.voice === v ? ';outline:2px solid var(--tx)' : ''), onclick: () => { TTS.voice = v; S.voiceName = v.name; save(); draw(); speakLine(['Stop obeying your fear.']); } }, v.name + ' (' + v.lang + ')'))); if (!TTS.voices.length) list.append(h('p', { style: 'color:var(--mut)' }, 'No English voices found on this device. Add one in your phone’s accessibility or speech settings.')); };
   draw();
-  const bg = sheet([h('h2', null, 'Voice'), h('p', { style: 'color:var(--mut);margin:0 0 14px' }, 'Uses your phone’s built-in voices, so it works offline. Tap one to hear it.'),
+  const bg = sheet([h('h2', null, 'Settings'), installBlock(), h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 6px' }, 'Voice'), h('p', { style: 'color:var(--mut);margin:0 0 14px' }, 'Uses your phone’s built-in voices, so it works offline. Tap one to hear it.'),
     h('div', { class: 'chips2' }, mk('Slow', 'rate', .72), mk('Calm', 'rate', .82), mk('Natural', 'rate', .95)),
     h('div', { class: 'chips2' }, mk('Deeper', 'pitch', .8), mk('Low', 'pitch', .9), mk('Natural', 'pitch', 1)), list]);
   const obs = new MutationObserver(() => { if (!document.body.contains(bg)) { stopAudio(); obs.disconnect(); } }); obs.observe(document.body, { childList: true });
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && TTS.session) { /* phones pause speech when the screen locks */ } else if (!document.hidden && TTS.session) takeLock(); });
+
+
+/* ---------- install as an app ---------- */
+let deferredInstall = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+function installBlock() {
+  const note = t => h('p', { style: 'color:var(--mut);margin:0' }, t);
+  const w = h('div', { style: 'margin-bottom:22px' }, h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 6px' }, 'Make it an app'));
+  if (standalone) w.append(note('Installed. It opens full screen and works offline.'));
+  else if (deferredInstall) w.append(h('button', { class: 'btn', onclick: async () => { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; } }, 'Install Lightly'));
+  else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) w.append(note('In Safari, tap the Share button, then Add to Home Screen.'));
+  else w.append(note('In Chrome, open the menu (three dots), then tap Install app or Add to Home screen.'));
+  return w;
+}
+
+/* ---------- share as an image (also works as a wallpaper) ---------- */
+async function shareCard() {
+  if (!cur) return;
+  const cs = getComputedStyle(document.body), v = n => cs.getPropertyValue(n).trim() || '#000';
+  const W = 1080, H = 1920, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, v('--bg1')); g.addColorStop(1, v('--bg2')); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const acc = v('--accent'), tx = v('--tx');
+  const rg = x.createRadialGradient(W * .82, H * .16, 0, W * .82, H * .16, 620); rg.addColorStop(0, acc + '55'); rg.addColorStop(1, acc + '00'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+  const wrap = (t, font, maxW) => { x.font = font; const out = []; let ln = ''; t.split(' ').forEach(w => { const tt = ln ? ln + ' ' + w : w; if (x.measureText(tt).width > maxW && ln) { out.push(ln); ln = w; } else ln = tt; }); if (ln) out.push(ln); return out; };
+  const two = !!cur[2], pf = (two ? '700 ' : '500 ') + (two ? 88 : 84) + 'px Georgia, serif', pl = wrap(cur[0], pf, W - 200), il = two ? wrap(cur[2], '400 46px Georgia, serif', W - 200) : [];
+  const blockH = 40 + pl.length * 104 + (two ? 50 + il.length * 66 : 0) + (cur[1] ? 90 : 0); let y = (H - blockH) / 2;
+  x.fillStyle = acc; x.fillRect(100, y, 130, 9); y += 110;
+  x.fillStyle = tx; x.font = pf; x.textBaseline = 'alphabetic'; pl.forEach(l => { x.fillText(l, 100, y); y += 104; });
+  if (two) { y += 6; x.globalAlpha = .8; x.font = '400 46px Georgia, serif'; il.forEach(l => { x.fillText(l, 100, y); y += 66; }); x.globalAlpha = 1; }
+  if (cur[1]) { y += 34; x.fillStyle = acc; x.font = '600 38px -apple-system, Helvetica, Arial, sans-serif'; x.fillText(cur[1], 100, y); }
+  x.globalAlpha = .6; x.fillStyle = tx; x.font = '500 40px Georgia, serif'; x.fillText('Lightly', 100, H - 120); x.globalAlpha = 1;
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png')); if (!blob) return toast('Could not make the image');
+  const file = new File([blob], 'lightly.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  const a = h('a', { href: URL.createObjectURL(blob), download: 'lightly.png' }); document.body.append(a); a.click(); a.remove(); toast('Saved as an image');
+}
 
 /* ---------- main screen ---------- */
 let cur = null;
@@ -322,14 +387,18 @@ function render() {
   const stage = h('div', { class: 'stage' }, q, by);
   let sx = 0, sy = 0;
   stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
-  stage.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) change(); else if (Math.abs(dx) > 60) change(); });
+  stage.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) change();
+    else if (Math.abs(dx) > 60) { const i = MODES.indexOf(S.mode) + (dx < 0 ? 1 : -1); if (i >= 0 && i < MODES.length) { S.mode = MODES[i]; save(); if (navigator.vibrate) try { navigator.vibrate(8); } catch (er) {} render(); } }
+  });
   app.append(
-    h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('div', { style: 'display:flex' }, canSpeak ? h('button', { class: 'icon', 'aria-label': 'Voice settings', html: MIC, onclick: voiceSheet }) : null, h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs }))),
+    h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('div', { style: 'display:flex' }, h('button', { class: 'icon', 'aria-label': 'Settings', html: SLIDERS, onclick: voiceSheet }), h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs }))),
     modes, stage,
     h('div', { class: 'dock' },
       h('button', { class: 'help', onclick: openSituations }, 'Something’s bothering me'),
-      h('div', { class: 'bar' }, heart, canSpeak ? h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }) : null, h('button', { class: 'next', onclick: change }, 'Another')),
-      h('div', { class: 'hintrow' }, h('span', null, 'Swipe for the next one'), canSpeak ? h('button', { id: 'sess', onclick: toggleSession }, 'Play session') : null)));
+      h('div', { class: 'bar' }, heart, h('button', { class: 'icon', 'aria-label': 'Share as an image', html: SHARE, onclick: shareCard }), canSpeak ? h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }) : null, h('button', { class: 'next', onclick: change }, 'Another')),
+      h('div', { class: 'hintrow' }, h('span', null, 'Swipe up: next \u00B7 sideways: mood'), canSpeak ? h('button', { id: 'sess', onclick: toggleSession }, 'Play session') : null)));
   show(nextLine(S.mode), false);
 }
 function show(line, animate = true) {
@@ -337,7 +406,10 @@ function show(line, animate = true) {
   const set = () => {
     q.innerHTML = '';
     const two = !!line[2];
-    if (two) q.append(h('div', { class: 'bar-accent' }), h('div', { class: 'punch' }, line[0]), h('div', { class: 'insight' }, line[2])); else q.textContent = line[0];
+    const words = (t, el, base) => t.split(' ').forEach((w, i) => { el.append(h('span', { class: 'w', style: 'animation-delay:' + (base + i * 70) + 'ms' }, w), ' '); });
+    const n = line[0].split(' ').length;
+    if (two) { const pu = h('div', { class: 'punch' }), ins = h('div', { class: 'insight', style: 'animation-delay:' + (150 + n * 70 + 500) + 'ms' }, line[2]); words(line[0], pu, 150); q.append(h('div', { class: 'bar-accent' }), pu, ins); }
+    else words(line[0], q, 100);
     by.textContent = line[1] ? (two ? line[1] : '\u2014 ' + line[1]) : '';
     q.className = 'quote in' + (two ? ' two' : ''); requestAnimationFrame(() => requestAnimationFrame(() => q.className = 'quote' + (two ? ' two' : ''))); syncHeart();
   };
@@ -385,5 +457,6 @@ function runFlow(name) {
   draw();
 }
 
+setTimeout(() => { if (!standalone && !S.nudged) { S.nudged = 1; save(); toast('Tip: Settings \u2192 Make it an app'); } }, 6000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 render();

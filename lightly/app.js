@@ -2,6 +2,7 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
+const VERSION = 'v7';
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -378,7 +379,7 @@ function voiceSheet() {
   };
   draw();
   const guide = h('div', { class: 'note' }, h('p', { style: 'margin:0 0 6px;font-weight:600' }, 'Want the most natural voice?'), h('p', { style: 'margin:0;color:var(--mut);font-size:15px;line-height:1.45' }, 'On iPhone, open Settings, then Accessibility, then Spoken Content, then Voices, then English. Download one marked Premium or Enhanced. Ava, Evan and Zoe are very calm. It will appear in this list, ranked first.'));
-  const bg = sheet([h('h2', null, 'Settings'), installBlock(), autoRow(),
+  const bg = sheet([h('h2', null, 'Settings'), installBlock(), updateBlock(), autoRow(),
     h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 8px' }, 'Voice style'),
     row(Object.keys(PRESETS), () => S.preset, k => { S.preset = k; Object.assign(S, PRESETS[k]); save(); preview(); }),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Background sound'),
@@ -388,6 +389,28 @@ function voiceSheet() {
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && TTS.session) { /* phones pause speech when the screen locks */ } else if (!document.hidden && TTS.session) takeLock(); });
 
+
+
+/* ---------- updates: see the version, force a clean reload ---------- */
+async function refreshApp() {
+  toast('Updating…');
+  try { if ('serviceWorker' in navigator) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } } catch (e) {}
+  try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
+  location.replace(location.pathname + '?v=' + Date.now());
+}
+async function checkUpdate(label) {
+  try {
+    const r = await fetch('app.js?x=' + Date.now(), { cache: 'no-store' }), t = await r.text(), m = t.match(/const VERSION = '([^']+)'/);
+    if (m && m[1] !== VERSION) { label.textContent = 'Version ' + VERSION + ' — ' + m[1] + ' is available'; return true; }
+    label.textContent = 'Version ' + VERSION + ' — up to date'; return false;
+  } catch (e) { label.textContent = 'Version ' + VERSION + ' — offline'; return false; }
+}
+function updateBlock() {
+  const lab = h('p', { style: 'color:var(--mut);margin:0 0 10px' }, 'Version ' + VERSION);
+  const btn = h('button', { class: 'chip', style: 'width:100%;height:48px', onclick: refreshApp }, 'Refresh app now');
+  checkUpdate(lab);
+  return h('div', { style: 'margin:6px 0 22px' }, h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 6px' }, 'Updates'), lab, btn);
+}
 
 /* ---------- install as an app ---------- */
 let deferredInstall = null;
@@ -545,5 +568,9 @@ function runFlow(name) {
   draw();
 }
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  let had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) location.reload(); had = true; });
+}
 render();

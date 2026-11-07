@@ -46,3 +46,19 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 .toast{position:fixed;left:50%;top:calc(14px + var(--sat));transform:translate(-50%,-80px);background:var(--tx);color:var(--bg1);padding:10px 18px;border-radius:22px;font-weight:600;font-size:15px;z-index:99;transition:transform .35s cubic-bezier(.2,.9,.3,1);pointer-events:none}
 .toast.on{transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}.orb{animation:none}}
+
+body.fire{--bg1:#120A07;--bg2:#2B1409;--tx:#FFF1E2;--accent:#FF9A3C;--mut:rgba(255,241,226,.64);--line:rgba(255,241,226,.2);--chip:rgba(255,255,255,.08)}
+.quote.two{font-size:inherit}
+.bar-accent{width:52px;height:4px;border-radius:2px;background:var(--accent);margin-bottom:22px;transform-origin:left;animation:grow .7s .1s both}
+.punch{font:700 clamp(36px,10.5vw,52px)/1.04 var(--serif);letter-spacing:-.025em;text-wrap:balance;animation:punch .7s .15s both}
+.insight{font:400 clamp(19px,5.2vw,23px)/1.4 var(--serif);margin-top:22px;color:var(--mut);color:color-mix(in srgb,var(--tx) 82%,transparent);animation:soft 1s 1s both}
+@keyframes punch{from{opacity:0;transform:translateY(18px) scale(.97);filter:blur(8px)}}
+@keyframes soft{from{opacity:0;transform:translateY(10px)}}
+@keyframes grow{from{transform:scaleX(0)}}
+.listen{display:flex;align-items:center;gap:8px;height:58px;padding:0 20px;border-radius:29px;background:var(--chip);font-weight:600;border:1.5px solid var(--line)}
+.listen.on{background:var(--accent);color:#1B0F05;border-color:var(--accent)}
+.hintrow{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;padding:0 4px}
+.hintrow button{font-weight:600;color:var(--tx);font-size:14px;padding:6px 0}
+.chips2{display:flex;gap:8px;margin:0 0 12px}.chips2 .chip{flex:1;padding:0 8px}
+body.fire .chip.on,body.fire .next{background:var(--accent);color:#1B0F05}
+@media (prefers-reduced-motion:reduce){.bar-accent,.punch,.insight{animation:none}}

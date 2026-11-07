@@ -15,12 +15,56 @@ function h(tag, props, ...kids) {
 }
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1700); }
 const HEART = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.3 4.3 0 0112 7.6a4.3 4.3 0 017.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>';
+const PLAY = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
+const STOP = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>';
+const MIC = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg>';
 const LIST = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>';
 const XI = '<svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l12 12M15 3L3 15"/></svg>';
 
 /* ---------- lines ---------- */
 // Each line is [text, author?]. Unattributed lines are original to this app.
+
+const SPIRIT = 'In the spirit of Osho';
+// [punch, author, insight]. Original wording inspired by themes in Osho's teachings: witnessing, freedom, presence, celebration.
+const OSHO = [
+  ['You are not the storm. You are the sky.', SPIRIT, 'Anger, fear and doubt cross you and leave. The one who watches them never moves.'],
+  ['Reaction is a puppet string.', SPIRIT, 'Whoever pulls it owns your mood. Pause for one breath, and the string goes slack.'],
+  ['An insult has no owner until you accept it.', SPIRIT, 'Let it fall at their feet. What you refuse to take stays theirs.'],
+  ['Be an original. Copies are cheap.', SPIRIT, 'Nobody has ever lived your life. Stop auditioning for someone else’s.'],
+  ['Fear is excitement that has not found courage yet.', SPIRIT, 'Take one step toward it and watch it change its name.'],
+  ['Life is not a problem. It is a dance.', SPIRIT, 'You have been trying to solve what was only ever meant to be lived. Move.'],
+  ['Tomorrow is a rumor.', SPIRIT, 'This breath is the only thing you actually own. Spend it well.'],
+  ['Nobody is coming to rescue you. Beautiful.', SPIRIT, 'That also means nobody can hold you back. The keys were always in your pocket.'],
+  ['Your mind is a servant. Stop letting it rule.', SPIRIT, 'Thoughts make fine tools and terrible masters. Take back the keys.'],
+  ['Fall in love with your own company.', SPIRIT, 'When you are enough alone, everyone else becomes a gift instead of a need.'],
+  ['Safety is a comfortable cage.', SPIRIT, 'The door was never locked. Walk out and meet the sky.'],
+  ['Mistakes are tuition for becoming real.', SPIRIT, 'Nobody learned to dance without stepping on a foot. Pay it, and graduate.'],
+  ['Lighten up. You were never getting out alive anyway.', SPIRIT, 'Seriousness is a heavy coat. Take it off and feel the sun.'],
+  ['Love is not hunger. It is overflow.', SPIRIT, 'Do not look for someone to fill you. Become full, then spill.'],
+  ['Peace is what is left when you stop fighting.', SPIRIT, 'You are not missing it. You are standing on it.'],
+  ['Worry is rehearsing a play that never opens.', SPIRIT, 'Close the theatre. Walk out into the actual day.'],
+  ['Be alert, not anxious.', SPIRIT, 'Alertness is open and relaxed. Anxiety is clenched. Soften your hands and see more.'],
+  ['Question everything you inherited.', SPIRIT, 'Keep what is true for you. Burn the rest without apology.'],
+  ['The past is a corpse. Why are you carrying it?', SPIRIT, 'Bury it with respect and walk lighter into the living day.'],
+  ['You do not need permission to exist.', SPIRIT, 'The sun never waits for applause before it rises. Rise.'],
+  ['Silence answers what noise cannot.', SPIRIT, 'Sit still long enough and the questions begin to dissolve on their own.'],
+  ['Feel it fully and it burns clean.', SPIRIT, 'Suppress it and it smolders for years. Let it burn out in the open.'],
+  ['Open the fist.', SPIRIT, 'Only an open hand can receive anything. What you grip, grips you back.'],
+  ['Take the mask off tonight.', SPIRIT, 'A mask worn long enough starts to feel like a face. Breathe as yourself.'],
+  ['Real strength is soft.', SPIRIT, 'The tree that bends survives the storm. Rigid things break.'],
+  ['The crowd is comfortable, and rarely right.', SPIRIT, 'Do not be rude to it. Just do not hand it your life.'],
+  ['Joy that needs a reason is a hostage.', SPIRIT, 'Be happy first, for no reason at all. Reasons will follow you.'],
+  ['Sit. Do nothing. Watch.', SPIRIT, 'The noise in you burns out by itself when nobody feeds it.'],
+  ['A shouting person is drowning.', SPIRIT, 'Do not jump in after them. Throw calm from the shore.'],
+  ['Laugh at yourself first.', SPIRIT, 'Then no one can use it against you, and you are free.'],
+  ['Do not try to become somebody. Become aware.', SPIRIT, 'Everything you wanted from being somebody arrives as a side effect.'],
+  ['Let death make today vivid, not heavy.', SPIRIT, 'Everything ends. That is exactly why this afternoon matters.'],
+  ['What you cling to owns you.', SPIRIT, 'Hold things lightly, people lovingly, and yourself freely.'],
+  ['Resentment is a heater left on in an empty room.', SPIRIT, 'It warms no one and costs you everything. Switch it off.']
+];
+
 const LINES = {
+  Osho: OSHO,
   Calm: [
     ['Nothing needs to be solved in this exact breath.'],
     ['You are allowed to put this down for a minute.'],
@@ -83,7 +127,7 @@ const LINES = {
     ['We suffer more often in imagination than in reality.', 'Seneca']
   ]
 };
-const MODES = ['Calm', 'Aware', 'Bright', 'Reframe'];
+const MODES = ['Osho', 'Calm', 'Aware', 'Bright', 'Reframe'];
 
 /* situations: three beats, each with two options */
 const SITUATIONS = {
@@ -120,9 +164,9 @@ const SITUATIONS = {
 };
 
 /* ---------- state ---------- */
-const KEY = 'lightly_v1';
-let S = { fav: [], mode: 'Calm', bag: {} };
-try { const d = JSON.parse(localStorage.getItem(KEY)); if (d) S = Object.assign(S, d); } catch (e) {}
+const KEY = 'lightly_v2';
+let S = { fav: [], mode: 'Osho', bag: {}, rate: .82, pitch: .9, voiceName: null };
+try { const d = JSON.parse(localStorage.getItem(KEY)); if (d) S = Object.assign(S, d); else { const o = JSON.parse(localStorage.getItem('lightly_v1')); if (o && o.fav) S.fav = o.fav; } } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const rand = n => Math.floor(Math.random() * n);
 
@@ -150,7 +194,11 @@ function sky() {
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = p[0];
   return { night, accent: p[3] };
 }
-let skyInfo = sky(); setInterval(() => { skyInfo = sky(); }, 600000);
+let skyInfo = sky(); setInterval(() => { applyTheme(); }, 600000);
+function applyTheme() {
+  const fire = S.mode === 'Osho'; document.body.classList.toggle('fire', fire);
+  skyInfo = sky(); if (fire) { skyInfo = { night: true, accent: '#FF9A3C' }; const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = '#120A07'; }
+}
 
 /* soft drifting light */
 (function glow() {
@@ -173,9 +221,62 @@ let skyInfo = sky(); setInterval(() => { skyInfo = sky(); }, 600000);
   requestAnimationFrame(f);
 })();
 
+
+/* ---------- audio: the phone's own text-to-speech, works offline ---------- */
+const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+const TTS = { voices: [], voice: null, token: 0, speaking: false, session: false, lock: null };
+function bestVoice() {
+  const pref = ['Rishi', 'Daniel', 'Aaron', 'Arthur', 'Google UK English Male', 'Alex', 'Ravi', 'Oliver', 'Gordon', 'Fred'];
+  for (const n of pref) { const v = TTS.voices.find(x => x.name.includes(n)); if (v) return v; }
+  return TTS.voices.find(v => /en-(IN|GB)/i.test(v.lang)) || TTS.voices[0] || null;
+}
+function loadVoices() { if (!canSpeak) return; TTS.voices = (speechSynthesis.getVoices() || []).filter(v => /^en/i.test(v.lang)); TTS.voice = TTS.voices.find(v => v.name === S.voiceName) || bestVoice(); }
+if (canSpeak) { loadVoices(); speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', loadVoices); }
+function utter(text, done, tk) {
+  const u = new SpeechSynthesisUtterance(text); if (TTS.voice) u.voice = TTS.voice; u.rate = S.rate || .82; u.pitch = S.pitch || .9; u.volume = 1;
+  let fin = false; const end = () => { if (fin) return; fin = true; if (tk === TTS.token && done) done(); };
+  u.onend = end; u.onerror = end; speechSynthesis.speak(u);
+}
+function speakLine(line, done) {
+  if (!canSpeak || !line) return; speechSynthesis.cancel(); const tk = ++TTS.token; TTS.speaking = true; syncAudio();
+  const parts = [line[0], line[2]].filter(Boolean);
+  const run = i => { if (tk !== TTS.token) return; if (i >= parts.length) { TTS.speaking = false; syncAudio(); if (done) done(); return; } utter(parts[i], () => setTimeout(() => run(i + 1), i === 0 ? 650 : 0), tk); };
+  run(0);
+}
+function stopAudio(keepSession) {
+  if (!canSpeak) return; TTS.token++; speechSynthesis.cancel(); TTS.speaking = false;
+  if (!keepSession || !TTS.session) { TTS.session = false; releaseLock(); }
+  syncAudio();
+}
+function syncAudio() {
+  const b = $('#listen'); if (b) { b.classList.toggle('on', TTS.speaking); b.innerHTML = (TTS.speaking ? STOP : PLAY) + '<span>' + (TTS.speaking ? 'Stop' : 'Listen') + '</span>'; }
+  const s = $('#sess'); if (s) s.textContent = TTS.session ? 'Stop session' : 'Play session';
+}
+function toggleListen() { if (TTS.speaking) { stopAudio(); } else { TTS.session = false; speakLine(cur); } }
+async function takeLock() { try { if (navigator.wakeLock) TTS.lock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+function releaseLock() { try { if (TTS.lock) TTS.lock.release(); } catch (e) {} TTS.lock = null; }
+function toggleSession() {
+  if (TTS.session) { stopAudio(); return; }
+  TTS.session = true; takeLock(); syncAudio();
+  const loop = () => { if (!TTS.session) return; speakLine(cur, () => { if (!TTS.session) return; setTimeout(() => { if (!TTS.session) return; show(nextLine(S.mode)); setTimeout(loop, 900); }, 3500); }); };
+  loop();
+}
+function voiceSheet() {
+  const mk = (label, key, val) => h('button', { class: 'chip' + ((S[key] || 0) === val ? ' on' : ''), onclick: e => { S[key] = val; save(); [...e.currentTarget.parentNode.children].forEach(c => c.classList.toggle('on', c === e.currentTarget)); speakLine(['Stop obeying your fear.']); } }, label);
+  const list = h('div');
+  const draw = () => { list.innerHTML = ''; TTS.voices.slice(0, 40).forEach(v => list.append(h('button', { class: 'opt', style: 'font:600 16px var(--sans);padding:14px 18px' + (TTS.voice === v ? ';outline:2px solid var(--tx)' : ''), onclick: () => { TTS.voice = v; S.voiceName = v.name; save(); draw(); speakLine(['Stop obeying your fear.']); } }, v.name + ' (' + v.lang + ')'))); if (!TTS.voices.length) list.append(h('p', { style: 'color:var(--mut)' }, 'No English voices found on this device. Add one in your phone’s accessibility or speech settings.')); };
+  draw();
+  const bg = sheet([h('h2', null, 'Voice'), h('p', { style: 'color:var(--mut);margin:0 0 14px' }, 'Uses your phone’s built-in voices, so it works offline. Tap one to hear it.'),
+    h('div', { class: 'chips2' }, mk('Slow', 'rate', .72), mk('Calm', 'rate', .82), mk('Natural', 'rate', .95)),
+    h('div', { class: 'chips2' }, mk('Deeper', 'pitch', .8), mk('Low', 'pitch', .9), mk('Natural', 'pitch', 1)), list]);
+  const obs = new MutationObserver(() => { if (!document.body.contains(bg)) { stopAudio(); obs.disconnect(); } }); obs.observe(document.body, { childList: true });
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && TTS.session) { /* phones pause speech when the screen locks */ } else if (!document.hidden && TTS.session) takeLock(); });
+
 /* ---------- main screen ---------- */
 let cur = null;
 function render() {
+  applyTheme(); stopAudio();
   const app = $('#app'); app.innerHTML = '';
   const q = h('div', { class: 'quote', id: 'q', 'aria-live': 'polite' }), by = h('div', { class: 'by', id: 'by' });
   const heart = h('button', { class: 'icon heart', 'aria-label': 'Save this line', html: HEART, onclick: toggleFav });
@@ -185,21 +286,27 @@ function render() {
   stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
   stage.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) change(); else if (Math.abs(dx) > 60) change(); });
   app.append(
-    h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs })),
+    h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('div', { style: 'display:flex' }, canSpeak ? h('button', { class: 'icon', 'aria-label': 'Voice settings', html: MIC, onclick: voiceSheet }) : null, h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs }))),
     modes, stage,
     h('div', { class: 'dock' },
       h('button', { class: 'help', onclick: openSituations }, 'Something’s bothering me'),
-      h('div', { class: 'bar' }, heart, h('button', { class: 'next', onclick: change }, 'Another')),
-      h('p', { class: 'hint' }, 'Swipe for the next one')));
+      h('div', { class: 'bar' }, heart, canSpeak ? h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }) : null, h('button', { class: 'next', onclick: change }, 'Another')),
+      h('div', { class: 'hintrow' }, h('span', null, 'Swipe for the next one'), canSpeak ? h('button', { id: 'sess', onclick: toggleSession }, 'Play session') : null)));
   show(nextLine(S.mode), false);
 }
 function show(line, animate = true) {
   const q = $('#q'), by = $('#by'); cur = line;
-  const set = () => { q.textContent = line[0]; by.textContent = line[1] ? '— ' + line[1] : ''; q.className = 'quote in'; requestAnimationFrame(() => requestAnimationFrame(() => q.className = 'quote')); syncHeart(); };
+  const set = () => {
+    q.innerHTML = '';
+    const two = !!line[2];
+    if (two) q.append(h('div', { class: 'bar-accent' }), h('div', { class: 'punch' }, line[0]), h('div', { class: 'insight' }, line[2])); else q.textContent = line[0];
+    by.textContent = line[1] ? (two ? line[1] : '\u2014 ' + line[1]) : '';
+    q.className = 'quote in' + (two ? ' two' : ''); requestAnimationFrame(() => requestAnimationFrame(() => q.className = 'quote' + (two ? ' two' : ''))); syncHeart();
+  };
   if (!animate) { set(); return; }
   q.className = 'quote out'; setTimeout(set, 380);
 }
-function change() { show(nextLine(S.mode)); }
+function change() { stopAudio(true); show(nextLine(S.mode)); }
 const isFav = l => S.fav.some(f => f[0] === l[0]);
 function syncHeart() { const b = $('.heart'); if (b && cur) b.classList.toggle('on', isFav(cur)); }
 function toggleFav() {
@@ -213,7 +320,7 @@ function sheet(children) {
 function showFavs() {
   const body = [h('h2', null, 'Saved')];
   if (!S.fav.length) body.push(h('p', { style: 'color:var(--mut)' }, 'Tap the heart on any line to keep it here.'));
-  S.fav.forEach(f => body.push(h('div', { class: 'item' }, h('span', null, f[0] + (f[1] ? ' — ' + f[1] : '')), h('button', { onclick: e => { S.fav = S.fav.filter(x => x[0] !== f[0]); save(); e.target.closest('.item').remove(); syncHeart(); } }, 'Remove'))));
+  S.fav.forEach(f => body.push(h('div', { class: 'item' }, h('span', null, f[0] + (f[2] ? ' ' + f[2] : '') + (f[1] && !f[2] ? ' \u2014 ' + f[1] : '')), h('button', { onclick: e => { S.fav = S.fav.filter(x => x[0] !== f[0]); save(); e.target.closest('.item').remove(); syncHeart(); } }, 'Remove'))));
   sheet(body);
 }
 

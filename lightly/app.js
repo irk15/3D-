@@ -2,7 +2,7 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v7';
+const VERSION = 'v8';
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -203,7 +203,7 @@ const SITUATIONS = {
 
 /* ---------- state ---------- */
 const KEY = 'lightly_v2';
-let S = { fav: [], mode: 'Osho', bag: {}, preset: 'Soft', rate: .78, pitch: 1, vol: .9, ambient: 'Off', voiceName: null };
+let S = { studio: 'nicole', fav: [], mode: 'Osho', bag: {}, preset: 'Soft', rate: .78, pitch: 1, vol: .9, ambient: 'Off', voiceName: null };
 try { const d = JSON.parse(localStorage.getItem(KEY)); if (d) S = Object.assign(S, d); else { const o = JSON.parse(localStorage.getItem('lightly_v1')); if (o && o.fav) S.fav = o.fav; } } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const rand = n => Math.floor(Math.random() * n);
@@ -310,7 +310,7 @@ function utter(text, done, tk) {
 function phrasesOf(t) {
   return (t.match(/[^.,;:!?—]+[.,;:!?—]*\s*/g) || [t]).map(x => x.trim()).filter(Boolean).map(x => ({ t: x, pause: /[.!?]$/.test(x) ? 650 : /[,;:—]$/.test(x) ? 320 : 200 }));
 }
-function speakLine(line, done) {
+function speakDevice(line, done) {
   if (!canSpeak || !line) return; speechSynthesis.cancel(); const tk = ++TTS.token; TTS.speaking = true; syncAudio();
   if (S.ambient && S.ambient !== 'Off' && !AMB.nodes) { startAmbient(S.ambient); AMB.byListen = true; }
   const who = line[1] && line[1].charAt(0) === '—' ? line[1].slice(2).replace(/\s*\(paraphrased\)/, '') : null;
@@ -321,6 +321,41 @@ function speakLine(line, done) {
     utter(items[i].t, () => setTimeout(() => run(i + 1), i === items.length - 1 ? 0 : items[i].pause), tk);
   };
   run(0);
+}
+
+/* ---------- studio voices: real audio files, keep playing when minimised or locked ---------- */
+const STUDIO = [['nicole', 'Aria · soft'], ['george', 'George · deep']];
+const lh = t => { let x = 5381; for (let i = 0; i < t.length; i++) x = ((x * 33) ^ t.charCodeAt(i)) >>> 0; return x.toString(16); };
+const AUD = { el: null, onEnd: null };
+function audEl() {
+  if (AUD.el) return AUD.el;
+  const a = AUD.el = new Audio(); a.preload = 'auto'; a.setAttribute('playsinline', ''); a.volume = 1;
+  a.addEventListener('ended', () => { const f = AUD.onEnd; AUD.onEnd = null; if (f) f(); });
+  a.addEventListener('play', () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; });
+  a.addEventListener('pause', () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = a.ended ? 'none' : 'paused'; });
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession, set = (n, f) => { try { ms.setActionHandler(n, f); } catch (e) {} };
+    set('play', () => { if (AUD.el.src && !AUD.el.ended) AUD.el.play(); else if (!TTS.session) toggleSession(); });
+    set('pause', () => AUD.el.pause());
+    set('stop', () => stopAudio());
+    set('nexttrack', () => change());
+  }
+  return a;
+}
+function studioOn() { return S.studio !== 'device'; }
+function speakStudio(line, done) {
+  const v = STUDIO.some(x => x[0] === S.studio) ? S.studio : STUDIO[0][0], a = audEl(), tk = ++TTS.token;
+  if (canSpeak) speechSynthesis.cancel();
+  const fallback = () => { if (tk === TTS.token) { AUD.onEnd = null; speakDevice(line, done); } };
+  AUD.onEnd = () => { if (tk !== TTS.token) return; TTS.speaking = false; syncAudio(); if (!TTS.session && AMB.byListen) { stopAmbient(); AMB.byListen = false; } if (done) done(); };
+  a.onerror = fallback; a.src = 'audio/' + v + '/' + lh(line[0]) + '.mp3'; TTS.speaking = true; syncAudio();
+  const p = a.play(); if (p && p.catch) p.catch(fallback);
+  if ('mediaSession' in navigator) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: line[0], artist: 'Lightly', album: S.mode, artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }); } catch (e) {} }
+}
+function speakLine(line, done) {
+  if (!line) return;
+  if (S.ambient && S.ambient !== 'Off' && !AMB.nodes) { startAmbient(S.ambient); AMB.byListen = true; }
+  if (studioOn() && lh(line[0]) && !line._dev) { TTS.studio = true; speakStudio(line, done); } else { TTS.studio = false; speakDevice(line, done); }
 }
 
 /* ---------- soft background sound, made on the phone with Web Audio ---------- */
@@ -349,7 +384,7 @@ function stopAmbient(now) {
 }
 
 function stopAudio(keepSession) {
-  if (!canSpeak) return; TTS.token++; speechSynthesis.cancel(); TTS.speaking = false;
+  TTS.token++; if (canSpeak) speechSynthesis.cancel(); if (AUD.el) { AUD.onEnd = null; AUD.el.pause(); } TTS.speaking = false;
   if (!keepSession || !TTS.session) { TTS.session = false; releaseLock(); stopAmbient(); }
   syncAudio();
 }
@@ -357,19 +392,25 @@ function syncAudio() {
   const b = $('#listen'); if (b) { const act = TTS.speaking || TTS.session; b.classList.toggle('on', act); b.innerHTML = (act ? '<span class="eq"><i></i><i></i><i></i></span>' : PLAY) + '<span>' + (act ? 'Stop' : 'Listen') + '</span>'; }
   const s = $('#sess'); if (s) s.textContent = TTS.session ? 'Stop session' : 'Play session';
 }
-function toggleListen() { if (TTS.speaking || TTS.session) stopAudio(); else if (S.auto) toggleSession(); else { TTS.session = false; speakLine(cur); } }
+function toggleListen() { if (TTS.speaking || TTS.session) stopAudio(); else toggleSession(); }
 async function takeLock() { try { if (navigator.wakeLock) TTS.lock = await navigator.wakeLock.request('screen'); } catch (e) {} }
 function releaseLock() { try { if (TTS.lock) TTS.lock.release(); } catch (e) {} TTS.lock = null; }
+function sessionStep(l) {
+  if (!TTS.session) return;
+  speakLine(l, () => {
+    if (!TTS.session) return;
+    const go = () => { if (!TTS.session) return; const nl = nextLine(S.mode); show(nl); sessionStep(nl); };
+    if (TTS.studio) go(); else setTimeout(go, 3500);
+  });
+}
 function toggleSession() {
   if (TTS.session) { stopAudio(); return; }
-  TTS.session = true; takeLock(); syncAudio();
-  const loop = () => { if (!TTS.session) return; speakLine(cur, () => { if (!TTS.session) return; setTimeout(() => { if (!TTS.session) return; show(nextLine(S.mode)); setTimeout(loop, 900); }, 3500); }); };
-  loop();
+  TTS.session = true; takeLock(); syncAudio(); if (studioOn()) audEl(); sessionStep(cur);
 }
 const PRESETS = { Soft: { rate: .78, pitch: 1, vol: .9 }, Deep: { rate: .8, pitch: .78, vol: 1 }, Hush: { rate: .72, pitch: .9, vol: .55 }, Natural: { rate: .92, pitch: 1, vol: 1 } };
 function voiceSheet() {
   const row = (keys, cur, pick) => { const w = h('div', { class: 'chips2' }); keys.forEach(k => w.append(h('button', { class: 'chip' + (cur() === k ? ' on' : ''), onclick: e => { pick(k); [...w.children].forEach(c => c.classList.toggle('on', c === e.currentTarget)); } }, k))); return w; };
-  const preview = () => speakLine(['Reaction is a puppet string.', null, 'Whoever pulls it owns your mood.']);
+  const preview = () => { TTS.session = false; speakLine(studioOn() ? LINES.Osho[0] : ['Reaction is a puppet string.', null, 'Whoever pulls it owns your mood.']); };
   const list = h('div'); let all = false;
   const draw = () => {
     list.innerHTML = ''; const vs = all ? TTS.voices : TTS.voices.slice(0, 8);
@@ -380,7 +421,10 @@ function voiceSheet() {
   draw();
   const guide = h('div', { class: 'note' }, h('p', { style: 'margin:0 0 6px;font-weight:600' }, 'Want the most natural voice?'), h('p', { style: 'margin:0;color:var(--mut);font-size:15px;line-height:1.45' }, 'On iPhone, open Settings, then Accessibility, then Spoken Content, then Voices, then English. Download one marked Premium or Enhanced. Ava, Evan and Zoe are very calm. It will appear in this list, ranked first.'));
   const bg = sheet([h('h2', null, 'Settings'), installBlock(), updateBlock(), autoRow(),
-    h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 8px' }, 'Voice style'),
+    h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 4px' }, 'Studio voice'),
+    h('p', { style: 'margin:0 0 8px;color:var(--mut);font-size:14px' }, 'Real recordings. They keep playing when the app is minimised or the screen is locked.'),
+    row(STUDIO.map(x => x[1]).concat(['Phone voice']), () => S.studio === 'device' ? 'Phone voice' : (STUDIO.find(x => x[0] === S.studio) || STUDIO[0])[1], k => { const f = STUDIO.find(x => x[1] === k); S.studio = f ? f[0] : 'device'; save(); stopAudio(); preview(); }),
+    h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Phone voice style'),
     row(Object.keys(PRESETS), () => S.preset, k => { S.preset = k; Object.assign(S, PRESETS[k]); save(); preview(); }),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Background sound'),
     row(['Off', 'Rain', 'Ocean', 'Hum'], () => S.ambient || 'Off', k => { S.ambient = k; save(); if (k === 'Off') stopAmbient(); else startAmbient(k); }),
@@ -507,7 +551,7 @@ function render() {
     h('div', { class: 'dock' },
       h('button', { class: 'help', onclick: openSituations }, 'Something’s bothering me'),
       h('div', { class: 'bar glass' }, heart, h('button', { class: 'icon', 'aria-label': 'Share as an image', html: SHARE, onclick: shareCard }),
-        canSpeak ? h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }) : null,
+        h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }),
         h('button', { class: 'next', onclick: change, html: '<span>Next</span>' + ARROW }))));
   show(nextLine(S.mode), false);
   coach();
@@ -527,7 +571,7 @@ function show(line, animate = true) {
   if (!animate) { set(); return; }
   q.className = 'quote out'; setTimeout(set, 380);
 }
-function change() { stopAudio(true); show(nextLine(S.mode)); }
+function change() { const was = TTS.session; stopAudio(true); const l = nextLine(S.mode); show(l); if (was) { TTS.session = true; sessionStep(l); } }
 const isFav = l => S.fav.some(f => f[0] === l[0]);
 function syncHeart() { const b = $('.heart'); if (b && cur) b.classList.toggle('on', isFav(cur)); }
 function toggleFav() {

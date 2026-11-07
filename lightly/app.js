@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v20';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '20') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v21';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '21') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -156,6 +156,38 @@ const BRILLIANT = [
 const LINES = {
   Osho: OSHO,
   Brilliant: BRILLIANT,
+  Start: [
+    ["You don’t need motivation. You need one tiny first move."],
+    ["Open the file. Write one line. That counts."],
+    ["Overthinking is the mind trying to feel safe before it moves. Move first, and safe follows."],
+    ["Do the first two minutes. Your mood will catch up."],
+    ["Clarity comes from action, not the other way around."],
+    ["You don’t have to feel ready. You only have to start badly."],
+    ["Pick the smallest next step. Do only that."],
+    ["A rough start beats a perfect plan that never leaves your head."],
+    ["Your mind is loud in the morning because it has no job yet. Give it one."],
+    ["Decide what you’ll do first, then stop deciding."],
+    ["The thought says later. The body can say now, in two minutes."],
+    ["Momentum is built, not found. Build the first inch."],
+    ["Not the whole day. Just the next ten minutes."],
+    ["Right now only one task exists. Which one?"],
+    ["Fog lifts when you walk through it, not when you stare at it."],
+    ["You have started before when you didn’t feel like it. This is that."],
+    ["Let the first draft be ugly. Ugly is how things begin."],
+    ["Set a ten-minute timer. You are allowed to stop after."],
+    ["The hardest part is the doorway. Step through it."],
+    ["Tiny and finished beats big and imagined."],
+    ["Don’t think about the mountain. Tie one shoe."],
+    ["Slow breath first. Then one step."],
+    ["You can think about it or begin it. Beginning thinks better."],
+    ["Be kind to yourself, and begin anyway."],
+    ["This morning does not have to be perfect. It only has to begin."],
+    ["Name the one thing that would make today good. Do it first."],
+    ["Worry is a bad project manager. Take the task list back."],
+    ["Start where you are, with what you have, with the easiest piece."],
+    ["Action is the antidote to anxiety. Pick a small one."],
+    ["You’re not behind. You’re about to begin."]
+  ],
   Calm: [
     ['Nothing needs to be solved in this exact breath.'],
     ['You are allowed to put this down for a minute.'],
@@ -346,7 +378,7 @@ const LINES = {
     ["What looks like a wall is often a door that opens outward."]
   ]
 };
-const MODES = ['Osho', 'Brilliant', 'Calm', 'Aware', 'Bright', 'Reframe'];
+const MODES = ['Start', 'Osho', 'Brilliant', 'Calm', 'Aware', 'Bright', 'Reframe'];
 
 /* situations: three beats, each with two options */
 const SITUATIONS = {
@@ -391,6 +423,7 @@ const rand = n => Math.floor(Math.random() * n);
 
 /* shuffle bag so lines do not repeat until all have been seen */
 const FEELS = {
+  Stuck: { m: ['Start', 'Reframe', 'Calm'], c: '#FFB36B', t: 'Begin before you feel ready' },
   Angry: { m: ['Calm', 'Reframe', 'Brilliant'], c: '#F28B82', t: 'Let it cool' },
   Anxious: { m: ['Calm', 'Aware'], c: '#9AD7C4', t: 'Come back to now' },
   Low: { m: ['Bright', 'Osho', 'Reframe'], c: '#FFD166', t: 'Lift gently' },
@@ -726,8 +759,8 @@ async function shareCard() {
 
 /* ---------- main screen ---------- */
 let cur = null;
-const MOOD_INFO = { Osho: ['Flip your mind', 'Strong lines in the spirit of Osho'], Brilliant: ['Think like history’s best', 'Real quotes from great minds'], Calm: ['Slow it down', 'Gentle lines to settle you'], Aware: ['Come back to now', 'Notice, pause, choose'], Bright: ['Lift the mood', 'Light, hopeful lines'], Reframe: ['See it differently', 'A kinder angle'] };
-const MOOD_DOT = { Osho: '#FF9A3C', Brilliant: '#8FD3FF', Calm: '#9AD7C4', Aware: '#C7B8FF', Bright: '#FFD166', Reframe: '#F7A6C1' };
+const MOOD_INFO = { Start: ['Begin gently', 'Small first moves that end overthinking'], Osho: ['Flip your mind', 'Strong lines in the spirit of Osho'], Brilliant: ['Think like history’s best', 'Real quotes from great minds'], Calm: ['Slow it down', 'Gentle lines to settle you'], Aware: ['Come back to now', 'Notice, pause, choose'], Bright: ['Lift the mood', 'Light, hopeful lines'], Reframe: ['See it differently', 'A kinder angle'] };
+const MOOD_DOT = { Start: '#FFB36B', Osho: '#FF9A3C', Brilliant: '#8FD3FF', Calm: '#9AD7C4', Aware: '#C7B8FF', Bright: '#FFD166', Reframe: '#F7A6C1' };
 const CARET = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>';
 const ARROW = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg>';
 function moodSheet() {
@@ -769,12 +802,14 @@ function checkin() {
   if (S.feelAt && Date.now() - S.feelAt < 6 * 3600e3) return;
   setTimeout(() => {
     if (document.querySelector('.sheet-bg')) return;
-    const bg = sheet([h('h2', { class: 'big' }, 'How are you feeling?'), h('p', { style: 'color:var(--mut);margin:0 0 6px' }, 'Tap one. Your lines will match it.'),
+    const bg = sheet([h('h2', { class: 'big' }, hourNow() < 12 ? 'Good morning. How are you starting?' : 'How are you feeling?'), h('p', { style: 'color:var(--mut);margin:0 0 6px' }, 'Tap one. Your lines will match it.'),
       h('div', { class: 'fgrid' }, Object.keys(FEELS).map(f => h('button', { class: 'fcard', style: '--c:' + FEELS[f].c, onclick: () => { bg.remove(); pickFeel(f); } }, h('i'), h('b', null, f), h('small', null, FEELS[f].t)))),
       h('button', { class: 'link', style: 'padding:14px 0 4px', onclick: () => { S.feelAt = Date.now(); save(); bg.remove(); } }, 'Skip for now')]);
   }, 700);
 }
+const hourNow = () => { const p = new URLSearchParams(location.search); return p.has('h') ? +p.get('h') : new Date().getHours(); };
 function render() {
+  { const dk = new Date().toDateString(), hh = hourNow(); if (S.autoDay !== dk) { S.autoDay = dk; if (hh >= 4 && hh < 12) { S.mode = 'Start'; S.feel = null; } save(); } }
   applyTheme(); stopAudio();
   const app = $('#app'); app.innerHTML = '';
   const q = h('div', { class: 'quote', id: 'q', 'aria-live': 'polite' }), by = h('div', { class: 'by', id: 'by' });

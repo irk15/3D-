@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const q = JSON.parse(readFileSync(new URL('./quotes.json', import.meta.url), 'utf8'));
 const SLOTS = { '10 13 * * *': 0, '10 19 * * *': 1, '30 1 * * *': 2 };
 const slot = process.env.SCHEDULE in SLOTS ? SLOTS[process.env.SCHEDULE] : parseInt(process.env.SLOT_INPUT || '0', 10) || 0;
-const lists = [q.osho, q.brilliant, q.everyday], titles = ['Wake up', 'Think clearly', 'Let it go lightly'];
+const lists = [q.start || q.osho, q.brilliant, q.everyday], titles = ['Begin gently', 'Think clearly', 'Let it go lightly'];
 const list = lists[slot] || q.osho, day = Math.floor(Date.now() / 864e5);
 const item = list[(day + slot * 7) % list.length];
 const body = item.text + (item.author && item.author !== 'In the spirit of Osho' ? '\n— ' + item.author : '') + (item.meaning ? '\n\n' + item.meaning : '');

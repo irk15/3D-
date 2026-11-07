@@ -1329,10 +1329,13 @@ function boulder(seed,sx,sy,sz,col=0x9a8d84){ const g=blob(2,.32,seed); const m=
 
 /* ================= DIORAMAS ================= */
 const SP=20, START=-14, FZ=3.4;
+/* the through street (scenes 5-7 sit on it) and the metro viaduct (scene 7): one world-level line each, so nothing starts or stops inside the view */
+const STAGE_Z=1.56, STAGE_HW=.47, VIA_X0=134.4, VIA_Z=.09;
+const WORLD_COLOUR=[];   /* world objects that belong to a scene (street, viaduct, train): drawn in colour in the card, like the scene itself */
 const stopX=i=>i*SP;
 const DIO=[];
 function makeDio(i){ const g=new THREE.Group(); g.position.x=stopX(i); g.scale.setScalar(1.3); scene.add(g); const d={i,g,pieces:[],keys:[],disp:false,update:null}; DIO.push(d); return d; }
-function piece(d,obj,o={}){ d.g.add(obj); const p={obj,hero:!!o.hero,key:!!o.key,slide:o.slide??null,amp:o.amp??1,lift:o.lift??0,d:0,t:0,wait:0,tgt:0,phase:Math.random()*6.28,glow:0}; d.pieces.push(p); if(p.key) d.keys.push(p); return obj; }
+function piece(d,obj,o={}){ d.g.add(obj); const p={obj,dyn:!!o.dyn,hero:!!o.hero,key:!!o.key,slide:o.slide??null,amp:o.amp??1,lift:o.lift??0,d:0,t:0,wait:0,tgt:0,phase:Math.random()*6.28,glow:0}; d.pieces.push(p); if(p.key) d.keys.push(p); return obj; }
 /* one real-world scale everywhere: a 1.75 m person is .32 in a scene, x1.3 = .416 in the world (~.24 per metre) */
 const DIO_SCALE=1.3, RS=2.4;
 function finalize(d,fit=7.0,maxH=4.9){
@@ -1820,10 +1823,8 @@ function ambassador(col=0xefeadb){ const K=kit(), pn={rough:.28,metal:.35}, ch={
 
 /* 5 · 1985 Silicon Plateau: the dish rides down Miller's Road on a bullock cart, past an old bungalow, towards a new office tower */
 { const d=makeDio(5); const R=rng(85);
-  /* Miller's Road: asphalt, faded centre line, kerbs, footpaths */
-  { const g=new THREE.Group(); const rd=new THREE.Mesh(P(BX(9.8,.025,.8),0x38393b),vmat({rough:.92,pat:{k:'stain',d:.25}})); rd.position.set(0,.0125,.95); rd.receiveShadow=true; g.add(rd);
-    for(const [z,dz] of [[.42,.28],[1.48,.26]]){ const f=new THREE.Mesh(P(BX(9.8,.03,dz),0xb4ab9b),vmat({rough:.92,brick:[.22,.22]})); f.position.set(0,.015,z); f.receiveShadow=true; g.add(f); }
-    const K=kit(); for(let x=-4.6;x<4.7;x+=.42) K.p({rough:.8},BX(.2,.004,.025),0xd9d2bc,x,.027,.95); for(const z of [.555,1.345]) K.p({rough:.85},BX(9.8,.045,.04),0xc6bdab,0,.022,z); g.add(K.build()); piece(d,g,{amp:.15}); }
+  /* Miller's Road is the world's through street (STAGE_Z): this scene just stands on it */
+  d.g.position.z=STAGE_Z-1.3*.95;
   /* office tower: concrete spandrels, tinted ribbon glazing, pilotis, rooftop plant */
   { const g=new THREE.Group(), K=kit(), cx=1.12, cz=-1.35, W=1.3, D=1.05, y0=.56, fh=.58, NF=4, CC=0xd9cfbe, co={rough:.85,pat:{k:'stain',d:.35}}, gl={rough:.08,metal:.65};
     K.p({rough:.3,metal:.5},BX(W-.2,y0,D-.2),0x34414c,cx,y0/2,cz); for(const x of [-1,-.33,.33,1]) for(const z of [-1,1]) K.p(co,CY(.03,.03,y0,10),CC,cx+x*(W/2-.05),y0/2,cz+z*(D/2-.05));
@@ -1848,7 +1849,7 @@ function ambassador(col=0xefeadb){ const K=kit(), pn={rough:.28,metal:.35}, ch={
     const vr=vm(BX(1.28,.016,.46),0xa64d30,{rough:.75,pat:{k:'tile',s:.032}}); vr.position.set(cx,.6,cz+.6); vr.rotation.x=.28; g.add(vr);
     piece(d,g,{key:true}); }
   /* the convoy: two Hallikar bullocks, a spoked cart, the dish lashed on, a driver (hero) */
-  const conv=new THREE.Group(), wheels=[];
+  const mkConv=(sd,cA,cB)=>{ const conv=new THREE.Group(), wheels=[];
   { const K=kit(), wd={rough:.85,pat:{k:'wood',a:0,f:80}}, WD=0x7a5634, WD2=0x6a4a2c;
     for(let k=0;k<5;k++) K.p(wd,BX(.9,.022,.085),k%2?WD:WD2,0,.3,-.18+k*.09);
     for(const s of [-1,1]){ K.p(wd,BX(.96,.045,.045),WD2,0,.28,s*.24); K.p(wd,BX(.9,.02,.02),WD,0,.45,s*.24); for(let x=-.42;x<=.43;x+=.14) K.p(wd,BX(.022,.15,.022),WD2,x,.37,s*.24); }
@@ -1859,11 +1860,13 @@ function ambassador(col=0xefeadb){ const K=kit(), pn={rough:.28,metal:.35}, ch={
       Kw.p(w,TOR(.185,.02,Math.PI*2,6,30),WD,0,0,0); Kw.p({rough:.4,metal:.7},TOR(.2,.009,Math.PI*2,4,30),0x3a3632,0,0,0); Kw.p(w,CY(.04,.04,.1,12),WD2,0,0,0,Math.PI/2);
       for(let k=0;k<12;k++){ const a=k/12*6.283; Kw.l(w,UCYL(.009,.007,6),WD,V3(0,0,0),V3(Math.cos(a)*.18,Math.sin(a)*.18,0)); }
       const wg=Kw.build(); wg.position.set(-.04,.2,s*.31); conv.add(wg); wheels.push(wg); }
-    const bl=bullock(51,0xc0392b), br=bullock(52,0x2e6db4); bl.position.set(1.18,0,-.13); br.position.set(1.18,0,.13); conv.add(bl,br);
-    const dish=dishG(); dish.position.set(-.04,.46,0); dish.rotation.set(.95,0,.12); conv.add(dish);
+    const bl=bullock(51+sd,cA), br=bullock(52+sd,cB); bl.position.set(1.18,0,-.13); br.position.set(1.18,0,.13); conv.add(bl,br);
+    if(sd===0){ const dish=dishG(); dish.position.set(-.04,.46,0); dish.rotation.set(.95,0,.12); conv.add(dish); }   /* only the hero cart carries the dish */
     const Kr=kit(); for(const x of [-.2,.15]) Kr.raw({rough:.9},tubeG([[x,.45,-.25],[x-.02,.62,-.12],[x,.7,.05],[x+.02,.6,.2],[x,.45,.25]],.006,16,4),0xc9b48a); conv.add(Kr.build());
-    conv.add(at(figure({h:.32/.72,pose:'sit',dress:'dhoti',head:'turban',top:0xf2ede2,accent:0xe1a12e,skin:SKINS[3],tool:'stick',seed:53}),.4,.31,.0,Math.PI/2,0,0,1));
-    conv.position.set(-.35,.025,.78); conv.rotation.y=-.04; conv.scale.setScalar(.72); piece(d,conv,{hero:true,lift:.5}); }
+    conv.add(at(figure({h:.32/.72,pose:'sit',dress:'dhoti',head:'turban',top:0xf2ede2,accent:0xe1a12e,skin:SKINS[3],tool:'stick',seed:53+sd}),.4,.31,.0,Math.PI/2,0,0,1));
+    conv.position.set(-.35,.025,.78); conv.rotation.y=-.04; conv.scale.setScalar(.72); }
+  return {conv,wheels,bulls:conv.children.filter(c=>c.userData.legs)}; };
+  const CV=[mkConv(0,0xc0392b,0x2e6db4),mkConv(10,0xe1a12e,0x7a5634),mkConv(20,0x2e6db4,0xc0392b)]; piece(d,CV[0].conv,{hero:true,lift:.5,dyn:true}); piece(d,CV[1].conv,{amp:.15,dyn:true}); piece(d,CV[2].conv,{amp:.15,dyn:true});
   /* engineers on the footpath, an Ambassador and a Chetak, poles and wires, rain trees */
   piece(d,grp(at(figure({pose:'point',dress:'pants',head:'hair',top:0xbcd3e6,bottom:0x4a4f58,skin:SKINS[2],seed:54}),.55,.03,.42,-2.6),at(figure({pose:'stand',dress:'pants',head:'hair',top:0xf2efe6,bottom:0x6b5a46,skin:SKINS[0],seed:55}),.85,.03,.36,-2.9),at(figure({pose:'stand',dress:'sari',head:'bun',accent:0x7a3a6a,skin:SKINS[4],seed:56}),.3,.03,.34,-2.4)),{amp:.4});
   piece(d,at(ambassador(0xf0ebdc),-1.42,.025,1.2,Math.PI,0,0,1.8),{key:true});
@@ -1879,9 +1882,9 @@ function ambassador(col=0xefeadb){ const K=kit(), pn={rough:.28,metal:.35}, ch={
   piece(d,at(htree(502,{h:1.3,w:.68,kind:'gul'}),1.88,0,.2),{key:true});
   piece(d,at(htree(503,{h:1.3,w:.68,kind:'neem'}),-1.9,0,.18),{key:true});
   { const g=new THREE.Group(); for(let k=0;k<5;k++) g.add(at(shrub(510+k,{r:.12+R()*.06}),[-.62,-1.88,.3,1.95,-.6][k],0,[-.55,-.6,-.95,-.55,-.95][k])); piece(d,g,{amp:.25}); }
-  const bulls=conv.children.filter(c=>c.userData.legs), CONV_L=9.6;
-  d.update=(t,dt,k)=>{ const x=((t*.2+4.6)%CONV_L)-CONV_L/2, run=x/.72;   /* it walks the length of the road and leaves beyond the glass, then comes back round */
-    conv.position.x=x; wheels.forEach(w=>{ w.rotation.z=-run/.185; }); bulls.forEach(b=>bullockWalk(b,run,.5)); };
+  const CONV_L=54, ZG=d.g.position.z;   /* a convoy of carts along a street that never ends: they enter and leave 26 to 35 units either side of the scene, far outside the view, and follow the street's curve at the junction */
+  d.update=(t,dt,k)=>{ CV.forEach((c,n)=>{ const x=((t*.2+19.65+n*18)%CONV_L+CONV_L)%CONV_L-20, run=x/.72, wx=stopX(5)+x*1.3, sl=stageZ(wx+.5)-stageZ(wx-.5);
+    c.conv.position.x=x; c.conv.position.z=(stageZ(wx)-ZG)/1.3-.17; c.conv.rotation.y=-Math.atan(sl); c.wheels.forEach(w=>{ w.rotation.z=-run/.185; }); c.bulls.forEach(b=>bullockWalk(b,run,.5)); }); };
   finalize(d,7.0); }
 
 /* a Hero Honda Splendor, nose to +x, on its side stand */
@@ -1911,11 +1914,7 @@ function autoRick(){ const K=kit(), p={rough:.35,metal:.2}, GR=0x2f7a3a, YL=0xf2
 
 /* 6 · 2007 Startup City: 447-C Koramangala. A Hero Honda at the gate, three servers and a stack of book parcels in the porch */
 { const d=makeDio(6); const R=rng(2007);
-  /* street, covered drain, footpath */
-  { const g=new THREE.Group(); const rd=new THREE.Mesh(P(BX(9.8,.025,.7),0x3b3c3e),vmat({rough:.92,pat:{k:'stain',d:.3}})); rd.position.set(0,.0125,1.2); rd.receiveShadow=true; g.add(rd);
-    const fp=new THREE.Mesh(P(BX(9.8,.03,.22),0xa59c8c),vmat({rough:.92,brick:[.11,.11]})); fp.position.set(0,.015,.74); fp.receiveShadow=true; g.add(fp);
-    const K=kit(); K.p({rough:.9},BX(9.8,.04,.035),0xbdb3a2,0,.02,.855); for(let x=-4.8;x<4.7;x+=.3) K.p({rough:.95},BX(.28,.02,.12),0x9d968a,x+.14,.025,.79);
-    K.p({rough:.95},BX(1.2,.002,.14),0x2c2d2f,-.9,.026,1.05); K.p({rough:.95},BX(.5,.002,.2),0x47484a,.9,.026,1.3); g.add(K.build()); piece(d,g,{amp:.15}); }
+  /* the street and footpath are the world's through street (STAGE_Z), so this scene needs no strip of its own */
   /* the house (hero): RCC frame, chajjas, grills, balcony, terrace, Sintex tank; the porch holds the first Flipkart */
   const LEDS=[];
   { const g=new THREE.Group(), K=kit(), x0=-1.45, x1=.45, z0=-1.45, z1=.05, W=x1-x0, D=z1-z0, cx=(x0+x1)/2, cz=(z0+z1)/2, PW=0xf1e3a8, TR=0xf6f3ec, ws={rough:.9,pat:{k:'stain',d:.4}}, tr={rough:.85};
@@ -1982,15 +1981,7 @@ function autoRick(){ const K=kit(), p={rough:.35,metal:.2}, GR=0x2f7a3a, YL=0xf2
     const palm=new THREE.Mesh(TREE_GEOS.palm[0],leafMat); palm.scale.setScalar(.95); palm.position.set(.72,0,-.15); palm.castShadow=true; g.add(palm); g.scale.y=1.3; piece(d,g,{key:true}); }
   piece(d,at(htree(601,{h:1.4,w:.72,kind:'gul'}),-1.82,0,.2),{key:true});
   piece(d,at(htree(602,{h:1.2,w:.66,kind:'neem'}),1.85,0,.2),{key:true});
-  /* ideas multiply: book parcels and open books rising over the house */
-  const books=new THREE.Group();
-  { const K=kit(), cols=[0x8b5cf6,0x2e6db4,0xc0392b,0x1f8a5a,0xe1a12e,0x7c3aed,0x2a2a2a,0xd35d8a];
-    for(let k=0;k<14;k++){ const a=k/14*6.283, r=.45+R()*.35, y=(R()-.5)*.5, rx=R()*.8, ry=R()*6.28;
-      const m4=new THREE.Matrix4().compose(V3(Math.cos(a)*r,y,Math.sin(a)*r*.7),new THREE.Quaternion().setFromEuler(new THREE.Euler(rx,ry,R()*.6)),V3(1,1,1));
-      K.raw({rough:.55},PM(BX(.13,.17,.03),cols[k%cols.length],m4)); K.raw({rough:.9},PM(BX(.12,.16,.024).translate(.006,0,0),0xf3efe4,m4)); }
-    books.add(K.build()); }
-  piece(d,at(books,-.45,2.1,-.6),{key:true,amp:.6});
-  d.update=(t,dt,k)=>{ books.rotation.y+=dt*.22; books.position.y=2.1+Math.sin(t*.8)*.05;
+  d.update=(t,dt,k)=>{
     LEDS[0].emissiveIntensity=Math.sin(t*9)>-.2?2.6:.2; LEDS[1].emissiveIntensity=Math.sin(t*6.3+1)>.1?2.6:.25; };
   finalize(d,7.0); }
 
@@ -1998,42 +1989,29 @@ function autoRick(){ const K=kit(), p={rough:.35,metal:.2}, GR=0x2f7a3a, YL=0xf2
 /* 7 · 2037 (recreated from the supplied metro render: elevated line, purple trains, station, bus, auto, trees). The grass disc is also the build plot. */
 const plot={T:.03, cell:.52, cols:6, rows:7};
 { const d=makeDio(7); const R=rng(7), TT=plot.T;
-  const conc=mat(0xc8bcaa,{rough:.88}), conc2=mat(0xa99d8b,{rough:.9});
-  const road=new THREE.Group(); road.add(at(box(10.6,.02,.82,mat(0x46484c,{rough:.9})),0,TT+.01,.98)); [.55,1.41].forEach(z=>road.add(at(box(10.6,.05,.09,mat(0xd6d0c4)),0,TT+.025,z)));
-  [.36,1.6].forEach(z=>road.add(at(box(10.6,.045,.34,mat(0xcfc6b6,{brick:[.26,.26],rough:.85})),0,TT+.022,z)));
-  for(let k=0;k<18;k++) road.add(at(box(.28,.012,.04,mat(0xf3f0ea)),-5.1+k*.6,TT+.025,.98)); piece(d,road,{amp:.15});
-  const via=new THREE.Group(); [-3.9,-1.95,0,1.95,3.9].forEach(x=>{ via.add(at(box(.4,1.5,.36,conc,.03),x,TT+.75,-.15)); via.add(at(box(.98,.24,.62,conc,.04),x,TT+1.6,-.15)); });
-  via.add(at(box(10.6,.16,1.0,conc,.03),0,TT+1.8,-.15)); [-.62,.32].forEach(z=>via.add(at(box(10.6,.22,.08,conc2),0,TT+1.97,z)));
-  [-.35,.05].forEach(z=>via.add(at(box(10.5,.03,.04,mat(0x5a5c60,{metal:.6,rough:.4})),0,TT+1.9,z))); piece(d,via,{});
+  /* the street and the viaduct are world-level (STAGE_Z, VIA_Z): endless, and always there. This scene adds the station, the stop's trees and people, and its own bus and auto. */
+  d.g.position.z=STAGE_Z-1.3*.98;
   const station=new THREE.Group(); station.add(at(box(1.15,.62,1.3,mat(0xd9d2c4,{rough:.7})),0,.31,0));
   for(let k=0;k<4;k++) station.add(at(box(.18,.32,.02,mat(0x2e3644,{rough:.2})),-.4+k*.27,.33,.66));
   const roof=mesh(new THREE.CylinderGeometry(.82,.82,1.5,28,1,true,0,Math.PI),mat(0x6a6c70,{metal:.4,rough:.45,side:true})); roof.rotation.z=Math.PI/2; roof.position.set(.15,.6,0); roof.scale.set(.42,1,.84);
   station.add(roof); for(let k=0;k<3;k++) station.add(at(sph(.04,mat(0xfff2c8,{em:0xffe2a0,ei:1.4}),8,6),-.2+k*.4,.86,.3));
   station.scale.z=.34; piece(d,at(station,-2.25,TT+1.88,-.56),{});
-  const silver=mat(0xdfdcd6,{metal:.35,rough:.32}), purple=mat(0x7c4bb4,{rough:.35}), win=mat(0x2b3240,{rough:.12,metal:.2});
-  const car=(len,front)=>{ const g=new THREE.Group(); g.add(at(box(len,.5,.46,silver,.09),0,0,0)); g.add(at(box(len-.14,.15,.47,win),0,.08,0)); g.add(at(box(len-.06,.04,.468,purple),0,-.13,0));
-    for(let k=1;k<4;k++) g.add(at(box(.012,.38,.472,mat(0xbab6ae)),-len/2+k*len/4,-.02,0));
-    if(front){ g.add(at(box(.18,.48,.45,purple,.09),len/2,0,0)); g.add(at(box(.03,.18,.36,win),len/2+.08,.09,0)); [-.13,.13].forEach(z=>g.add(at(sph(.03,mat(0xffffff,{em:0xfff4d0,ei:1.5}),8,6),len/2+.09,-.12,z))); }
-    return g; };
-  const train=new THREE.Group(); train.add(at(car(1.3,false),-1.35,0,0)); train.add(at(car(1.3,true),0,0,0)); train.add(at(car(1.3,false),-2.7,0,0));
-  const train2=new THREE.Group(); train2.add(at(car(1.2,true),0,0,0)); train2.add(at(car(1.2,false),-1.25,0,0));
-  const tr=at(train,.9,TT+2.17,-.15); piece(d,tr,{hero:true,lift:.6});
+  const win=mat(0x2b3240,{rough:.12,metal:.2});
   const bus=new THREE.Group(); bus.add(at(box(1.15,.42,.38,mat(0xf1eee8,{rough:.5}),.06),0,0,0)); bus.add(at(box(1.07,.14,.39,win),.02,.08,0)); bus.add(at(box(1.16,.06,.39,mat(0x2f6fc0)),0,-.12,0)); bus.add(at(box(.7,.04,.392,mat(0xf2a23a)),-.15,-.05,0));
   [-.36,.36].forEach(x=>[-.18,.18].forEach(z=>bus.add(at(cyl(.08,.08,.05,mat(0x1d1d20),12),x,-.2,z,0,Math.PI/2))));
-  const busO=at(bus,-.6,TT+.3,.78); swapVehicle(bus,'IN_Bus_01',{len:1.9,y:-.28}); piece(d,busO,{slide:-5.2});
+  const busO=at(bus,-.6,TT+.3,.78); swapVehicle(bus,'IN_Bus_01',{len:1.9,y:-.28}); piece(d,busO,{slide:-5.2,dyn:true});
   const auto=new THREE.Group(); auto.add(at(box(.34,.2,.26,mat(0x2f7a3a,{rough:.5}),.05),0,.0,0)); auto.add(at(box(.36,.17,.28,mat(0xf2c12e,{rough:.5}),.07),-.02,.19,0)); auto.add(at(box(.02,.12,.22,win),.17,.15,0));
   [[.14,0],[-.12,.13],[-.12,-.13]].forEach(([x,z])=>auto.add(at(cyl(.06,.06,.04,mat(0x1d1d20),10),x,-.1,z,0,Math.PI/2)));
-  const autoO=at(auto,.9,TT+.17,1.15,Math.PI); swapVehicle(auto,'IN_Rickshaw_01',{len:.5,y:-.15}); piece(d,autoO,{slide:5.2});
+  const autoO=at(auto,.9,TT+.17,1.15,Math.PI); swapVehicle(auto,'IN_Rickshaw_01',{len:.5,y:-.15}); piece(d,autoO,{slide:5.2,dyn:true});
   piece(d,grp(at(htree(791,{h:1.85,w:.82,kind:'rain'}),-2.05,TT,.45),at(htree(792,{h:1.6,w:.85,kind:'jac'}),-1.0,TT,-1.35)),{}); piece(d,grp(at(htree(793,{h:1.5,w:.85,kind:'gul'}),1.0,TT,-1.45),at(htree(794,{h:1.35,w:.7,kind:'neem'}),2.2,TT,-.55)),{});
   const bs=new THREE.Group(); for(let k=0;k<14;k++) bs.add(bush((R()-.5)*9,(R()<.5?-1:1)*(1.9+R()*.6),0,.9+R()*.5,R)); piece(d,bs,{amp:.3});
-  piece(d,grp(at(figure({pose:'walk',dress:'pants',head:'hair',top:0x2f6db4,bottom:0x2a2f3a,skin:SKINS[2],tool:'bag',accent:0x1c1c1c,seed:71}),-1.55,TT,1.62,Math.PI/2),
-    at(figure({pose:'walk',dress:'sari',head:'bun',accent:0x1f8a5a,skin:SKINS[4],seed:72}),-1.2,TT,1.7,-Math.PI/2),
-    at(figure({pose:'stand',dress:'pants',head:'cap',top:0xe8e4da,bottom:0x4a5568,skin:SKINS[0],accent:0xc0392b,seed:73}),1.55,TT,1.62,-2.6),
-    at(figure({pose:'point',dress:'pants',head:'hair',top:0xe1a12e,bottom:0x2a2f3a,skin:SKINS[1],seed:74}),1.85,TT,1.55,-2.2)),{});
-  d.g.rotation.y=-.18;
-  /* the line runs through the frame and on beyond the glass: a train every half-minute, a bus and an auto in their own lanes; all of them wrap round out of sight */
+  piece(d,grp(at(figure({pose:'walk',dress:'pants',head:'hair',top:0x2f6db4,bottom:0x2a2f3a,skin:SKINS[2],tool:'bag',accent:0x1c1c1c,seed:71}),-1.55,TT,1.48,Math.PI/2),
+    at(figure({pose:'walk',dress:'sari',head:'bun',accent:0x1f8a5a,skin:SKINS[4],seed:72}),-1.2,TT,1.48,-Math.PI/2),
+    at(figure({pose:'stand',dress:'pants',head:'cap',top:0xe8e4da,bottom:0x4a5568,skin:SKINS[0],accent:0xc0392b,seed:73}),1.55,TT,1.48,-2.6),
+    at(figure({pose:'point',dress:'pants',head:'hair',top:0xe1a12e,bottom:0x2a2f3a,skin:SKINS[1],seed:74}),1.85,TT,1.48,-2.2)),{});
+  /* the bus and the auto drive their own lanes of the endless street and wrap round far outside the view (the train is part of the world: see METRO) */
   d.update=(t,dt,k)=>{ const wrap=(v,L)=>((v%L)+L)%L-L/2;
-    tr.position.x=wrap(t*.55+3,18); busO.position.x=wrap(t*.34+1,11)+(busO.userData.so||0); autoO.position.x=-wrap(t*.46+4,11)+(autoO.userData.so||0); };
+    busO.position.x=wrap(t*.8+3,52)+(busO.userData.so||0); autoO.position.x=-wrap(t*1.0+9,52)+(autoO.userData.so||0); };
   finalize(d,7.2); }
 
 /* the narrator: Kempegowda's watchtower on a granite outcrop at the start of the timeline */
@@ -2051,7 +2029,8 @@ function fbm(x,z,o=4){ let s=0,a=.5,f=1; for(let i=0;i<o;i++){ s+=a*vnoise(x*f+i
 const sstep=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
 const eraX=x=>x/SP;
 const nearStop=x=>{ const i=clamp(Math.round(x/SP),0,N-1); return [i,x-stopX(i)]; };
-const inHero=(x,z,rx=5.5,rz=4)=>{ const [,dx]=nearStop(x); return Math.abs(dx)<rx&&Math.abs(z)<rz; };
+/* the cleared patch around a scene is just its own footprint (about 5 wide, 3.4 behind, as far as the road in front), so the surrounding city comes right up to it */
+const inHero=(x,z,rx=5.5,rz=4)=>{ const [,dx]=nearStop(x); return Math.abs(dx)<Math.min(rx,5.2)&&z<rz&&z>-Math.min(rz,3.4); };
 const nearNarrator=(x,z,r=4)=>Math.hypot(x-START,z+1)<r;
 
 /* ---- lakes: Bengaluru was built around tanks ---- */
@@ -2165,7 +2144,10 @@ const urb=x=>sstep(2.3,6.0,eraX(x));
 const STREET_Z=[-14,-31,-50,-73,-100,-134,-178,-232];
 const streetZ=(Z,x)=>Z+(1-urb(x))*2.6*Math.sin(x*.06+Z);
 const crossX=x=>{ const m=((x-3)%12+12)%12; return m<1.0; };
-function onStreet(x,z,pad=.7){ for(const Z of STREET_Z){ if(Math.abs(z-streetZ(Z,x))<pad) return true; } if(z<-10&&urb(x)>.3&&crossX(x)&&z>-260) return true; return false; }
+/* the through street forks off the main road before scene 5 and runs on to the end of the world; the viaduct starts at its terminal in front of scene 7 and does the same */
+const STAGE_X0=70, STAGE_X1=86, stageZ=x=>ROAD_Z+(STAGE_Z-ROAD_Z)*sstep(STAGE_X0,STAGE_X1,x);
+function onStreet(x,z,pad=.7){ for(const Z of STREET_Z){ if(Math.abs(z-streetZ(Z,x))<pad) return true; }
+  if(x>STAGE_X0-1&&Math.abs(z-stageZ(x))<pad+STAGE_HW+.5) return true; if(x>VIA_X0-1.5&&Math.abs(z-VIA_Z)<pad+.95) return true; if(z<-10&&urb(x)>.3&&crossX(x)&&z>-260) return true; return false; }
 { const parts=[]; for(const Z of STREET_Z){ const pts=[]; for(let x=X0;x<=X1;x+=Z>-60?.8:2) pts.push([x,streetZ(Z,x)]); parts.push(ribbon(pts,Z>-60?.95:1.3)); }
   for(let x=3.5;x<X1;x+=12){ if(urb(x)<.3) continue; const pts=[]; for(let z=-10;z>=-260;z-=1) pts.push([x,z]); parts.push(ribbon(pts,.85)); }
   const g=mergeGeometries(parts,false), m=new THREE.Mesh(g,roadMat); m.receiveShadow=true; world.add(m); }
@@ -2174,6 +2156,13 @@ const PAVE_X=3.6*SP, PAVE_TOP=.055;
 const walkY=(x,z)=>x>=PAVE_X?Math.max(PAVE_TOP,hgt(x,z)):Math.max(hgt(x,z),WATER_Y+.05);
 { const pv=mat(0xb4ab9c,{brick:[.22,.22],rough:.9}), kb=mat(0x8f8a82,{rough:.85}); for(let x=PAVE_X;x<X1;x+=10){ [[3.98,4.2],[6.42,6.2]].forEach(([z,ez])=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(10,.075,.48),pv); b.position.set(x+5,PAVE_TOP-.0375,z); b.receiveShadow=true; world.add(b);
       const k=new THREE.Mesh(new THREE.BoxGeometry(10,.08,.035),kb); k.position.set(x+5,PAVE_TOP-.036,ez); k.receiveShadow=true; world.add(k); }); } }
+
+/* ---- the through street: forks off the main road, passes scenes 5, 6 and 7 and runs on to the end of the world, with kerbs and footpaths (so the scenes sit on a road that never ends) ---- */
+{ const pts=[]; for(let x=STAGE_X0;x<=X1;x+=x<STAGE_X1+4?.5:2) pts.push([x,stageZ(x)]);
+  const m=new THREE.Mesh(ribbon(pts,STAGE_HW*2,.036),roadMat); m.receiveShadow=true; world.add(m); WORLD_COLOUR.push(m);
+  const pv=mat(0xb4ab9c,{brick:[.22,.22],rough:.9}), kb=mat(0x8f8a82,{rough:.85}), XS=STAGE_X1+1, LEN=X1-XS;
+  for(const s of [-1,1]){ const f=new THREE.Mesh(new THREE.BoxGeometry(LEN,.075,.26),pv); f.position.set(XS+LEN/2,PAVE_TOP-.0375,STAGE_Z+s*.645); f.receiveShadow=true; world.add(f); WORLD_COLOUR.push(f);
+    const k=new THREE.Mesh(new THREE.BoxGeometry(LEN,.08,.045),kb); k.position.set(XS+LEN/2,PAVE_TOP-.036,STAGE_Z+s*.4925); k.receiveShadow=true; world.add(k); WORLD_COLOUR.push(k); } }
 
 /* ---- instancing helper (chunks so off-screen parts are skipped) ---- */
 const tmpM=new THREE.Matrix4(), tmpQ=new THREE.Quaternion(), tmpE=new THREE.Euler(), tmpP=new THREE.Vector3(), tmpS=new THREE.Vector3(), tmpCol=new THREE.Color();
@@ -2330,7 +2319,7 @@ function plantTree(x,z,R,big=1){ const e=clamp(eraX(x),-1,8), y=hgt(x,z); const 
       const dens=eraLerp(TREE_DENS,xx)*(1-.45*urb(xx)*(OCC.has(occK(xx+1,zz))?1:0))*(.55+.45*sstep(-.2,.4,fbm(xx*.06,zz*.06,3)));
       if(R()<dens*.42) plantTree(xx,zz,R); }
   /* avenue trees along the timeline road */
-  for(let x=-40;x<X1-60;x+=3.3){ const e=eraX(x); if(e<1.4) continue; for(const z of [3.5,6.95]){ const xx=x+(R()-.5)*.4; if(inHero(xx,z,6.2,8)) continue; if(R()<.8) TREES[R()<.8?'rain':'ash'].push({x:xx,y:hgt(xx,z),z,ry:R()*6,sx:1.05+R()*.4,c:0xffffff}); } }
+  for(let x=-40;x<X1-60;x+=3.3){ const e=eraX(x); if(e<1.4) continue; for(const z of [3.5,6.95]){ const xx=x+(R()-.5)*.4; if(inHero(xx,z,6.2,8)||onStreet(xx,z,.5)) continue; if(R()<.8) TREES[R()<.8?'rain':'ash'].push({x:xx,y:hgt(xx,z),z,ry:R()*6,sx:1.05+R()*.4,c:0xffffff}); } }
   /* scrub and trees in the gaps along the stage */
   for(let x=-60;x<X1-60;x+=1.3){ for(const z of [-8,-5,-2,1.5,3.2]){ const xx=x+(R()-.5), zz=z+(R()-.5)*.8; if(inHero(xx,zz,6,6)||nearNarrator(xx,zz,3.5)||OCC.has(occK(xx,zz))) continue; if(R()<.18*eraLerp(TREE_DENS,xx)+.04) plantTree(xx,zz,R,.95); } }
   /* far forests on the hills */
@@ -2348,10 +2337,10 @@ const G_TUFT=(()=>{ const pos=[], col=[], c0=new THREE.Color(0x2c4a19), c1=new T
 const G_FLOWER=MG([P(new THREE.IcosahedronGeometry(.035,0),0xffffff,0,.07,0)]);
 { const R=rng(88), GR=[], FL=[], RK=[], dry=new THREE.Color(0xd8c98a), lush=new THREE.Color(0xbfe0a0), tc=new THREE.Color();
   const FLC=[0xf2c14e,0xe86fa0,0xffffff,0xe8622a,0xb98ae8,0xfff0a0];
-  for(let i=0;i<62000;i++){ const x=-70+R()*300, z=-11+R()*26; if((z>3.9&&z<6.5)||inHero(x,z,3.9,3.3)||lakeMask(x,z)>.01||nearNarrator(x,z,2.4)||OCC.has(occK(x,z))) continue;
+  for(let i=0;i<62000;i++){ const x=-70+R()*300, z=-11+R()*26; if((z>3.9&&z<6.5)||inHero(x,z,3.9,3.3)||lakeMask(x,z)>.01||nearNarrator(x,z,2.4)||OCC.has(occK(x,z))||onStreet(x,z,.15)) continue;
     const dryness=1-eraLerp(GAMT,x); tc.copy(lush).lerp(dry,clamp(dryness*1.4+.15*fbm(x*.1,z*.1,2),0,1)); GR.push({x,y:hgt(x,z),z,ry:R()*6.28,sx:.38+R()*.42,c:tc.getHex()}); }
-  for(let i=0;i<5200;i++){ const x=-60+R()*280, z=-10+R()*24, e=eraX(x); const p=e>.5&&e<1.6?1:e>6.6?.6:.16; if(R()>p||(z>3.9&&z<6.5)||inHero(x,z,3.9,3.3)||lakeMask(x,z)>.01) continue; FL.push({x,y:hgt(x,z),z,sx:.7+R()*.7,c:pal(R,FLC)}); }
-  for(let i=0;i<900;i++){ const x=-120+R()*420, z=-60+R()*74; const e=eraX(x); if(R()>(e<1.5?.9:.25)||inHero(x,z,5,4.5)||(z>3.6&&z<6.8)||lakeMask(x,z)>.02||OCC.has(occK(x,z))) continue; const s=.12+Math.pow(R(),3)*.9; RK.push({x,y:hgt(x,z)-s*.3,z,rx:R()*3,ry:R()*3,sx:s*(1+R()*.6),sy:s*(.6+R()*.5),sz:s,c:0xffffff}); }
+  for(let i=0;i<5200;i++){ const x=-60+R()*280, z=-10+R()*24, e=eraX(x); const p=e>.5&&e<1.6?1:e>6.6?.6:.16; if(R()>p||(z>3.9&&z<6.5)||inHero(x,z,3.9,3.3)||lakeMask(x,z)>.01||onStreet(x,z,.15)) continue; FL.push({x,y:hgt(x,z),z,sx:.7+R()*.7,c:pal(R,FLC)}); }
+  for(let i=0;i<900;i++){ const x=-120+R()*420, z=-60+R()*74; const e=eraX(x); if(R()>(e<1.5?.9:.25)||inHero(x,z,5,4.5)||(z>3.6&&z<6.8)||lakeMask(x,z)>.02||OCC.has(occK(x,z))||onStreet(x,z,.5)) continue; const s=.12+Math.pow(R(),3)*.9; RK.push({x,y:hgt(x,z)-s*.3,z,rx:R()*3,ry:R()*3,sx:s*(1+R()*.6),sy:s*(.6+R()*.5),sz:s,c:0xffffff}); }
   /* the granite outcrop the Watchtower stands on */
   for(let k=0;k<7;k++){ const a=k/7*6.28; RK.push({x:START+Math.cos(a)*1.4,y:-.2,z:-1+Math.sin(a)*1.1,ry:a,sx:1.1+R()*.5,sy:.7+R()*.3,sz:1.0,c:0xffffff}); }
   RK.push({x:START,y:-.1,z:-1,ry:0,sx:1.9,sy:1.1,sz:1.6,c:0xffffff});
@@ -2363,7 +2352,7 @@ const G_FLOWER=MG([P(new THREE.IcosahedronGeometry(.035,0),0xffffff,0,.07,0)]);
 const bulbMat=new THREE.MeshStandardMaterial({color:0xfff1d0,emissive:0xffb35c,emissiveIntensity:3.2,roughness:.4});
 { const POST=MG([P(new THREE.CylinderGeometry(.016,.026,1.15,6),0x2c352f,0,.575,0),P(new THREE.BoxGeometry(.24,.016,.016),0x2c352f,.1,1.12,0),P(new THREE.CylinderGeometry(.04,.025,.06,6),0x2c352f,.2,1.09,0)]);
   const BULB=MG([P(new THREE.SphereGeometry(.032,8,6),0xffffff,.2,1.05,0)]);
-  const posts=[]; for(let x=1.8*SP;x<X1-60;x+=3.2){ for(const [z,ry] of [[3.95,Math.PI/2],[6.45,-Math.PI/2]]){ if(inHero(x,z,4.2,8)) continue; posts.push({x,y:0,z,ry,sx:1,c:0xffffff}); } }
+  const posts=[]; for(let x=1.8*SP;x<X1-60;x+=3.2){ for(const [z,ry] of [[3.95,Math.PI/2],[6.45,-Math.PI/2]]){ if(inHero(x,z,4.2,8)||onStreet(x,z,.3)) continue; posts.push({x,y:0,z,ry,sx:1,c:0xffffff}); } }
   scatter(POST,solidMat,posts); scatter(BULB,bulbMat,posts,{shadow:false});
   const POLE=MG([P(new THREE.CylinderGeometry(.02,.03,1.6,6),0x6b6258,0,.8,0),P(new THREE.BoxGeometry(.04,.03,.42),0x5b5248,0,1.52,0)]);
   const poles=[], wire=[]; let prev=null;
@@ -2381,17 +2370,35 @@ const bulbMat=new THREE.MeshStandardMaterial({color:0xfff1d0,emissive:0xffb35c,e
   segs.forEach(s=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),wallM); b.position.set(s.x,s.y,s.z); b.rotation.y=s.ry; b.scale.set(s.sx,s.sy,s.sz); b.castShadow=b.receiveShadow=true; world.add(b); });
   towers.forEach(t=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(.3,.36,.8,12).translate(0,.4,0),wallM); c.position.set(t.x,0,t.z); c.castShadow=c.receiveShadow=true; world.add(c); }); }
 
-/* ---- 2037 onwards: elevated metro and wind turbines ---- */
+/* ---- 2037 onwards: the elevated metro and wind turbines ----
+   One viaduct from its terminal station (in front of scene 7) to the end of the world, on piers that stand on the ground. The train is part of the world, not of the scene, so it never floats
+   when the scene is not assembled: it stands at the platform, pulls out east, goes out of sight, and comes back to the platform. Sizes are the scene's (x1.3). */
 const metroTrain=new THREE.Group(), turbines=[];
-{ const conc=mat(0xc9bfae,{rough:.85}), z=-10.2, xs=118;
-  for(let x=xs;x<X1-30;x+=3.4){ const h=2.4; const pl=new THREE.Mesh(new THREE.BoxGeometry(.32,h,.32).translate(0,h/2,0),conc); pl.position.set(x,hgt(x,z)-.1,z); pl.castShadow=pl.receiveShadow=true; world.add(pl);
-    const cap=new THREE.Mesh(new THREE.BoxGeometry(.5,.18,.9),conc); cap.position.set(x,2.36,z); world.add(cap); }
-  for(let x=xs;x<X1-30;x+=20){ const deck=new THREE.Mesh(new THREE.BoxGeometry(20.05,.16,.95),conc); deck.position.set(x+10,2.53,z); deck.castShadow=deck.receiveShadow=true; world.add(deck);
-    [-.42,.42].forEach(o=>{ const w=new THREE.Mesh(new THREE.BoxGeometry(20.05,.14,.06),mat(0xb0a693)); w.position.set(x+10,2.68,z+o); world.add(w); }); }
-  const silver=mat(0xe2dfd8,{metal:.3,rough:.3}), purple=mat(0x7c4bb4,{rough:.35}), win=mat(0x232a36,{rough:.1,metal:.3});
-  for(let k=0;k<6;k++){ const car=new THREE.Group(); car.add(new THREE.Mesh(new THREE.BoxGeometry(1.04,.3,.32),silver)); const w=new THREE.Mesh(new THREE.BoxGeometry(.98,.09,.325),win); w.position.y=.05; car.add(w);
-    const st=new THREE.Mesh(new THREE.BoxGeometry(1.04,.03,.326),purple); st.position.y=-.08; car.add(st); car.position.x=-k*1.08; car.children.forEach(m=>{ m.castShadow=true; }); metroTrain.add(car); }
-  metroTrain.position.set(xs,2.79,z); world.add(metroTrain);
+const METRO={X0:VIA_X0, Y:2.379, home:137.99, far:62.4, A:.78, V:3.12, dwell:24};
+METRO.ta=METRO.V/METRO.A; METRO.da=METRO.V*METRO.V/(2*METRO.A); METRO.tOut=METRO.ta+(METRO.far-METRO.da)/METRO.V; METRO.T=METRO.dwell+2*METRO.tOut;
+function metroS(t){ let u=((t%METRO.T)+METRO.T)%METRO.T; if(u<METRO.dwell) return 0; u-=METRO.dwell;
+  const out=v=>v<METRO.ta?.5*METRO.A*v*v:METRO.da+(v-METRO.ta)*METRO.V; return u<METRO.tOut?out(u):out(2*METRO.tOut-u); }
+{ const conc=mat(0xc8bcaa,{rough:.88}), conc2=mat(0xa99d8b,{rough:.9}), steel=mat(0x5a5c60,{metal:.6,rough:.4}), XA=METRO.X0, XB=X1-30, LEN=XB-XA, VZ=VIA_Z;
+  const add=(w,h,d,m,x,y,z)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); b.castShadow=b.receiveShadow=true; world.add(b); WORLD_COLOUR.push(b); return b; };
+  add(LEN,.208,1.3,conc,(XA+XB)/2,METRO.Y,VZ);
+  for(const o of [-.611,.611]) add(LEN,.286,.104,conc2,(XA+XB)/2,2.6,VZ+o);
+  for(const o of [-.26,.26]) add(LEN,.04,.052,steel,(XA+XB)/2,2.51,VZ+o);
+  add(.104,.286,1.3,conc2,XA+.052,2.6,VZ);   /* the terminal end wall */
+  /* piers and their caps, on the ground (the scene's pier spacing, 2.535) */
+  const xs=[]; for(let x=140-2.535*2;x<XB;x+=2.535) xs.push(x);
+  const pg=new THREE.BoxGeometry(.52,1,.47).translate(0,.5,0), cg=new THREE.BoxGeometry(1.27,.312,.81), pim=new THREE.InstancedMesh(pg,conc,xs.length), cim=new THREE.InstancedMesh(cg,conc,xs.length), dm=new THREE.Object3D();
+  xs.forEach((x,i)=>{ const g0=Math.min(hgt(x,VZ),hgt(x,VZ-.3),hgt(x,VZ+.3))-.12; dm.position.set(x,g0,VZ); dm.scale.set(1,2.05-g0,1); dm.updateMatrix(); pim.setMatrixAt(i,dm.matrix);
+    dm.position.set(x,2.119,VZ); dm.scale.set(1,1,1); dm.updateMatrix(); cim.setMatrixAt(i,dm.matrix); });
+  [pim,cim].forEach(m=>{ m.castShadow=m.receiveShadow=true; m.frustumCulled=false; world.add(m); WORLD_COLOUR.push(m); });
+  const silver=mat(0xdfdcd6,{metal:.35,rough:.32}), purple=mat(0x7c4bb4,{rough:.35}), win=mat(0x2b3240,{rough:.12,metal:.2}), S=1.3;
+  const car=(front)=>{ const g=new THREE.Group(), len=1.3*S, mb=(w,h,d,m,x,y,z)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); b.castShadow=true; g.add(b); return b; };
+    mb(len,.5*S,.46*S,silver,0,0,0); mb((1.3-.14)*S,.15*S,.47*S,win,0,.08*S,0); mb((1.3-.06)*S,.04*S,.468*S,purple,0,-.13*S,0);
+    for(let k=1;k<4;k++) mb(.012*S,.38*S,.472*S,mat(0xbab6ae),(-.65+k*.325)*S,-.02*S,0);
+    if(front!==0){ const sx=front, nose=mb(.18*S,.48*S,.45*S,purple,sx*.65*S,0,0); mb(.03*S,.18*S,.36*S,win,sx*(.65*S+.08*S),.09*S,0);
+      [-.13,.13].forEach(z=>{ const l=new THREE.Mesh(new THREE.SphereGeometry(.03*S,8,6),mat(0xffffff,{em:0xfff4d0,ei:1.5})); l.position.set(sx*(.65*S+.09*S),-.12*S,z*S); g.add(l); }); }
+    return g; };
+  [[-1.35,-1],[0,0],[1.35,1]].forEach(([x,f])=>{ const c=car(f); c.position.x=x*S; metroTrain.add(c); });   /* a cab at each end, so it can run either way */
+  metroTrain.position.set(METRO.home,2.86,VZ); world.add(metroTrain); metroTrain.traverse(o=>WORLD_COLOUR.push(o));
   const tw=mat(0xf2f2f0,{rough:.4}); const R=rng(303);
   for(let i=0;i<16;i++){ const x=125+i*20+R()*10, z=-110-R()*120, y=hgt(x,z); if(lakeMask(x,z)>0) continue; const g=new THREE.Group();
     g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(.18,.32,9,10).translate(0,4.5,0),tw),0,0,0)); g.add(at(new THREE.Mesh(new THREE.BoxGeometry(.5,.4,.9),tw),0,9.1,.1));
@@ -2549,7 +2556,7 @@ function updateWorld(t,dt,cx){
   smokeG.attributes.position.needsUpdate=smokeG.attributes.aLife.needsUpdate=true;
   moteD.forEach((m,i)=>{ moteP[i*3]=cx+((m.x+t*m.sp*.3)%16+16)%16-8; moteP[i*3+1]=m.y+Math.sin(t*.6+m.ph)*.25; moteP[i*3+2]=m.z+Math.cos(t*.4+m.ph)*.3; moteL[i]=.5+.45*Math.sin(t*.8+m.ph); });
   moteG.attributes.position.needsUpdate=moteG.attributes.aLife.needsUpdate=true;
-  metroTrain.position.x=118+((t*5.5)%(X1-160)); turbines.forEach((r,i)=>r.rotation.z+=dt*(.9+i%3*.15));
+  metroTrain.position.x=METRO.home+metroS(t); turbines.forEach((r,i)=>r.rotation.z+=dt*(.9+i%3*.15));
 }
 
 const clayOnly=new THREE.Group();
@@ -3360,7 +3367,7 @@ renderer.autoClear=false;
    (stones, grass tufts, flowers on stems) dresses the ground around it. Everything here is switched
    off in VR and in the builder, so those views render exactly as before. */
 const HERO_LAYER=2;
-DIO.forEach(d=>d.g.traverse(o=>o.layers.enable(HERO_LAYER)));
+DIO.forEach(d=>d.g.traverse(o=>o.layers.enable(HERO_LAYER))); WORLD_COLOUR.forEach(o=>o.layers.enable(HERO_LAYER));
 const KITS=[], haloScene=new THREE.Scene();
 (function buildKits(){
   const stoneGeo=new THREE.IcosahedronGeometry(1,1), stoneMat=mat(0xffffff,{rough:.93,flat:true});
@@ -3538,9 +3545,10 @@ function stepFrame(rdt){
   sun.position.set(camLook.x+SUN.x*60,SUN.y*60,SUN.z*60-6); sun.target.position.set(camLook.x,0,-6); rim.position.set(camLook.x+8,6,-8); rim.target.position.set(camLook.x,1,0);
   /* pieces */
   DIO.forEach(d=>{ if(Math.abs(d.g.position.x-camLook.x)>36&&d.prox<.001) return;
-    const want=(building&&d.i===7)?1:clamp(1-Math.abs(fx-d.g.position.x)/ASM_R,0,1);
+    const want=(building&&d.i===7)||(vrMode&&Math.abs(fx-d.g.position.x)<34)?1:clamp(1-Math.abs(fx-d.g.position.x)/ASM_R,0,1);
     d.prox+=(want-d.prox)*L(.12,dt); const pr=d.prox;
     d.pieces.forEach(p=>{ const o=p.obj;
+      if(p.dyn){ const hid=vrMode&&d.i!==zoneIdx; o.visible=!hid; if(hid) return; }   /* moving props (carts, bus, auto) belong to the scene in focus: a neighbour's never pop in or out in view */
       if(p.hero){ const idle=1-ease(clamp(pr*1.5,0,1)); o.position.set(p.home.x,p.home.y+.3*idle+Math.sin(time*1.1+p.phase)*.12*idle,p.home.z);
         o.rotation.set(p.hr.x,p.hr.y+Math.sin(time*.45+p.phase)*.45*idle,p.hr.z); o.scale.copy(p.hs); return; }
       const loc=clamp((pr-p.delay)/.3,0,1); p.d+=(loc-p.d)*L(.15,dt);

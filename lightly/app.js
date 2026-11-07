@@ -2,7 +2,7 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v18';
+const VERSION = 'v19';
 (function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '18') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
@@ -64,7 +64,27 @@ const OSHO = [
   ['Do not try to become somebody. Become aware.', SPIRIT, 'Everything you wanted from being somebody arrives as a side effect.'],
   ['Let death make today vivid, not heavy.', SPIRIT, 'Everything ends. That is exactly why this afternoon matters.'],
   ['What you cling to owns you.', SPIRIT, 'Hold things lightly, people lovingly, and yourself freely.'],
-  ['Resentment is a heater left on in an empty room.', SPIRIT, 'It warms no one and costs you everything. Switch it off.']
+  ['Resentment is a heater left on in an empty room.', SPIRIT, 'It warms no one and costs you everything. Switch it off.'],
+  ["Anger is energy that forgot where it was going.", SPIRIT, "Feel the heat, then give it a direction instead of a target."],
+  ["Jealousy is a measuring stick held in the wrong hand.", SPIRIT, "You were never meant to be measured against anyone. Put the stick down."],
+  ["Fear is the mind rehearsing a play that may never open.", SPIRIT, "Come back to the stage you are standing on. This is the only performance."],
+  ["Loneliness is aloneness that has not met itself yet.", SPIRIT, "Sit with it long enough and the ache turns into spaciousness."],
+  ["Do not fight the darkness. Switch on awareness.", SPIRIT, "Darkness has no strength of its own. It is only the absence of your attention."],
+  ["Sadness, allowed fully, becomes depth.", SPIRIT, "The tear that is not stopped washes the eye clear."],
+  ["The mind is a beautiful servant and a terrible master.", SPIRIT, "Give it work to do, then give it rest. You are the one who uses it."],
+  ["You are not late. There is no schedule except the one you invented.", SPIRIT, "Drop the timeline and see how much lighter the road feels."],
+  ["Expectation is a promise you made on someone else's behalf.", SPIRIT, "Release them from it. Release yourself too."],
+  ["Be a witness and the drama becomes cinema.", SPIRIT, "The same scene, watched from the back row, loses its power to hurt you."],
+  ["A flower does not compare itself to the flower next to it.", SPIRIT, "It simply blooms. So can you, at your own speed."],
+  ["Guilt is the past borrowing your present.", SPIRIT, "Learn what it came to teach, then return the loan."],
+  ["Silence is not empty. It is full of everything you were too busy to hear.", SPIRIT, "Give it five minutes today."],
+  ["The ego needs enemies the way a fire needs wood.", SPIRIT, "Stop feeding it a story about who wronged you."],
+  ["Joy does not check the size of the occasion.", SPIRIT, "A warm cup, a clear sky, a breath that goes all the way down. That is enough."],
+  ["Insecurity is the mind asking for guarantees that life never prints.", SPIRIT, "Trust is walking without them anyway."],
+  ["Let go the way a river lets go of rain: completely, without drama.", SPIRIT, "Holding on was the only thing making it heavy."],
+  ["You cannot lose what you truly are.", SPIRIT, "Everything else was always on loan."],
+  ["Worry is meditation on what you do not want.", SPIRIT, "Turn the same attention toward what you do want, or toward nothing at all."],
+  ["The wave does not struggle to become the ocean. It already is.", SPIRIT, "You are not becoming whole. You are remembering that you are."]
 ];
 
 // Real quotes from history (ancient and public-domain sources), each with a plain-language reading. Translations vary; paraphrases are labeled.
@@ -98,7 +118,21 @@ const BRILLIANT = [
   ['Knowing is not enough; we must apply. Willing is not enough; we must do.', '\u2014 Johann Wolfgang von Goethe', 'Insight without action is decoration. Do one small thing now.'],
   ['Mastering others is strength; mastering yourself is true power.', '\u2014 Lao Tzu (paraphrased)', 'The real contest is the half second before you respond.'],
   ['The supreme art of war is to subdue the enemy without fighting.', '\u2014 Sun Tzu', 'Win by staying unprovoked. The calmest person in the room holds the room.'],
-  ['It is not what you look at that matters, it is what you see.', '\u2014 Henry David Thoreau', 'Same scene, different mind, different life. Choose what you notice.']
+  ['It is not what you look at that matters, it is what you see.', '\u2014 Henry David Thoreau', 'Same scene, different mind, different life. Choose what you notice.'],
+  ["The curious paradox is that when I accept myself just as I am, then I can change.", "\u2014 Carl Rogers", "Self-attack keeps you stuck. Acceptance is where change begins."],
+  ["When we are no longer able to change a situation, we are challenged to change ourselves.", "\u2014 Viktor Frankl", "When the outer door is locked, the inner one is still yours to open."],
+  ["The impediment to action advances action. What stands in the way becomes the way.", "\u2014 Marcus Aurelius", "Obstacles are not detours. They are the path itself."],
+  ["The pain is not in the thing itself, but in your estimate of it; you can revoke that estimate at any moment.", "\u2014 Marcus Aurelius (paraphrased)", "You cannot always change the event. You can always re-judge it."],
+  ["My experience is what I agree to attend to.", "\u2014 William James", "Attention is the editor of your life. Edit on purpose."],
+  ["Hatred does not cease by hatred, but only by love; this is the eternal rule.", "\u2014 The Dhammapada", "Heat answered with heat only grows the fire."],
+  ["The wound is the place where the Light enters you.", "\u2014 Rumi (Coleman Barks translation)", "What hurt you most is often where your depth began."],
+  ["Anybody can become angry; the hard part is being angry at the right time, in the right way.", "\u2014 Aristotle (paraphrased)", "The goal is not never being angry. It is being wisely angry."],
+  ["Who looks outside, dreams; who looks inside, awakes.", "\u2014 Carl Jung", "The answers you chase out there are usually asleep in here."],
+  ["The mind is its own place, and in itself can make a heaven of hell, a hell of heaven.", "\u2014 John Milton, Paradise Lost", "Same street, different weather. The mind sets the climate."],
+  ["Nothing in life is to be feared, it is only to be understood.", "\u2014 Marie Curie", "Fear shrinks the moment you can name it and study it."],
+  ["We are troubled less by real problems than by our imagined anxieties about them.", "\u2014 Epictetus (paraphrased)", "Half the stress is the story, not the situation."],
+  ["Life can only be understood backwards; but it must be lived forwards.", "\u2014 S\u00f8ren Kierkegaard", "You will never have the full picture in advance. Step anyway."],
+  ["It is not death that a man should fear, but he should fear never beginning to live.", "\u2014 Marcus Aurelius", "Fear of an ending is mostly regret about a beginning you postponed."]
 ];
 
 const LINES = {
@@ -117,7 +151,27 @@ const LINES = {
     ['You have gotten through every hard day so far.'],
     ['Let it stay unfinished for now.'],
     ['Be gentle with the person you are today.'],
-    ['Very little is needed to make a happy life; it is all within yourself, in your way of thinking.', 'Marcus Aurelius']
+    ['Very little is needed to make a happy life; it is all within yourself, in your way of thinking.', 'Marcus Aurelius'],
+  ["Let the next breath be the only thing you need to do."],
+  ["Your body is safe right now, even if your mind is loud."],
+  ["Unclench your hands. Whatever you were holding can wait."],
+  ["You do not have to answer every thought that knocks."],
+  ["Rest is not a reward. It is part of the work."],
+  ["Feel your feet on the floor. You are here. That is enough."],
+  ["Breathe out longer than you breathe in. The body listens."],
+  ["An urgent feeling is not always an urgent fact."],
+  ["There is room in you for this feeling and for peace."],
+  ["Soften your face. Soften your belly. Soften the plan."],
+  ["You have survived every hard day so far."],
+  ["Quiet is not the absence of noise. It is the absence of struggle."],
+  ["Nothing has to be decided while you are this tired."],
+  ["Let the tea cool. Let the thoughts cool. Both taste better later."],
+  ["Not everything that feels loud is important."],
+  ["Take one small step, then rest your mind between steps."],
+  ["You are not behind in your own life."],
+  ["Pause. Drop your shoulders. Start again from here."],
+  ["The storm in your head is not a forecast."],
+  ["Let this minute be unproductive and perfectly fine."]
   ],
   Aware: [
     ['Notice the thought. You are not the thought.'],
@@ -133,7 +187,27 @@ const LINES = {
     ['Where are you right now? Here. That is enough to begin.'],
     ['Not every thought deserves a reply.'],
     ['People are disturbed not by things, but by the views they take of them.', 'Epictetus'],
-    ['If it is not right, do not do it; if it is not true, do not say it.', 'Marcus Aurelius']
+    ['If it is not right, do not do it; if it is not true, do not say it.', 'Marcus Aurelius'],
+  ["Name the feeling and it loosens its grip."],
+  ["Ask the body first: where do I feel this?"],
+  ["A thought repeated a hundred times is still just a thought."],
+  ["Notice the story you are telling about this moment."],
+  ["Emotions are messages, not orders."],
+  ["What am I afraid will happen? Now, what is actually happening?"],
+  ["You can feel something without becoming it."],
+  ["Irritation usually has a need hiding under it. What is yours?"],
+  ["Watch the urge rise, peak and fade. It always fades."],
+  ["The mind predicts the worst to protect you. Thank it, then check the facts."],
+  ["Are you reacting to now, or to something old?"],
+  ["Tired, hungry, lonely or rushed? Check before you decide anything big."],
+  ["Awareness is the pause between the trigger and the habit."],
+  ["You are the one noticing the mood, so you are not only the mood."],
+  ["Feelings move like clouds when you stop gripping them."],
+  ["What would you tell a friend who felt exactly this?"],
+  ["Comparison is a thought, not a measurement."],
+  ["A strong feeling is not proof of a true story."],
+  ["Notice what you are avoiding. It usually points at something that matters."],
+  ["Say three honest words about how you feel right now. Quietly."]
   ],
   Bright: [
     ['Something small today is going to go well. Look for it.'],
@@ -147,7 +221,27 @@ const LINES = {
     ['The sun does not ask whether it was a hard week. It rises anyway.'],
     ['You are allowed to enjoy this without earning it first.'],
     ['Let something be easy today.'],
-    ['Say one kind thing to yourself first. Then look at the day.']
+    ['Say one kind thing to yourself first. Then look at the day.'],
+  ["You are allowed to enjoy this day before it earns it."],
+  ["Look for one thing that is quietly working today."],
+  ["Small joys count. Count them."],
+  ["Today does not need to be impressive to be good."],
+  ["Someone out there is better off because you exist."],
+  ["Let one good thing land fully before you hurry to the next."],
+  ["Your next chapter does not have to look like your last."],
+  ["Ease is allowed. So is progress that feels light."],
+  ["You have more reasons to smile than your tired mind admits."],
+  ["Say thank you to something ordinary today."],
+  ["You are growing even on the days you cannot see it."],
+  ["Warm light, one deep breath, one small win. Start there."],
+  ["Be the kind of person who notices the good out loud."],
+  ["Curiosity is brighter than worry. Ask what could go right."],
+  ["This is a good moment to be kind to yourself."],
+  ["The sun does not apologize for rising late some mornings."],
+  ["Joy is not a prize at the end. It is a way to walk."],
+  ["You are doing better than the story in your head says."],
+  ["Let something delight you today, however small."],
+  ["Brightness is a practice. You just practiced."]
   ],
   Reframe: [
     ['That person’s behavior is about their day more than about you.'],
@@ -163,7 +257,27 @@ const LINES = {
     ['You do not have to like it to learn from it.'],
     ['The version where this works out is just as possible.'],
     ['What stands in the way becomes the way.', 'Marcus Aurelius'],
-    ['We suffer more often in imagination than in reality.', 'Seneca']
+    ['We suffer more often in imagination than in reality.', 'Seneca'],
+  ["This is hard, and it is also temporary."],
+  ["It is not a failure. It is information."],
+  ["Not yet is different from never."],
+  ["What is this showing me that I could not have learned easily?"],
+  ["Their silence is not a verdict on you."],
+  ["A bad day is a bad day, not a bad life."],
+  ["Changing your mind about a thought is not lying to yourself."],
+  ["Mistakes are proof you were trying something real."],
+  ["You are not too sensitive. You are paying attention."],
+  ["The worst-case story is only one of many possible stories."],
+  ["Swap one 'I have to' for 'I get to' today and watch what shifts."],
+  ["Rejection redirects. It rarely ends the road."],
+  ["You are not starting over. You are starting with experience."],
+  ["Is it true? Is it kind? Is it helpful? If not, let it pass."],
+  ["The version of you that panicked also kept going. Respect both."],
+  ["Discomfort is often the feeling of stretching, not breaking."],
+  ["A setback is a plot twist, not the ending."],
+  ["You can be disappointed and still be okay."],
+  ["Other people are busy worrying about themselves, not judging you."],
+  ["The goal today is not perfect. It is a little better than yesterday."]
   ]
 };
 const MODES = ['Osho', 'Brilliant', 'Calm', 'Aware', 'Bright', 'Reframe'];

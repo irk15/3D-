@@ -169,6 +169,66 @@
    "text": "Resentment is a heater left on in an empty room.",
    "author": "In the spirit of Osho",
    "meaning": "It warms no one and costs you everything. Switch it off."
+  },
+  {
+   "text": "Anger is energy that forgot where it was going.",
+   "author": "In the spirit of Osho",
+   "meaning": "Feel the heat, then give it a direction instead of a target."
+  },
+  {
+   "text": "Jealousy is a measuring stick held in the wrong hand.",
+   "author": "In the spirit of Osho",
+   "meaning": "You were never meant to be measured against anyone. Put the stick down."
+  },
+  {
+   "text": "Fear is the mind rehearsing a play that may never open.",
+   "author": "In the spirit of Osho",
+   "meaning": "Come back to the stage you are standing on. This is the only performance."
+  },
+  {
+   "text": "Loneliness is aloneness that has not met itself yet.",
+   "author": "In the spirit of Osho",
+   "meaning": "Sit with it long enough and the ache turns into spaciousness."
+  },
+  {
+   "text": "Do not fight the darkness. Switch on awareness.",
+   "author": "In the spirit of Osho",
+   "meaning": "Darkness has no strength of its own. It is only the absence of your attention."
+  },
+  {
+   "text": "Sadness, allowed fully, becomes depth.",
+   "author": "In the spirit of Osho",
+   "meaning": "The tear that is not stopped washes the eye clear."
+  },
+  {
+   "text": "The mind is a beautiful servant and a terrible master.",
+   "author": "In the spirit of Osho",
+   "meaning": "Give it work to do, then give it rest. You are the one who uses it."
+  },
+  {
+   "text": "You are not late. There is no schedule except the one you invented.",
+   "author": "In the spirit of Osho",
+   "meaning": "Drop the timeline and see how much lighter the road feels."
+  },
+  {
+   "text": "Expectation is a promise you made on someone else's behalf.",
+   "author": "In the spirit of Osho",
+   "meaning": "Release them from it. Release yourself too."
+  },
+  {
+   "text": "Be a witness and the drama becomes cinema.",
+   "author": "In the spirit of Osho",
+   "meaning": "The same scene, watched from the back row, loses its power to hurt you."
+  },
+  {
+   "text": "A flower does not compare itself to the flower next to it.",
+   "author": "In the spirit of Osho",
+   "meaning": "It simply blooms. So can you, at your own speed."
+  },
+  {
+   "text": "Guilt is the past borrowing your present.",
+   "author": "In the spirit of Osho",
+   "meaning": "Learn what it came to teach, then return the loan."
   }
  ],
  "brilliant": [
@@ -321,6 +381,56 @@
    "text": "It is not what you look at that matters, it is what you see.",
    "author": "Henry David Thoreau",
    "meaning": "Same scene, different mind, different life. Choose what you notice."
+  },
+  {
+   "text": "The curious paradox is that when I accept myself just as I am, then I can change.",
+   "author": "Carl Rogers",
+   "meaning": "Self-attack keeps you stuck. Acceptance is where change begins."
+  },
+  {
+   "text": "When we are no longer able to change a situation, we are challenged to change ourselves.",
+   "author": "Viktor Frankl",
+   "meaning": "When the outer door is locked, the inner one is still yours to open."
+  },
+  {
+   "text": "The impediment to action advances action. What stands in the way becomes the way.",
+   "author": "Marcus Aurelius",
+   "meaning": "Obstacles are not detours. They are the path itself."
+  },
+  {
+   "text": "The pain is not in the thing itself, but in your estimate of it; you can revoke that estimate at any moment.",
+   "author": "Marcus Aurelius (paraphrased)",
+   "meaning": "You cannot always change the event. You can always re-judge it."
+  },
+  {
+   "text": "My experience is what I agree to attend to.",
+   "author": "William James",
+   "meaning": "Attention is the editor of your life. Edit on purpose."
+  },
+  {
+   "text": "Hatred does not cease by hatred, but only by love; this is the eternal rule.",
+   "author": "The Dhammapada",
+   "meaning": "Heat answered with heat only grows the fire."
+  },
+  {
+   "text": "The wound is the place where the Light enters you.",
+   "author": "Rumi (Coleman Barks translation)",
+   "meaning": "What hurt you most is often where your depth began."
+  },
+  {
+   "text": "Anybody can become angry; the hard part is being angry at the right time, in the right way.",
+   "author": "Aristotle (paraphrased)",
+   "meaning": "The goal is not never being angry. It is being wisely angry."
+  },
+  {
+   "text": "Who looks outside, dreams; who looks inside, awakes.",
+   "author": "Carl Jung",
+   "meaning": "The answers you chase out there are usually asleep in here."
+  },
+  {
+   "text": "The mind is its own place, and in itself can make a heaven of hell, a hell of heaven.",
+   "author": "John Milton, Paradise Lost",
+   "meaning": "Same street, different weather. The mind sets the climate."
   }
  ],
  "everyday": [
@@ -587,6 +697,166 @@
   {
    "text": "We suffer more often in imagination than in reality.",
    "author": "Seneca",
+   "meaning": ""
+  },
+  {
+   "text": "Let the next breath be the only thing you need to do.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Your body is safe right now, even if your mind is loud.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Unclench your hands. Whatever you were holding can wait.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "You do not have to answer every thought that knocks.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Rest is not a reward. It is part of the work.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Feel your feet on the floor. You are here. That is enough.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Breathe out longer than you breathe in. The body listens.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "An urgent feeling is not always an urgent fact.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Name the feeling and it loosens its grip.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Ask the body first: where do I feel this?",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "A thought repeated a hundred times is still just a thought.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Notice the story you are telling about this moment.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Emotions are messages, not orders.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "What am I afraid will happen? Now, what is actually happening?",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "You can feel something without becoming it.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Irritation usually has a need hiding under it. What is yours?",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "You are allowed to enjoy this day before it earns it.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Look for one thing that is quietly working today.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Small joys count. Count them.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Today does not need to be impressive to be good.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Someone out there is better off because you exist.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Let one good thing land fully before you hurry to the next.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Your next chapter does not have to look like your last.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Ease is allowed. So is progress that feels light.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "This is hard, and it is also temporary.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "It is not a failure. It is information.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Not yet is different from never.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "What is this showing me that I could not have learned easily?",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Their silence is not a verdict on you.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "A bad day is a bad day, not a bad life.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Changing your mind about a thought is not lying to yourself.",
+   "author": "",
+   "meaning": ""
+  },
+  {
+   "text": "Mistakes are proof you were trying something real.",
+   "author": "",
    "meaning": ""
   }
  ]

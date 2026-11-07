@@ -1,0 +1,26 @@
+name: Lightly daily quotes
+on:
+  schedule:
+    - cron: '10 13 * * *'   # morning, about 8:10 in Toronto (9:10 in summer)
+    - cron: '10 19 * * *'   # afternoon, about 2:10 in Toronto
+    - cron: '30 1 * * *'    # evening, about 8:30 in Toronto
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: '0 = morning, 1 = afternoon, 2 = evening'
+        default: '0'
+permissions:
+  contents: read
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: lightly
+      - name: Send a quote
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SCHEDULE: ${{ github.event.schedule }}
+          SLOT_INPUT: ${{ inputs.slot }}
+        run: node lightly/notify.mjs

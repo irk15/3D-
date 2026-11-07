@@ -137,17 +137,23 @@ function timeLayout(t, starts, dur, off) {
   const b = starts.map(s => Math.max(0, Math.min(1, (s - off) / dur))); b.push(1);
   return t.lines.map((_, i) => ({ l: b[i] * 100, w: Math.max(.35, (b[i + 1] - b[i]) * 100) }));
 }
-function buildScore(t, lay, opts = {}) {
-  const { mini = false, heard = null } = opts;
-  const el = h('div', { class: 'score ' + (mini ? 'mini' : 'big') });
-  const ex = h('div', { class: 'lane ex' }), ca = h('div', { class: 'lane ca' });
-  t.lines.forEach((l, i) => {
-    const s = h('div', { class: 'seg-b' + (heard && heard[i] === '1' ? ' done' : ''), 'data-i': i });
-    s.style.left = lay[i].l + '%'; s.style.width = `calc(${lay[i].w}% - 1.5px)`;
-    (l.s === 'ex' ? ex : ca).append(s);
-  });
-  el.append(ex, ca);
-  if (!mini) el.append(h('div', { class: 'head', id: 'head' }));
+function buildScore(t, lay) {
+  const N = 72, el = h('div', { class: 'wave' });
+  const mk = () => {
+    const c = h('div', { class: 'bars' });
+    for (let k = 0; k < N; k++) {
+      const x = (k + .5) / N * 100; let li = lay.length - 1;
+      for (let i = 0; i < lay.length; i++) if (x >= lay[i].l && x < lay[i].l + lay[i].w) { li = i; break; }
+      let v;
+      if (t.peaks) v = t.peaks[Math.min(t.peaks.length - 1, Math.floor(k / N * t.peaks.length))] / 100;
+      else { const r = Math.abs(Math.sin(k * 12.9898 + li * 78.233) * 43758.5453) % 1; v = .3 + .7 * r; }
+      const bar = h('i', { class: t.lines[li].s });
+      bar.style.height = Math.round(18 + 82 * v) + '%';
+      c.append(bar);
+    }
+    return c;
+  };
+  el.append(mk(), Object.assign(mk(), { className: 'bars lit' }), h('div', { class: 'head', id: 'head' }));
   return el;
 }
 
@@ -176,17 +182,18 @@ window.addEventListener('hashchange', route);
 /* ============================================================
    Accueil
    ============================================================ */
+const chip = (txt, hot) => h('span', { class: 'chipm' + (hot ? ' hot' : '') }, txt);
 function sectionBlock(sec, title, sub) {
   const list = TRACKS.filter(t => t.section === sec);
-  const wrap = h('section', {}, h('h2', { class: 'sec-title' }, `Section ${sec}, ${title}`), h('p', { class: 'sec-sub' }, sub));
+  const wrap = h('section', { class: 'sec' },
+    h('div', { class: 'sec-head' }, h('span', { class: 'badge' }, sec), h('div', {}, h('h2', { class: 'sec-title' }, title), h('p', { class: 'sec-sub' }, sub))));
   if (!list.length) wrap.append(h('p', { class: 'sec-sub' }, 'Aucun exercice pour l’instant.'));
   list.forEach(t => {
-    const p = pct(t);
-    const src = HAVE.has(t.id) ? 'ton audio' : t.audioUrl ? 'audio inclus' : 'voix de l’appareil';
-    const meta = `${t.lines.length} répliques, environ ${t.est} min, ${src}` + (p ? `, écouté à ${p} %` : '');
-    wrap.append(h('a', { class: 'row', href: '#/t/' + encodeURIComponent(t.id), style: 'text-decoration:none;color:inherit' },
-      h('div', { class: 't' }, t.title), h('div', { class: 'm' }, meta),
-      buildScore(t, charLayout(t), { mini: true, heard: heardStr(t) })));
+    const p = pct(t), real = HAVE.has(t.id) || !!t.audioUrl;
+    wrap.append(h('a', { class: 'card', href: '#/t/' + encodeURIComponent(t.id) },
+      h('div', { class: 't' }, t.title),
+      h('div', { class: 'chips' }, chip(`${t.lines.length} répliques`), chip(`≈ ${t.est} min`), chip(real ? 'Audio réel' : 'Voix de l’appareil', real)),
+      h('div', { class: 'pline' }, h('div', { class: 'pbar' }, h('i', { style: 'width:' + p + '%' })), h('span', {}, p ? p + ' %' : 'Nouveau'))));
   });
   return wrap;
 }
@@ -194,16 +201,20 @@ function renderHome() {
   loadTracks(); document.title = 'TEF Oral Studio';
   const st = streak();
   const last = STATS.last && trackById(STATS.last.id);
+  const bars = [.4, .7, .5, .9, .6, .8, .35, .65].map((v, i) => h('i', { class: i % 3 === 1 ? 'y' : '', style: `height:${v * 100}%` }));
   const page = h('main', { class: 'page' },
     h('header', { class: 'hero' },
+      h('div', { class: 'logo', 'aria-hidden': 'true' }, ...bars),
       h('h1', {}, 'TEF Oral Studio'),
-      h('p', {}, 'Écoute, répète, enregistre-toi. Chaque dialogue est au niveau NCLC 7.')),
-    st > 0 ? h('p', { class: 'streak' }, st === 1 ? 'Tu as pratiqué aujourd’hui.' : `${st} jours de pratique de suite.`) : null,
-    last ? h('a', { class: 'resume', href: '#/t/' + encodeURIComponent(last.id), style: 'text-decoration:none;color:inherit' },
-      h('div', {}, h('div', { class: 't' }, last.title), h('div', { class: 'm' }, `Reprendre à la réplique ${Math.min(last.lines.length, STATS.last.idx + 1)} sur ${last.lines.length}`)),
-      h('span', { class: 'go' }, ico('play', 22))) : null,
-    sectionBlock('A', 'obtenir des informations', 'Tu téléphones pour te renseigner sur une annonce.'),
-    sectionBlock('B', 'convaincre', 'Tu persuades un ami qui hésite.'),
+      h('p', {}, 'Écoute, lis, répète. Des dialogues au niveau NCLC 7.'),
+      st > 0 ? h('span', { class: 'streak' }, st === 1 ? 'Pratiqué aujourd’hui' : `${st} jours de suite`) : null),
+    last ? h('a', { class: 'resume', href: '#/t/' + encodeURIComponent(last.id) },
+      h('div', { class: 'rt' }, h('span', { class: 'k' }, 'Reprendre'), h('div', { class: 't' }, last.title),
+        h('div', { class: 'm' }, `Réplique ${Math.min(last.lines.length, STATS.last.idx + 1)} sur ${last.lines.length}`),
+        h('div', { class: 'pbar' }, h('i', { style: 'width:' + Math.round(100 * (STATS.last.idx + 1) / last.lines.length) + '%' }))),
+      h('span', { class: 'go' }, ico('play', 26))) : null,
+    sectionBlock('A', 'Obtenir des informations', 'Tu téléphones pour te renseigner sur une annonce.'),
+    sectionBlock('B', 'Convaincre', 'Tu persuades un ami qui hésite.'),
     h('a', { class: 'btn line add-link', href: '#/nouveau' }, ico('plus', 20), 'Ajouter un exercice'));
   root.replaceChildren(page, tabs('home'));
 }
@@ -402,22 +413,21 @@ function renderPlayer(id) {
         h('div', { class: 'enw' }, h('div', {}, h('p', { class: 'en', id: 'cap-en' }))), h('p', { class: 'tip', id: 'cap-tip' })),
       h('div', { class: 'turn', id: 'turn' }),
       h('div', { class: 'ctxline next', id: 'c-next', onclick: () => jump(P.idx + 1) }),
-      h('p', { class: 'hint', id: 'cap-hint' })),
+      h('button', { class: 'hint', id: 'cap-hint', onclick: onCapTap })),
     h('section', { class: 'list', id: 'list' }),
     h('div', { class: 'dock' },
       h('div', { class: 'sync', id: 'sync' }),
       h('div', { class: 'transport' },
-        h('button', { class: 't-btn', 'aria-label': 'Rejouer la réplique', onclick: replayLine }, ico('replay', 24)),
-        h('button', { class: 't-btn', 'aria-label': 'Réplique précédente', onclick: () => jump(P.idx - 1) }, ico('prev', 26)),
-        h('button', { class: 'play', id: 'playbtn', 'aria-label': 'Lecture', onclick: togglePlay }, ico('play', 32)),
-        h('button', { class: 't-btn', 'aria-label': 'Réplique suivante', onclick: () => jump(P.idx + 1) }, ico('next', 26)),
-        h('button', { class: 'star', id: 'starbtn', 'aria-label': 'Garder cette phrase', 'aria-pressed': 'false', onclick: () => { toggleStar(P.t.id, P.idx); refreshStars(); toast(isStar(P.t.id, P.idx) ? 'Phrase gardée dans Mes phrases' : 'Phrase retirée'); } }, ico('star', 24))),
-      h('div', { class: 'seg', id: 'viewseg', role: 'group', 'aria-label': 'Texte affiché' },
-        [['listen', 'Écoute'], ['fr', 'Français'], ['both', 'FR + EN']].map(([k, l]) => h('button', { 'data-k': k, 'aria-pressed': String(SET.view === k), onclick: () => setView(k) }, l))),
+        h('button', { class: 'chip', id: 't-rate', 'aria-label': 'Vitesse de lecture', onclick: cycleRate }, '1×'),
+        h('button', { class: 't-btn', 'aria-label': 'Réplique précédente', onclick: () => jump(P.idx - 1) }, ico('prev', 28)),
+        h('button', { class: 'play', id: 'playbtn', 'aria-label': 'Lecture', onclick: togglePlay }, ico('play', 34)),
+        h('button', { class: 't-btn', 'aria-label': 'Réplique suivante', onclick: () => jump(P.idx + 1) }, ico('next', 28)),
+        h('button', { class: 'chip', id: 't-en', 'aria-label': 'Afficher l’anglais sous chaque réplique', 'aria-pressed': String(SET.view === 'both'), onclick: () => setView(SET.view === 'both' ? 'fr' : 'both') }, 'EN')),
       h('div', { class: 'tools' },
-        h('button', { class: 'pill', id: 't-prac', 'aria-pressed': 'false', onclick: togglePractice }, ico('mic', 18), 'Pratique'),
-        h('button', { class: 'pill', id: 't-loop', 'aria-pressed': 'false', onclick: toggleLoop }, ico('loop', 18), 'Boucle'),
-        h('button', { class: 'pill', id: 't-rate', 'aria-label': 'Vitesse', onclick: cycleRate }, '1×'))));
+        h('button', { class: 'tool', 'aria-label': 'Rejouer la réplique', onclick: replayLine }, ico('replay', 20), h('span', {}, 'Rejouer')),
+        h('button', { class: 'tool', id: 't-loop', 'aria-pressed': 'false', onclick: toggleLoop }, ico('loop', 20), h('span', {}, 'Boucle')),
+        h('button', { class: 'tool', id: 'starbtn', 'aria-pressed': 'false', onclick: () => { toggleStar(P.t.id, P.idx); refreshStars(); toast(isStar(P.t.id, P.idx) ? 'Phrase gardée dans Phrases' : 'Phrase retirée'); } }, ico('star', 20), h('span', {}, 'Garder')),
+        h('button', { class: 'tool', id: 't-prac', 'aria-pressed': 'false', onclick: togglePractice }, ico('mic', 20), h('span', {}, 'Pratique')))));
   root.replaceChildren(el);
 
   // transcription
@@ -453,14 +463,12 @@ function rebuildScore() {
   slot.replaceChildren(sc);
   updateScoreState(); updateHead();
 }
-function updateScoreState() {
-  document.querySelectorAll('#scoreslot .seg-b').forEach(s => { const i = +s.dataset.i; s.classList.toggle('done', i < P.idx); s.classList.toggle('now', i === P.idx); });
-}
+function updateScoreState() {}
 function updateHead() {
   const hd = $p('#head'); if (!hd || !P) return;
   let p;
   if (P.src === 'audio' && P.audio && P.dur) p = P.audio.currentTime / P.dur * 100; else p = P.lay[P.idx] ? P.lay[P.idx].l : 0;
-  hd.style.left = `calc(${Math.min(100, p)}% - 1px)`;
+  p = Math.max(0, Math.min(100, p)); const w = hd.parentNode; w.style.setProperty('--p', p + '%'); hd.style.left = p + '%';
   const l = $p('#t-l'), r = $p('#t-r');
   if (P.src === 'audio' && P.audio && P.dur) { l.textContent = fmt(P.audio.currentTime); r.textContent = fmt(P.dur) + (P.timing === 'estimate' ? ' (minutage estimé)' : ''); }
   else { l.textContent = `Réplique ${P.idx + 1}`; r.textContent = `${P.t.lines.length} au total`; }
@@ -474,6 +482,7 @@ function setIdx(i, o = {}) {
   cap.dataset.who = L.s;
   $p('#cap-who').textContent = L.s === 'ex' ? exName(P.t) : 'Vous';
   $p('#cap-fr').textContent = L.fr;
+  $p('#cap-fr').dataset.len = L.fr.length > 150 ? 'xl' : L.fr.length > 95 ? 'l' : 's';
   $p('#cap-en').textContent = L.en || '—';
   const tip = $p('#cap-tip'); tip.replaceChildren();
   if (L.note) { const w = L.note.startsWith('⚠'); tip.className = 'tip' + (w ? ' warn' : ''); tip.textContent = w ? 'À corriger : ' + L.note.slice(1).trim() : 'À retenir : ' + L.note; } else tip.className = 'tip';
@@ -488,10 +497,11 @@ function setIdx(i, o = {}) {
   if (!o.silent && (P.playing || P.waiting)) markHeard(P.t, i);
 }
 function updateHint() {
-  const v = $p('#pl').dataset.view, cap = $p('#cap');
-  $p('#cap-hint').textContent = v === 'listen' && !cap.classList.contains('peek') ? 'Touche la réplique pour voir le français.' : (v === 'both' ? '' : 'Touche la réplique pour voir l’anglais.');
+  const v = $p('#pl').dataset.view, cap = $p('#cap'), hb = $p('#cap-hint');
+  hb.textContent = v === 'both' ? '' : v === 'listen' && !cap.classList.contains('peek') ? 'Voir le français' : cap.classList.contains('en') ? 'Masquer l’anglais' : 'Voir l’anglais';
 }
-function onCapTap() {
+function onCapTap(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
   const cap = $p('#cap'), v = $p('#pl').dataset.view;
   if (v === 'listen' && !cap.classList.contains('peek')) cap.classList.add('peek'); else cap.classList.toggle('en');
   updateHint();
@@ -499,7 +509,8 @@ function onCapTap() {
 function setView(k) {
   SET.view = k; ls.set('tef.set', SET);
   $p('#pl').dataset.view = k;
-  document.querySelectorAll('#viewseg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
+  const en = $p('#t-en'); if (en) en.setAttribute('aria-pressed', String(k === 'both'));
+  document.querySelectorAll('.viewopt button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
   $p('#cap').classList.remove('peek'); updateHint();
 }
 function toggleMode() {
@@ -733,6 +744,10 @@ function openBrief() {
 /* ---------- options ---------- */
 function openMore() {
   const t = P.t, body = h('div', {});
+  body.append(h('section', { class: 'sh-sec' }, h('h3', {}, 'Texte à l’écran'),
+    h('div', { class: 'seg viewopt', role: 'group', 'aria-label': 'Texte affiché' },
+      [['listen', 'Texte caché'], ['fr', 'Français'], ['both', 'FR + EN']].map(([k, l]) => h('button', { 'data-k': k, 'aria-pressed': String(SET.view === k), onclick: () => setView(k) }, l))),
+    h('p', { class: 'sh-note' }, 'Texte caché : tu écoutes d’abord, puis tu touches la réplique pour la lire.')));
   const timingTxt = { sync: 'Minutage réglé par toi.', preset: 'Minutage fourni avec l’exercice, calculé par reconnaissance vocale.', estimate: 'Minutage estimé. Resynchronise pour plus de précision.' }[P.timing] || '';
   const fileIn = h('input', { type: 'file', class: 'sr', id: 'file', accept: 'audio/*,.mp3,.m4a,.wav,.aac,.ogg', onchange: async e => {
     const f = e.target.files[0]; if (!f) return;

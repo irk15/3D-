@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v17';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '17') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v18';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '18') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -379,7 +379,8 @@ function noiseBuf(ctx, brown) {
 }
 const NATURE = ['Rain', 'Ocean', 'Wind', 'Stream', 'Fire', 'Night', 'Storm', 'Drone', 'Bowls', 'Hum'];
 const FOCUS = [['Brown noise', 'brown', 'Deep, even noise. Many people find it masks distraction and helps them settle into work.'], ['Pink noise', 'pink', 'Softer, balanced noise. Steady and easy to listen to for hours.'], ['Focus beats', 'beta', 'Binaural beat at 16 Hz, aimed at alert concentration. Use headphones.'], ['Calm beats', 'alpha', 'Binaural beat at 10 Hz, aimed at relaxed focus. Use headphones.'], ['Deep beats', 'theta', 'Binaural beat at 6 Hz, aimed at deep calm. Use headphones.'], ['Zone 40Hz', 'gamma', 'A gentle 40 Hz pulse over soft noise. Works on speakers.']];
-const ambFile = k => { const f = FOCUS.find(x => x[0] === k); return f ? f[1] : k.toLowerCase(); };
+const MUSIC = [['Temple', 'temple', 'Spiritual. A slow drone with soft plucked strings and distant bowls.'], ['Om chant', 'omchant', 'Spiritual. A low, humming Om-like voice that sits underneath your thoughts.'], ['Rise', 'rise', 'Inspirational. A warm, slowly lifting chord bed to carry you forward.'], ['Romance', 'romance', 'Romantic. Soft pads with a slow, gentle arpeggio, like candlelight in sound.'], ['Moonlight', 'moonlight', 'Romantic and dreamy. Tiny music-box notes drifting over a quiet hum.']];
+const ambFile = k => { const f = FOCUS.concat(MUSIC).find(x => x[0] === k); return f ? f[1] : k.toLowerCase(); };
 const ambSrc = k => 'audio/ambient/' + ambFile(k) + '-' + (S.ambVol || 3) + '.wav';
 function volMeter() {
   const val = h('b', { class: 'volv' }, ''), r = h('input', { type: 'range', min: 1, max: 5, step: 1, value: S.ambVol || 3, class: 'vol', 'aria-label': 'Background sound volume' });
@@ -395,8 +396,9 @@ function ambientBlock() {
   const draw = () => {
     w.innerHTML = '';
     w.append(h('div', { class: 'chips2' }, chip('Off')), h('div', { class: 'sub' }, 'Nature'), h('div', { class: 'chips2' }, NATURE.map(chip)),
+      h('div', { class: 'sub' }, 'Spiritual, inspiring, romantic'), h('div', { class: 'chips2' }, MUSIC.map(m => chip(m[0]))),
       h('div', { class: 'sub' }, 'Focus and concentration'), h('div', { class: 'chips2' }, FOCUS.map(f => chip(f[0]))),
-      h('p', { class: 'sm' }, (FOCUS.find(f => f[0] === S.ambient) || [0, 0, 'Brown and pink noise are the most reliable. Binaural beats need headphones, and research on them is mixed, so treat them as a helper rather than a promise.'])[2]),
+      h('p', { class: 'sm' }, (FOCUS.concat(MUSIC).find(f => f[0] === S.ambient) || [0, 0, 'Brown and pink noise are the most reliable. Binaural beats need headphones, and research on them is mixed, so treat them as a helper rather than a promise.'])[2]),
       h('div', { class: 'sub' }, 'Sound volume'), volMeter());
   };
   draw(); return w;

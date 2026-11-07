@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v13';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '13') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v14';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '14') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -451,7 +451,7 @@ function voiceSheet() {
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Phone voice style'),
     row(Object.keys(PRESETS), () => S.preset, k => { S.preset = k; Object.assign(S, PRESETS[k]); save(); preview(); }),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Background sound'),
-    row(['Off', 'Rain', 'Ocean', 'Hum'], () => S.ambient || 'Off', k => { S.ambient = k; save(); if (k === 'Off') stopAmbient(); else startAmbient(k); }),
+    row(['Off', 'Rain', 'Ocean', 'Wind', 'Stream', 'Fire', 'Night', 'Storm', 'Drone', 'Bowls', 'Hum'], () => S.ambient || 'Off', k => { S.ambient = k; save(); if (k === 'Off') stopAmbient(); else startAmbient(k); }),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Voice'), list, guide]);
   const obs = new MutationObserver(() => { if (!document.body.contains(bg)) { stopAudio(); obs.disconnect(); } }); obs.observe(document.body, { childList: true });
 }
@@ -573,7 +573,8 @@ function render() {
   const q = h('div', { class: 'quote', id: 'q', 'aria-live': 'polite' }), by = h('div', { class: 'by', id: 'by' });
   const heart = h('button', { class: 'icon heart', 'aria-label': 'Save this line', html: HEART, onclick: toggleFav });
   const pill = h('button', { class: 'mood', 'aria-label': 'Change mood', onclick: moodSheet }, h('i', { class: 'dot', style: 'background:' + (S.feel && FEELS[S.feel] ? FEELS[S.feel].c : MOOD_DOT[S.mode]) }), h('span', null, S.feel && FEELS[S.feel] ? 'Feeling ' + S.feel.toLowerCase() : S.mode), h('span', { html: CARET }));
-  const stage = h('div', { class: 'stage' }, q, by);
+  const eyebrow = h('div', { class: 'eyebrow', id: 'eyebrow' }, h('i', { style: 'background:' + (S.feel && FEELS[S.feel] ? FEELS[S.feel].c : MOOD_DOT[S.mode]) }), h('span', null, S.feel && FEELS[S.feel] ? FEELS[S.feel].t : MOOD_INFO[S.mode][0]));
+  const stage = h('div', { class: 'stage' }, eyebrow, q, by);
   let sx = 0, sy = 0, mv = false, lastTap = 0;
   stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; mv = false; }, { passive: true });
   stage.addEventListener('touchmove', e => {

@@ -1,4 +1,4 @@
-:root{--v:23;--bg1:#EAF3FA;--bg2:#FBF3E4;--tx:#1B2B3C;--mut:rgba(27,43,60,.58);--line:rgba(27,43,60,.14);--accent:#E9A93B;--chip:rgba(255,255,255,.55);--serif:"Fraunces","New York",ui-serif,"Iowan Old Style",Georgia,serif;--sans:"Inter",ui-sans-serif,-apple-system,"SF Pro Text",system-ui,Roboto,sans-serif;--sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top)}
+:root{--v:25;--bg1:#EAF3FA;--bg2:#FBF3E4;--tx:#1B2B3C;--mut:rgba(27,43,60,.58);--line:rgba(27,43,60,.14);--accent:#E9A93B;--chip:rgba(255,255,255,.55);--serif:"Fraunces","New York",ui-serif,"Iowan Old Style",Georgia,serif;--sans:"Inter",ui-sans-serif,-apple-system,"SF Pro Text",system-ui,Roboto,sans-serif;--sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
 body{background:linear-gradient(175deg,var(--bg1) 0%,var(--bg2) 100%) fixed;color:var(--tx);font:16px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden;transition:background 1s}
@@ -211,3 +211,19 @@ input.vol::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
 input.vol::-moz-range-progress{height:6px;border-radius:3px;background:var(--accent)}
 input.vol::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:0;margin-top:-10px;box-shadow:0 3px 10px rgba(0,0,0,.3),0 0 0 1px rgba(0,0,0,.06)}
 input.vol::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:0;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+
+/* v24: stronger contrast so controls read clearly on light backgrounds */
+:root{--edge:color-mix(in srgb,var(--tx) 24%,transparent);--fill:color-mix(in srgb,var(--tx) 8%,transparent)}
+.chip,.vcard,.fcard,.moodcard,.opt,.seg,.volwrap,.help,.fchip,.mood,.top .icon,.bar.glass{border:1.5px solid var(--edge)}
+.chip,.vcard,.fcard,.moodcard,.opt,.volwrap,.seg{background:var(--fill)}
+.sheet .chip{color:var(--tx);font-weight:600}
+.chip.on,.vcard.on,.seg button.on{color:var(--bg1);border-color:transparent}
+.chip.on{background:var(--tx)}
+.sheet .chip[style*="height:48px"]{background:var(--tx);color:var(--bg1);border-color:transparent;font-weight:700}
+.switch{background:var(--edge)}
+.vcard small,.sm,.sub{color:color-mix(in srgb,var(--tx) 72%,transparent)}
+.seg button{color:color-mix(in srgb,var(--tx) 75%,transparent)}
+.fchip{background:var(--fill)}
+.fchip.on{border-color:transparent}
+.moodcard.on{border-color:var(--accent)}
+input.vol::-webkit-slider-runnable-track{background:linear-gradient(90deg,var(--accent) var(--p),var(--edge) var(--p))}

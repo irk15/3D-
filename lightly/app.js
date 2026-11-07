@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v23';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '23') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v25';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '25') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -594,7 +594,7 @@ function noiseBuf(ctx, brown) {
 }
 const NATURE = ['Rain', 'Ocean', 'Wind', 'Waterfall', 'Forest', 'Night', 'Storm', 'Campfire', 'Fireplace'];
 const FOCUS = [['Brown noise', 'brown', 'Deep, even noise. Many people find it masks distraction and helps them settle into work.'], ['Pink noise', 'pink', 'Softer, balanced noise. Steady and easy to listen to for hours.'], ['Focus beats', 'beta', 'Binaural beat at 16 Hz, aimed at alert concentration. Use headphones.'], ['Calm beats', 'alpha', 'Binaural beat at 10 Hz, aimed at relaxed focus. Use headphones.'], ['Deep beats', 'theta', 'Binaural beat at 6 Hz, aimed at deep calm. Use headphones.'], ['Zone 40Hz', 'gamma', 'A gentle 40 Hz pulse over soft noise. Works on speakers.']];
-const MUSIC = [['Bowls', 'bowls', 'Spiritual. Real singing-bowl tones, slow and deep.'], ['Celestial', 'celestial', 'Spiritual. Soft, airy voices, like a distant choir.'], ['Chimes', 'chimes', 'Gentle wind chimes in a quiet breeze.'], ['Rise', 'rise', 'Inspirational. A warm, slowly lifting chord bed to carry you forward.'], ['Romance', 'romance', 'Romantic. Soft pads with a slow, gentle arpeggio, like candlelight in sound.'], ['Moonlight', 'moonlight', 'Romantic and dreamy. Tiny music-box notes drifting over a quiet hum.'], ['Hum', 'hum', 'A warm, low hum. Simple and steady.']];
+const MUSIC = [['Temple', 'temple', 'Spiritual. Real singing bowls over a slow, warm drone.'], ['Om chant', 'omchant', 'Spiritual. Soft choir voices over a deep Om-like hum.'], ['Bowls', 'bowls', 'Spiritual. Real singing-bowl tones, slow and deep.'], ['Celestial', 'celestial', 'Spiritual. Soft, airy voices, like a distant choir.'], ['Chimes', 'chimes', 'Gentle wind chimes in a quiet breeze.'], ['Rise', 'rise', 'Inspirational. A warm, slowly lifting chord bed to carry you forward.'], ['Romance', 'romance', 'Romantic. Soft pads with a slow, gentle arpeggio, like candlelight in sound.'], ['Moonlight', 'moonlight', 'Romantic and dreamy. Tiny music-box notes drifting over a quiet hum.'], ['Hum', 'hum', 'A warm, low hum. Simple and steady.']];
 const validAmb = k => k === 'Off' || NATURE.includes(k) || MUSIC.some(m => m[0] === k) || FOCUS.some(f => f[0] === k);
 const ambFile = k => { const f = FOCUS.concat(MUSIC).find(x => x[0] === k); return f ? f[1] : k.toLowerCase(); };
 const ambSrc = k => 'audio/ambient/' + ambFile(k) + '-' + (S.ambVol || 3) + '.wav';
@@ -688,7 +688,7 @@ function voiceSheet() {
   };
   draw();
   const guide = h('div', { class: 'note' }, h('p', { style: 'margin:0 0 6px;font-weight:600' }, 'Want the most natural voice?'), h('p', { style: 'margin:0;color:var(--mut);font-size:15px;line-height:1.45' }, 'On iPhone, open Settings, then Accessibility, then Spoken Content, then Voices, then English. Download one marked Premium or Enhanced. Ava, Evan and Zoe are very calm. It will appear in this list, ranked first.'));
-  const bg = sheet([h('h2', null, 'Settings'), installBlock(), updateBlock(), autoRow(),
+  const bg = sheet([h('h2', null, 'Settings'), installBlock(), updateBlock(),
     h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 4px' }, 'Studio voice'),
     h('p', { style: 'margin:0 0 8px;color:var(--mut);font-size:14px' }, 'Real recordings. They keep playing when the app is minimised or the screen is locked.'),
     studioList(preview),

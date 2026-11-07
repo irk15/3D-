@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v22';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '22') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v23';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '23') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -592,9 +592,10 @@ function noiseBuf(ctx, brown) {
   for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; if (brown) { last = (last + .02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w; }
   return b;
 }
-const NATURE = ['Rain', 'Ocean', 'Wind', 'Stream', 'Fire', 'Night', 'Storm', 'Drone', 'Bowls', 'Hum'];
+const NATURE = ['Rain', 'Ocean', 'Wind', 'Waterfall', 'Forest', 'Night', 'Storm', 'Campfire', 'Fireplace'];
 const FOCUS = [['Brown noise', 'brown', 'Deep, even noise. Many people find it masks distraction and helps them settle into work.'], ['Pink noise', 'pink', 'Softer, balanced noise. Steady and easy to listen to for hours.'], ['Focus beats', 'beta', 'Binaural beat at 16 Hz, aimed at alert concentration. Use headphones.'], ['Calm beats', 'alpha', 'Binaural beat at 10 Hz, aimed at relaxed focus. Use headphones.'], ['Deep beats', 'theta', 'Binaural beat at 6 Hz, aimed at deep calm. Use headphones.'], ['Zone 40Hz', 'gamma', 'A gentle 40 Hz pulse over soft noise. Works on speakers.']];
-const MUSIC = [['Temple', 'temple', 'Spiritual. A slow drone with soft plucked strings and distant bowls.'], ['Om chant', 'omchant', 'Spiritual. A low, humming Om-like voice that sits underneath your thoughts.'], ['Rise', 'rise', 'Inspirational. A warm, slowly lifting chord bed to carry you forward.'], ['Romance', 'romance', 'Romantic. Soft pads with a slow, gentle arpeggio, like candlelight in sound.'], ['Moonlight', 'moonlight', 'Romantic and dreamy. Tiny music-box notes drifting over a quiet hum.']];
+const MUSIC = [['Bowls', 'bowls', 'Spiritual. Real singing-bowl tones, slow and deep.'], ['Celestial', 'celestial', 'Spiritual. Soft, airy voices, like a distant choir.'], ['Chimes', 'chimes', 'Gentle wind chimes in a quiet breeze.'], ['Rise', 'rise', 'Inspirational. A warm, slowly lifting chord bed to carry you forward.'], ['Romance', 'romance', 'Romantic. Soft pads with a slow, gentle arpeggio, like candlelight in sound.'], ['Moonlight', 'moonlight', 'Romantic and dreamy. Tiny music-box notes drifting over a quiet hum.'], ['Hum', 'hum', 'A warm, low hum. Simple and steady.']];
+const validAmb = k => k === 'Off' || NATURE.includes(k) || MUSIC.some(m => m[0] === k) || FOCUS.some(f => f[0] === k);
 const ambFile = k => { const f = FOCUS.concat(MUSIC).find(x => x[0] === k); return f ? f[1] : k.toLowerCase(); };
 const ambSrc = k => 'audio/ambient/' + ambFile(k) + '-' + (S.ambVol || 3) + '.wav';
 function volMeter() {
@@ -614,12 +615,14 @@ function ambientBlock() {
       h('div', { class: 'sub' }, 'Spiritual, inspiring, romantic'), h('div', { class: 'chips2' }, MUSIC.map(m => chip(m[0]))),
       h('div', { class: 'sub' }, 'Focus and concentration'), h('div', { class: 'chips2' }, FOCUS.map(f => chip(f[0]))),
       h('p', { class: 'sm' }, (FOCUS.concat(MUSIC).find(f => f[0] === S.ambient) || [0, 0, 'Brown and pink noise are the most reliable. Binaural beats need headphones, and research on them is mixed, so treat them as a helper rather than a promise.'])[2]),
-      h('div', { class: 'sub' }, 'Sound volume'), volMeter());
+      h('div', { class: 'sub' }, 'Sound volume'), volMeter(),
+      h('p', { class: 'sm', style: 'margin-top:12px;font-size:12px' }, 'Nature sounds are real recordings shared as CC0 by Freesound contributors: ali-k, florianreichelt, felix.blume, cagancelik, sonidosreales245, greysound, ionizing, inchadney, buddhassoundofsilence, sanctuarymuch and smand.'));
   };
   draw(); return w;
 }
 function startAmbient(kind) {
   stopAmbient(true); AMB.byListen = false; if (!kind || kind === 'Off') return;
+  if (!validAmb(kind)) { S.ambient = 'Off'; save(); return; }
   const a = new Audio(ambSrc(kind)); a.loop = true; a.setAttribute('playsinline', ''); a.volume = 0;
   AMB.nodes = { aud: a }; const p = a.play(); if (p && p.catch) p.catch(() => {});
   let v = 0; const iv = setInterval(() => { v = Math.min(1, v + .1); try { a.volume = v; } catch (e) {} if (v >= 1 || AMB.nodes?.aud !== a) clearInterval(iv); }, 200);
@@ -689,8 +692,6 @@ function voiceSheet() {
     h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 4px' }, 'Studio voice'),
     h('p', { style: 'margin:0 0 8px;color:var(--mut);font-size:14px' }, 'Real recordings. They keep playing when the app is minimised or the screen is locked.'),
     studioList(preview),
-    h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Phone voice style'),
-    row(Object.keys(PRESETS), () => S.preset, k => { S.preset = k; Object.assign(S, PRESETS[k]); save(); preview(); }),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Background sound'),
     ambientBlock(),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Voice'), list, guide]);

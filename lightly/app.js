@@ -211,7 +211,7 @@ const rand = n => Math.floor(Math.random() * n);
 function nextLine(mode) {
   const all = LINES[mode]; let bag = (S.bag[mode] || []).filter(i => i < all.length);
   if (!bag.length) { bag = all.map((_, i) => i); for (let i = bag.length - 1; i > 0; i--) { const j = rand(i + 1);[bag[i], bag[j]] = [bag[j], bag[i]]; } if (S.last && bag[bag.length - 1] === S.lastIdx && bag.length > 1) bag.unshift(bag.pop()); }
-  const i = bag.pop(); S.bag[mode] = bag; S.lastIdx = i; S.last = mode; save(); return all[i];
+  const i = bag.pop(); S.bag[mode] = bag; S.lastIdx = i; S.last = mode; S.pos = all.length - bag.length; save(); return all[i];
 }
 
 /* ---------- time-of-day sky ---------- */
@@ -314,10 +314,10 @@ function stopAudio(keepSession) {
   syncAudio();
 }
 function syncAudio() {
-  const b = $('#listen'); if (b) { b.classList.toggle('on', TTS.speaking); b.innerHTML = (TTS.speaking ? '<span class="eq"><i></i><i></i><i></i></span>' : PLAY) + '<span>' + (TTS.speaking ? 'Stop' : 'Listen') + '</span>'; }
+  const b = $('#listen'); if (b) { const act = TTS.speaking || TTS.session; b.classList.toggle('on', act); b.innerHTML = (act ? '<span class="eq"><i></i><i></i><i></i></span>' : PLAY) + '<span>' + (act ? 'Stop' : 'Listen') + '</span>'; }
   const s = $('#sess'); if (s) s.textContent = TTS.session ? 'Stop session' : 'Play session';
 }
-function toggleListen() { if (TTS.speaking) { stopAudio(); } else { TTS.session = false; speakLine(cur); } }
+function toggleListen() { if (TTS.speaking || TTS.session) stopAudio(); else if (S.auto) toggleSession(); else { TTS.session = false; speakLine(cur); } }
 async function takeLock() { try { if (navigator.wakeLock) TTS.lock = await navigator.wakeLock.request('screen'); } catch (e) {} }
 function releaseLock() { try { if (TTS.lock) TTS.lock.release(); } catch (e) {} TTS.lock = null; }
 function toggleSession() {
@@ -331,7 +331,7 @@ function voiceSheet() {
   const list = h('div');
   const draw = () => { list.innerHTML = ''; TTS.voices.slice(0, 40).forEach(v => list.append(h('button', { class: 'opt', style: 'font:600 16px var(--sans);padding:14px 18px' + (TTS.voice === v ? ';outline:2px solid var(--tx)' : ''), onclick: () => { TTS.voice = v; S.voiceName = v.name; save(); draw(); speakLine(['Stop obeying your fear.']); } }, v.name + ' (' + v.lang + ')'))); if (!TTS.voices.length) list.append(h('p', { style: 'color:var(--mut)' }, 'No English voices found on this device. Add one in your phone’s accessibility or speech settings.')); };
   draw();
-  const bg = sheet([h('h2', null, 'Settings'), installBlock(), h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 6px' }, 'Voice'), h('p', { style: 'color:var(--mut);margin:0 0 14px' }, 'Uses your phone’s built-in voices, so it works offline. Tap one to hear it.'),
+  const bg = sheet([h('h2', null, 'Settings'), installBlock(), autoRow(), h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 6px' }, 'Voice'), h('p', { style: 'color:var(--mut);margin:0 0 14px' }, 'Uses your phone’s built-in voices, so it works offline. Tap one to hear it.'),
     h('div', { class: 'chips2' }, mk('Slow', 'rate', .72), mk('Calm', 'rate', .82), mk('Natural', 'rate', .95)),
     h('div', { class: 'chips2' }, mk('Deeper', 'pitch', .8), mk('Low', 'pitch', .9), mk('Natural', 'pitch', 1)), list]);
   const obs = new MutationObserver(() => { if (!document.body.contains(bg)) { stopAudio(); obs.disconnect(); } }); obs.observe(document.body, { childList: true });
@@ -378,31 +378,69 @@ async function shareCard() {
 
 /* ---------- main screen ---------- */
 let cur = null;
+const MOOD_INFO = { Osho: ['Flip your mind', 'Strong lines in the spirit of Osho'], Brilliant: ['Think like history’s best', 'Real quotes from great minds'], Calm: ['Slow it down', 'Gentle lines to settle you'], Aware: ['Come back to now', 'Notice, pause, choose'], Bright: ['Lift the mood', 'Light, hopeful lines'], Reframe: ['See it differently', 'A kinder angle'] };
+const MOOD_DOT = { Osho: '#FF9A3C', Brilliant: '#8FD3FF', Calm: '#9AD7C4', Aware: '#C7B8FF', Bright: '#FFD166', Reframe: '#F7A6C1' };
+const CARET = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>';
+const ARROW = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg>';
+function moodSheet() {
+  const bg = sheet([h('h2', { style: 'margin-bottom:10px' }, 'Choose a mood'),
+    MODES.map(m => h('button', { class: 'moodcard' + (S.mode === m ? ' on' : ''), onclick: () => { S.mode = m; save(); bg.remove(); render(); } },
+      h('i', { class: 'dot big', style: 'background:' + MOOD_DOT[m] }), h('span', { class: 'grow' }, h('b', null, m), h('small', null, MOOD_INFO[m][0] + '. ' + MOOD_INFO[m][1] + '.'))))]);
+}
+function autoRow() {
+  const sw = h('button', { class: 'switch' + (S.auto ? ' on' : ''), role: 'switch', 'aria-checked': S.auto ? 'true' : 'false', 'aria-label': 'Auto-play', onclick: e => { S.auto = !S.auto; save(); e.currentTarget.classList.toggle('on', S.auto); e.currentTarget.setAttribute('aria-checked', S.auto ? 'true' : 'false'); } }, h('i'));
+  return h('div', { class: 'setrow' }, h('div', null, h('b', null, 'Auto-play'), h('small', null, 'Listen keeps reading one line after another')), sw);
+}
+function burst(x, y) {
+  const e = h('span', { class: 'burst', html: HEART.replace('width="26" height="26"', 'width="64" height="64"').replace('fill="none"', 'fill="currentColor"'), style: 'left:' + (x - 32) + 'px;top:' + (y - 32) + 'px' });
+  document.body.append(e); setTimeout(() => e.remove(), 900);
+}
+function coach() {
+  if (S.coach) return;
+  setTimeout(() => {
+    if (S.coach || document.querySelector('.sheet-bg')) return;
+    const row = (g, t) => h('div', { class: 'coachrow' }, h('span', { class: 'glyph' }, g), h('span', null, t));
+    const bg = h('div', { class: 'sheet-bg', style: 'align-items:center;padding:20px' }, h('div', { class: 'sheet', style: 'border-radius:28px;max-width:420px;animation:rise .35s both' },
+      h('h2', null, 'Three gestures'), h('p', { style: 'color:var(--mut);margin:0 0 10px' }, 'That is all you need.'),
+      row('↑', 'Swipe up for the next line'), row('↔', 'Swipe sideways to change mood'), row('♡', 'Double-tap to save a line'),
+      h('button', { class: 'next', style: 'width:100%;flex:none;margin-top:18px', onclick: () => { S.coach = 1; save(); bg.remove(); } }, 'Got it')));
+    document.body.append(bg);
+  }, 900);
+}
 function render() {
   applyTheme(); stopAudio();
   const app = $('#app'); app.innerHTML = '';
   const q = h('div', { class: 'quote', id: 'q', 'aria-live': 'polite' }), by = h('div', { class: 'by', id: 'by' });
   const heart = h('button', { class: 'icon heart', 'aria-label': 'Save this line', html: HEART, onclick: toggleFav });
-  const modes = h('div', { class: 'modes', role: 'tablist' }, MODES.map(m => h('button', { class: 'chip' + (S.mode === m ? ' on' : ''), role: 'tab', onclick: () => { S.mode = m; save(); render(); } }, m)));
+  const pill = h('button', { class: 'mood', 'aria-label': 'Change mood', onclick: moodSheet }, h('i', { class: 'dot', style: 'background:' + MOOD_DOT[S.mode] }), h('span', null, S.mode), h('span', { html: CARET }));
   const stage = h('div', { class: 'stage' }, q, by);
-  let sx = 0, sy = 0;
-  stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  let sx = 0, sy = 0, mv = false, lastTap = 0;
+  stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; mv = false; }, { passive: true });
+  stage.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { mv = true; q.classList.add('drag'); q.style.transform = 'translateY(' + dy * .35 + 'px)'; q.style.opacity = Math.max(.25, 1 - Math.abs(dy) / 380); }
+  }, { passive: true });
   stage.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
-    if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) change();
-    else if (Math.abs(dx) > 60) { const i = MODES.indexOf(S.mode) + (dx < 0 ? 1 : -1); if (i >= 0 && i < MODES.length) { S.mode = MODES[i]; save(); if (navigator.vibrate) try { navigator.vibrate(8); } catch (er) {} render(); } }
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    q.classList.remove('drag'); q.style.transform = ''; q.style.opacity = '';
+    if (Math.abs(dy) > 70 && Math.abs(dy) > Math.abs(dx)) { change(); return; }
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)) { const i = MODES.indexOf(S.mode) + (dx < 0 ? 1 : -1); if (i >= 0 && i < MODES.length) { S.mode = MODES[i]; save(); if (navigator.vibrate) try { navigator.vibrate(8); } catch (er) {} render(); } return; }
+    if (!mv && Math.abs(dx) < 10 && Math.abs(dy) < 10) { const n = Date.now(); if (n - lastTap < 320) { lastTap = 0; if (cur && !isFav(cur)) toggleFav(); burst(t.clientX, t.clientY); } else lastTap = n; }
   });
   app.append(
     h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('div', { style: 'display:flex' }, h('button', { class: 'icon', 'aria-label': 'Settings', html: SLIDERS, onclick: voiceSheet }), h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs }))),
-    modes, stage,
+    h('div', { class: 'moodrow' }, pill, h('span', { class: 'count', id: 'count' })),
+    stage,
     h('div', { class: 'dock' },
       h('button', { class: 'help', onclick: openSituations }, 'Something’s bothering me'),
-      h('div', { class: 'bar' }, heart, h('button', { class: 'icon', 'aria-label': 'Share as an image', html: SHARE, onclick: shareCard }), canSpeak ? h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }) : null, h('button', { class: 'next', onclick: change }, 'Another')),
-      h('div', { class: 'hintrow' }, h('span', null, 'Swipe up: next \u00B7 sideways: mood'), canSpeak ? h('button', { id: 'sess', onclick: toggleSession }, 'Play session') : null)));
+      h('div', { class: 'bar glass' }, heart, h('button', { class: 'icon', 'aria-label': 'Share as an image', html: SHARE, onclick: shareCard }),
+        canSpeak ? h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }) : null,
+        h('button', { class: 'next', onclick: change, html: '<span>Next</span>' + ARROW }))));
   show(nextLine(S.mode), false);
+  coach();
 }
 function show(line, animate = true) {
-  const q = $('#q'), by = $('#by'); cur = line;
+  const q = $('#q'), by = $('#by'); cur = line; const cn = $('#count'); if (cn && S.pos) cn.textContent = S.pos + ' / ' + LINES[S.mode].length;
   const set = () => {
     q.innerHTML = '';
     const two = !!line[2];
@@ -457,6 +495,5 @@ function runFlow(name) {
   draw();
 }
 
-setTimeout(() => { if (!standalone && !S.nudged) { S.nudged = 1; save(); toast('Tip: Settings \u2192 Make it an app'); } }, 6000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 render();

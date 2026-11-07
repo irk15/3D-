@@ -118,7 +118,9 @@ h1,h2,h3,p{margin:0}
 .add-link{margin-top:26px}
 
 /* ---------- waveform ---------- */
-.wave{position:relative;height:52px;cursor:pointer;touch-action:manipulation;--p:0%}
+.wave{position:relative;height:52px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;--p:0%}
+.wave::before{content:"";position:absolute;inset:-16px -14px}
+.wave.drag .head{width:4px;margin-left:-2px;top:-6px;bottom:-6px}
 .bars{position:absolute;inset:0;display:flex;align-items:center;gap:2.5px}
 .bars i{flex:1;border-radius:2px;min-width:1px}
 .bars i.ex{background:var(--exfill)}.bars i.ca{background:var(--youfill)}

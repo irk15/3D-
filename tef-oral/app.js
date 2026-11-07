@@ -454,12 +454,32 @@ function rebuildScore() {
   P.lay = (P.src === 'audio' && P.starts.length && P.dur) ? timeLayout(P.t, P.starts, P.dur, P.off) : charLayout(P.t);
   const sc = buildScore(P.t, P.lay);
   sc.setAttribute('role', 'slider'); sc.setAttribute('aria-label', 'Position dans le dialogue');
-  sc.addEventListener('click', e => {
-    const r = sc.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 100;
-    let best = 0, bd = 1e9;
-    P.lay.forEach((b, i) => { const d = x >= b.l && x <= b.l + b.w ? 0 : Math.min(Math.abs(x - b.l), Math.abs(x - b.l - b.w)); if (d < bd) { bd = d; best = i; } });
-    jump(best);
+  const lineAt = x => { let best = 0, bd = 1e9; P.lay.forEach((b, i) => { const d = x >= b.l && x <= b.l + b.w ? 0 : Math.min(Math.abs(x - b.l), Math.abs(x - b.l - b.w)); if (d < bd) { bd = d; best = i; } }); return best; };
+  const frac = e => { const r = sc.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
+  let drag = false, wasPlaying = false, raf = 0, lastF = 0;
+  const apply = () => {
+    raf = 0;
+    if (P.src === 'audio' && P.audio && P.dur) { P.audio.currentTime = lastF * P.dur; P.waiting = false; tickOnce(); }
+    else { setIdx(lineAt(lastF * 100), { silent: true }); }
+  };
+  sc.addEventListener('pointerdown', e => {
+    if (P.sync) return;
+    drag = true; try { sc.setPointerCapture(e.pointerId); } catch (x) {}
+    wasPlaying = P.playing && !P.waiting; lastF = frac(e);
+    if (P.src === 'audio' && P.audio) { P.scrub = true; if (wasPlaying) P.audio.pause(); }
+    sc.classList.add('drag'); apply();
   });
+  sc.addEventListener('pointermove', e => { if (!drag) return; lastF = frac(e); if (!raf) raf = requestAnimationFrame(apply); });
+  const end = e => {
+    if (!drag) return; drag = false; sc.classList.remove('drag');
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    lastF = frac(e); P.scrub = false;
+    if (P.src === 'audio' && P.audio && P.dur) {
+      P.audio.currentTime = lastF * P.dur; tickOnce();
+      if (wasPlaying) { P.audio.play().catch(() => {}); P.playing = true; cancelAnimationFrame(P.raf); P.raf = requestAnimationFrame(tick); } else updatePlay();
+    } else jump(lineAt(lastF * 100));
+  };
+  sc.addEventListener('pointerup', end); sc.addEventListener('pointercancel', end);
   slot.replaceChildren(sc);
   updateScoreState(); updateHead();
 }

@@ -202,7 +202,7 @@ const SITUATIONS = {
 
 /* ---------- state ---------- */
 const KEY = 'lightly_v2';
-let S = { fav: [], mode: 'Osho', bag: {}, rate: .82, pitch: .9, voiceName: null };
+let S = { fav: [], mode: 'Osho', bag: {}, preset: 'Soft', rate: .78, pitch: 1, vol: .9, ambient: 'Off', voiceName: null };
 try { const d = JSON.parse(localStorage.getItem(KEY)); if (d) S = Object.assign(S, d); else { const o = JSON.parse(localStorage.getItem('lightly_v1')); if (o && o.fav) S.fav = o.fav; } } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const rand = n => Math.floor(Math.random() * n);
@@ -289,28 +289,67 @@ function applyTheme() {
 /* ---------- audio: the phone's own text-to-speech, works offline ---------- */
 const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 const TTS = { voices: [], voice: null, token: 0, speaking: false, session: false, lock: null };
-function bestVoice() {
-  const pref = ['Rishi', 'Daniel', 'Aaron', 'Arthur', 'Google UK English Male', 'Alex', 'Ravi', 'Oliver', 'Gordon', 'Fred'];
-  for (const n of pref) { const v = TTS.voices.find(x => x.name.includes(n)); if (v) return v; }
-  return TTS.voices.find(v => /en-(IN|GB)/i.test(v.lang)) || TTS.voices[0] || null;
+const BAD_VOICE = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Junior|Kathy|Organ|Ralph|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred)/i;
+const CALM_NAMES = ['Ava', 'Evan', 'Zoe', 'Daniel', 'Karen', 'Moira', 'Tessa', 'Serena', 'Samantha', 'Rishi', 'Oliver', 'Allison', 'Aaron', 'Nicky', 'Google UK English Female', 'Google UK English Male', 'Google US English'];
+const isQuality = v => /premium|enhanced|natural|neural|siri/i.test(v.name);
+function voiceScore(v) {
+  let sc = 0; const n = v.name;
+  if (/premium/i.test(n)) sc += 50; if (/enhanced|natural|neural|siri/i.test(n)) sc += 35;
+  if (CALM_NAMES.some(c => n.indexOf(c) === 0)) sc += 20; if (/en-(IN|GB|AU|IE)/i.test(v.lang)) sc += 4; if (v.localService) sc += 2;
+  return sc;
 }
-function loadVoices() { if (!canSpeak) return; TTS.voices = (speechSynthesis.getVoices() || []).filter(v => /^en/i.test(v.lang)); TTS.voice = TTS.voices.find(v => v.name === S.voiceName) || bestVoice(); }
+function bestVoice() { return TTS.voices[0] || null; }
+function loadVoices() { if (!canSpeak) return; TTS.voices = (speechSynthesis.getVoices() || []).filter(v => /^en/i.test(v.lang) && !BAD_VOICE.test(v.name)).sort((x, y) => voiceScore(y) - voiceScore(x) || x.name.localeCompare(y.name)); TTS.voice = TTS.voices.find(v => v.name === S.voiceName) || bestVoice(); }
 if (canSpeak) { loadVoices(); speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', loadVoices); }
 function utter(text, done, tk) {
-  const u = new SpeechSynthesisUtterance(text); if (TTS.voice) u.voice = TTS.voice; u.rate = S.rate || .82; u.pitch = S.pitch || .9; u.volume = 1;
+  const u = new SpeechSynthesisUtterance(text); if (TTS.voice) u.voice = TTS.voice; u.rate = S.rate || .78; u.pitch = S.pitch || 1; u.volume = S.vol == null ? 1 : S.vol;
   let fin = false; const end = () => { if (fin) return; fin = true; if (tk === TTS.token && done) done(); };
   u.onend = end; u.onerror = end; speechSynthesis.speak(u);
 }
+function phrasesOf(t) {
+  return (t.match(/[^.,;:!?—]+[.,;:!?—]*\s*/g) || [t]).map(x => x.trim()).filter(Boolean).map(x => ({ t: x, pause: /[.!?]$/.test(x) ? 650 : /[,;:—]$/.test(x) ? 320 : 200 }));
+}
 function speakLine(line, done) {
   if (!canSpeak || !line) return; speechSynthesis.cancel(); const tk = ++TTS.token; TTS.speaking = true; syncAudio();
-  const who = line[1] && line[1].charAt(0) === '\u2014' ? line[1].slice(2).replace(/\s*\(paraphrased\)/, '') : null;
-  const parts = [line[0], who, line[2]].filter(Boolean);
-  const run = i => { if (tk !== TTS.token) return; if (i >= parts.length) { TTS.speaking = false; syncAudio(); if (done) done(); return; } utter(parts[i], () => setTimeout(() => run(i + 1), i === 0 ? 650 : 0), tk); };
+  if (S.ambient && S.ambient !== 'Off' && !AMB.nodes) { startAmbient(S.ambient); AMB.byListen = true; }
+  const who = line[1] && line[1].charAt(0) === '—' ? line[1].slice(2).replace(/\s*\(paraphrased\)/, '') : null;
+  const items = []; [line[0], who, line[2]].filter(Boolean).forEach((part, pi, arr) => { const ph = phrasesOf(part); if (ph.length) ph[ph.length - 1].pause = pi === 0 ? 1000 : 750; items.push(...ph); });
+  const run = i => {
+    if (tk !== TTS.token) return;
+    if (i >= items.length) { TTS.speaking = false; syncAudio(); if (!TTS.session && AMB.byListen) { stopAmbient(); AMB.byListen = false; } if (done) done(); return; }
+    utter(items[i].t, () => setTimeout(() => run(i + 1), i === items.length - 1 ? 0 : items[i].pause), tk);
+  };
   run(0);
 }
+
+/* ---------- soft background sound, made on the phone with Web Audio ---------- */
+const AMB = { ctx: null, nodes: null };
+function ambCtx() { if (!AMB.ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AMB.ctx = new C(); } if (AMB.ctx.state === 'suspended') AMB.ctx.resume(); return AMB.ctx; }
+function noiseBuf(ctx, brown) {
+  const len = ctx.sampleRate * 4, b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0); let last = 0;
+  for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; if (brown) { last = (last + .02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w; }
+  return b;
+}
+function startAmbient(kind) {
+  stopAmbient(true); AMB.byListen = false; if (!kind || kind === 'Off') return; const ctx = ambCtx(); if (!ctx) return;
+  const out = ctx.createGain(); out.gain.value = 0; out.connect(ctx.destination); const srcs = [];
+  const loop = brown => { const n = ctx.createBufferSource(); n.buffer = noiseBuf(ctx, brown); n.loop = true; srcs.push(n); return n; };
+  const lfo = (hz, depth, target) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = hz; g.gain.value = depth; o.connect(g); g.connect(target); srcs.push(o); o.start(); };
+  let level = .3;
+  if (kind === 'Rain') { const n = loop(false), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900; lp.type = 'lowpass'; lp.frequency.value = 7000; n.connect(hp); hp.connect(lp); lp.connect(out); n.start(); level = .2; }
+  else if (kind === 'Ocean') { const n = loop(true), lp = ctx.createBiquadFilter(), sw = ctx.createGain(); lp.type = 'lowpass'; lp.frequency.value = 650; sw.gain.value = .55; n.connect(lp); lp.connect(sw); sw.connect(out); lfo(.1, .4, sw.gain); n.start(); level = .55; }
+  else { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.connect(out); [110, 164.81, 220.5, 277.2].forEach((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; o.detune.value = (i - 1.5) * 4; g.gain.value = .12 / (1 + i * .4); o.connect(g); g.connect(lp); lfo(.05 + i * .02, .04, g.gain); srcs.push(o); o.start(); }); level = .5; }
+  out.gain.linearRampToValueAtTime(level, ctx.currentTime + 2.5); AMB.nodes = { out, srcs };
+}
+function stopAmbient(now) {
+  const n = AMB.nodes; if (!n || !AMB.ctx) return; AMB.nodes = null; const c = AMB.ctx;
+  try { n.out.gain.cancelScheduledValues(c.currentTime); n.out.gain.setValueAtTime(n.out.gain.value, c.currentTime); n.out.gain.linearRampToValueAtTime(0, c.currentTime + (now ? .05 : 1.6)); } catch (e) {}
+  setTimeout(() => n.srcs.forEach(x => { try { x.stop(); } catch (e) {} }), now ? 120 : 1800);
+}
+
 function stopAudio(keepSession) {
   if (!canSpeak) return; TTS.token++; speechSynthesis.cancel(); TTS.speaking = false;
-  if (!keepSession || !TTS.session) { TTS.session = false; releaseLock(); }
+  if (!keepSession || !TTS.session) { TTS.session = false; releaseLock(); stopAmbient(); }
   syncAudio();
 }
 function syncAudio() {
@@ -326,14 +365,25 @@ function toggleSession() {
   const loop = () => { if (!TTS.session) return; speakLine(cur, () => { if (!TTS.session) return; setTimeout(() => { if (!TTS.session) return; show(nextLine(S.mode)); setTimeout(loop, 900); }, 3500); }); };
   loop();
 }
+const PRESETS = { Soft: { rate: .78, pitch: 1, vol: .9 }, Deep: { rate: .8, pitch: .78, vol: 1 }, Hush: { rate: .72, pitch: .9, vol: .55 }, Natural: { rate: .92, pitch: 1, vol: 1 } };
 function voiceSheet() {
-  const mk = (label, key, val) => h('button', { class: 'chip' + ((S[key] || 0) === val ? ' on' : ''), onclick: e => { S[key] = val; save(); [...e.currentTarget.parentNode.children].forEach(c => c.classList.toggle('on', c === e.currentTarget)); speakLine(['Stop obeying your fear.']); } }, label);
-  const list = h('div');
-  const draw = () => { list.innerHTML = ''; TTS.voices.slice(0, 40).forEach(v => list.append(h('button', { class: 'opt', style: 'font:600 16px var(--sans);padding:14px 18px' + (TTS.voice === v ? ';outline:2px solid var(--tx)' : ''), onclick: () => { TTS.voice = v; S.voiceName = v.name; save(); draw(); speakLine(['Stop obeying your fear.']); } }, v.name + ' (' + v.lang + ')'))); if (!TTS.voices.length) list.append(h('p', { style: 'color:var(--mut)' }, 'No English voices found on this device. Add one in your phone’s accessibility or speech settings.')); };
+  const row = (keys, cur, pick) => { const w = h('div', { class: 'chips2' }); keys.forEach(k => w.append(h('button', { class: 'chip' + (cur() === k ? ' on' : ''), onclick: e => { pick(k); [...w.children].forEach(c => c.classList.toggle('on', c === e.currentTarget)); } }, k))); return w; };
+  const preview = () => speakLine(['Reaction is a puppet string.', null, 'Whoever pulls it owns your mood.']);
+  const list = h('div'); let all = false;
+  const draw = () => {
+    list.innerHTML = ''; const vs = all ? TTS.voices : TTS.voices.slice(0, 8);
+    vs.forEach(v => list.append(h('button', { class: 'opt', style: 'font:600 16px var(--sans);padding:14px 18px;display:flex;justify-content:space-between;gap:10px' + (TTS.voice === v ? ';outline:2px solid var(--tx)' : ''), onclick: () => { TTS.voice = v; S.voiceName = v.name; save(); draw(); preview(); } }, h('span', null, v.name), h('span', { style: 'color:var(--mut);font-weight:500' }, isQuality(v) ? 'Premium' : v.lang))));
+    if (!all && TTS.voices.length > 8) list.append(h('button', { class: 'link', style: 'padding:12px 0', onclick: () => { all = true; draw(); } }, 'Show all ' + TTS.voices.length + ' voices'));
+    if (!TTS.voices.length) list.append(h('p', { style: 'color:var(--mut)' }, 'No English voices found on this device.'));
+  };
   draw();
-  const bg = sheet([h('h2', null, 'Settings'), installBlock(), autoRow(), h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 6px' }, 'Voice'), h('p', { style: 'color:var(--mut);margin:0 0 14px' }, 'Uses your phone’s built-in voices, so it works offline. Tap one to hear it.'),
-    h('div', { class: 'chips2' }, mk('Slow', 'rate', .72), mk('Calm', 'rate', .82), mk('Natural', 'rate', .95)),
-    h('div', { class: 'chips2' }, mk('Deeper', 'pitch', .8), mk('Low', 'pitch', .9), mk('Natural', 'pitch', 1)), list]);
+  const guide = h('div', { class: 'note' }, h('p', { style: 'margin:0 0 6px;font-weight:600' }, 'Want the most natural voice?'), h('p', { style: 'margin:0;color:var(--mut);font-size:15px;line-height:1.45' }, 'On iPhone, open Settings, then Accessibility, then Spoken Content, then Voices, then English. Download one marked Premium or Enhanced. Ava, Evan and Zoe are very calm. It will appear in this list, ranked first.'));
+  const bg = sheet([h('h2', null, 'Settings'), installBlock(), autoRow(),
+    h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 8px' }, 'Voice style'),
+    row(Object.keys(PRESETS), () => S.preset, k => { S.preset = k; Object.assign(S, PRESETS[k]); save(); preview(); }),
+    h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Background sound'),
+    row(['Off', 'Rain', 'Ocean', 'Hum'], () => S.ambient || 'Off', k => { S.ambient = k; save(); if (k === 'Off') stopAmbient(); else startAmbient(k); }),
+    h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Voice'), list, guide]);
   const obs = new MutationObserver(() => { if (!document.body.contains(bg)) { stopAudio(); obs.disconnect(); } }); obs.observe(document.body, { childList: true });
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && TTS.session) { /* phones pause speech when the screen locks */ } else if (!document.hidden && TTS.session) takeLock(); });

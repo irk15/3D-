@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v21';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '21') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v22';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '22') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -28,7 +28,8 @@ const XI = '<svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="
 /* ---------- lines ---------- */
 // Each line is [text, author?]. Unattributed lines are original to this app.
 
-const SPIRIT = 'In the spirit of Osho';
+const SPIRIT = 'Spiritual';
+const mlabel = m => (m === 'Osho' ? 'Spiritual' : m);
 // [punch, author, insight]. Original wording inspired by themes in Osho's teachings: witnessing, freedom, presence, celebration.
 const OSHO = [
   ['You are not the storm. You are the sky.', SPIRIT, 'Anger, fear and doubt cross you and leave. The one who watches them never moves.'],
@@ -575,7 +576,7 @@ function speakStudio(line, done) {
   AUD.onEnd = () => { if (tk !== TTS.token) return; TTS.speaking = false; syncAudio(); if (!TTS.session && AMB.byListen) { stopAmbient(); AMB.byListen = false; } if (done) done(); };
   a.onerror = fallback; a.src = 'audio/' + v + '/' + lh(line[0]) + '.mp3'; TTS.speaking = true; syncAudio();
   const p = a.play(); if (p && p.catch) p.catch(() => setTimeout(() => { if (tk === TTS.token) { const q = a.play(); if (q && q.catch) q.catch(fallback); } }, 500));
-  if ('mediaSession' in navigator) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: line[0], artist: 'Lightly', album: S.mode, artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }); } catch (e) {} }
+  if ('mediaSession' in navigator) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: line[0], artist: 'Lightly', album: mlabel(S.mode), artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }); } catch (e) {} }
 }
 function speakLine(line, done) {
   if (!line) return;
@@ -759,14 +760,14 @@ async function shareCard() {
 
 /* ---------- main screen ---------- */
 let cur = null;
-const MOOD_INFO = { Start: ['Begin gently', 'Small first moves that end overthinking'], Osho: ['Flip your mind', 'Strong lines in the spirit of Osho'], Brilliant: ['Think like history’s best', 'Real quotes from great minds'], Calm: ['Slow it down', 'Gentle lines to settle you'], Aware: ['Come back to now', 'Notice, pause, choose'], Bright: ['Lift the mood', 'Light, hopeful lines'], Reframe: ['See it differently', 'A kinder angle'] };
+const MOOD_INFO = { Start: ['Begin gently', 'Small first moves that end overthinking'], Osho: ['Flip your mind', 'Strong, awakening lines'], Brilliant: ['Think like history’s best', 'Real quotes from great minds'], Calm: ['Slow it down', 'Gentle lines to settle you'], Aware: ['Come back to now', 'Notice, pause, choose'], Bright: ['Lift the mood', 'Light, hopeful lines'], Reframe: ['See it differently', 'A kinder angle'] };
 const MOOD_DOT = { Start: '#FFB36B', Osho: '#FF9A3C', Brilliant: '#8FD3FF', Calm: '#9AD7C4', Aware: '#C7B8FF', Bright: '#FFD166', Reframe: '#F7A6C1' };
 const CARET = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"/></svg>';
 const ARROW = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg>';
 function moodSheet() {
   const bg = sheet([h('h2', { style: 'margin-bottom:10px' }, 'Choose a mood'),
     MODES.map(m => h('button', { class: 'moodcard' + (S.mode === m ? ' on' : ''), onclick: () => { S.mode = m; S.feel = null; save(); bg.remove(); render(); } },
-      h('i', { class: 'dot big', style: 'background:' + MOOD_DOT[m] }), h('span', { class: 'grow' }, h('b', null, m), h('small', null, MOOD_INFO[m][0] + '. ' + MOOD_INFO[m][1] + '.'))))]);
+      h('i', { class: 'dot big', style: 'background:' + MOOD_DOT[m] }), h('span', { class: 'grow' }, h('b', null, mlabel(m)), h('small', null, MOOD_INFO[m][0] + '. ' + MOOD_INFO[m][1] + '.'))))]);
 }
 function autoRow() {
   const sw = h('button', { class: 'switch' + (S.auto ? ' on' : ''), role: 'switch', 'aria-checked': S.auto ? 'true' : 'false', 'aria-label': 'Auto-play', onclick: e => { S.auto = !S.auto; save(); e.currentTarget.classList.toggle('on', S.auto); e.currentTarget.setAttribute('aria-checked', S.auto ? 'true' : 'false'); } }, h('i'));
@@ -814,7 +815,7 @@ function render() {
   const app = $('#app'); app.innerHTML = '';
   const q = h('div', { class: 'quote', id: 'q', 'aria-live': 'polite' }), by = h('div', { class: 'by', id: 'by' });
   const heart = h('button', { class: 'icon heart', 'aria-label': 'Save this line', html: HEART, onclick: toggleFav });
-  const pill = h('button', { class: 'mood', 'aria-label': 'Change mood', onclick: moodSheet }, h('i', { class: 'dot', style: 'background:' + (S.feel && FEELS[S.feel] ? FEELS[S.feel].c : MOOD_DOT[S.mode]) }), h('span', null, S.feel && FEELS[S.feel] ? 'Feeling ' + S.feel.toLowerCase() : S.mode), h('span', { html: CARET }));
+  const pill = h('button', { class: 'mood', 'aria-label': 'Change mood', onclick: moodSheet }, h('i', { class: 'dot', style: 'background:' + (S.feel && FEELS[S.feel] ? FEELS[S.feel].c : MOOD_DOT[S.mode]) }), h('span', null, S.feel && FEELS[S.feel] ? 'Feeling ' + S.feel.toLowerCase() : mlabel(S.mode)), h('span', { html: CARET }));
   const eyebrow = h('div', { class: 'eyebrow', id: 'eyebrow' }, h('i', { style: 'background:' + (S.feel && FEELS[S.feel] ? FEELS[S.feel].c : MOOD_DOT[S.mode]) }), h('span', null, S.feel && FEELS[S.feel] ? FEELS[S.feel].t : MOOD_INFO[S.mode][0]));
   const stage = h('div', { class: 'stage' }, eyebrow, q, by);
   let sx = 0, sy = 0, mv = false, lastTap = 0;

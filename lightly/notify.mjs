@@ -7,7 +7,7 @@ const slot = process.env.SCHEDULE in SLOTS ? SLOTS[process.env.SCHEDULE] : parse
 const lists = [q.start || q.osho, q.brilliant, q.everyday], titles = ['Begin gently', 'Think clearly', 'Let it go lightly'];
 const list = lists[slot] || q.osho, day = Math.floor(Date.now() / 864e5);
 const item = list[(day + slot * 7) % list.length];
-const body = item.text + (item.author && item.author !== 'In the spirit of Osho' ? '\n— ' + item.author : '') + (item.meaning ? '\n\n' + item.meaning : '');
+const body = item.text + (item.author && item.author !== 'Spiritual' ? '\n— ' + item.author : '') + (item.meaning ? '\n\n' + item.meaning : '');
 if (process.env.DRY) { console.log(titles[slot] + '\n' + body); process.exit(0); }
 const topic = process.env.NTFY_TOPIC;
 if (!topic) { console.error('NTFY_TOPIC secret is missing'); process.exit(1); }

@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v16';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '16') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v17';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '17') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -380,7 +380,15 @@ function noiseBuf(ctx, brown) {
 const NATURE = ['Rain', 'Ocean', 'Wind', 'Stream', 'Fire', 'Night', 'Storm', 'Drone', 'Bowls', 'Hum'];
 const FOCUS = [['Brown noise', 'brown', 'Deep, even noise. Many people find it masks distraction and helps them settle into work.'], ['Pink noise', 'pink', 'Softer, balanced noise. Steady and easy to listen to for hours.'], ['Focus beats', 'beta', 'Binaural beat at 16 Hz, aimed at alert concentration. Use headphones.'], ['Calm beats', 'alpha', 'Binaural beat at 10 Hz, aimed at relaxed focus. Use headphones.'], ['Deep beats', 'theta', 'Binaural beat at 6 Hz, aimed at deep calm. Use headphones.'], ['Zone 40Hz', 'gamma', 'A gentle 40 Hz pulse over soft noise. Works on speakers.']];
 const ambFile = k => { const f = FOCUS.find(x => x[0] === k); return f ? f[1] : k.toLowerCase(); };
-const ambSrc = k => 'audio/ambient/' + ambFile(k) + '-' + (S.ambVol || 2) + '.wav';
+const ambSrc = k => 'audio/ambient/' + ambFile(k) + '-' + (S.ambVol || 3) + '.wav';
+function volMeter() {
+  const val = h('b', { class: 'volv' }, ''), r = h('input', { type: 'range', min: 1, max: 5, step: 1, value: S.ambVol || 3, class: 'vol', 'aria-label': 'Background sound volume' });
+  const paint = () => { const v = +r.value; r.style.setProperty('--p', ((v - 1) / 4 * 100) + '%'); val.textContent = ['Whisper', 'Soft', 'Medium', 'Strong', 'Full'][v - 1]; };
+  r.addEventListener('input', paint);
+  r.addEventListener('change', () => { S.ambVol = +r.value; save(); if (AMB.nodes && S.ambient && S.ambient !== 'Off') { const a = AMB.nodes.aud, t = a.currentTime; a.src = ambSrc(S.ambient); try { a.currentTime = t; } catch (e) {} a.play().catch(() => {}); } });
+  paint();
+  return h('div', { class: 'volwrap' }, h('span', { class: 'vi', html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3l4-3v10l-4-3H3z"/></svg>' }), r, h('span', { class: 'vi', html: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h3l5-4v12l-5-4H3z"/><path d="M14.5 8a4 4 0 010 6M17 5.5a8 8 0 010 11"/></svg>' }), val);
+}
 function ambientBlock() {
   const w = h('div'); const VOL = [['Quiet', 1], ['Medium', 2], ['Loud', 3]];
   const chip = (k) => h('button', { class: 'chip' + ((S.ambient || 'Off') === k ? ' on' : ''), onclick: () => { S.ambient = k; save(); if (k === 'Off') stopAmbient(); else startAmbient(k); draw(); } }, k);
@@ -389,7 +397,7 @@ function ambientBlock() {
     w.append(h('div', { class: 'chips2' }, chip('Off')), h('div', { class: 'sub' }, 'Nature'), h('div', { class: 'chips2' }, NATURE.map(chip)),
       h('div', { class: 'sub' }, 'Focus and concentration'), h('div', { class: 'chips2' }, FOCUS.map(f => chip(f[0]))),
       h('p', { class: 'sm' }, (FOCUS.find(f => f[0] === S.ambient) || [0, 0, 'Brown and pink noise are the most reliable. Binaural beats need headphones, and research on them is mixed, so treat them as a helper rather than a promise.'])[2]),
-      h('div', { class: 'sub' }, 'Sound volume'), h('div', { class: 'seg' }, VOL.map(v => h('button', { class: (S.ambVol || 2) === v[1] ? 'on' : '', onclick: () => { S.ambVol = v[1]; save(); if (AMB.nodes && S.ambient && S.ambient !== 'Off') { const a = AMB.nodes.aud, t = a.currentTime; a.src = ambSrc(S.ambient); try { a.currentTime = t; } catch (e) {} a.play().catch(() => {}); } draw(); } }, v[0]))));
+      h('div', { class: 'sub' }, 'Sound volume'), volMeter());
   };
   draw(); return w;
 }

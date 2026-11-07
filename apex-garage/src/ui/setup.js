@@ -172,7 +172,7 @@ export function createSetup({ CARS, getVehicle, getColor, startRace, toast }) {
   }
   function hostStart() {
     const humans = room.players;
-    if (humans.some((p) => !p.ready)) { toast('Waiting for everyone to be ready'); return; }
+    // host can always start; anyone not ready just joins the grid with their current vehicle
     const bots = Math.min(room.settings.bots, 8 - humans.length);
     const pool = CARS.map((_, i) => i);
     const grid = [];
@@ -195,8 +195,14 @@ export function createSetup({ CARS, getVehicle, getColor, startRace, toast }) {
     const t = TRACKS.find((x) => x.id === room.settings.track);
     $(lob, '#lbInfo').textContent = room.isHost ? `You're the host. When everyone is ready, press Start.` : `Host settings: ${t?.name} · ${room.settings.laps} laps${room.rtt ? ` · ping ${Math.round(room.rtt)} ms` : ''}`;
     const go = $(lob, '#lbGo');
-    if (room.isHost) { const allReady = room.players.every((p) => p.ready); go.textContent = allReady ? 'START RACE ▶' : 'Waiting for players…'; go.disabled = !allReady; }
-    else { go.disabled = false; go.textContent = room.me?.ready ? 'Not ready' : 'Ready'; go.classList.toggle('primary', !room.me?.ready); }
+    if (room.isHost) {
+      const notReady = room.players.filter((p) => !p.ready);
+      go.disabled = false;
+      go.classList.add('primary');
+      go.textContent = notReady.length ? `START ANYWAY ▶ (${room.players.length - notReady.length}/${room.players.length} ready)` : 'START RACE ▶';
+      $(lob, '#lbInfo').textContent = room.players.length < 2 ? 'Share the code. Friends appear here when they join.' : notReady.length ? `Waiting for ${notReady.map((p) => p.name).join(', ')} to press Ready. You can also start now.` : 'Everyone is ready. Press Start!';
+    }
+    else { go.disabled = false; go.textContent = room.me?.ready ? '✓ READY (tap to cancel)' : 'PRESS WHEN READY ▶'; go.classList.toggle('primary', !room.me?.ready); }
   }
   function addChat(m) {
     const c = $(lob, '#lbChat');

@@ -62,3 +62,9 @@ body.fire{--bg1:#120A07;--bg2:#2B1409;--tx:#FFF1E2;--accent:#FF9A3C;--mut:rgba(2
 .chips2{display:flex;gap:8px;margin:0 0 12px}.chips2 .chip{flex:1;padding:0 8px}
 body.fire .chip.on,body.fire .next{background:var(--accent);color:#1B0F05}
 @media (prefers-reduced-motion:reduce){.bar-accent,.punch,.insight{animation:none}}
+
+body.mind{--bg1:#070D1C;--bg2:#13224A;--tx:#EAF2FF;--accent:#8FD3FF;--mut:rgba(234,242,255,.68);--line:rgba(234,242,255,.2);--chip:rgba(255,255,255,.08)}
+body.mind .chip.on,body.mind .next{background:var(--accent);color:#06142B}
+body.mind .listen.on{color:#06142B}
+body.mind .punch{font-weight:600;font-size:clamp(30px,8.4vw,42px);line-height:1.12;letter-spacing:-.02em}
+body.mind .by{color:var(--accent);font-weight:600;margin-top:20px}

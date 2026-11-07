@@ -63,8 +63,43 @@ const OSHO = [
   ['Resentment is a heater left on in an empty room.', SPIRIT, 'It warms no one and costs you everything. Switch it off.']
 ];
 
+// Real quotes from history (ancient and public-domain sources), each with a plain-language reading. Translations vary; paraphrases are labeled.
+const BRILLIANT = [
+  ['Men are disturbed not by things, but by the views which they take of them.', '\u2014 Epictetus', 'The event is neutral. Your interpretation is the one part you can edit.'],
+  ['There is nothing either good or bad, but thinking makes it so.', '\u2014 Shakespeare, Hamlet', 'Change the thought and you change what this moment is.'],
+  ['Confine yourself to the present.', '\u2014 Marcus Aurelius', 'Right now, this exact second, you are handling it. That is all life ever asks.'],
+  ['The soul becomes dyed with the color of its thoughts.', '\u2014 Marcus Aurelius', 'Feed your mind clear, strong thoughts and it takes on their color.'],
+  ['Waste no more time arguing what a good man should be. Be one.', '\u2014 Marcus Aurelius', 'Stop planning the better version of you. Act as him for the next ten minutes.'],
+  ['The best revenge is not to be like your enemy.', '\u2014 Marcus Aurelius', 'Staying composed is not weakness. It is the only move that actually wins.'],
+  ['The pain is not due to the thing itself, but to your estimate of it.', '\u2014 Marcus Aurelius', 'And you can revoke that estimate at any moment. Right now, if you choose.'],
+  ['First say to yourself what you would be; then do what you have to do.', '\u2014 Epictetus', 'Decide who you are first. The actions follow.'],
+  ['No man is free who is not master of himself.', '\u2014 Epictetus', 'Freedom is not doing what you feel. It is choosing what you do while you feel it.'],
+  ['While we are postponing, life speeds by.', '\u2014 Seneca', 'The thing you are waiting to feel ready for is available now.'],
+  ['It is not that we have a short time to live, but that we waste much of it.', '\u2014 Seneca', 'Time is not scarce. Attention is. Spend it on purpose.'],
+  ['Begin at once to live, and count each separate day as a separate life.', '\u2014 Seneca', 'Treat today as a complete life, not a rehearsal for one.'],
+  ['We suffer more often in imagination than in reality.', '\u2014 Seneca', 'Most of the pain is the movie in your head. Come back to the room.'],
+  ['The unexamined life is not worth living.', '\u2014 Socrates', 'Look at your own thoughts like a scientist. Curiosity beats self-judgment.'],
+  ['Character is destiny.', '\u2014 Heraclitus', 'Small repeated choices become who you are. Choose the next one well.'],
+  ['Everything flows, and nothing stays.', '\u2014 Heraclitus (paraphrased)', 'Including this mood. Nothing you are feeling is permanent.'],
+  ['Nothing can bring you peace but yourself.', '\u2014 Ralph Waldo Emerson', 'No event, person or achievement holds it. You do.'],
+  ['To be great is to be misunderstood.', '\u2014 Ralph Waldo Emerson', 'Being misread is not proof you are wrong. It is often the cost of being original.'],
+  ['Trust thyself: every heart vibrates to that iron string.', '\u2014 Ralph Waldo Emerson', 'Your own judgment is more reliable than you have been told.'],
+  ['He who has a why to live can bear almost any how.', '\u2014 Friedrich Nietzsche', 'Purpose turns hardship into effort with a meaning.'],
+  ['One must still have chaos in oneself to be able to give birth to a dancing star.', '\u2014 Friedrich Nietzsche', 'The mess inside you is raw material, not proof you are broken.'],
+  ['What does not kill me makes me stronger.', '\u2014 Friedrich Nietzsche', 'Every hard stretch you survived is stored as strength. Count them.'],
+  ['Anxiety is the dizziness of freedom.', '\u2014 S\u00F8ren Kierkegaard', 'That wobble means you have real choices. It signals room to move, not danger.'],
+  ['Our doubts are traitors, and make us lose the good we oft might win.', '\u2014 Shakespeare, Measure for Measure', 'Doubt is loudest right before the attempt. Attempt anyway.'],
+  ['All of humanity\u2019s problems stem from our inability to sit quietly in a room alone.', '\u2014 Blaise Pascal (paraphrased)', 'Practice sitting with yourself for five minutes. It is a quiet superpower.'],
+  ['Not to laugh at human actions, nor weep at them, but to understand them.', '\u2014 Baruch Spinoza (paraphrased)', 'Understanding is the calmest form of strength. Ask why before you react.'],
+  ['Knowing is not enough; we must apply. Willing is not enough; we must do.', '\u2014 Johann Wolfgang von Goethe', 'Insight without action is decoration. Do one small thing now.'],
+  ['Mastering others is strength; mastering yourself is true power.', '\u2014 Lao Tzu (paraphrased)', 'The real contest is the half second before you respond.'],
+  ['The supreme art of war is to subdue the enemy without fighting.', '\u2014 Sun Tzu', 'Win by staying unprovoked. The calmest person in the room holds the room.'],
+  ['It is not what you look at that matters, it is what you see.', '\u2014 Henry David Thoreau', 'Same scene, different mind, different life. Choose what you notice.']
+];
+
 const LINES = {
   Osho: OSHO,
+  Brilliant: BRILLIANT,
   Calm: [
     ['Nothing needs to be solved in this exact breath.'],
     ['You are allowed to put this down for a minute.'],
@@ -127,7 +162,7 @@ const LINES = {
     ['We suffer more often in imagination than in reality.', 'Seneca']
   ]
 };
-const MODES = ['Osho', 'Calm', 'Aware', 'Bright', 'Reframe'];
+const MODES = ['Osho', 'Brilliant', 'Calm', 'Aware', 'Bright', 'Reframe'];
 
 /* situations: three beats, each with two options */
 const SITUATIONS = {
@@ -196,8 +231,10 @@ function sky() {
 }
 let skyInfo = sky(); setInterval(() => { applyTheme(); }, 600000);
 function applyTheme() {
-  const fire = S.mode === 'Osho'; document.body.classList.toggle('fire', fire);
-  skyInfo = sky(); if (fire) { skyInfo = { night: true, accent: '#FF9A3C' }; const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = '#120A07'; }
+  const fire = S.mode === 'Osho', mind = S.mode === 'Brilliant'; document.body.classList.toggle('fire', fire); document.body.classList.toggle('mind', mind);
+  skyInfo = sky(); const m = document.querySelector('meta[name=theme-color]');
+  if (fire) { skyInfo = { night: true, accent: '#FF9A3C' }; if (m) m.content = '#120A07'; }
+  if (mind) { skyInfo = { night: true, accent: '#8FD3FF' }; if (m) m.content = '#070D1C'; }
 }
 
 /* soft drifting light */
@@ -239,7 +276,8 @@ function utter(text, done, tk) {
 }
 function speakLine(line, done) {
   if (!canSpeak || !line) return; speechSynthesis.cancel(); const tk = ++TTS.token; TTS.speaking = true; syncAudio();
-  const parts = [line[0], line[2]].filter(Boolean);
+  const who = line[1] && line[1].charAt(0) === '\u2014' ? line[1].slice(2).replace(/\s*\(paraphrased\)/, '') : null;
+  const parts = [line[0], who, line[2]].filter(Boolean);
   const run = i => { if (tk !== TTS.token) return; if (i >= parts.length) { TTS.speaking = false; syncAudio(); if (done) done(); return; } utter(parts[i], () => setTimeout(() => run(i + 1), i === 0 ? 650 : 0), tk); };
   run(0);
 }
@@ -320,7 +358,7 @@ function sheet(children) {
 function showFavs() {
   const body = [h('h2', null, 'Saved')];
   if (!S.fav.length) body.push(h('p', { style: 'color:var(--mut)' }, 'Tap the heart on any line to keep it here.'));
-  S.fav.forEach(f => body.push(h('div', { class: 'item' }, h('span', null, f[0] + (f[2] ? ' ' + f[2] : '') + (f[1] && !f[2] ? ' \u2014 ' + f[1] : '')), h('button', { onclick: e => { S.fav = S.fav.filter(x => x[0] !== f[0]); save(); e.target.closest('.item').remove(); syncHeart(); } }, 'Remove'))));
+  S.fav.forEach(f => body.push(h('div', { class: 'item' }, h('span', null, f[0] + (f[2] ? ' ' + f[2] : '') + (f[1] ? (f[1].charAt(0) === '\u2014' ? ' ' + f[1] : (f[2] ? '' : ' \u2014 ' + f[1])) : '')), h('button', { onclick: e => { S.fav = S.fav.filter(x => x[0] !== f[0]); save(); e.target.closest('.item').remove(); syncHeart(); } }, 'Remove'))));
   sheet(body);
 }
 

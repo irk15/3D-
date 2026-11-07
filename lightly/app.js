@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v10';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '10') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v13';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '13') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -335,7 +335,7 @@ function speakDevice(line, done) {
 }
 
 /* ---------- studio voices: real audio files, keep playing when minimised or locked ---------- */
-const STUDIO = [['nicole', 'Aria · soft'], ['george', 'George · deep']];
+const STUDIO = [['nicole', 'Aria', 'Soft, calm woman'], ['heart', 'Heart', 'Warm, kind woman'], ['emma', 'Emma', 'British, gentle woman'], ['george', 'George', 'Deep, steady British man'], ['michael', 'Michael', 'Warm, grounded man'], ['fable', 'Fable', 'Storyteller, British man']];
 const lh = t => { let x = 5381; for (let i = 0; i < t.length; i++) x = ((x * 33) ^ t.charCodeAt(i)) >>> 0; return x.toString(16); };
 const AUD = { el: null, onEnd: null };
 function audEl() {
@@ -360,7 +360,7 @@ function speakStudio(line, done) {
   const fallback = () => { if (tk === TTS.token) { AUD.onEnd = null; speakDevice(line, done); } };
   AUD.onEnd = () => { if (tk !== TTS.token) return; TTS.speaking = false; syncAudio(); if (!TTS.session && AMB.byListen) { stopAmbient(); AMB.byListen = false; } if (done) done(); };
   a.onerror = fallback; a.src = 'audio/' + v + '/' + lh(line[0]) + '.mp3'; TTS.speaking = true; syncAudio();
-  const p = a.play(); if (p && p.catch) p.catch(fallback);
+  const p = a.play(); if (p && p.catch) p.catch(() => setTimeout(() => { if (tk === TTS.token) { const q = a.play(); if (q && q.catch) q.catch(fallback); } }, 500));
   if ('mediaSession' in navigator) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: line[0], artist: 'Lightly', album: S.mode, artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] }); } catch (e) {} }
 }
 function speakLine(line, done) {
@@ -378,25 +378,26 @@ function noiseBuf(ctx, brown) {
   return b;
 }
 function startAmbient(kind) {
-  stopAmbient(true); AMB.byListen = false; if (!kind || kind === 'Off') return; const ctx = ambCtx(); if (!ctx) return;
-  const out = ctx.createGain(); out.gain.value = 0; out.connect(ctx.destination); const srcs = [];
-  const loop = brown => { const n = ctx.createBufferSource(); n.buffer = noiseBuf(ctx, brown); n.loop = true; srcs.push(n); return n; };
-  const lfo = (hz, depth, target) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = hz; g.gain.value = depth; o.connect(g); g.connect(target); srcs.push(o); o.start(); };
-  let level = .3;
-  if (kind === 'Rain') { const n = loop(false), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900; lp.type = 'lowpass'; lp.frequency.value = 7000; n.connect(hp); hp.connect(lp); lp.connect(out); n.start(); level = .2; }
-  else if (kind === 'Ocean') { const n = loop(true), lp = ctx.createBiquadFilter(), sw = ctx.createGain(); lp.type = 'lowpass'; lp.frequency.value = 650; sw.gain.value = .55; n.connect(lp); lp.connect(sw); sw.connect(out); lfo(.1, .4, sw.gain); n.start(); level = .55; }
-  else { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.connect(out); [110, 164.81, 220.5, 277.2].forEach((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; o.detune.value = (i - 1.5) * 4; g.gain.value = .12 / (1 + i * .4); o.connect(g); g.connect(lp); lfo(.05 + i * .02, .04, g.gain); srcs.push(o); o.start(); }); level = .5; }
-  out.gain.linearRampToValueAtTime(level, ctx.currentTime + 2.5); AMB.nodes = { out, srcs };
+  stopAmbient(true); AMB.byListen = false; if (!kind || kind === 'Off') return;
+  const a = new Audio('audio/ambient/' + kind.toLowerCase() + '.wav'); a.loop = true; a.setAttribute('playsinline', ''); a.volume = 0;
+  AMB.nodes = { aud: a }; const p = a.play(); if (p && p.catch) p.catch(() => {});
+  let v = 0; const iv = setInterval(() => { v = Math.min(1, v + .1); try { a.volume = v; } catch (e) {} if (v >= 1 || AMB.nodes?.aud !== a) clearInterval(iv); }, 200);
+}
+const KEEP = { el: null };
+function keepAlive(on) {
+  if (on) { if (!KEEP.el) { const a = KEEP.el = new Audio('audio/ambient/keep.wav'); a.loop = true; a.setAttribute('playsinline', ''); } const p = KEEP.el.play(); if (p && p.catch) p.catch(() => {}); }
+  else if (KEEP.el) KEEP.el.pause();
 }
 function stopAmbient(now) {
-  const n = AMB.nodes; if (!n || !AMB.ctx) return; AMB.nodes = null; const c = AMB.ctx;
-  try { n.out.gain.cancelScheduledValues(c.currentTime); n.out.gain.setValueAtTime(n.out.gain.value, c.currentTime); n.out.gain.linearRampToValueAtTime(0, c.currentTime + (now ? .05 : 1.6)); } catch (e) {}
-  setTimeout(() => n.srcs.forEach(x => { try { x.stop(); } catch (e) {} }), now ? 120 : 1800);
+  const n = AMB.nodes; if (!n) return; AMB.nodes = null; const a = n.aud;
+  if (now) { a.pause(); return; }
+  let v = a.volume; const iv = setInterval(() => { v = Math.max(0, v - .12); try { a.volume = v; } catch (e) {} if (v <= 0) { clearInterval(iv); a.pause(); } }, 150);
+  setTimeout(() => { clearInterval(iv); a.pause(); }, 2000);
 }
 
 function stopAudio(keepSession) {
   TTS.token++; if (canSpeak) speechSynthesis.cancel(); if (AUD.el) { AUD.onEnd = null; AUD.el.pause(); } TTS.speaking = false;
-  if (!keepSession || !TTS.session) { TTS.session = false; releaseLock(); stopAmbient(); }
+  if (!keepSession || !TTS.session) { TTS.session = false; releaseLock(); keepAlive(false); stopAmbient(); }
   syncAudio();
 }
 function syncAudio() {
@@ -416,9 +417,21 @@ function sessionStep(l) {
 }
 function toggleSession() {
   if (TTS.session) { stopAudio(); return; }
-  TTS.session = true; takeLock(); syncAudio(); if (studioOn()) audEl(); sessionStep(cur);
+  TTS.session = true; takeLock(); keepAlive(true); syncAudio(); if (studioOn()) audEl(); sessionStep(cur);
 }
 const PRESETS = { Soft: { rate: .78, pitch: 1, vol: .9 }, Deep: { rate: .8, pitch: .78, vol: 1 }, Hush: { rate: .72, pitch: .9, vol: .55 }, Natural: { rate: .92, pitch: 1, vol: 1 } };
+function studioList(preview) {
+  const w = h('div', { class: 'vgrid' });
+  const draw = () => {
+    w.innerHTML = '';
+    STUDIO.concat([['device', 'Phone voice', 'Your iPhone’s own voice']]).forEach(v => {
+      const on = (S.studio || 'nicole') === v[0];
+      w.append(h('button', { class: 'vcard' + (on ? ' on' : ''), onclick: () => { S.studio = v[0]; save(); stopAudio(); TTS.session = false; draw(); preview(); } },
+        h('span', { class: 'vav' }, v[1].charAt(0)), h('span', { class: 'grow' }, h('b', null, v[1]), h('small', null, v[2])), h('span', { class: 'vchk' }, on ? '✓' : '')));
+    });
+  };
+  draw(); return w;
+}
 function voiceSheet() {
   const row = (keys, cur, pick) => { const w = h('div', { class: 'chips2' }); keys.forEach(k => w.append(h('button', { class: 'chip' + (cur() === k ? ' on' : ''), onclick: e => { pick(k); [...w.children].forEach(c => c.classList.toggle('on', c === e.currentTarget)); } }, k))); return w; };
   const preview = () => { TTS.session = false; speakLine(studioOn() ? LINES.Osho[0] : ['Reaction is a puppet string.', null, 'Whoever pulls it owns your mood.']); };
@@ -434,7 +447,7 @@ function voiceSheet() {
   const bg = sheet([h('h2', null, 'Settings'), installBlock(), updateBlock(), autoRow(),
     h('h3', { style: 'font:600 15px var(--sans);margin:4px 0 4px' }, 'Studio voice'),
     h('p', { style: 'margin:0 0 8px;color:var(--mut);font-size:14px' }, 'Real recordings. They keep playing when the app is minimised or the screen is locked.'),
-    row(STUDIO.map(x => x[1]).concat(['Phone voice']), () => S.studio === 'device' ? 'Phone voice' : (STUDIO.find(x => x[0] === S.studio) || STUDIO[0])[1], k => { const f = STUDIO.find(x => x[1] === k); S.studio = f ? f[0] : 'device'; save(); stopAudio(); preview(); }),
+    studioList(preview),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Phone voice style'),
     row(Object.keys(PRESETS), () => S.preset, k => { S.preset = k; Object.assign(S, PRESETS[k]); save(); preview(); }),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Background sound'),

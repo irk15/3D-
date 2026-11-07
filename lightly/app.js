@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v19';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '18') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v20';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '20') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -84,7 +84,17 @@ const OSHO = [
   ["Let go the way a river lets go of rain: completely, without drama.", SPIRIT, "Holding on was the only thing making it heavy."],
   ["You cannot lose what you truly are.", SPIRIT, "Everything else was always on loan."],
   ["Worry is meditation on what you do not want.", SPIRIT, "Turn the same attention toward what you do want, or toward nothing at all."],
-  ["The wave does not struggle to become the ocean. It already is.", SPIRIT, "You are not becoming whole. You are remembering that you are."]
+  ["The wave does not struggle to become the ocean. It already is.", SPIRIT, "You are not becoming whole. You are remembering that you are."],
+  ["Silence is not empty. It is where the answer was waiting all along.", SPIRIT, "Stop adding noise to the question. The reply arrives in the gap."],
+  ["Your problem is not the situation. It is the story you keep retelling.", SPIRIT, "Drop the story and look at what is actually here. It is usually small."],
+  ["Fear is just excitement that forgot to breathe.", SPIRIT, "Breathe out slowly. The same energy turns into courage."],
+  ["Do not fight the dark. Walk in with a lamp.", SPIRIT, "Awareness is the lamp. One small flame is enough to change the whole room."],
+  ["The one who needs your approval has become your master.", SPIRIT, "Take your life back. Their opinion is their weather, not your climate."],
+  ["Be so awake that nothing can hypnotize you, not even your own mood.", SPIRIT, "Watch the mood rise and fall like a wave. The watcher stays dry."],
+  ["Drop the burden. You were only ever carrying it in your mind.", SPIRIT, "Put down tomorrow. Put down yesterday. Today weighs almost nothing."],
+  ["A flower does not compete with the flower next to it. It just blooms.", SPIRIT, "Comparison is the thief of bloom. Open at your own speed."],
+  ["Real strength is being soft and unshakeable at the same time.", SPIRIT, "Water wears down stone because it never fights it."],
+  ["You are not late. You are not early. You are exactly where your next step begins.", SPIRIT, "Take it. The path appears as you walk."]
 ];
 
 // Real quotes from history (ancient and public-domain sources), each with a plain-language reading. Translations vary; paraphrases are labeled.
@@ -132,7 +142,15 @@ const BRILLIANT = [
   ["Nothing in life is to be feared, it is only to be understood.", "\u2014 Marie Curie", "Fear shrinks the moment you can name it and study it."],
   ["We are troubled less by real problems than by our imagined anxieties about them.", "\u2014 Epictetus (paraphrased)", "Half the stress is the story, not the situation."],
   ["Life can only be understood backwards; but it must be lived forwards.", "\u2014 S\u00f8ren Kierkegaard", "You will never have the full picture in advance. Step anyway."],
-  ["It is not death that a man should fear, but he should fear never beginning to live.", "\u2014 Marcus Aurelius", "Fear of an ending is mostly regret about a beginning you postponed."]
+  ["It is not death that a man should fear, but he should fear never beginning to live.", "\u2014 Marcus Aurelius", "Fear of an ending is mostly regret about a beginning you postponed."],
+  ["Anger is a brief madness.", "— Horace", "Wait before you act. Ten seconds later you will be sane again."],
+  ["The only thing we have to fear is fear itself.", "— Franklin D. Roosevelt", "Fear grows when you feed it. Look at it directly and it shrinks to its real size."],
+  ["Courage was not the absence of fear, but the triumph over it.", "— Nelson Mandela", "You do not need to feel fearless. You only need to move anyway."],
+  ["All that we are is the result of what we have thought.", "— The Dhammapada", "Change the thinking, and the whole person follows."],
+  ["Fall seven times, stand up eight.", "— Japanese proverb", "Falling is a given. Getting up is the only part that counts."],
+  ["Knowing others is intelligence; knowing yourself is true wisdom.", "— Lao Tzu (paraphrased)", "The deepest skill is understanding what happens inside you."],
+  ["No man ever steps in the same river twice.", "— Heraclitus (paraphrased)", "Everything is moving, including this feeling. It will not stay as it is."],
+  ["This too shall pass.", "— Persian proverb", "Good or bad, nothing stays. Hold the good lightly and wait out the hard."]
 ];
 
 const LINES = {
@@ -171,7 +189,19 @@ const LINES = {
   ["You are not behind in your own life."],
   ["Pause. Drop your shoulders. Start again from here."],
   ["The storm in your head is not a forecast."],
-  ["Let this minute be unproductive and perfectly fine."]
+  ["Let this minute be unproductive and perfectly fine."],
+    ["Let this moment be as it is. You don’t have to fix it."],
+    ["Breathe in for four. Breathe out for six. Repeat twice."],
+    ["The pause is part of the music."],
+    ["Nothing here is an emergency."],
+    ["Soften the space behind your eyes."],
+    ["You are safe in this breath."],
+    ["Rest is productive. Rest is allowed."],
+    ["Let your thoughts be clouds, passing slowly over you."],
+    ["Unclench your hands. Unclench your mind."],
+    ["There is nowhere you need to be but here."],
+    ["Stillness is not doing nothing. It is gathering yourself."],
+    ["Let the day end gently, whatever it held."]
   ],
   Aware: [
     ['Notice the thought. You are not the thought.'],
@@ -207,7 +237,19 @@ const LINES = {
   ["Comparison is a thought, not a measurement."],
   ["A strong feeling is not proof of a true story."],
   ["Notice what you are avoiding. It usually points at something that matters."],
-  ["Say three honest words about how you feel right now. Quietly."]
+  ["Say three honest words about how you feel right now. Quietly."],
+    ["Where are your feet right now? Feel the ground."],
+    ["Name three things you can see. You are here."],
+    ["What am I actually feeling, underneath the story?"],
+    ["Notice your breath without changing it."],
+    ["Not every thought deserves your belief."],
+    ["You are the one noticing. That is already freedom."],
+    ["This is a thought. It is not a command."],
+    ["What is true in this moment, not in the imagined future?"],
+    ["Feel your body. It lives in the present even when your mind does not."],
+    ["You can feel it and not become it."],
+    ["Pause. Choose. That small gap is your power."],
+    ["How much of this is happening now, and how much is replay?"]
   ],
   Bright: [
     ['Something small today is going to go well. Look for it.'],
@@ -241,7 +283,19 @@ const LINES = {
   ["Joy is not a prize at the end. It is a way to walk."],
   ["You are doing better than the story in your head says."],
   ["Let something delight you today, however small."],
-  ["Brightness is a practice. You just practiced."]
+  ["Brightness is a practice. You just practiced."],
+    ["Good things are quietly lining up for you."],
+    ["You have more going for you than you remember."],
+    ["Today you get to begin again, with everything you learned."],
+    ["Small steps still count as moving forward."],
+    ["There is something to look forward to, even today."],
+    ["You are growing in ways you cannot see yet."],
+    ["Be the person who finds the good first."],
+    ["A calm mind attracts good days."],
+    ["You are doing better than your worst thoughts say."],
+    ["Hope is a practical skill. Practice it."],
+    ["Joy is allowed even when life is unfinished."],
+    ["The best chapter is not behind you."]
   ],
   Reframe: [
     ['That person’s behavior is about their day more than about you.'],
@@ -277,7 +331,19 @@ const LINES = {
   ["A setback is a plot twist, not the ending."],
   ["You can be disappointed and still be okay."],
   ["Other people are busy worrying about themselves, not judging you."],
-  ["The goal today is not perfect. It is a little better than yesterday."]
+  ["The goal today is not perfect. It is a little better than yesterday."],
+    ["Challenge is just a strength that has not been built yet."],
+    ["This is happening for your growth, not to your detriment."],
+    ["What would the calmest, wisest version of me do here?"],
+    ["You do not have to win this moment. You only have to meet it well."],
+    ["Their words say more about them than about you."],
+    ["Not getting what you wanted can be a hidden yes to something better."],
+    ["Worry is imagination used against yourself. Aim it somewhere kind instead."],
+    ["A mistake is a lesson in a rough disguise."],
+    ["You are allowed to respond slowly and well."],
+    ["The hard part is temporary. What you learn from it is not."],
+    ["Frustration means you care. Point it at a solution."],
+    ["What looks like a wall is often a door that opens outward."]
   ]
 };
 const MODES = ['Osho', 'Brilliant', 'Calm', 'Aware', 'Bright', 'Reframe'];
@@ -335,6 +401,7 @@ const FEELS = {
 };
 const poolOf = () => { if (!S.feel || !FEELS[S.feel]) return LINES[S.mode]; const seen = new Set(), out = []; FEELS[S.feel].m.forEach(m => LINES[m].forEach(l => { if (!seen.has(l[0])) { seen.add(l[0]); out.push(l); } })); return out; };
 function nextLine(mode) {
+  if (S.bagV !== 20) { S.bag = {}; S.bagV = 20; }
   const all = poolOf(); mode = S.feel && FEELS[S.feel] ? 'f:' + S.feel : mode; let bag = (S.bag[mode] || []).filter(i => i < all.length);
   if (!bag.length) { bag = all.map((_, i) => i); for (let i = bag.length - 1; i > 0; i--) { const j = rand(i + 1);[bag[i], bag[j]] = [bag[j], bag[i]]; } if (S.last && bag[bag.length - 1] === S.lastIdx && bag.length > 1) bag.unshift(bag.pop()); }
   const i = bag.pop(); S.bag[mode] = bag; S.lastIdx = i; S.last = mode; S.pos = all.length - bag.length; S.posN = all.length; save(); return all[i];

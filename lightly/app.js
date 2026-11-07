@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v15';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '15') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v16';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '16') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -377,9 +377,25 @@ function noiseBuf(ctx, brown) {
   for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; if (brown) { last = (last + .02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w; }
   return b;
 }
+const NATURE = ['Rain', 'Ocean', 'Wind', 'Stream', 'Fire', 'Night', 'Storm', 'Drone', 'Bowls', 'Hum'];
+const FOCUS = [['Brown noise', 'brown', 'Deep, even noise. Many people find it masks distraction and helps them settle into work.'], ['Pink noise', 'pink', 'Softer, balanced noise. Steady and easy to listen to for hours.'], ['Focus beats', 'beta', 'Binaural beat at 16 Hz, aimed at alert concentration. Use headphones.'], ['Calm beats', 'alpha', 'Binaural beat at 10 Hz, aimed at relaxed focus. Use headphones.'], ['Deep beats', 'theta', 'Binaural beat at 6 Hz, aimed at deep calm. Use headphones.'], ['Zone 40Hz', 'gamma', 'A gentle 40 Hz pulse over soft noise. Works on speakers.']];
+const ambFile = k => { const f = FOCUS.find(x => x[0] === k); return f ? f[1] : k.toLowerCase(); };
+const ambSrc = k => 'audio/ambient/' + ambFile(k) + '-' + (S.ambVol || 2) + '.wav';
+function ambientBlock() {
+  const w = h('div'); const VOL = [['Quiet', 1], ['Medium', 2], ['Loud', 3]];
+  const chip = (k) => h('button', { class: 'chip' + ((S.ambient || 'Off') === k ? ' on' : ''), onclick: () => { S.ambient = k; save(); if (k === 'Off') stopAmbient(); else startAmbient(k); draw(); } }, k);
+  const draw = () => {
+    w.innerHTML = '';
+    w.append(h('div', { class: 'chips2' }, chip('Off')), h('div', { class: 'sub' }, 'Nature'), h('div', { class: 'chips2' }, NATURE.map(chip)),
+      h('div', { class: 'sub' }, 'Focus and concentration'), h('div', { class: 'chips2' }, FOCUS.map(f => chip(f[0]))),
+      h('p', { class: 'sm' }, (FOCUS.find(f => f[0] === S.ambient) || [0, 0, 'Brown and pink noise are the most reliable. Binaural beats need headphones, and research on them is mixed, so treat them as a helper rather than a promise.'])[2]),
+      h('div', { class: 'sub' }, 'Sound volume'), h('div', { class: 'seg' }, VOL.map(v => h('button', { class: (S.ambVol || 2) === v[1] ? 'on' : '', onclick: () => { S.ambVol = v[1]; save(); if (AMB.nodes && S.ambient && S.ambient !== 'Off') { const a = AMB.nodes.aud, t = a.currentTime; a.src = ambSrc(S.ambient); try { a.currentTime = t; } catch (e) {} a.play().catch(() => {}); } draw(); } }, v[0]))));
+  };
+  draw(); return w;
+}
 function startAmbient(kind) {
   stopAmbient(true); AMB.byListen = false; if (!kind || kind === 'Off') return;
-  const a = new Audio('audio/ambient/' + kind.toLowerCase() + '.wav'); a.loop = true; a.setAttribute('playsinline', ''); a.volume = 0;
+  const a = new Audio(ambSrc(kind)); a.loop = true; a.setAttribute('playsinline', ''); a.volume = 0;
   AMB.nodes = { aud: a }; const p = a.play(); if (p && p.catch) p.catch(() => {});
   let v = 0; const iv = setInterval(() => { v = Math.min(1, v + .1); try { a.volume = v; } catch (e) {} if (v >= 1 || AMB.nodes?.aud !== a) clearInterval(iv); }, 200);
 }
@@ -451,7 +467,7 @@ function voiceSheet() {
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Phone voice style'),
     row(Object.keys(PRESETS), () => S.preset, k => { S.preset = k; Object.assign(S, PRESETS[k]); save(); preview(); }),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Background sound'),
-    row(['Off', 'Rain', 'Ocean', 'Wind', 'Stream', 'Fire', 'Night', 'Storm', 'Drone', 'Bowls', 'Hum'], () => S.ambient || 'Off', k => { S.ambient = k; save(); if (k === 'Off') stopAmbient(); else startAmbient(k); }),
+    ambientBlock(),
     h('h3', { style: 'font:600 15px var(--sans);margin:12px 0 8px' }, 'Voice'), list, guide]);
   const obs = new MutationObserver(() => { if (!document.body.contains(bg)) { stopAudio(); obs.disconnect(); } }); obs.observe(document.body, { childList: true });
 }

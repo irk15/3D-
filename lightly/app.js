@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v25';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '25') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v26';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '26') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -800,7 +800,7 @@ function feelRow() {
   return w;
 }
 function checkin() {
-  if (!S.coach || document.querySelector('.sheet-bg')) return;
+  if (!S.coach || !S.intro26 || document.querySelector('.sheet-bg')) return;
   if (S.feelAt && Date.now() - S.feelAt < 6 * 3600e3) return;
   setTimeout(() => {
     if (document.querySelector('.sheet-bg')) return;
@@ -838,12 +838,12 @@ function render() {
     feelRow(),
     stage,
     h('div', { class: 'dock' },
-      h('button', { class: 'help', onclick: openSituations }, 'Something’s bothering me'),
+      h('button', { class: 'resetbtn', onclick: startReset }, h('i', { class: 'rbdot' }), h('span', null, h('b', null, 'Reset your mind'), h('small', null, 'Head loud? 60 seconds'))),
       h('div', { class: 'bar glass' }, heart, h('button', { class: 'icon', 'aria-label': 'Share as an image', html: SHARE, onclick: shareCard }),
         h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }),
         h('button', { class: 'next', onclick: change, html: '<span>Next</span>' + ARROW }))));
   show(nextLine(S.mode), false);
-  coach(); checkin();
+  coach(); introReset(); checkin();
 }
 function show(line, animate = true) {
   const q = $('#q'), by = $('#by'); cur = line; const cn = $('#count'); if (cn && S.pos) cn.textContent = S.pos + ' / ' + (S.posN || LINES[S.mode].length);

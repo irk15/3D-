@@ -29,28 +29,32 @@ function resetLine(feel) {
   return pool[rand(pool.length)];
 }
 
-function startReset() {
-  if (RS.box) return;
-  stopAudio();
+function rOpen() {
+  if (RS.box) return false;
   RS.st = null; RS.move = null; RS.line = null;
   RS.bg = h('div', { class: 'flow-bg' }); RS.box = h('div', { class: 'flow rs', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Reset' });
   document.body.append(RS.bg, RS.box);
   try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(l => { RS.lock = l; }).catch(() => {}); } catch (e) {}
-  rName();
+  return true;
 }
-function closeReset(apply) {
-  rClear(); stopAudio();
+function startReset() {
+  if (RS.box) return;
+  stopAudio(); rOpen(); rName();
+}
+function closeReset(apply, keepAudio) {
+  rClear(); if (!keepAudio) stopAudio();
   try { if (RS.lock) RS.lock.release(); } catch (e) {} RS.lock = null;
   if (RS.box) RS.box.remove(); if (RS.bg) RS.bg.remove(); RS.box = RS.bg = null;
   if (apply && RS.st) { S.feel = RS.st.feel; S.feelAt = Date.now(); save(); render(); }
 }
-function rFrame(step, body, foot) {
+function rFrame(step, body, foot, total) {
+  total = total || 5;
   rClear();
   RS.box.innerHTML = '';
   RS.box.append(
-    h('div', { class: 'top' }, h('div', { class: 'rsstep' }, step ? 'Step ' + step + ' of 5' : ''), h('button', { class: 'icon', 'aria-label': 'Close', html: XI, onclick: () => closeReset(false) })),
+    h('div', { class: 'top' }, h('div', { class: 'rsstep' }, step ? 'Step ' + step + ' of ' + total : ''), h('button', { class: 'icon', 'aria-label': 'Close', html: XI, onclick: () => closeReset(false) })),
     h('div', { class: 'stage rsstage' }, body),
-    h('div', { class: 'dock' }, step ? h('div', { class: 'dots' }, [1, 2, 3, 4, 5].map(j => h('i', { class: j === step ? 'on' : '' }))) : null, foot));
+    h('div', { class: 'dock' }, step ? h('div', { class: 'dots' }, Array.from({ length: total }, (_, k) => k + 1).map(j => h('i', { class: j === step ? 'on' : '' }))) : null, foot));
 }
 
 /* 1. Name it: labelling a feeling lowers its intensity */
@@ -133,6 +137,7 @@ function rTimesUp() {
     [h('button', { class: 'next', style: 'flex:none;width:100%', onclick: () => rTimer(300) }, 'Keep going, 5 more minutes'), h('button', { class: 'link', onclick: rDone }, 'That is enough')]);
 }
 function rDone() {
+  mark('reset');
   rFrame(0, [h('div', { class: 'rsorbwrap' }, h('div', { class: 'rsorb done' })), h('div', { class: 'rstitle' }, 'Lighter.'), h('p', { class: 'rssub' }, 'You did not solve everything. You moved, and that is how it starts.')],
     [h('button', { class: 'next', style: 'flex:none;width:100%', onclick: () => closeReset(true) }, 'Back to my lines'), h('button', { class: 'link', onclick: () => { closeReset(false); startReset(); } }, 'Reset again')]);
 }

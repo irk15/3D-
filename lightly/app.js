@@ -2,8 +2,8 @@
 /* Lightly — short lines that calm you, wake you up, and lighten how a situation looks.
    Everything stays on your phone. */
 
-const VERSION = 'v27';
-(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '27') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
+const VERSION = 'v28';
+(function () { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--v').trim(); if (v !== '28') { const l = document.querySelector('link[href^="style.css"]'); if (l && !sessionStorage.getItem('cssfix')) { sessionStorage.setItem('cssfix', '1'); l.href = 'style.css?v=' + Date.now(); } } } catch (e) {} })();
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -833,12 +833,15 @@ function render() {
     if (!mv && Math.abs(dx) < 10 && Math.abs(dy) < 10) { const n = Date.now(); if (n - lastTap < 320) { lastTap = 0; if (cur && !isFav(cur)) toggleFav(); burst(t.clientX, t.clientY); } else lastTap = n; }
   });
   app.append(
-    h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('div', { style: 'display:flex' }, h('button', { class: 'icon', 'aria-label': 'Settings', html: SLIDERS, onclick: voiceSheet }), h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs }))),
+    h('div', { class: 'top' }, h('div', { class: 'brand' }, 'Lightly'), h('div', { style: 'display:flex' }, h('button', { class: 'icon', 'aria-label': 'Toolkit', html: GRID, onclick: openToolkit }), h('button', { class: 'icon', 'aria-label': 'Settings', html: SLIDERS, onclick: voiceSheet }), h('button', { class: 'icon', 'aria-label': 'Saved lines', html: LIST, onclick: showFavs }))),
     h('div', { class: 'moodrow' }, pill, h('span', { class: 'count', id: 'count' })),
     feelRow(),
     stage,
     h('div', { class: 'dock' },
-      h('button', { class: 'resetbtn', onclick: startReset }, h('i', { class: 'rbdot' }), h('span', null, h('b', null, 'Reset your mind'), h('small', null, 'Head loud? 60 seconds'))),
+      h('div', { class: 'rrow' }, hourNow() >= 21 || hourNow() < 4
+        ? h('button', { class: 'resetbtn', onclick: startWind }, h('i', { class: 'rbdot' }), h('span', null, h('b', null, 'Wind down'), h('small', null, 'Clear your head, then sleep')))
+        : h('button', { class: 'resetbtn', onclick: startReset }, h('i', { class: 'rbdot' }), h('span', null, h('b', null, 'Reset your mind'), h('small', null, 'Head loud? 60 seconds'))),
+      h('button', { class: 'sosbtn', 'aria-label': 'SOS, panic help', onclick: startSOS }, 'SOS')),
       h('div', { class: 'bar glass' }, heart, h('button', { class: 'icon', 'aria-label': 'Share as an image', html: SHARE, onclick: shareCard }),
         h('button', { class: 'listen', id: 'listen', 'aria-label': 'Listen to this line', onclick: toggleListen, html: PLAY + '<span>Listen</span>' }),
         h('button', { class: 'next', onclick: change, html: '<span>Next</span>' + ARROW }))));
@@ -907,3 +910,4 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) location.reload(); had = true; });
 }
 render();
+if (typeof deepLink === 'function') deepLink();

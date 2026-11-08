@@ -1,5 +1,5 @@
-const C="lightly-v27";
-const F=["./","./index.html","./style.css","./app.js","./reset.js","./manifest.json","./icon-192.png","./icon-512.png"];
+const C="lightly-v28";
+const F=["./","./index.html","./style.css","./app.js","./reset.js","./toolkit.js","./manifest.json","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(u=>fetch(new Request(u,{cache:"reload"})).then(r=>c.put(u,r))))));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});
 self.addEventListener("fetch",e=>{if(e.request.method!=="GET"||e.request.headers.has("range")||e.request.url.includes("/audio/"))return;e.respondWith(fetch(e.request,{cache:"no-cache"}).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request)))});

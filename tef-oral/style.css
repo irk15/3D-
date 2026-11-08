@@ -152,6 +152,10 @@ h1,h2,h3,p{margin:0}
 #cap-fr[data-len="l"]{font-size:calc(25px*var(--cap))}
 #cap-fr[data-len="xl"]{font-size:calc(21.5px*var(--cap));line-height:1.32}
 [data-view="listen"] .cap:not(.peek) .fr{filter:blur(10px);user-select:none}
+.cap{--hl:var(--exfill)}.cap[data-who="ca"]{--hl:var(--youfill)}
+.cap.kar .w{opacity:.42;transition:opacity .12s}
+.cap.kar .w.done{opacity:1}
+.cap.kar .w.now{opacity:1;transition:none;color:var(--on-fill);background:var(--hl);border-radius:7px;padding:0 .12em;margin:0 -.12em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 .cap.swap .fr,.cap.swap .who{animation:sub .28s var(--ease)}
 @keyframes sub{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .enw{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease),margin .3s var(--ease)}

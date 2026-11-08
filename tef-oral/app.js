@@ -501,7 +501,9 @@ function setIdx(i, o = {}) {
   const L = P.t.lines[i], cap = $p('#cap');
   cap.dataset.who = L.s;
   $p('#cap-who').textContent = L.s === 'ex' ? exName(P.t) : 'Vous';
-  $p('#cap-fr').textContent = L.fr;
+  const fe = $p('#cap-fr'); fe.replaceChildren(); P.wch = []; P.wi = -2; let ci = 0, wk = 0;
+  L.fr.split(/(\s+)/).forEach(tk => { if (!tk) return; if (/^\s+$/.test(tk)) fe.append(tk); else { const w = h('span', { class: 'w', 'data-k': wk++ }, tk); fe.append(w); P.wch.push(ci); } ci += tk.length; });
+  cap.classList.remove('kar');
   $p('#cap-fr').dataset.len = L.fr.length > 150 ? 'xl' : L.fr.length > 95 ? 'l' : 's';
   $p('#cap-en').textContent = L.en || '—';
   const tip = $p('#cap-tip'); tip.replaceChildren();
@@ -511,10 +513,23 @@ function setIdx(i, o = {}) {
   $p('#c-prev').classList.add('fr');
   $p('#c-next').textContent = i < n - 1 ? P.t.lines[i + 1].fr : '';
   $p('#c-next').classList.add('fr');
-  updateHint(); updateScoreState(); updateHead(); refreshStars();
+  updateHint(); updateScoreState(); updateHead(); refreshStars(); updateWords();
   document.querySelectorAll('#list .msg').forEach(m => { const on = +m.dataset.i === i; m.classList.toggle('act', on); if (on && changed && P.mode === 'list' && o.scroll !== false) m.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }); });
   refreshRev();
   if (!o.silent && (P.playing || P.waiting)) markHeard(P.t, i);
+}
+function setWord(k) {
+  if (k === P.wi) return; P.wi = k;
+  const cap = $p('#cap'); if (!cap) return;
+  cap.classList.toggle('kar', k >= 0);
+  cap.querySelectorAll('#cap-fr .w').forEach((w, j) => { w.classList.toggle('done', j < k); w.classList.toggle('now', j === k); });
+}
+function updateWords() {
+  if (!P || P.src !== 'audio' || !P.audio || P.waiting) return;
+  const ws = P.t.wst && P.t.wst[P.idx]; if (!ws) return;
+  const t = P.audio.currentTime + P.off - (P.starts[P.idx] || 0);
+  let k = -1; for (let j = 0; j < ws.length; j++) if (ws[j] <= t + .04) k = j; else break;
+  setWord(k);
 }
 function updateHint() {
   const v = $p('#pl').dataset.view, cap = $p('#cap'), hb = $p('#cap-hint');
@@ -642,7 +657,7 @@ function tickOnce() {
   const end = lineEnd(P.idx);
   if (P.modelPlay === P.idx && t >= end - .05) { a.pause(); a.currentTime = lineStart(P.idx); P.modelPlay = null; enterWaiting(P.idx, { keep: true }); return; }
   if (P.loop && P.modelPlay == null && !P.waiting && t >= end - .05) a.currentTime = lineStart(P.idx);
-  updateHead();
+  updateWords(); updateHead();
 }
 function onFinished() {
   P.playing = false; P.waiting = false; P.finished = true; cancelAnimationFrame(P.raf);
@@ -665,6 +680,7 @@ function speakLine(i, once) {
     if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'fr-CA';
     u.rate = Math.min(1.6, P.rate * .95);
     if (!v || VOICES.length < 2) u.pitch = L.s === 'ex' ? 1.15 : .85;
+    u.onboundary = ev => { if (!P || tok !== P.tok || ev.name === 'sentence') return; let k = -1; for (let j = 0; j < P.wch.length; j++) if (P.wch[j] <= ev.charIndex) k = j; else break; setWord(k); };
     u.onend = () => {
       if (!P || tok !== P.tok) return;
       if (once) { enterWaiting(i, { keep: true }); return; }

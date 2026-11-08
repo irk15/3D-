@@ -1,4 +1,4 @@
-:root{--v:26;--bg1:#EAF3FA;--bg2:#FBF3E4;--tx:#1B2B3C;--mut:rgba(27,43,60,.58);--line:rgba(27,43,60,.14);--accent:#E9A93B;--chip:rgba(255,255,255,.55);--serif:"Fraunces","New York",ui-serif,"Iowan Old Style",Georgia,serif;--sans:"Inter",ui-sans-serif,-apple-system,"SF Pro Text",system-ui,Roboto,sans-serif;--sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top)}
+:root{--v:27;--bg1:#EAF3FA;--bg2:#FBF3E4;--tx:#1B2B3C;--mut:rgba(27,43,60,.58);--line:rgba(27,43,60,.14);--accent:#E9A93B;--chip:rgba(255,255,255,.55);--serif:"Fraunces","New York",ui-serif,"Iowan Old Style",Georgia,serif;--sans:"Inter",ui-sans-serif,-apple-system,"SF Pro Text",system-ui,Roboto,sans-serif;--sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
 body{background:linear-gradient(175deg,var(--bg1) 0%,var(--bg2) 100%) fixed;color:var(--tx);font:16px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden;transition:background 1s}
@@ -271,3 +271,17 @@ input.vol::-webkit-slider-runnable-track{background:linear-gradient(90deg,var(--
 .flow.rs .dock{gap:6px}
 .flow.rs .link{padding:12px 0 4px;color:var(--mut);font:500 15px var(--sans)}
 @media (prefers-reduced-motion:reduce){.resetbtn .rbdot,.rsorb.done{animation:none}.rsta{transition:none}}
+
+/* ---------- v27: no clipped glows. Glows stay inside their containers; dots use rings, not blur ---------- */
+.dot{box-shadow:0 0 0 3px color-mix(in srgb,currentColor 22%,transparent)}
+.dot.big{box-shadow:none}
+.brand::before{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 24%,transparent)}
+.feelrow{margin:6px -20px -18px;padding:6px 20px 26px}
+.fchip.on{box-shadow:0 4px 12px -2px color-mix(in srgb,var(--c) 45%,transparent)}
+.bar.glass .next{box-shadow:0 4px 8px -4px color-mix(in srgb,var(--tx) 50%,transparent),0 1px 0 rgba(255,255,255,.25) inset}
+body.fire .bar.glass .next,body.mind .bar.glass .next{box-shadow:0 4px 8px -4px color-mix(in srgb,var(--accent) 70%,transparent),0 1px 0 rgba(255,255,255,.4) inset}
+.resetbtn .rbdot{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 22%,transparent)}
+.rscard i{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 26%,transparent)}
+.rsmove.on i{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+.orb{position:relative;box-shadow:none}
+.orb::before{content:'';position:absolute;inset:-70%;border-radius:50%;z-index:-1;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 60%,transparent) 0,transparent 68%)}

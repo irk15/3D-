@@ -1011,5 +1011,312 @@
    "author": "",
    "meaning": ""
   }
- ]
+ ],
+ "hourly": {
+  "morning": {
+   "title": "Start gently",
+   "items": [
+    {
+     "text": "Today does not need your best mood. It needs your first move.",
+     "do": "Do the smallest useful thing for two minutes."
+    },
+    {
+     "text": "You are not behind. You are about to begin.",
+     "do": "Open the thing you have been avoiding. Nothing else."
+    },
+    {
+     "text": "Motivation follows motion. Move first.",
+     "do": "Stand up and walk to another room and back."
+    },
+    {
+     "text": "Your mind will rehearse every way today could go wrong. That is not a forecast.",
+     "do": "Name one thing that could go right."
+    },
+    {
+     "text": "Start ugly. Fix it later.",
+     "do": "Write the worst first sentence you can."
+    },
+    {
+     "text": "Something good is already on its way to you today.",
+     "do": "Drink a glass of water before you check anything else."
+    },
+    {
+     "text": "You have survived every hard morning so far.",
+     "do": "Take three slow breaths, then begin."
+    },
+    {
+     "text": "Do not decide the whole day. Decide the next ten minutes.",
+     "do": "Set a timer for ten minutes and start."
+    },
+    {
+     "text": "The person you admire does small things on time.",
+     "do": "Pick one thing and finish it before noon."
+    },
+    {
+     "text": "Calm is a skill, and you can practise it right now.",
+     "do": "Relax your jaw and drop your shoulders."
+    },
+    {
+     "text": "You will be shaped by what you do while unsure, not after.",
+     "do": "Take one step while you still feel unsure."
+    },
+    {
+     "text": "You are allowed to begin without feeling ready.",
+     "do": "Send the message you have been drafting."
+    },
+    {
+     "text": "Fear means it matters. Walk toward it by one step.",
+     "do": "Do the first 30 seconds of the scary thing."
+    },
+    {
+     "text": "Let the morning be easy. Easy still counts.",
+     "do": "Tidy one small thing near you."
+    }
+   ]
+  },
+  "midday": {
+   "title": "Quick reset",
+   "items": [
+    {
+     "text": "Pause. You are not your to-do list.",
+     "do": "Look away from the screen for twenty seconds."
+    },
+    {
+     "text": "The loop in your head is noise, not information.",
+     "do": "Breathe out for six counts, three times."
+    },
+    {
+     "text": "Zoom out. Will this matter in a year?",
+     "do": "Say the answer out loud, then carry on."
+    },
+    {
+     "text": "You do not have to answer every thought that knocks.",
+     "do": "Let one thought pass without answering it."
+    },
+    {
+     "text": "Busy is not the same as moving forward. Pick the one thing.",
+     "do": "Write the single most important task. Do it next."
+    },
+    {
+     "text": "Your body is the fastest way to change your mind.",
+     "do": "Stand, stretch your arms overhead, and exhale."
+    },
+    {
+     "text": "Hard is not wrong. Hard is what growing feels like in the middle.",
+     "do": "Walk to the window and back."
+    },
+    {
+     "text": "You are doing better than the story in your head says.",
+     "do": "Name one thing you handled well today."
+    },
+    {
+     "text": "Overthinking is worry wearing a thinking costume.",
+     "do": "Write the worry in one line and park it for tonight."
+    },
+    {
+     "text": "Between this moment and the next, you get to choose.",
+     "do": "Choose your next action on purpose."
+    },
+    {
+     "text": "Many bad moods are just hunger and thirst.",
+     "do": "Have some water and something real to eat."
+    },
+    {
+     "text": "A reset is not a break from your life. It is how you stay in it.",
+     "do": "Do the 60-second Reset in Lightly."
+    },
+    {
+     "text": "Let go of the meeting that already ended.",
+     "do": "Close one tab or thread you are done with."
+    },
+    {
+     "text": "Not everything that feels urgent is important.",
+     "do": "Cross one thing off today's list."
+    }
+   ]
+  },
+  "afternoon": {
+   "title": "Second wind",
+   "items": [
+    {
+     "text": "The afternoon slump is chemistry, not character.",
+     "do": "Walk fast for two minutes."
+    },
+    {
+     "text": "You have more left than you think. Prove it with five minutes.",
+     "do": "Set a five-minute timer and push."
+    },
+    {
+     "text": "Do not quit at the exact moment it gets heavy.",
+     "do": "Do one more small piece before you rest."
+    },
+    {
+     "text": "Tired is a state. It is not a verdict.",
+     "do": "Wash your hands in cool water, then take ten slow breaths."
+    },
+    {
+     "text": "The finish line likes people who showed up when it was dull.",
+     "do": "Do the boring part first, for ten minutes."
+    },
+    {
+     "text": "Reset the room, reset the mind.",
+     "do": "Clear one thing from your desk."
+    },
+    {
+     "text": "Your future self is quietly grateful for this next hour.",
+     "do": "Spend the next hour on one thing only."
+    },
+    {
+     "text": "Progress you cannot feel is still progress.",
+     "do": "Write down one thing you have finished today."
+    },
+    {
+     "text": "Shake it off. Literally.",
+     "do": "Roll your shoulders and shake out your hands for ten seconds."
+    },
+    {
+     "text": "Look up. The world is bigger than this screen.",
+     "do": "Look at something far away for twenty seconds."
+    },
+    {
+     "text": "Low energy needs a smaller step, not a harsher voice.",
+     "do": "Pick a task that takes under five minutes."
+    },
+    {
+     "text": "You can be tired and still be capable.",
+     "do": "Do one capable thing, then rest."
+    },
+    {
+     "text": "A second wind arrives after you start moving, not before.",
+     "do": "Stand, stretch, and start again."
+    },
+    {
+     "text": "Be kind to yourself and keep going. Both at once.",
+     "do": "Say it: this is hard, and I can do the next step."
+    }
+   ]
+  },
+  "evening": {
+   "title": "Let the day go",
+   "items": [
+    {
+     "text": "The day is almost done. You do not need to win the rest of it.",
+     "do": "Decide what is good enough for today."
+    },
+    {
+     "text": "You did what you could with what you had. That is enough.",
+     "do": "Name one thing you are proud of today."
+    },
+    {
+     "text": "Leave the day where it happened.",
+     "do": "Write tomorrow's top task, then close the laptop."
+    },
+    {
+     "text": "Tonight you are allowed to be off duty.",
+     "do": "Put your phone down for ten minutes."
+    },
+    {
+     "text": "What felt heavy this morning often looks smaller by evening.",
+     "do": "Check your Worry box in Lightly."
+    },
+    {
+     "text": "Be where your feet are.",
+     "do": "Notice five things you can see right now."
+    },
+    {
+     "text": "Rest is part of the work.",
+     "do": "Sit for two minutes and do nothing."
+    },
+    {
+     "text": "Something small went well today. Find it.",
+     "do": "Write down one good thing from today."
+    },
+    {
+     "text": "You do not owe the day an apology for being ordinary.",
+     "do": "Let go of one thing you did not finish."
+    },
+    {
+     "text": "Move your body, change your evening.",
+     "do": "Take a ten-minute walk."
+    },
+    {
+     "text": "The people who love you are not grading you.",
+     "do": "Send a kind message to someone."
+    },
+    {
+     "text": "Close the loops you can. Park the rest.",
+     "do": "Park what is left in your Worry box."
+    },
+    {
+     "text": "Let your shoulders drop. They have been up all day.",
+     "do": "Roll them back and breathe out slowly."
+    },
+    {
+     "text": "Gratitude is the fastest mood change that costs nothing.",
+     "do": "Name three small things you are grateful for."
+    }
+   ]
+  },
+  "night": {
+   "title": "Slow down",
+   "items": [
+    {
+     "text": "Nothing more is needed from you today.",
+     "do": "Take three slow breaths with a long out-breath."
+    },
+    {
+     "text": "The thoughts will still be there tomorrow, and so will you, rested.",
+     "do": "Park one worry for the morning."
+    },
+    {
+     "text": "Your mind is tired, not broken.",
+     "do": "Put your phone across the room."
+    },
+    {
+     "text": "You are safe, you are warm, and this moment is quiet.",
+     "do": "Relax your jaw, your tongue and your hands."
+    },
+    {
+     "text": "Tomorrow gets a fresh version of you.",
+     "do": "Choose tomorrow's first move, then let it go."
+    },
+    {
+     "text": "Rest is a form of progress.",
+     "do": "Try Wind down in Lightly."
+    },
+    {
+     "text": "Be gentle on the way out of the day.",
+     "do": "Dim the lights and slow your breathing."
+    },
+    {
+     "text": "You made it through today. That counts.",
+     "do": "Name one thing you handled."
+    },
+    {
+     "text": "Thinking will not solve it at this hour. Sleep will help.",
+     "do": "Write it down and close the page."
+    },
+    {
+     "text": "Let go, one breath at a time.",
+     "do": "Breathe in for four, out for six, five times."
+    },
+    {
+     "text": "A quiet mind is built, not found.",
+     "do": "Listen to a calm sound for ten minutes."
+    },
+    {
+     "text": "You are allowed to stop now.",
+     "do": "Say good night to your tasks."
+    },
+    {
+     "text": "Release your forehead and let your eyes go heavy.",
+     "do": "Close your eyes for one minute."
+    },
+    {
+     "text": "Whatever tomorrow asks, you can meet it rested.",
+     "do": "Go to bed ten minutes earlier tonight."
+    }
+   ]
+  }
+ }
 }

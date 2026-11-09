@@ -158,3 +158,11 @@ p{margin:0 0 8px}
 .toast{position:fixed;left:50%;top:calc(14px + var(--sat));transform:translate(-50%,-90px);z-index:50;padding:11px 18px;border-radius:22px;background:var(--tx);color:var(--bg1);font:600 14.5px var(--sans);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);max-width:90vw;text-align:center}
 .toast.on{transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}.orb.calm{animation:none}}
+/* v2: lighter flows */
+.ghost.sm{height:36px;padding:0 14px;font-size:13px;flex:none}
+.chip.sm{height:34px;padding:0 13px;font-size:13px}
+.chips.big .chip{height:44px;padding:0 17px;font-size:15px}
+.faces{display:flex;justify-content:center;gap:14px;margin-top:22px}
+.face{width:96px;padding:16px 0 12px;border-radius:22px;border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .15s}
+.face:active{transform:scale(.94)}
+.face span{font-size:38px;line-height:1}.face small{font:600 13px var(--sans);color:var(--mut)}

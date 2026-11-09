@@ -1,4 +1,4 @@
-const C="iw-v1";
+const C="iw-v3";
 const F=["./","./index.html","./style.css","./data.js","./tools.js","./app.js","./manifest.json","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(u=>fetch(new Request(u,{cache:"reload"})).then(r=>c.put(u,r)).catch(()=>{})))));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x.startsWith("iw-")&&x!==C).map(x=>caches.delete(x)))));self.clients.claim()});

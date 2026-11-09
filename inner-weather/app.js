@@ -1,6 +1,6 @@
 'use strict';
 /* Inner Weather: check in, get a small plan, use a tool. Everything stays on this phone. */
-const VERSION = 'iw1';
+const VERSION = 'iw3';
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -112,12 +112,15 @@ function viewToday(v) {
     v.append(h('section', { class: 'hero' }, h('h2', { class: 'display' }, 'What’s your ', h('em', null, 'inner weather'), '?'), h('p', { class: 'mut' }, 'Pick what fits right now. No wrong answers.')),
       h('div', { class: 'wgrid' }, ORDER.map((k, i) => h('button', { class: 'wtile w-' + k, style: 'animation-delay:' + i * 50 + 'ms', onclick: () => checkin(k) }, h('span', { class: 'wi', html: svgI(k, 34) }), h('b', null, WEATHER[k].n), h('small', null, WEATHER[k].d)))));
   } else {
-    const W = WEATHER[last.w];
-    v.append(h('section', { class: 'now card' }, h('div', { class: 'nowtop' }, h('span', { class: 'wi big', html: svgI(last.w, 46) }), h('div', null, h('div', { class: 'eyebrow' }, 'Today, ' + hhmm(last.t)), h('h2', { class: 'display sm' }, W.n), last.tags && last.tags.length ? h('small', { class: 'mut' }, last.tags.join(' · ')) : null)),
-      h('p', { class: 'serif' }, FORECAST[last.w][dayNo() % 4]),
-      h('button', { class: 'ghost', onclick: () => checkin() }, 'Weather changed? Check in again')));
-    const note = sunFor(last.w); if (note) v.append(note);
-    v.append(h('div', { class: 'sechead' }, 'Your plan for now'), h('div', { class: 'stack' }, planFor(last.w, last.tags).map(k => toolCard(k))));
+    const W = WEATHER[last.w], note = sunFor(last.w);
+    v.append(h('section', { class: 'now card' }, h('div', { class: 'nowtop' }, h('span', { class: 'wi big', html: svgI(last.w, 46) }), h('div', { class: 'grow' }, h('div', { class: 'eyebrow' }, 'Today, ' + hhmm(last.t)), h('h2', { class: 'display sm' }, W.n)),
+        h('button', { class: 'ghost sm', onclick: () => checkin() }, 'Change')),
+      h('p', { class: 'serif' }, FORECAST[last.w][dayNo() % 4])),
+      note || '',
+      h('div', { class: 'sechead' }, 'Try one now'), h('div', { class: 'stack' }, planFor(last.w, last.tags).map(k => toolCard(k))),
+      h('div', { class: 'sechead' }, 'What’s behind it? Optional'),
+      h('div', { class: 'chips' }, TAGS.filter(t => t !== 'No idea').map(t => h('button', { class: 'chip sm' + (last.tags.includes(t) ? ' on' : ''), onclick: () => { last.tags = last.tags.includes(t) ? last.tags.filter(z => z !== t) : last.tags.concat(t); save(); render(); } }, t)),
+        h('button', { class: 'chip sm', onclick: () => addNote(last) }, last.note ? '✎ Edit note' : '+ Note')));
   }
   v.append(h('section', { class: 'card quote' }, h('div', { class: 'eyebrow' }, 'Today’s reminder'), h('p', { class: 'serif big' }, DAILY[dayNo() % DAILY.length])),
     h('div', { class: 'sechead' }, 'Quick'), h('div', { class: 'quick' }, [['sigh', 'Breathe'], ['ground', 'Ground'], ['park', 'Park a worry'], ['heart', 'Heartbreak']].map(([k, l]) => h('button', { class: 'qbtn', onclick: () => runTool(k) }, l))));
@@ -129,25 +132,16 @@ function sunFor(w) {
 
 /* ---------- check-in ---------- */
 function checkin(pre) {
-  const c = { w: pre || null, tags: [] };
-  const steps = [];
-  if (!pre) steps.push({ t: 'custom', render: (x, next) => ({ body: [h('h2', { class: 'ftitle' }, 'What’s your inner weather now?'), h('div', { class: 'wgrid' }, ORDER.map(k => h('button', { class: 'wtile w-' + k, onclick: () => { c.w = k; next(); } }, h('span', { class: 'wi', html: svgI(k, 34) }), h('b', null, WEATHER[k].n), h('small', null, WEATHER[k].d))))] }) });
-  steps.push({ t: 'custom', render: (x, next) => {
-    const ta = h('textarea', { class: 'field', rows: 3, maxlength: 600, placeholder: 'Anything you want to get out (optional)', 'aria-label': 'Note' });
-    const chips = h('div', { class: 'chips' }, TAGS.map(t => h('button', { class: 'chip', 'aria-pressed': 'false', onclick: e => { const on = !c.tags.includes(t); c.tags = on ? c.tags.concat(t) : c.tags.filter(z => z !== t); e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-pressed', on); } }, t)));
-    return { body: [h('span', { class: 'wi big center', html: svgI(c.w, 56) }), h('h2', { class: 'ftitle center' }, WEATHER[c.w].n), h('p', { class: 'mut center' }, 'What’s behind it? Pick any.'), chips, ta],
-      foot: [h('button', { class: 'btn', onclick: () => { c.note = ta.value.trim(); finishCheckin(c); } }, 'Save and see my plan')] };
-  } });
-  flow(steps, { label: 'Check in' });
+  if (pre) { logWeather(pre); return; }
+  flow([{ t: 'custom', render: () => ({ body: [h('h2', { class: 'ftitle' }, 'What’s your inner weather now?'), h('div', { class: 'wgrid' }, ORDER.map(k => h('button', { class: 'wtile w-' + k, onclick: () => { closeFlow(); logWeather(k); } }, h('span', { class: 'wi', html: svgI(k, 34) }), h('b', null, WEATHER[k].n), h('small', null, WEATHER[k].d))))] }) }], { label: 'Check in', nofocus: true });
 }
-function finishCheckin(c) {
-  S.log.push({ t: Date.now(), w: c.w, tags: c.tags, note: c.note || '' }); if (S.log.length > 1500) S.log.shift(); save();
-  buzz(12); theme();
-  if (c.note && CRISIS.test(c.note)) { closeFlow(); render(); openHelp(true); return; }
-  const plan = planFor(c.w, c.tags), note = sunFor(c.w);
-  FL.show({ body: [h('span', { class: 'wi big center', html: svgI(c.w, 56) }), h('div', { class: 'eyebrow center' }, 'Your forecast'), h('h2', { class: 'ftitle center serif' }, FORECAST[c.w][dayNo() % 4]), note,
-    h('div', { class: 'sechead' }, 'Try one of these'), h('div', { class: 'stack' }, plan.map(k => toolCard(k)))],
-  foot: [h('button', { class: 'link', onclick: () => { closeFlow(); render(); } }, 'Not now, take me home')] }, 1);
+function logWeather(w) {
+  S.log.push({ t: Date.now(), w, tags: [], note: '' }); if (S.log.length > 1500) S.log.shift(); save(); buzz(12);
+  S.tab = 'today'; render(); scrollTo({ top: 0 });
+}
+function addNote(e) {
+  flow([{ t: 'custom', render: () => { const ta = h('textarea', { class: 'field', rows: 5, maxlength: 600, placeholder: 'Get it out. Only you will see this.', 'aria-label': 'Note' }); ta.value = e.note || '';
+    return { body: [h('h2', { class: 'ftitle' }, 'What’s on your mind?'), ta], foot: [btn('Save', () => { e.note = ta.value.trim(); save(); closeFlow(); if (e.note && CRISIS.test(e.note)) { render(); openHelp(true); } else render(); })] }; } }], { label: 'Note' });
 }
 
 /* ---------- flow engine ---------- */
@@ -183,14 +177,14 @@ const STEP = {
   },
   choose: (s, c) => {
     const opts = val(s.opts, c) || [], picked = new Set();
-    const list = h('div', { class: 'opts' }, opts.map(o => { const a = Array.isArray(o) ? o : [o], v = a[2] || a[0];
-      return h('button', { class: 'opt', onclick: e => { if (s.multi) { picked.has(v) ? picked.delete(v) : picked.add(v); e.currentTarget.classList.toggle('on'); } else { c[s.key] = v; buzz(8); next(); } } }, h('b', null, a[0]), a[1] ? h('small', null, a[1]) : null); }));
+    const list = h('div', { class: s.grid ? 'chips big' : 'opts' }, opts.map(o => { const a = Array.isArray(o) ? o : [o], v = a[2] || a[0];
+      return h('button', { class: s.grid ? 'chip' : 'opt', onclick: e => { if (s.multi) { picked.has(v) ? picked.delete(v) : picked.add(v); e.currentTarget.classList.toggle('on'); } else { c[s.key] = v; buzz(8); next(); } } }, h('b', null, a[0]), a[1] ? h('small', null, a[1]) : null); }));
     return { body: [h('h2', { class: 'ftitle' }, val(s.title, c)), s.body ? h('p', { class: 'fsub' }, val(s.body, c)) : null, list], foot: s.multi ? [btn('Continue', () => { c[s.key] = [...picked]; next(); }), btn('None of these', () => { c[s.key] = []; next(); }, 'link')] : null };
   },
   breath: (s) => {
     const P = { sigh: [['Breathe in', 1.3, 2000], ['A little more', 1.55, 800], ['Long breath out', .72, 5200]], slow: [['In, 2, 3, 4', 1.5, 4000], ['Out, 2, 3, 4, 5, 6', .72, 6000]] }[s.p];
-    const orb = h('div', { class: 'orb' }), cue = h('div', { class: 'cue' }, 'Get comfortable'), cnt = h('div', { class: 'mut small center' }, '');
-    later(() => { let n = 0; const round = () => { n++; cnt.textContent = n + ' of ' + s.r; let t = 0; P.forEach(([l, sc, ms]) => { later(() => { cue.textContent = l; orb.style.transitionDuration = (reduced() ? .01 : ms / 1000) + 's'; orb.style.transform = 'scale(' + sc + ')'; }, t); t += ms; }); later(() => { if (n < s.r) round(); else { cue.textContent = 'Well done'; buzz(20); later(next, 1200); } }, t + 150); }; round(); }, 900);
+    const orb = h('div', { class: 'orb' }), cue = h('div', { class: 'cue' }, 'Get ready'), cnt = h('div', { class: 'mut small center' }, s.tip || '');
+    later(() => { let n = 0; const round = () => { n++; if (n > 1) cnt.textContent = n + ' of ' + s.r; let t = 0; P.forEach(([l, sc, ms]) => { later(() => { cue.textContent = l; orb.style.transitionDuration = (reduced() ? .01 : ms / 1000) + 's'; orb.style.transform = 'scale(' + sc + ')'; }, t); t += ms; }); later(() => { if (n < s.r) round(); else { cue.textContent = 'Well done'; buzz(20); later(next, 1000); } }, t + 150); }; round(); }, 1200);
     return { body: [h('div', { class: 'orbwrap' }, orb), cue, cnt], foot: [btn('Skip', next, 'link')] };
   },
   timer: (s, c) => {
@@ -219,16 +213,12 @@ function runTool(k) {
   flow(steps, { label: T.n, done: c => { if (T.save) T.save(c); save(); if (T.noRate) { closeFlow(); render(); toast('Saved'); } else rate(k); } });
 }
 function rate(k) {
-  FL.show({ body: [h('div', { class: 'eyebrow center' }, TOOLS[k].n), h('h2', { class: 'ftitle center' }, 'How do you feel now?'), h('p', { class: 'fsub center' }, 'Your answer teaches your journal what helps you.'),
-    h('div', { class: 'opts' }, [['Better', 2], ['About the same', 1], ['Worse', 0]].map(([l, r]) => h('button', { class: 'opt', onclick: () => { S.used.push({ t: Date.now(), k, r }); if (S.used.length > 1500) S.used.shift(); save(); ending(k, r); } }, h('b', null, l))))] }, 1);
-}
-function ending(k, r) {
-  const home = () => { closeFlow(); render(); };
-  if (r === 2) FL.show({ body: [h('div', { class: 'orbwrap sm' }, h('div', { class: 'orb calm' })), h('h2', { class: 'ftitle center serif' }, 'Notice what helped.'), h('p', { class: 'fsub center' }, 'It is saved, so next time you can reach for it faster.')], foot: [btn('Back home', home)] }, 1);
-  else if (r === 1) { const alt = ['sigh', 'ground', 'lift', 'kind', 'thought'].filter(x => x !== k).slice(0, 2);
-    FL.show({ body: [h('h2', { class: 'ftitle center serif' }, 'That is okay.'), h('p', { class: 'fsub center' }, 'Some weather needs more than one tool. Want to try another?'), h('div', { class: 'stack' }, alt.map(x => toolCard(x)))], foot: [btn('Back home', home, 'link')] }, 1); }
-  else FL.show({ body: [h('h2', { class: 'ftitle center serif' }, 'Thank you for being honest.'), h('p', { class: 'fsub center' }, 'Some moments are too big for an app. Let’s slow your body down, or reach someone.')],
-    foot: [btn('Breathe with me', () => runTool('sigh')), btn('Help now', () => openHelp()), btn('Back home', home, 'link')] }, 1);
+  const pick = r => { S.used.push({ t: Date.now(), k, r }); if (S.used.length > 1500) S.used.shift(); save();
+    if (r === 0) { FL.show({ body: [h('h2', { class: 'ftitle center serif' }, 'Thank you for being honest.'), h('p', { class: 'fsub center' }, 'Some moments are bigger than an app.')], foot: [btn('Help now', () => openHelp()), btn('Back home', () => { closeFlow(); render(); }, 'link')] }, 1); return; }
+    closeFlow(); render(); toast(r === 2 ? 'Saved. Remember this one.' : 'Okay. Try another when you are ready.'); };
+  FL.show({ body: [h('h2', { class: 'ftitle center' }, 'Better?'),
+    h('div', { class: 'faces' }, [['Better', 2, '🙂'], ['Same', 1, '😐'], ['Worse', 0, '🙁']].map(([l, r, f]) => h('button', { class: 'face', onclick: () => pick(r) }, h('span', null, f), h('small', null, l))))],
+    foot: [btn('Skip', () => { closeFlow(); render(); }, 'link')] }, 1);
 }
 
 /* ---------- help now (always one tap away) ---------- */
@@ -359,13 +349,8 @@ function exportData() { const b = new Blob([JSON.stringify(S, null, 1)], { type:
 
 /* ---------- welcome ---------- */
 function welcome() {
-  let nm;
-  flow([
-    { t: 'custom', render: (c, nx) => ({ body: [h('div', { class: 'wrow3' }, ['storm', 'rain', 'sun'].map(k => h('span', { class: 'wi big w-' + k, html: svgI(k, 44) }))), h('h1', { class: 'display center' }, 'Feelings move ', h('em', null, 'like weather.')), h('p', { class: 'fsub center' }, 'Storms, fog, heavy rain, clear skies. None of them last forever.')], foot: [btn('Continue', nx)] }) },
-    { t: 'custom', render: (c, nx) => ({ body: [h('h1', { class: 'display center' }, 'You are the ', h('em', null, 'sky.')), h('p', { class: 'fsub center' }, 'Not the storm. The weather passes through you. Inner Weather helps you get through it, one small step at a time.')], foot: [btn('Continue', nx)] }) },
-    { t: 'custom', render: (c, nx) => { nm = h('input', { class: 'field one', maxlength: 30, placeholder: 'First name (optional)', 'aria-label': 'Your name' }); return { body: [h('h2', { class: 'ftitle center' }, 'What should I call you?'), nm], foot: [btn('Continue', () => { S.name = nm.value.trim(); nx(); })] }; } },
-    { t: 'custom', render: () => ({ body: [h('h2', { class: 'ftitle center serif' }, 'Private, and honest.'), h('p', { class: 'fsub center' }, 'Everything stays on this phone. Inner Weather is a self-help companion, not therapy. If you are ever in crisis, the Help now button is always at the top.')], foot: [btn('Begin', () => { S.onb = 1; save(); closeFlow(); render(); })] }) }
-  ], { label: 'Welcome' });
+  flow([{ t: 'custom', render: () => ({ body: [h('div', { class: 'wrow3' }, ['storm', 'rain', 'sun'].map(k => h('span', { class: 'wi big w-' + k, html: svgI(k, 44) }))), h('h1', { class: 'display center' }, 'Feelings move ', h('em', null, 'like weather.')),
+    h('p', { class: 'fsub center' }, 'Tap how you feel, get one small thing that helps. Private, on your phone. Not therapy; Help now is always at the top.')], foot: [btn('Begin', () => { S.onb = 1; save(); closeFlow(); render(); })] }) }], { label: 'Welcome' });
 }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

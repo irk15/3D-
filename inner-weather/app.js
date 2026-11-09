@@ -74,7 +74,15 @@ function skyDraw(t) {
     p.forEach(d => { d.y -= .1 + d.v * .2; if (d.y < -5) d.y = H + 5; x.fillStyle = 'rgba(60,80,140,' + (.06 + d.r * .12) + ')'; x.beginPath(); x.arc(d.x, d.y, 1 + d.r * 1.4, 0, 6.28); x.fill(); });
   }
 }
-addEventListener('resize', () => skyInit());
+function skyResize() {
+  const c = SKY.x && $('#sky'); if (!c) return;
+  const dpr = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
+  if (W === SKY.W && H === SKY.H) return;
+  c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px';
+  const x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); SKY.x = x; SKY.W = W; SKY.H = H;
+}
+let SKY_RT;
+addEventListener('resize', () => { clearTimeout(SKY_RT); SKY_RT = setTimeout(skyResize, 200); });
 
 /* ---------- shell ---------- */
 const TABI = {

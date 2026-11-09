@@ -3,7 +3,7 @@ export function createSfx(audio) {
   let built = false, ctx, out, noise, squeal, wind, rainG, nitroG;
   function build() {
     ctx = audio.ctx; if (!ctx) return false;
-    out = ctx.createGain(); out.gain.value = 0.9; out.connect(ctx.destination);
+    out = ctx.createGain(); out.gain.value = vol; out.connect(ctx.destination);
     const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     noise = buf;
@@ -22,15 +22,18 @@ export function createSfx(audio) {
     return true;
   }
   const ok = () => (built || build()) && !audio.muted;
+  let vol = 0.9;
   const burst = (dur, f, q, gain, type = 'bandpass') => {
     if (!ok()) return;
     const src = ctx.createBufferSource(); src.buffer = noise;
-    const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
-    const g = ctx.createGain(); const t = ctx.currentTime;
+    const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f * (0.85 + Math.random() * 0.3); fl.Q.value = q;
+    src.playbackRate.value = 0.9 + Math.random() * 0.2;
+    const g = ctx.createGain(); const t = ctx.currentTime; gain *= 0.85 + Math.random() * 0.3;
     g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     src.connect(fl).connect(g).connect(out); src.start(t, Math.random()); src.stop(t + dur + 0.05);
   };
   return {
+    setVolume(v) { vol = v; if (built) out.gain.setTargetAtTime(v, ctx.currentTime, 0.05); },
     update({ slip = 0, speed = 0, rain = false, nitro = false, paused = false }) {
       if (!ok()) { if (built) [squeal, wind, rainG, nitroG].forEach((n) => n.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05)); return; }
       const t = ctx.currentTime, k = paused ? 0 : 1;

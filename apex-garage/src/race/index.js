@@ -8,6 +8,9 @@ import { placeOnGrid, advance, contact, draftFactor, standings, resetToTrack } f
 import { createFx } from './fx.js';
 import { createSfx } from './sfx.js';
 import { createHud, fmt } from './hud.js';
+import * as Input from './input.js';
+import { createGradePass, createReflections, contactShadow } from './post.js';
+import { registerScreen } from '../ui/focus.js';
 
 const STEP = 1 / 240;
 const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
@@ -29,67 +32,42 @@ const RadialBlur = {
 };
 
 export function createRace(ctx) {
-  const { renderer, composer, renderPass, bloom, audio, CARS, loadCar, computeStats, onExit } = ctx;
+  const { renderer, composer, renderPass, bloom, audio, CARS, loadCar, computeStats, onExit, openOptions } = ctx;
   const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.25, 2400);
   const blur = new ShaderPass(RadialBlur);
   blur.enabled = false;
   composer.insertPass(blur, 1);
+  const grade = createGradePass();
+  composer.addPass(grade);
+  const refl = createReflections(renderer);
   const sfx = createSfx(audio);
-  const hud = createHud(onAction);
+  const hud = createHud(onAction, Input.touch);
   const api = { active: false, start, stop, update, resize, camera, autopilot: false, debug };
+  api._dbg = { get grade() { return grade; }, get refl() { return refl; }, get hud() { return hud; } };
 
   let W = null; // world: { track, scene, fx }
   let racers = [], me = null, opts = null, room = null;
   const race = { phase: 'idle', time: 0, countStart: 0, paused: false, endT: 0, lastBeep: 9, finishOrder: [] };
-  let camMode = store.get('apex-cam', 0), shake = 0, quality = 2, acc = 0;
+  let camMode = store.get('apex-cam', 0), trauma = 0, shakeT = 0, quality = 2, acc = 0, alpha = 1, hitStop = 0, flash = 0, fovKick = 0, prevNitro = false;
+  const S = Input.settings;
+  const addTrauma = (x) => { trauma = Math.min(1, trauma + x); };
 
-  /* ───────── input ───────── */
-  const keys = {};
-  addEventListener('keydown', (e) => {
-    if (!api.active) return;
-    const k = e.key.toLowerCase();
-    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
-    keys[k] = true;
-    if (e.repeat) return;
-    if (k === 'escape' || k === 'p') { if (race.phase === 'replay') onAction('rp-exit'); else if (race.phase !== 'finished') setPaused(!race.paused); }
-    if (k === 'c') cycleCam();
-    if (k === 'r' && race.phase === 'racing' && !race.paused) { resetToTrack(me, W.track, 0); hud.msg('RESET', 0.8); }
-    if (k === 'm') audio.setMuted(!audio.muted);
-  });
-  addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-  addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
-  let padPrev = {};
-  function readInput() {
-    const t = hud.touch;
-    const pad = navigator.getGamepads ? [...navigator.getGamepads()].find((g) => g && g.connected) : null;
-    const inp = { steer: 0, gas: 0, brake: 0, hand: false, nitro: false, up: false, down: false, back: false, analog: false };
-    if (keys.a || keys.arrowleft || t.left) inp.steer -= 1;
-    if (keys.d || keys.arrowright || t.right) inp.steer += 1;
-    if (keys.w || keys.arrowup || t.gas) inp.gas = 1;
-    if (keys.s || keys.arrowdown || t.brake) inp.brake = 1;
-    inp.hand = !!(keys[' '] || t.hand);
-    inp.nitro = !!(keys.shift || t.nitro);
-    inp.up = !!(keys.e || keys.x);
-    inp.down = !!(keys.q || keys.z);
-    inp.back = !!keys.b;
-    if (pad) {
-      const b = (i) => pad.buttons[i]?.pressed, v = (i) => pad.buttons[i]?.value || 0;
-      const ax = pad.axes[0] || 0;
-      if (Math.abs(ax) > 0.1) { inp.steer = Math.sign(ax) * ((Math.abs(ax) - 0.1) / 0.9) ** 1.4; inp.analog = true; }
-      inp.gas = Math.max(inp.gas, v(7)); inp.brake = Math.max(inp.brake, v(6));
-      inp.nitro ||= b(0); inp.hand ||= b(2); inp.back ||= b(3);
-      inp.up ||= b(5); inp.down ||= b(4);
-      if (b(9) && !padPrev[9] && race.phase !== 'finished') setPaused(!race.paused);
-      if (b(1) && !padPrev[1]) cycleCam();
-      padPrev = { 9: b(9), 1: b(1) };
-      api.pad = pad;
-    }
-    return inp;
-  }
-  function rumble(strong, weak, ms = 120) {
-    const a = api.pad?.vibrationActuator;
-    if (a?.playEffect) a.playEffect('dual-rumble', { duration: ms, strongMagnitude: clamp(strong, 0, 1), weakMagnitude: clamp(weak, 0, 1) }).catch(() => {});
-  }
+  /* ───────── input (action map + rebinding live in input.js) ───────── */
+  const rumble = (a, b, ms) => Input.rumble(a, b, ms);
+  // free-look: right stick or mouse drag orbits the chase camera, springs back on release
+  const freeLook = { yaw: 0, pitch: 0, drag: false, lx: 0, ly: 0 };
+  renderer.domElement.addEventListener('pointerdown', (e) => { if (api.active && e.pointerType === 'mouse') { freeLook.drag = true; freeLook.lx = e.clientX; freeLook.ly = e.clientY; } });
+  addEventListener('pointermove', (e) => { if (!freeLook.drag) return; freeLook.yaw = clamp(freeLook.yaw - (e.clientX - freeLook.lx) * 0.006, -Math.PI, Math.PI); freeLook.pitch = clamp(freeLook.pitch + (e.clientY - freeLook.ly) * 0.004, -0.3, 0.6); freeLook.lx = e.clientX; freeLook.ly = e.clientY; });
+  addEventListener('pointerup', () => { freeLook.drag = false; });
+  const keysLine = () => {
+    const P = Input.prompt;
+    return me?.p.bike
+      ? `${P('throttle')} throttle · ${P('brake')} brake · ${P('left')}/${P('right')} lean · ${P('hand')} rear brake · ${P('nitro')} nitro · ${P('camera')} camera · ${P('back')} look back · ${P('reset')} reset · ${P('pause')} pause`
+      : `${P('throttle')} gas · ${P('brake')} brake · ${P('left')}/${P('right')} steer · ${P('hand')} handbrake/drift · ${P('nitro')} nitro${opts?.transmission === 'manual' ? ` · ${P('down')}/${P('up')} shift` : ''} · ${P('camera')} camera · ${P('back')} look back · ${P('pause')} pause`;
+  };
+  Input.onDevice(() => { if (api.active) hud.setKeys(keysLine()); });
+  registerScreen({ el: () => hud.el.querySelector('#rPause'), open: () => api.active && hud.el.querySelector('#rPause').classList.contains('show'), back: () => setPaused(false) });
+  registerScreen({ el: () => hud.el.querySelector('#rResult'), open: () => api.active && hud.el.querySelector('#rResult').classList.contains('show'), back: () => {} });
   function cycleCam() { camMode = (camMode + 1) % CAMS.length; store.set('apex-cam', camMode); hud.camName(CAMS[camMode]); hud.msg(CAMS[camMode].toUpperCase(), 0.7); }
 
   /* ───────── vehicles ───────── */
@@ -108,6 +86,7 @@ export function createRace(ctx) {
     });
     body.add(model); root.add(body);
     const sz = entry.size, bike = entry.cfg.type === 'bike';
+    if (!ghost) root.add(contactShadow(sz, bike));
     const brakes = [], flames = [];
     if (!ghost) {
       // no glow cards: real lights only (road beam + brake glow), so nothing floats in front of the bodywork
@@ -214,9 +193,7 @@ export function createRace(ctx) {
     const humans = racers.filter((r) => !r.ghost).length;
     hud.setup({
       track: W.track, mode: opts.mode, laps: opts.laps, total: humans,
-      keys: me.p.bike
-        ? 'W/↑ throttle · S/↓ brake · A D lean · SPACE rear brake · SHIFT nitro · C camera · B look back · R reset · ESC pause'
-        : `W/↑ gas · S/↓ brake · A D steer · SPACE handbrake/drift · SHIFT nitro${opts.transmission === 'manual' ? ' · Q/E shift' : ''} · C camera · B look back · R reset · ESC pause`,
+      keys: keysLine(),
       assists: `${HANDLING[opts.handling].label.toUpperCase()} · ${opts.transmission === 'manual' ? 'MANUAL' : 'AUTO'}${opts.weather === 'rain' ? ' · WET' : ''}`
     });
     hud.camName(CAMS[camMode]);
@@ -235,8 +212,12 @@ export function createRace(ctx) {
     camera.fov = 62;
     resize();
     camOff.set(0, 0, 0);
+    W.envStatic ||= W.scene.environment;
+    grade.setTheme(W.track.def.theme); grade.enabled = true;
+    applySettings();
+    race.introDur = room ? 1.6 : 2.8; race.countLen = room ? 3.5 : 6.2; race.intro = 0;
+    trauma = 0; hitStop = 0; flash = 0; freeLook.yaw = freeLook.pitch = 0;
     updateCamera(0, true);
-    setQuality(2);
     audio.setCar(me.cfg.engine);
     if (room) bindRoom();
   }
@@ -247,6 +228,8 @@ export function createRace(ctx) {
     hud.show(false);
     hud.replay(false);
     blur.enabled = false;
+    grade.enabled = false;
+    W.scene.environment = W.envStatic;
     sfx.silence();
     document.getElementById('speedlines').style.opacity = 0;
     for (const r of racers) W.scene.remove(r.root);
@@ -457,6 +440,7 @@ export function createRace(ctx) {
     if (a === 'resume') setPaused(false);
     if (a === 'restart' && !room) { hud.hideResults(); hud.pause(false); start({ ...opts }); }
     if (a === 'camera') cycleCam();
+    if (a === 'options') openOptions?.();
     if (a === 'exit') {
       if (room && room.isHost && race.phase === 'finished') room.endRace();
       stop(!!room);
@@ -474,16 +458,30 @@ export function createRace(ctx) {
   /* ───────── camera ───────── */
   const camOff = new THREE.Vector3(), look = new THREE.Vector3(), dir = new THREE.Vector3(), want = new THREE.Vector3(), up = new THREE.Vector3();
   let tvSpot = null;
+  const camState = {};
   function updateCamera(dt, snap = false, target = me, forceMode = null) {
-    const r = target, s = r.st;
+    const r = target, s = r.vis && race.phase !== 'replay' ? Object.assign(camState, r.st, r.vis) : r.st;
     const sh = Math.sin(s.h), ch = Math.cos(s.h);
     const spd = Math.hypot(s.vx, s.vz);
-    const mode = forceMode ?? (race.phase === 'finished' && race.endT < 3.2 ? 'orbit' : CAMS[camMode]);
+    const intro = race.phase === 'countdown' && race.intro < race.introDur && !forceMode;
+    const mode = forceMode ?? (intro ? 'intro' : race.phase === 'finished' && race.endT < 3.2 ? 'orbit' : CAMS[camMode]);
     dir.set(sh, 0, ch);
     if (spd > 5 && s.u > 0) { want.set(s.vx / spd, 0, s.vz / spd); dir.lerp(want, r.p.bike ? 0.15 : 0.32).normalize(); }
+    // look-ahead: lead the camera into the corner using the yaw rate (+ free-look)
+    const lead = clamp((s.r || 0) * 0.17, -0.22, 0.22) + freeLook.yaw;
+    if (lead) { const c = Math.cos(lead), n = Math.sin(lead), x = dir.x; dir.x = x * c + dir.z * n; dir.z = dir.z * c - x * n; }
     let roll = 0, fovBase = 62;
-    const back = readBack();
-    if (mode === 'orbit') {
+    const back = !!lastInp?.back;
+    if (mode === 'intro') {
+      // cinematic grid flyby: sweep from a high front-quarter shot down to the chase position
+      const k = clamp(race.intro / race.introDur, 0, 1), e = k * k * (3 - 2 * k);
+      const th = lerp(Math.PI * 0.8, 0, e), rad = lerp(18, 6.3, e), hgt = lerp(8, 2.0, e);
+      const bx = -dir.x, bz = -dir.z, c = Math.cos(th), n = Math.sin(th);
+      camera.position.set(s.x + (bx * c + bz * n) * rad, s.y + hgt, s.z + (bz * c - bx * n) * rad);
+      look.set(s.x + dir.x * lerp(0, 6, e), s.y + 1, s.z + dir.z * lerp(0, 6, e));
+      fovBase = lerp(48, 62, e);
+      camOff.set(camera.position.x - s.x, camera.position.y - s.y, camera.position.z - s.z);
+    } else if (mode === 'orbit') {
       const a = race.time * 0.3;
       want.set(s.x + Math.cos(a) * 8.5, s.y + 2.4, s.z + Math.sin(a) * 8.5);
       look.set(s.x, s.y + 0.9, s.z);
@@ -518,7 +516,7 @@ export function createRace(ctx) {
       const dist = (far ? 10.5 : r.p.bike ? 4.6 : 6.3) + spd * 0.022 + (s.nitroOn ? 0.8 : 0);
       const hgt = far ? 3.6 : r.p.bike ? 1.7 : 2.0;
       const dd = back ? -1 : 1;
-      want.set(s.x - dir.x * dist * dd, s.y + hgt, s.z - dir.z * dist * dd);
+      want.set(s.x - dir.x * dist * dd, s.y + hgt + freeLook.pitch * dist, s.z - dir.z * dist * dd);
       look.set(s.x + dir.x * 6 * dd, s.y + 1.0, s.z + dir.z * 6 * dd);
       const ox = want.x - s.x, oz = want.z - s.z;
       if (snap) camOff.set(ox, want.y - s.y, oz);
@@ -530,29 +528,44 @@ export function createRace(ctx) {
       camera.position.set(s.x + camOff.x, s.y + camOff.y, s.z + camOff.z);
       if (r.p.bike) roll = (s.lean || 0) * 0.28;
     }
-    if (shake > 0) { camera.position.x += (Math.random() - 0.5) * shake * 0.25; camera.position.y += (Math.random() - 0.5) * shake * 0.18; shake = Math.max(0, shake - dt * 2.5); }
-    if (s.nitroOn && mode !== 'TV') { camera.position.x += (Math.random() - 0.5) * 0.035; camera.position.y += (Math.random() - 0.5) * 0.03; }
+    // trauma shake: smooth sin-noise, quadratic falloff (impacts + a little speed/nitro rumble)
+    const onCar = mode !== 'TV' && mode !== 'orbit' && mode !== 'intro';
+    const tr = Math.min(1, trauma + (onCar ? clamp((spd * 3.6 - 230) / 200, 0, 0.2) + (s.nitroOn ? 0.14 : 0) : 0)) * S.shake;
+    if (tr > 0.001) {
+      const k = tr * tr; shakeT += dt * 30;
+      camera.position.x += (Math.sin(shakeT * 1.7) * 0.2 + Math.sin(shakeT * 4.3) * 0.05) * k;
+      camera.position.y += (Math.sin(shakeT * 2.3) * 0.14 + Math.sin(shakeT * 5.1) * 0.04) * k;
+      roll += Math.sin(shakeT * 1.1) * 0.03 * k;
+    }
+    trauma = Math.max(0, trauma - dt * 1.3);
     // roll the camera (bike lean)
     up.set(0, 1, 0);
     if (roll) { const fx = look.x - camera.position.x, fz = look.z - camera.position.z, fl = Math.hypot(fx, fz) || 1; up.set((fz / fl) * Math.sin(roll), Math.cos(roll), (-fx / fl) * Math.sin(roll)); }
     camera.up.copy(up);
     camera.lookAt(look);
-    const fov = mode === 'TV' || mode === 'orbit' ? fovBase : fovBase + clamp(spd / r.p.vmax, 0, 1.1) * 14 + (s.nitroOn ? 8 : 0);
+    if (s.nitroOn && !prevNitro) fovKick = 7;
+    prevNitro = s.nitroOn; fovKick = Math.max(0, fovKick - dt * 9);
+    const fov = !onCar ? fovBase : fovBase + (clamp(spd / r.p.vmax, 0, 1.1) * 14 + (s.nitroOn ? 6 : 0) + fovKick) * S.fovKick;
     camera.fov = snap ? fov : lerp(camera.fov, fov, 1 - Math.exp(-(mode === 'TV' ? 10 : 3) * dt));
     camera.updateProjectionMatrix();
     const sun = W.track.sun;
     sun.position.set(s.x + sun.userData.dir.x * 120, s.y + sun.userData.dir.y * 120, s.z + sun.userData.dir.z * 120);
     sun.target.position.set(s.x, s.y, s.z);
   }
-  function readBack() { return !!keys.b || !!api.pad?.buttons?.[3]?.pressed; }
 
   /* ───────── visuals ───────── */
   function syncVisual(r, dt) {
     const s = r.st;
     r.root.visible = r.ghost ? !!r.ghostVisible && race.phase === 'racing' : !r.left;
-    r.root.position.set(s.x, s.y, s.z);
+    let x = s.x, y = s.y, z = s.z, h = s.h;
+    if (!r.isRemote && !r.ghost && race.phase !== 'replay' && r.px !== undefined) {
+      // render between the last two physics steps (removes 240 Hz/display-rate beat jitter)
+      x = lerp(r.px, s.x, alpha); y = lerp(r.py, s.y, alpha); z = lerp(r.pz, s.z, alpha); h = r.ph + wrap(s.h - r.ph) * alpha;
+    }
+    (r.vis ||= {}).x = x; r.vis.y = y; r.vis.z = z; r.vis.h = h;
+    r.root.position.set(x, y, z);
     const slope = W.track.slope[r.idx] || 0;
-    r.root.rotation.set(0, s.h, 0);
+    r.root.rotation.set(0, h, 0);
     let pitch, roll;
     if (!r.isRemote && race.phase !== 'replay') [pitch, roll] = bodyMotion(s, r.p, dt);
     else { pitch = s.pitch; roll = r.p.bike ? s.lean : s.rollV || 0; }
@@ -610,8 +623,17 @@ export function createRace(ctx) {
     bloom.enabled = q > 0;
     if (W) W.track.sun.castShadow = q > 0;
   }
+  function applySettings() {
+    audio.setVolume(S.master * S.engine);
+    sfx.setVolume(S.master * S.sfx);
+    const fixed = { high: 2, medium: 1, low: 0 }[S.quality];
+    setQuality(fixed ?? 2);
+    if (api.active) hud.setKeys(keysLine());
+  }
+  api.applySettings = applySettings;
   function watchFps(dt) {
     fpsAcc += dt; fpsN++;
+    if (S.quality !== 'auto') { if (fpsAcc >= 1) { api.fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; } return; }
     if (fpsAcc < 1) return;
     const fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0;
     api.fps = fps;
@@ -625,10 +647,25 @@ export function createRace(ctx) {
   function update(dt) {
     if (!api.active) return;
     watchFps(dt);
-    const inp = readInput();
+    const inp = Input.poll();
     lastInp = inp;
+    // edge-triggered actions
+    if (inp.pressed.pause) {
+      if (race.phase === 'replay') onAction('rp-exit');
+      else if (!race.paused && race.phase !== 'finished') setPaused(true);
+      else if (race.paused && Input.getDevice() === 'pad') setPaused(false);
+    }
     if (race.phase === 'replay') return updateReplay(dt);
     if (race.paused) { updateCamera(0); return; }
+    if (inp.pressed.camera) cycleCam();
+    if (inp.pressed.reset && race.phase === 'racing') { resetToTrack(me, W.track, 0); me.px = undefined; hud.msg('RESET', 0.8); }
+    // free-look from the right stick; springs back when released
+    if (inp.look[0] || inp.look[1]) { freeLook.yaw = lerp(freeLook.yaw, -inp.look[0] * 2.6, 1 - Math.exp(-10 * dt)); freeLook.pitch = lerp(freeLook.pitch, inp.look[1] * 0.45, 1 - Math.exp(-10 * dt)); }
+    else if (!freeLook.drag) { freeLook.yaw = lerp(freeLook.yaw, 0, 1 - Math.exp(-3.5 * dt)); freeLook.pitch = lerp(freeLook.pitch, 0, 1 - Math.exp(-3.5 * dt)); }
+    // hit-stop: a few frames of slow motion on big impacts (real-time timer)
+    const realDt = dt;
+    if (hitStop > 0) { hitStop -= realDt; dt *= 0.12; }
+    flash = Math.max(0, flash - realDt * 2.2);
 
     // steering smoothing (keyboard ramps, analog follows)
     const s = me.st;
@@ -636,22 +673,25 @@ export function createRace(ctx) {
     else if (inp.analog) s.steer = lerp(s.steer, inp.steer, 1 - Math.exp(-18 * dt));
     else {
       const toward = inp.steer !== 0 && Math.sign(inp.steer) === Math.sign(s.steer || inp.steer);
-      const rate = (inp.steer === 0 ? 12 : toward ? 7.5 : 14) / (1 + Math.max(0, s.u) / (me.p.bike ? 60 : 85));
+      const rate = ((inp.steer === 0 ? 12 : toward ? 7.5 : 14) * S.steerSpeed) / (1 + Math.max(0, s.u) / (me.p.bike ? 60 : 85));
       s.steer += clamp(inp.steer - s.steer, -rate * dt, rate * dt);
     }
 
     // countdown
     if (race.phase === 'countdown') {
-      const left = race.startAt ? (race.startAt - room.hostNow()) / 1000 : 3.6 - (performance.now() - race.countStart) / 1000;
-      const n = Math.ceil(left);
-      if (n !== race.lastBeep && n >= 1 && n <= 3) { hud.count(n); sfx.beep(440); race.lastBeep = n; }
+      const left = race.startAt ? (race.startAt - room.hostNow()) / 1000 : race.countLen - (performance.now() - race.countStart) / 1000;
+      race.intro = race.countLen - left;
+      hud.title(race.intro < race.introDur ? W.track.def : null, opts);
+      // F1-style start lights: five reds over the last 3 seconds, lights out = GO
+      const lights = left > 3 ? 0 : Math.min(5, Math.floor((3 - left) / 0.6) + 1);
+      if (lights !== race.lastBeep && lights > 0) { hud.lights(lights); sfx.beep(440, 0.12, 0.18); race.lastBeep = lights; }
       // free revving + launch control window
       const e = me.p;
       s.rpm = lerp(s.rpm, inp.gas ? e.redline * 0.95 : e.idle, 1 - Math.exp(-(inp.gas ? 1.6 : 4) * dt));
       for (const r of racers) if (r !== me && !r.isRemote) r.st.rpm = r.p.idle;
       if (left <= 0) {
         race.phase = 'racing'; race.time = 0;
-        hud.count('GO!'); sfx.beep(880, 0.35);
+        hud.lights('go'); hud.title(null); hud.count('GO!'); sfx.beep(880, 0.35); rumble(0.2, 0.4, 150);
         const k = s.rpm / e.redline;
         if (inp.gas && k > 0.6 && k < 0.82) { s.boostT = 1.4; hud.pop('PERFECT START', 'nos'); rumble(0.3, 0.8, 300); }
         else if (inp.gas && k >= 0.82) hud.pop('WHEELSPIN START', 'bad');
@@ -680,11 +720,12 @@ export function createRace(ctx) {
             r.stuckT = race.phase === 'racing' && Math.abs(r.st.u) < 2 && r.st.crashT <= 0 ? (r.stuckT || 0) + STEP : 0;
             if (r.stuckT > 3) { resetToTrack(r, W.track, 6); r.stuckT = 0; }
           }
+          r.px = r.st.x; r.py = r.st.y; r.pz = r.st.z; r.ph = r.st.h;
           const ev = advance(r, W.track, i, STEP, hooks);
           if (ev && r === me) {
             const v = r.lastImpact || 0;
-            if (ev === 2) { hud.msg('CRASH!', 1.6); sfx.impact(14); rumble(1, 1, 500); shake = 1; }
-            else if (v > 2) { shake = Math.min(1, shake + v * 0.05); sfx.impact(v); rumble(v / 15, v / 10); score.cleanLap = false; if (score.chain > 0) { hud.pop('CHAIN LOST', 'bad'); score.chain = 0; score.combo = 1; } }
+            if (ev === 2) { hud.msg('CRASH!', 1.6); sfx.impact(14); rumble(1, 1, 500); addTrauma(1); hitStop = 0.14; flash = 0.35; }
+            else if (v > 2) { addTrauma(v * 0.045); if (v > 11) { hitStop = 0.07; flash = 0.12; } sfx.impact(v); rumble(v / 15, v / 10); score.cleanLap = false; if (score.chain > 0) { hud.pop('CHAIN LOST', 'bad'); score.chain = 0; score.combo = 1; } }
             if (v > 3) W.fx.sparks(r.st.x, r.st.y, r.st.z, r.st.vx, r.st.vz, Math.min(30, v * 2));
           }
           if (ev && r !== me && (r.lastImpact || 0) > 4) W.fx.sparks(r.st.x, r.st.y, r.st.z, r.st.vx, r.st.vz, 6);
@@ -697,7 +738,7 @@ export function createRace(ctx) {
             if (!B.isRemote && b < a) continue;
             const hit = contact(A, B, B.isRemote);
             if (hit > 2) {
-              if (A === me || B === me) { shake = Math.min(1, shake + hit * 0.06); sfx.impact(hit); rumble(hit / 12, hit / 8); score.cleanLap = false; }
+              if (A === me || B === me) { addTrauma(hit * 0.055); if (hit > 10) hitStop = 0.06; sfx.impact(hit); rumble(hit / 12, hit / 8); score.cleanLap = false; }
               W.fx.sparks((A.st.x + B.st.x) / 2, A.st.y, (A.st.z + B.st.z) / 2, A.st.vx, A.st.vz, Math.min(20, hit * 2));
               for (const R of [A, B]) if (R.p.bike && !R.isRemote && hit > 9 * R.p.H.crash && R.st.crashT <= 0) { R.st.crashT = 2; if (R === me) { hud.msg('CRASH!', 1.6); rumble(1, 1, 500); } }
             }
@@ -705,6 +746,7 @@ export function createRace(ctx) {
         }
         acc -= STEP;
       }
+      alpha = acc / STEP;
       for (const r of racers) if (!r.ghost && !r.isRemote) r.st.draft = draftFactor(r, racers);
       if (race.phase === 'racing') { scoreStep(dt); lapTrace[me.idx] = lapTrace[me.idx] < 0 ? race.time - me.lapStartT : lapTrace[me.idx]; }
       record(dt);
@@ -758,8 +800,17 @@ export function createRace(ctx) {
 
     // effects strength
     const kmh = Math.abs(s.u) * 3.6;
-    blur.enabled = quality === 2;
-    blur.uniforms.strength.value = clamp((kmh - 140) / 220, 0, 0.55) * 0.09 + (s.nitroOn ? 0.035 : 0);
+    blur.enabled = quality === 2 && S.blur > 0;
+    blur.uniforms.strength.value = (clamp((kmh - 140) / 220, 0, 0.55) * 0.09 + (s.nitroOn ? 0.035 : 0)) * S.blur;
+    const gu = grade.uniforms;
+    gu.time.value = (gu.time.value + realDt) % 100;
+    gu.ca.value = (clamp((kmh - 170) / 180, 0, 1) * 0.012 + (s.nitroOn ? 0.01 : 0)) * S.blur;
+    gu.flash.value = flash;
+    gu.grain.value = quality === 0 ? 0 : 0.03;
+    // live reflections of the track on the cars (high quality)
+    refl.enabled = quality === 2;
+    if (refl.enabled) { refl.update(W.scene, me.root.position, racers.map((r) => r.root), W.envStatic); W.scene.environment = refl.texture; }
+    else W.scene.environment = W.envStatic;
     document.getElementById('speedlines').style.opacity = clamp((kmh - 170) / 160, 0, 0.5) + (s.nitroOn ? 0.25 : 0);
 
     // HUD
@@ -773,7 +824,7 @@ export function createRace(ctx) {
     hud.frame(dt, {
       mode: opts.mode, pos, lap: me.lap, laps: opts.laps, time: race.phase === 'countdown' ? 0 : me.finished ? me.finishTime : race.time,
       best: isFinite(me.bestLap) ? me.bestLap : store.get(bestKey(), Infinity), delta,
-      kmh, gear: race.phase === 'countdown' ? 'N' : s.gear === -1 ? 'R' : s.gear, rpm: s.rpm, redline: red, shiftLight, accent: '#00e5ff',
+      kmh: S.units === 'mph' ? kmh * 0.621 : kmh, units: S.units, gear: race.phase === 'countdown' ? 'N' : s.gear === -1 ? 'R' : s.gear, rpm: s.rpm, redline: red, shiftLight, accent: '#00e5ff',
       nitro: me.nitro, nitroOn: s.nitroOn, score: score.total + score.chain, combo: score.combo, chain: score.chain,
       racers, me, standings: st,
       net: room ? `ROOM ${room.code} · ${room.isHost ? 'HOST' : `${Math.round(room.rtt || 0)} ms`}` : ''

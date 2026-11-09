@@ -1,5 +1,6 @@
 // Track layouts, themes and world building for race mode.
 import * as THREE from 'three';
+import { puddles as puddleMap } from './post.js';
 
 export const HALF_W = 8;
 export const WALL = HALF_W + 3.2;
@@ -502,7 +503,9 @@ export function buildTrack(def, renderer) {
   return {
     ...tr, scene, sun, hemi, theme: th, wet,
     setWet(on) {
-      roadMat.roughness = on ? 0.18 : 0.62;
+      // puddles: a roughness map with mirror-smooth patches
+      roadMat.roughnessMap = on ? puddleMap() : null; roadMat.needsUpdate = true;
+      roadMat.roughness = on ? 0.95 : 0.62;
       roadMat.metalness = on ? 0.35 : 0.15;
       roadMat.envMapIntensity = on ? 1.4 : 0.5;
       roadMat.color.setScalar(on ? 0.7 : 1);

@@ -13,6 +13,8 @@ import { EngineAudio } from './audio.js';
 import { createRace } from './race/index.js';
 import { loadRider, attachRider } from './rider.js';
 import { createSetup } from './ui/setup.js';
+import { createOptions } from './ui/options.js';
+import { registerScreen } from './ui/focus.js';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -1029,7 +1031,7 @@ function buildUI() {
   $('#credits').innerHTML = CARS.map((c) => `<li><b>${c.credit.title}</b> by ${c.credit.author}: <a href="${c.credit.url}" target="_blank" rel="noopener">source</a> · ${c.credit.license}</li>`).join('');
 
   addEventListener('keydown', (e) => {
-    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || $('#info').open || race.active || state.raceLoading || setup.isOpen) return;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || $('#info').open || race.active || state.raceLoading || setup.isOpen || options.isOpen) return;
     const k = e.key.toLowerCase();
     if (k === 'arrowright' || k === 'e') selectCar((state.index + 1) % CARS.length);
     else if (k === 'arrowleft' || k === 'q') selectCar((state.index + CARS.length - 1) % CARS.length);
@@ -1179,8 +1181,10 @@ controls.addEventListener('start', () => {
 });
 
 /* ───────────────────────── Race mode ───────────────────────── */
+const options = createOptions({ toast, onChange: () => race?.applySettings?.() });
 const race = createRace({
   renderer, composer, renderPass, bloom, audio, CARS, loadCar, computeStats,
+  openOptions: () => options.open(),
   onExit: ({ toLobby, room }) => {
     renderPass.scene = scene;
     renderPass.camera = camera;
@@ -1204,6 +1208,9 @@ const setup = createSetup({
   toast,
   startRace: (opts) => beginRace(opts)
 });
+registerScreen({ el: () => document.querySelector('#setup .setupCard'), open: () => setup.isOpen, back: () => setup.close() });
+registerScreen({ el: () => document.querySelector('#options .optCard'), open: () => options.isOpen, back: () => options.close() });
+$('#btnOptions').addEventListener('click', () => options.open());
 function startRace() {
   if (race.active || state.busy || state.launching || state.raceLoading || !state.current) return;
   if (setup.room && setup.room.state === 'lobby') { toast(setup.room.isHost ? 'Press Start in the room panel' : 'Waiting for the host to start'); return; }
@@ -1267,4 +1274,4 @@ async function boot() {
 boot();
 
 // expose for debugging
-window.__garage = { race, startRace, beginRace, setup, state, camera, controls, setCam, selectCar, setMood, setGlow, setLights, launch, toggleLift, setColor, setFinish };
+window.__garage = { race, startRace, beginRace, setup, renderFrame: () => composer.render(), state, camera, controls, setCam, selectCar, setMood, setGlow, setLights, launch, toggleLift, setColor, setFinish };

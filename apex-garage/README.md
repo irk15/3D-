@@ -24,6 +24,14 @@ A high-end 3D garage and racing game in the browser, built with Three.js (WebGL 
 - **Controllers:** gamepad support with rumble, plus touch controls
 - **Performance:** physics runs at a fixed 240 Hz and graphics quality adjusts automatically, so the frame rate stays smooth
 
+## v3: game feel, graphics and controls
+Built using techniques from the [awesome-gamedev-agent-skills](https://github.com/gamedev-skills/awesome-gamedev-agent-skills) skills (game-feel, camera-systems, input-systems, game-ui-ux, physics-tuning, threejs-materials-lighting, shader-programming, performance-optimization, audio-design):
+- **Graphics:** live reflections of the track on vehicles (a cube camera rendering one face per frame), a cinematic colour grade per track (vignette, lift and gain, saturation, film grain, chromatic aberration at speed), soft contact shadows, and wet-road puddles in the rain
+- **Game feel:** a smooth "trauma" camera shake (noise-based, not random jitter), hit-stop slow motion on big impacts, a FOV kick when nitro starts, eased pop animations, and sound variation (random pitch and volume, so repeated sounds don't sound identical)
+- **Camera:** look-ahead into corners, free-look with the right stick or a mouse drag (springs back), a cinematic grid flyby with a title card before every race, F1-style start lights, and render interpolation between physics steps for smooth motion
+- **Controls:** action-based input with full keyboard and gamepad rebinding (with conflict handling), on-screen prompts that switch to your current device, a radial stick deadzone, steering response curve and keyboard steering speed, and rumble strength
+- **UI:** an Options screen (Controls, Driving, Camera & visuals, Audio volumes, Graphics quality, km/h or mph), every menu navigable with a gamepad (D-pad, A and B), a redesigned speedometer (segmented rev arc, shift lights, nitro arc), and a HUD that scales to the screen and respects safe areas
+
 ## Online multiplayer
 Press **RACE → Online**, then **Create room**, and share the 5-character code (or the invite link). Friends choose **Online**, enter the code, pick a car or bike in the garage and press **Ready**. The host picks the track, laps, weather and how many AI racers fill the grid (up to 8 racers in total). Each player keeps their own handling and gearbox settings.
 

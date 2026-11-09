@@ -5,7 +5,10 @@ export class EngineAudio {
     this.on = false;
     this.muted = false;
     this.cfg = { cyl: 8, tone: 1 };
+    this.vol = 1;
   }
+
+  setVolume(v) { this.vol = v; if (this.ctx) this._applyGain(this.on ? 0.32 : 0); }
 
   _build() {
     const ctx = (this.ctx = new (window.AudioContext || window.webkitAudioContext)());
@@ -80,7 +83,7 @@ export class EngineAudio {
   _applyGain(v) {
     const t = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(t);
-    this.master.gain.setTargetAtTime(this.muted ? 0 : v, t, 0.08);
+    this.master.gain.setTargetAtTime(this.muted ? 0 : v * this.vol, t, 0.08);
   }
 
   // rpm: engine speed, load: 0..1 throttle
@@ -94,6 +97,6 @@ export class EngineAudio {
     this.filter.frequency.setTargetAtTime(280 + rpm * 0.32 + load * 900, t, 0.05);
     this.noiseBand.frequency.setTargetAtTime(120 + rpm * 0.08, t, 0.05);
     this.noiseGain.gain.setTargetAtTime(0.06 + load * 0.18, t, 0.05);
-    if (!this.muted) this.master.gain.setTargetAtTime(0.26 + load * 0.2, t, 0.1);
+    if (!this.muted) this.master.gain.setTargetAtTime((0.26 + load * 0.2) * this.vol, t, 0.1);
   }
 }

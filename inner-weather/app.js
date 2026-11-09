@@ -1,6 +1,6 @@
 'use strict';
 /* Inner Weather: check in, get a small plan, use a tool. Everything stays on this phone. */
-const VERSION = 'iw3';
+const VERSION = 'v30';
 const $ = (s, r = document) => r.querySelector(s);
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -81,6 +81,7 @@ const TABI = {
   today: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1.6M5.6 5.6l1.1 1.1M3 12h1.6M18.4 6.7l1.1-1.1"/><path d="M8.3 12a3.8 3.8 0 0 1 7.3-1.4"/><path d="M9 20h8.5a3 3 0 0 0 .3-6 4.5 4.5 0 0 0-8.6-.6A3.3 3.3 0 0 0 9 20z"/></svg>',
   tools: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
   journal: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7.5h6M9 11h4"/></svg>',
+  lines: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7.5h3.5v3.5c0 2.5-1.2 4-3.5 5M14 7.5h3.5v3.5c0 2.5-1.2 4-3.5 5"/></svg>',
   me: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>'
 };
 const HEARTI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z"/></svg>';
@@ -91,9 +92,9 @@ function render() {
   theme();
   const app = $('#app'); app.innerHTML = '';
   const v = h('main', { class: 'view', id: 'view' });
-  app.append(v, h('nav', { class: 'tabs', 'aria-label': 'Sections' }, [['today', 'Today'], ['tools', 'Tools'], ['journal', 'Journal'], ['me', 'You']].map(([k, l]) =>
+  app.append(v, h('nav', { class: 'tabs', 'aria-label': 'Sections' }, [['today', 'Today'], ['lines', 'Lines'], ['tools', 'Tools'], ['journal', 'Journal'], ['me', 'You']].map(([k, l]) =>
     h('button', { class: 'tab' + (S.tab === k ? ' on' : ''), 'aria-current': S.tab === k ? 'page' : null, onclick: () => { S.tab = k; save(); render(); scrollTo(0, 0); } }, h('span', { html: TABI[k] }), h('small', null, l)))));
-  ({ today: viewToday, tools: viewTools, journal: viewJournal, me: viewMe })[S.tab](v);
+  (({ today: viewToday, lines: viewLines, tools: viewTools, journal: viewJournal, me: viewMe })[S.tab] || viewToday)(v); if (typeof syncListen === 'function') syncListen();
 }
 const helpPill = () => h('button', { class: 'helppill', onclick: openHelp, 'aria-label': 'Help now' }, h('span', { html: HEARTI }), 'Help now');
 const head = (eyebrow, title) => h('header', { class: 'head' }, h('div', null, h('div', { class: 'eyebrow' }, eyebrow), h('h1', null, title)), helpPill());
@@ -122,8 +123,8 @@ function viewToday(v) {
       h('div', { class: 'chips' }, TAGS.filter(t => t !== 'No idea').map(t => h('button', { class: 'chip sm' + (last.tags.includes(t) ? ' on' : ''), onclick: () => { last.tags = last.tags.includes(t) ? last.tags.filter(z => z !== t) : last.tags.concat(t); save(); render(); } }, t)),
         h('button', { class: 'chip sm', onclick: () => addNote(last) }, last.note ? '✎ Edit note' : '+ Note')));
   }
-  v.append(h('section', { class: 'card quote' }, h('div', { class: 'eyebrow' }, 'Today’s reminder'), h('p', { class: 'serif big' }, DAILY[dayNo() % DAILY.length])),
-    h('div', { class: 'sechead' }, 'Quick'), h('div', { class: 'quick' }, [['sigh', 'Breathe'], ['ground', 'Ground'], ['park', 'Park a worry'], ['heart', 'Heartbreak']].map(([k, l]) => h('button', { class: 'qbtn', onclick: () => runTool(k) }, l))));
+  v.append(h('div', { class: 'sechead' }, 'Quick'), h('div', { class: 'quick' }, [['reset', 'Reset'], ['sigh', 'Breathe'], ['park', 'Worry'], ['focus', 'Focus']].map(([k, l]) => h('button', { class: 'qbtn', onclick: () => runTool(k) }, l))),
+    lineCard(), h('section', { class: 'card quote' }, h('div', { class: 'eyebrow' }, 'Today’s reminder'), h('p', { class: 'serif big' }, DAILY[dayNo() % DAILY.length])));
 }
 function sunFor(w) {
   if (WEATHER[w].s > 2 || !S.sun.length) return null; const n = S.sun[dayNo() % S.sun.length];
@@ -154,9 +155,9 @@ function flow(steps, opt) {
   FL.el = h('div', { class: 'flow', role: 'dialog', 'aria-modal': 'true', 'aria-label': FL.opt.label || 'Tool' }); document.body.append(FL.el); document.body.classList.add('flowing');
   FL.show = (r, prog, keep) => {
     if (!keep) clearT(); FL.el.innerHTML = '';
-    FL.el.append(h('div', { class: 'ftop' }, h('div', { class: 'prog' }, h('i', { style: 'width:' + Math.round((prog == null ? FL.i / Math.max(1, FL.steps.length) : prog) * 100) + '%' })), h('button', { class: 'xbtn', 'aria-label': 'Close', html: XI, onclick: () => { closeFlow(); render(); } })),
+    FL.el.append(h('div', { class: 'ftop' }, h('div', { class: 'prog' }, h('i', { style: 'width:' + Math.round((prog == null ? FL.i / Math.max(1, FL.steps.length) : prog) * 100) + '%' })), h('button', { class: 'xbtn', 'aria-label': 'Close', html: XI, onclick: () => { if (FL.opt.onClose) FL.opt.onClose(); closeFlow(); render(); } })),
       h('div', { class: 'fbody' }, r.body), h('div', { class: 'ffoot' }, r.foot || null));
-    FL.el.scrollTop = 0; const f = FL.el.querySelector('textarea,input'); if (f && !FL.opt.nofocus) later(() => { try { f.focus({ preventScroll: true }); } catch (e) {} }, 380);
+    FL.el.scrollTop = 0; if (typeof syncListen === 'function') syncListen(); const f = FL.el.querySelector('textarea,input'); if (f && !FL.opt.nofocus) later(() => { try { f.focus({ preventScroll: true }); } catch (e) {} }, 380);
   };
   draw();
 }
@@ -286,10 +287,10 @@ function sleepStep() {
     w.append(h('div', { class: 'sechead' }, 'Sound'), h('div', { class: 'chips' }, SLEEP_SOUNDS.concat([['None', '']]).map(([l, f]) => h('button', { class: 'chip' + (snd === f ? ' on' : ''), onclick: () => { snd = f; draw(); } }, l))),
       h('div', { class: 'sechead' }, 'Fade out after'), h('div', { class: 'chips' }, [[15, '15 min'], [30, '30 min'], [60, '1 hour'], [0, 'Never']].map(([m, l]) => h('button', { class: 'chip' + (mins === m ? ' on' : ''), onclick: () => { mins = m; draw(); } }, l)))); };
   draw();
-  const start = () => { S.sleepSnd = snd; S.sleepMin = mins; save(); stopSleep(false);
-    if (snd) { const a = SL.a = new Audio('../lightly/audio/ambient/' + snd + '-2.wav'); a.loop = true; a.setAttribute('playsinline', ''); a.play().catch(() => toast('Tap again to start the sound')); if (mins) SL.t = setTimeout(() => stopSleep(true), mins * 6e4); }
+  const start = () => { S.sleepSnd = snd; S.sleepMin = mins; save(); stopVoice(); clearTimeout(SL.t);
+    if (snd) { ambPlay(snd, 2); keepAlive(true); if (mins) SL.t = setTimeout(() => { ambStop(true); keepAlive(false); }, mins * 6e4); }
     FL.show({ body: [h('div', { class: 'orbwrap' }, h('div', { class: 'orb calm' })), h('h2', { class: 'ftitle center serif' }, 'Sleep well.'), h('p', { class: 'fsub center' }, snd ? (mins ? 'The sound fades out in ' + mins + ' minutes. You can lock your phone.' : 'The sound plays until you stop it.') : 'You did enough today.')],
-      foot: [btn('Close', () => { closeFlow(); render(); }), snd ? btn('Stop sound', () => { stopSleep(false); closeFlow(); render(); }, 'link') : null] }, 1); };
+      foot: [btn('Close', () => { closeFlow(); render(); }), snd ? btn('Stop sound', () => { clearTimeout(SL.t); ambStop(true); keepAlive(false); closeFlow(); render(); }, 'link') : null] }, 1); };
   return { body: [h('h2', { class: 'ftitle' }, 'Now rest'), h('p', { class: 'fsub' }, 'Pick a sound for falling asleep.'), w], foot: [btn('Start', start)] };
 }
 
@@ -311,7 +312,7 @@ function viewJournal(v) {
   v.append(h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Last 30 days · ' + month.length + ' check-ins'), h('div', { class: 'bar' }, ORDER.filter(k => cnt[k]).map(k => h('i', { class: 'w-' + k, style: 'flex:' + cnt[k], title: WEATHER[k].n }))),
     h('div', { class: 'legend' }, ORDER.filter(k => cnt[k]).map(k => h('span', null, h('i', { class: 'w-' + k }), WEATHER[k].n + ' ' + cnt[k])))));
   const ins = insights(); if (ins.length) v.append(h('div', { class: 'sechead' }, 'Patterns'), h('div', { class: 'stack' }, ins.map(t => h('div', { class: 'insight' }, t))));
-  const lists = [['Good things', S.good.map(g => g.t)], ['Thoughts you reframed', S.thoughts.map(t => t.to)], ['Notes for rainy days', S.sun.map(s => s.t)]];
+  const lists = [['Saved lines', (S.fav || []).map(f => f[0])], ['Good things', S.good.map(g => g.t)], ['Thoughts you reframed', S.thoughts.map(t => t.to)], ['Notes for rainy days', S.sun.map(s => s.t)]];
   lists.forEach(([t, arr]) => { if (arr.length) v.append(h('div', { class: 'sechead' }, t), h('div', { class: 'card list' }, arr.slice(0, 5).map(x => h('p', { class: 'serif' }, x)))); });
   v.append(h('div', { class: 'sechead' }, 'Check-ins'), h('div', { class: 'stack' }, S.log.slice(-30).reverse().map(e => h('div', { class: 'entry' }, h('span', { class: 'wi w-' + e.w, html: svgI(e.w, 24) }),
     h('div', { class: 'grow' }, h('b', null, WEATHER[e.w].n), h('small', { class: 'mut' }, new Date(e.t).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + hhmm(e.t) + (e.tags && e.tags.length ? ' · ' + e.tags.join(', ') : '')), e.note ? h('p', null, e.note) : null),
@@ -328,6 +329,7 @@ function insights() {
   const by = {}; S.used.forEach(u => { by[u.k] = by[u.k] || [0, 0]; by[u.k][1]++; if (u.r === 2) by[u.k][0]++; });
   const best = Object.keys(by).filter(k => by[k][1] >= 2 && TOOLS[k]).sort((a, b) => by[b][0] / by[b][1] - by[a][0] / by[a][1])[0];
   if (best && by[best][0]) out.push(h('span', null, h('b', null, TOOLS[best].n), ' helped you ' + by[best][0] + ' of ' + by[best][1] + ' times. It is your go-to.'));
+  if (S.focusMin) out.push(h('span', null, 'You have focused for ', h('b', null, S.focusMin + ' minutes'), ' in sprints.'));
   const res = S.worries.filter(w => w.r), gone = res.filter(w => w.r === 'gone').length; if (res.length >= 3) out.push(h('span', null, h('b', null, gone + ' of ' + res.length), ' parked worries never happened.'));
   return out;
 }
@@ -337,22 +339,28 @@ function viewMe(v) {
   v.append(head('You', 'Settings'));
   const nm = h('input', { class: 'field one', maxlength: 30, value: S.name || '', placeholder: 'Your first name (optional)', 'aria-label': 'Your name' });
   nm.addEventListener('change', () => { S.name = nm.value.trim(); save(); toast('Saved'); });
+  const vc = h('div', { class: 'vgrid' }); const drawV = () => { vc.innerHTML = ''; STUDIO.concat([['device', 'Phone voice', 'Built into your phone']]).forEach(([k, n, d]) => vc.append(h('button', { class: 'vcard' + (S.voice === k ? ' on' : ''), onclick: () => { S.voice = k; save(); drawV(); stopVoice(); speak(LINES.Calm[1]); } }, h('b', null, n), h('small', null, d)))); }; drawV();
   v.append(h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'What should I call you?'), nm),
+    h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Voice · tap to hear'), vc),
+    h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Background sound'), h('p', { class: 'mut small' }, 'Plays under the voice when you Listen, and keeps going with the screen off.'), sndPill()),
+    h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Hourly lift'), h('p', { class: 'small' }, 'A short line and one small action every hour from 8 am to 9 pm, through the free ntfy app. Subscribe to topic lightly-f0cab002941d872d.')),
     h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Private by design'), h('p', null, 'No account, no ads, no tracking. Everything you write stays on this phone and nowhere else.'),
-      h('div', { class: 'chips' }, h('button', { class: 'chip', onclick: exportData }, 'Download my data'), h('button', { class: 'chip', onclick: () => { if (confirm('Erase everything Inner Weather has saved on this phone?')) { localStorage.removeItem(KEY); location.reload(); } } }, 'Erase everything'))),
+      h('div', { class: 'chips' }, h('button', { class: 'chip', onclick: exportData }, 'Download my data'), h('button', { class: 'chip', onclick: () => { if (confirm('Erase everything Lightly has saved on this phone?')) { localStorage.removeItem(KEY); location.reload(); } } }, 'Erase everything'))),
     h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'How it works'), h('p', null, 'Feelings move like weather. Check in, get a small plan, use a tool for a minute or two, and say honestly whether it helped. Over time your journal learns what works for you.'),
       h('p', { class: 'mut small' }, 'The tools come from well-studied approaches: CBT thought work, DBT skills for intense emotion, behavioural activation for low mood, self-compassion, and urge surfing.')),
-    h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Important'), h('p', null, 'Inner Weather is a self-help companion, not therapy or medical care. If low mood or anxiety lasts more than two weeks or gets in the way of your life, please talk to a doctor or therapist.'), h('button', { class: 'btn sm', onclick: () => openHelp() }, 'Crisis lines')),
-    h('p', { class: 'mut small center' }, 'Inner Weather ' + VERSION));
+    h('div', { class: 'card' }, h('div', { class: 'eyebrow' }, 'Important'), h('p', null, 'Lightly is a self-help companion, not therapy or medical care. If low mood or anxiety lasts more than two weeks or gets in the way of your life, please talk to a doctor or therapist.'), h('button', { class: 'btn sm', onclick: () => openHelp() }, 'Crisis lines')),
+    h('p', { class: 'mut small center' }, 'Lightly ' + VERSION));
 }
-function exportData() { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }); const a = h('a', { href: URL.createObjectURL(b), download: 'inner-weather.json' }); document.body.append(a); a.click(); a.remove(); }
+function exportData() { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }); const a = h('a', { href: URL.createObjectURL(b), download: 'lightly-data.json' }); document.body.append(a); a.click(); a.remove(); }
 
 /* ---------- welcome ---------- */
 function welcome() {
   flow([{ t: 'custom', render: () => ({ body: [h('div', { class: 'wrow3' }, ['storm', 'rain', 'sun'].map(k => h('span', { class: 'wi big w-' + k, html: svgI(k, 44) }))), h('h1', { class: 'display center' }, 'Feelings move ', h('em', null, 'like weather.')),
-    h('p', { class: 'fsub center' }, 'Tap how you feel, get one small thing that helps. Private, on your phone. Not therapy; Help now is always at the top.')], foot: [btn('Begin', () => { S.onb = 1; save(); closeFlow(); render(); })] }) }], { label: 'Welcome' });
+    h('p', { class: 'fsub center' }, 'Lightly. Tap how you feel, get one small thing that helps, and lines that meet you where you are. Private, on your phone. Not therapy; Help now is always at the top.')], foot: [btn('Begin', () => { S.onb = 1; save(); closeFlow(); render(); })] }) }], { label: 'Welcome' });
 }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+function boot() {
 render(); if (!S.onb) welcome();
 { const g = new URLSearchParams(location.search).get('go'); if (g && S.onb) { history.replaceState(null, '', location.pathname); if (g === 'help') openHelp(); else if (g === 'checkin') checkin(); else if (TOOLS[g]) runTool(g); } }
+}

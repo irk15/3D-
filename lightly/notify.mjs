@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 const q = JSON.parse(readFileSync(new URL('./quotes.json', import.meta.url), 'utf8'));
 const TZ = process.env.NOTIFY_TZ || 'America/Toronto', FROM = +(process.env.NOTIFY_FROM || 8), TO = +(process.env.NOTIFY_TO || 21);
-const BASE = 'https://irk15.github.io/3D-/lightly/';
+const BASE = 'https://irk15.github.io/3D-/inner-weather/';
 const manual = !process.env.SCHEDULE;                       // workflow_dispatch or local run: always send
 const localHour = d => (parseInt(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' }).format(d), 10)) % 24;
 const dayNo = d => { const [y, m, dd] = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-').map(Number); return Math.floor(Date.UTC(y, m - 1, dd) / 864e5); };

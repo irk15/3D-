@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>TEF — Écrire &amp; Parler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFFCF4; --ink:#16121F; --soft:#6D6480; --hair:#E3DCCD; --sunk:#F0EAD9;
+  --vert:#007A42; --rouge:#C4221C;
+  --pop:3px 3px 0 var(--ink);
+  --ff:'Poppins',sans-serif;
+  --ui:'Poppins',sans-serif;
+  --accent:#7B5BD6;
+  --bar: env(safe-area-inset-bottom, 0px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--ui);
+  min-height:100dvh; height:100dvh;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+
+/* ── TOP CHROME ─────────────────────────────── */
+.topbar{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;
+  border-bottom:1.5px solid var(--hair);
+  background:var(--paper);
+  flex-shrink:0;
+}
+/* row 1: wordmark left, A/B buttons right — no middle element */
+.topbar-r1{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+/* row 2: Section A/B buttons full width */
+.topbar-r2{
+  display:flex;
+  align-items:center;
+}
+/* row 3: progress bar */
+.topbar-r3{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.wordmark{
+  font-family:var(--ff); font-size:1.15rem; font-weight:700;
+  letter-spacing:-0.03em; line-height:1;
+  white-space:nowrap;
+}
+.wordmark em{color:var(--accent); font-style:normal}
+
+.prog-track{flex:1; height:4px; background:var(--hair); border-radius:2px; overflow:hidden; min-width:0}
+.prog-fill{height:100%; background:var(--accent); border-radius:2px; transition:width .3s}
+.prog-label{font-size:0.7rem; font-weight:600; color:var(--soft); white-space:nowrap}
+
+.seg{
+  display:flex; gap:3px; background:var(--hair);
+  border-radius:8px; padding:3px;
+}
+.seg button{
+  font-family:var(--ui); font-size:0.72rem; font-weight:600;
+  border:none; background:transparent; color:var(--soft);
+  padding:5px 10px; border-radius:5px; cursor:pointer;
+  transition:background .15s,color .15s; white-space:nowrap;
+}
+.seg button.on{background:var(--paper); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* seg full-width in topbar-r2 */
+.topbar-r2 .seg{width:100%}
+.topbar-r2 .seg button{flex:1; text-align:center}
+
+/* ── TOPICS ─────────────────────────────────── */
+.topics-wrap{
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; padding:10px 16px 6px; flex-shrink:0;
+}
+.topics-wrap::-webkit-scrollbar{display:none}
+.topics-row{display:flex; gap:6px; width:max-content}
+.tpill{
+  font-family:var(--ui); font-size:0.75rem; font-weight:600;
+  border:2px solid var(--hair); padding:5px 12px; border-radius:100px;
+  cursor:pointer; background:transparent; color:var(--ink);
+  transition:all .15s; white-space:nowrap;
+}
+.tpill.on{
+  background:var(--tc,var(--accent)); border-color:var(--tc,var(--accent));
+  color:#fff; box-shadow:var(--pop);
+}
+.tpill.on.light{color:var(--ink)}
+
+/* ── FILTER ─────────────────────────────────── */
+.filter-row{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px 0; flex-shrink:0;
+}
+.filt-tabs{display:flex; gap:3px; background:var(--hair); border-radius:7px; padding:3px}
+.filt-tab{
+  font-family:var(--ui); font-size:0.7rem; font-weight:600;
+  border:none; background:transparent; color:var(--soft);
+  padding:4px 10px; border-radius:4px; cursor:pointer;
+  transition:all .15s; white-space:nowrap;
+}
+.filt-tab.on{background:var(--paper); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.known-badge-row{margin-left:auto; font-size:0.72rem; font-weight:600; color:var(--vert)}
+
+/* ── CARD AREA ───────────────────────────────── */
+.card-area{
+  flex:1; overflow:hidden;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:12px 16px 8px;
+  position:relative;
+}
+
+/* ── CARD ────────────────────────────────────── */
+.card{
+  width:100%; max-width:480px;
+  background:var(--paper);
+  border:2px solid var(--ink);
+  border-radius:14px;
+  box-shadow:var(--pop);
+  overflow:hidden;
+  cursor:pointer; user-select:none;
+  position:relative;
+  display:flex; flex-direction:column;
+  /* fill available height between filter and bottom bar */
+  max-height:100%;
+  transition:transform .18s cubic-bezier(.2,1.4,.4,1), box-shadow .18s, opacity .15s;
+}
+.card:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink)}
+
+/* swipe animations */
+@keyframes swipeFwd {
+  from{opacity:1;transform:translateX(0)}
+  to{opacity:0;transform:translateX(-40px)}
+}
+@keyframes swipeBack {
+  from{opacity:1;transform:translateX(0)}
+  to{opacity:0;transform:translateX(40px)}
+}
+@keyframes enterFwd  { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:none} }
+@keyframes enterBack { from{opacity:0;transform:translateX(-40px)} to{opacity:1;transform:none} }
+.card.exit-fwd   { animation:swipeFwd  .2s ease forwards }
+.card.exit-back  { animation:swipeBack .2s ease forwards }
+.card.enter-fwd  { animation:enterFwd  .22s cubic-bezier(.2,1.4,.4,1) forwards }
+.card.enter-back { animation:enterBack .22s cubic-bezier(.2,1.4,.4,1) forwards }
+@media (prefers-reduced-motion:reduce){
+  .card.exit-fwd,.card.exit-back,.card.enter-fwd,.card.enter-back{animation:none}
+}
+
+.card-top{height:6px; background:var(--tc,var(--accent)); flex-shrink:0}
+.card-scroll{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 22px 18px}
+
+/* badge row — type badge + optional known chip, side by side, no overlap */
+.badge-row{display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:wrap}
+.type-badge{
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:0.65rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:4px 10px; border-radius:6px; flex-shrink:0;
+}
+.badge-v{background:color-mix(in srgb,var(--tc,var(--accent)) 18%,transparent); color:var(--tc,var(--accent))}
+.badge-p{background:var(--sunk); color:var(--soft)}
+.wc{font-weight:400; opacity:.7; letter-spacing:.01em; text-transform:none}
+/* known chip — inline, no absolute positioning */
+.known-chip{
+  display:none; align-items:center; gap:4px;
+  font-size:0.65rem; font-weight:700; letter-spacing:.04em;
+  color:var(--vert); flex-shrink:0;
+}
+.known-chip.show{display:flex}
+.known-chip svg{width:12px;height:12px;fill:none;stroke:var(--vert);stroke-width:2.5}
+
+/* french — the star: big, bold, optically weighted */
+.card-fr{
+  font-family:var(--ff);
+  font-size:clamp(1.65rem,6.5vw,2.1rem);
+  font-weight:800; line-height:1.15; letter-spacing:-0.03em;
+  color:var(--ink); margin-bottom:14px;
+}
+
+/* english translation — always visible, medium weight, clear size */
+.card-en{
+  font-size:1rem; font-weight:500; font-style:italic;
+  color:var(--soft); line-height:1.5; padding-left:2px;
+}
+
+/* divider between phrase and example */
+.card-divider{height:1.5px; background:var(--hair); margin:18px 0 0}
+
+/* example */
+.ex-toggle{
+  display:flex; align-items:center; gap:8px;
+  padding:14px 0 0;
+  font-size:0.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--tc,var(--accent)); cursor:pointer; user-select:none;
+}
+.ex-toggle svg{width:12px;height:12px;transition:transform .22s;flex-shrink:0}
+.ex-toggle.open svg{transform:rotate(180deg)}
+.ex-body{display:none; padding-top:12px; padding-bottom:4px}
+.ex-toggle.open + .ex-body{display:block}
+.ex-fr{
+  font-family:var(--ff); font-style:italic;
+  font-size:0.97rem; line-height:1.65; color:var(--ink); margin-bottom:8px;
+}
+/* english translation of example — clearly separated */
+.ex-en-label{
+  font-size:0.65rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--soft); opacity:.5; margin-bottom:4px;
+}
+.ex-en{font-size:0.88rem; font-weight:400; color:var(--soft); line-height:1.55}
+
+/* ── BOTTOM NAV ──────────────────────────────── */
+.bottom-nav{
+  flex-shrink:0;
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px calc(10px + var(--bar));
+  border-top:1.5px solid var(--hair);
+  background:var(--paper);
+}
+.nav-btn{
+  width:46px; height:46px; border-radius:50%;
+  border:2px solid var(--ink); background:var(--paper);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  box-shadow:var(--pop); transition:transform .1s,box-shadow .1s; flex-shrink:0;
+}
+.nav-btn:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink)}
+.nav-btn:disabled{opacity:.25; cursor:default; box-shadow:none}
+.nav-btn svg{width:16px;height:16px}
+.know-btn{
+  flex:1; height:46px; border-radius:100px;
+  border:2px solid var(--ink); background:var(--paper);
+  font-family:var(--ui); font-size:0.85rem; font-weight:700;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;
+  box-shadow:var(--pop); transition:transform .1s,box-shadow .1s,background .15s,color .15s;
+  color:var(--ink);
+}
+.know-btn.on{background:var(--vert); color:#fff; border-color:var(--vert)}
+.know-btn:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink)}
+.know-btn svg{width:14px;height:14px}
+
+/* ── EMPTY ───────────────────────────────────── */
+.empty{
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:10px; color:var(--soft); font-size:.9rem; text-align:center;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-r1">
+    <div class="wordmark">TEF<em>.</em></div>
+    <div class="seg">
+      <button id="btnEE" class="on" onclick="setExam('EE')">Écrit</button>
+      <button id="btnEO"           onclick="setExam('EO')">Oral</button>
+    </div>
+  </div>
+  <div class="topbar-r2">
+    <div class="seg">
+      <button id="btnA" class="on" onclick="setSection('A')">Section A</button>
+      <button id="btnB"           onclick="setSection('B')">Section B</button>
+    </div>
+  </div>
+  <div class="topbar-r3">
+    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+    <div class="prog-label" id="progLabel">1 / 1</div>
+  </div>
+</div>
+
+<div class="topics-wrap"><div class="topics-row" id="topicsRow"></div></div>
+
+<div class="filter-row">
+  <div class="filt-tabs">
+    <button class="filt-tab on" id="fAll"    onclick="setFilter('all')">All</button>
+    <button class="filt-tab"    id="fVocab"  onclick="setFilter('vocab')">Vocab</button>
+    <button class="filt-tab"    id="fPhrase" onclick="setFilter('phrase')">Phrases</button>
+  </div>
+  <div class="known-badge-row" id="knownRow"></div>
+</div>
+
+<div class="card-area" id="cardArea"></div>
+
+<div class="bottom-nav">
+  <button class="nav-btn" id="btnPrev" onclick="navigate(-1)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="10,3 5,8 10,13"/></svg>
+  </button>
+  <button class="know-btn" id="knowBtn" onclick="toggleKnown()">
+    <svg viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1,6 5,10 13,2"/></svg>
+    <span id="knowLabel">Mark as known</span>
+  </button>
+  <button class="nav-btn" id="btnNext" onclick="navigate(1)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6,3 11,8 6,13"/></svg>
+  </button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA  — CLB 7-8 level, ~35 items per topic
+   type: 'vocab' | 'phrase'
+   wc: word class label (vocab only)
+   ═══════════════════════════════════════════════════════ */
+const D={
+ EE:{
+  A:[
+  {id:'structureA',fr:'Structurer',en:'Story structure',c:'#FF6B2C',l:false,items:[
+    {t:'p',fr:'Tout a commencé quand…',en:'It all started when…',ex:'Tout a commencé quand le petit garçon est sorti seul dans la rue.',exE:'It all started when the little boy went out alone into the street.'},
+    {t:'p',fr:'C\'est alors que…',en:'That\'s when… / Then suddenly…',ex:'C\'est alors que le chien s\'est mis à aboyer furieusement.',exE:'That\'s when the dog started barking furiously.'},
+    {t:'p',fr:'Au moment où…, il/elle…',en:'At the moment when…',ex:'Au moment où il allait partir, quelque chose d\'étrange s\'est produit.',exE:'At the moment when he was about to leave, something strange happened.'},
+    {t:'p',fr:'Sans que personne ne s\'y attende,…',en:'Without anyone expecting it,…',ex:'Sans que personne ne s\'y attende, la situation a pris une tournure dramatique.',exE:'Without anyone expecting it, the situation took a dramatic turn.'},
+    {t:'p',fr:'Quelques minutes/heures plus tard,…',en:'A few minutes/hours later,…',ex:'Quelques minutes plus tard, les secours sont arrivés sur place.',exE:'A few minutes later, the emergency services arrived on the scene.'},
+    {t:'p',fr:'Heureusement / Malheureusement,…',en:'Fortunately / Unfortunately,…',ex:'Malheureusement, il était trop tard pour intervenir.',exE:'Unfortunately, it was too late to intervene.'},
+    {t:'p',fr:'Contre toute attente,…',en:'Against all expectations,…',ex:'Contre toute attente, le coupable était quelqu\'un de bien connu.',exE:'Against all expectations, the culprit was someone well known.'},
+    {t:'p',fr:'Finalement, tout s\'est bien/mal terminé.',en:'In the end, everything turned out well/badly.',ex:'Finalement, tout s\'est bien terminé grâce à l\'intervention rapide des pompiers.',exE:'In the end, everything turned out fine thanks to the firefighters.'},
+    {t:'p',fr:'Ce qui s\'est passé ensuite a surpris tout le monde.',en:'What happened next surprised everyone.',ex:'Ce qui s\'est passé ensuite a surpris tout le monde, même la police.',exE:'What happened next surprised everyone, even the police.'},
+    {t:'p',fr:'Personne n\'aurait pu imaginer que…',en:'No one could have imagined that…',ex:'Personne n\'aurait pu imaginer que cela allait déclencher une telle enquête.',exE:'No one could have imagined this would trigger such an investigation.'},
+    {t:'p',fr:'Alerté(e) par…, il/elle a décidé de…',en:'Alerted by…, he/she decided to…',ex:'Alerté par les cris de sa voisine, il a décidé d\'appeler la police.',exE:'Alerted by his neighbour\'s cries, he decided to call the police.'},
+    {t:'v',fr:'déclencher',wc:'v',en:'to trigger / set off',ex:'Ce petit geste a déclenché une enquête internationale.',exE:'This small gesture triggered an international investigation.'},
+    {t:'v',fr:'une tournure inattendue',wc:'nf',en:'an unexpected turn of events',ex:'La situation a pris une tournure inattendue après l\'arrivée de la police.',exE:'The situation took an unexpected turn after the police arrived.'},
+    {t:'v',fr:'sain et sauf',wc:'loc',en:'safe and sound',ex:'L\'enfant a été retrouvé sain et sauf une heure plus tard.',exE:'The child was found safe and sound an hour later.'},
+    {t:'v',fr:'prendre les choses en main',wc:'loc',en:'to take charge / take control',ex:'Walid a pris les choses en main quand le chauffeur s\'est senti mal.',exE:'Walid took charge when the driver felt unwell.'},
+    {t:'v',fr:'avoir eu plus de peur que de mal',wc:'loc',en:'more scared than hurt',ex:'Finalement, il a eu plus de peur que de mal.',exE:'In the end he was more scared than hurt.'},
+    {t:'v',fr:'malgré les apparences',wc:'loc',en:'despite appearances',ex:'Malgré les apparences, leur relation était plus compliquée que prévu.',exE:'Despite appearances, their relationship was more complicated than expected.'},
+    {t:'v',fr:'s\'avérer + adj',wc:'v',en:'to turn out to be (formal)',ex:'La situation s\'est avérée bien plus grave qu\'on ne le pensait.',exE:'The situation turned out to be far more serious than expected.'},
+    {t:'v',fr:'insolite / inhabituel(le)',wc:'adj',en:'unusual / bizarre / out of the ordinary',ex:'Les pompiers ont fait une découverte insolite dans l\'appartement.',exE:'The firefighters made an unusual discovery in the apartment.'},
+    {t:'v',fr:'stupéfait(e) / abasourdi(e)',wc:'adj',en:'stunned / dumbfounded',ex:'Les témoins étaient complètement stupéfaits par la scène.',exE:'The witnesses were completely stunned by the scene.'},
+    {t:'v',fr:'en l\'espace de quelques minutes',wc:'loc',en:'within a matter of minutes',ex:'En l\'espace de quelques minutes, la situation avait complètement basculé.',exE:'Within a matter of minutes, the situation had completely turned around.'},
+  
+    {t:'p',fr:'Tout d\'abord,… / Ensuite,… / Enfin,…',en:'First of all,… / Then,… / Finally,…',ex:'Tout d\'abord, le héros était seul. Ensuite, il a rencontré un inconnu. Enfin, tout s\'est résolu.',exE:'First of all, the hero was alone. Then he met a stranger. Finally, everything was resolved.'},
+    {t:'p',fr:'Au début,… mais au final,…',en:'At first,… but in the end,…',ex:'Au début, personne ne comprenait ce qui se passait, mais au final, tout était clair.',exE:'At first no one understood what was happening, but in the end everything was clear.'},
+    {t:'p',fr:'Le lendemain matin,…',en:'The next morning,…',ex:'Le lendemain matin, la nouvelle faisait la une de tous les journaux.',exE:'The next morning, the news was on the front page of every newspaper.'},
+    {t:'p',fr:'On aurait dit que…',en:'It was as if… / It looked as though…',ex:'On aurait dit que personne n\'avait remarqué ce qui s\'était passé.',exE:'It was as if no one had noticed what had happened.'},
+    {t:'p',fr:'J\'ai tout de suite compris que…',en:'I immediately understood that…',ex:'J\'ai tout de suite compris que quelque chose n\'allait pas.',exE:'I immediately understood that something was wrong.'},
+    {t:'p',fr:'C\'est à ce moment-là que…',en:'It was at that moment that…',ex:'C\'est à ce moment-là qu\'il a réalisé qu\'il avait tout perdu.',exE:'It was at that moment that he realised he had lost everything.'},
+    {t:'v',fr:'soudain / tout à coup',wc:'adv',en:'suddenly / all of a sudden',ex:'Soudain, un cri a brisé le silence de la nuit.',exE:'Suddenly, a scream broke the silence of the night.'},
+    {t:'v',fr:'aussitôt / immédiatement',wc:'adv',en:'immediately / right away',ex:'Il a aussitôt appelé les secours sans réfléchir.',exE:'He immediately called for help without thinking.'},
+    {t:'v',fr:'pendant ce temps(-là)',wc:'loc',en:'meanwhile / in the meantime',ex:'Pendant ce temps-là, les autres attendaient des nouvelles dehors.',exE:'Meanwhile, the others were waiting for news outside.'},
+    {t:'v',fr:'au bout de + durée',wc:'loc',en:'after (a period of time)',ex:'Au bout d\'une heure, les pompiers sont enfin arrivés sur place.',exE:'After an hour, the firefighters finally arrived on the scene.'},
+    {t:'v',fr:'avoir du mal à + inf',wc:'loc',en:'to have difficulty doing something',ex:'Elle avait du mal à croire ce que ses yeux voyaient.',exE:'She had difficulty believing what her eyes were seeing.'},
+    {t:'v',fr:'bizarre / étrange',wc:'adj',en:'strange / odd / weird',ex:'Quelque chose de bizarre l\'a arrêté sur le chemin.',exE:'Something strange stopped him on the way.'},
+    {t:'v',fr:'ce qui l\'a surpris(e), c\'est que…',wc:'loc',en:'what surprised him/her was that…',ex:'Ce qui l\'a le plus surprise, c\'est que personne ne l\'avait attendu.',exE:'What surprised her most was that no one had waited for her.'},
+]},
+
+  {id:'enfants',fr:'Enfants',en:'Children & young heroes',c:'#FF3D8B',l:false,items:[
+    {t:'p',fr:'s\'échapper de quelque part',en:'to escape / run off from somewhere',ex:'Le petit garçon s\'est échappé du jardin d\'enfants pendant la récréation.',exE:'The little boy ran off from daycare during playtime.'},
+    {t:'p',fr:'appeler au secours / alerter les secours',en:'to call for help / alert emergency services',ex:'Il a immédiatement appelé au secours en voyant le chauffeur tomber.',exE:'He immediately called for help when he saw the driver fall.'},
+    {t:'p',fr:'en remplaçant quelqu\'un au pied levé',en:'by stepping in for someone at short notice',ex:'Il a conduit le bus en remplaçant le chauffeur évanoui au pied levé.',exE:'He drove the bus by stepping in for the unconscious driver at short notice.'},
+    {t:'p',fr:'sauver ses camarades de justesse',en:'to save his classmates in the nick of time',ex:'Walid a sauvé ses camarades de justesse en remplaçant le chauffeur du bus.',exE:'Walid saved his classmates just in time by taking over from the bus driver.'},
+    {t:'p',fr:'se faire remarquer pour son courage',en:'to get noticed for one\'s courage',ex:'L\'enfant s\'est fait remarquer par son courage et son sang-froid exceptionnels.',exE:'The child got noticed for his exceptional courage and composure.'},
+    {t:'p',fr:'composer le numéro d\'urgence',en:'to dial the emergency number',ex:'L\'enfant a composé le numéro d\'urgence pour se plaindre de ses cadeaux.',exE:'The child dialled the emergency number to complain about his presents.'},
+    {t:'p',fr:'faire une découverte inattendue en creusant',en:'to make an unexpected discovery while digging',ex:'Les écoliers ont fait une découverte inattendue en creusant dans le jardin.',exE:'The schoolchildren made an unexpected discovery while digging in the garden.'},
+    {t:'p',fr:'se retrouver dans une situation dangereuse',en:'to find oneself in a dangerous situation',ex:'Sans le savoir, les enfants s\'étaient retrouvés dans une situation dangereuse.',exE:'Without knowing it, the children had found themselves in a dangerous situation.'},
+    {t:'v',fr:'le jardin d\'enfants',wc:'nm',en:'daycare / nursery school',ex:'Il n\'avait que deux ans quand il a quitté le jardin d\'enfants.',exE:'He was only two years old when he left the daycare.'},
+    {t:'v',fr:'s\'évanouir',wc:'v',en:'to faint / pass out',ex:'Le chauffeur s\'est évanoui au volant du bus scolaire.',exE:'The driver passed out at the wheel of the school bus.'},
+    {t:'v',fr:'courageux / courageuse',wc:'adj',en:'courageous / brave',ex:'La fillette courageuse a guidé tout le groupe vers la sortie.',exE:'The courageous little girl guided the whole group to the exit.'},
+    {t:'v',fr:'le sang-froid',wc:'nm',en:'composure / cool-headedness',ex:'Il a gardé son sang-froid face à une situation pourtant terrifiante.',exE:'He kept his composure despite a truly terrifying situation.'},
+    {t:'v',fr:'débrouillard(e)',wc:'adj',en:'resourceful / good at finding solutions',ex:'Cette fillette de huit ans s\'est révélée particulièrement débrouillarde.',exE:'This eight-year-old girl proved to be particularly resourceful.'},
+    {t:'v',fr:'tomber à l\'eau',wc:'loc',en:'to fall into the water',ex:'Le petit garçon est tombé à l\'eau sans que personne ne le voie.',exE:'The little boy fell into the water without anyone seeing.'},
+    {t:'v',fr:'faire preuve de + nom',wc:'loc',en:'to show / demonstrate (quality)',ex:'Il a fait preuve d\'un courage et d\'un calme remarquables.',exE:'He showed remarkable courage and composure.'},
+    {t:'v',fr:'téméraire',wc:'adj',en:'daring / reckless / bold',ex:'Son geste téméraire a permis d\'éviter une catastrophe.',exE:'His daring action helped avoid a catastrophe.'},
+    {t:'v',fr:'une bêtise',wc:'nf',en:'mischief / a silly thing to do',ex:'Les écoliers ont fait une bêtise en creusant dans le jardin du voisin.',exE:'The schoolchildren got into mischief digging in the neighbour\'s garden.'},
+    {t:'v',fr:'incroyable mais vrai',wc:'loc',en:'unbelievable but true',ex:'Incroyable mais vrai, l\'enfant de sept ans a réussi à conduire le bus scolaire.',exE:'Unbelievable but true, the seven-year-old managed to drive the school bus.'},
+    {t:'v',fr:'se distinguer',wc:'v',en:'to distinguish oneself / stand out',ex:'Ce jeune garçon s\'est distingué par son acte héroïque.',exE:'This young boy distinguished himself through his heroic act.'},
+    {t:'v',fr:'les secours / les services d\'urgence',wc:'nmpl',en:'emergency services / rescue services',ex:'Les secours sont intervenus très rapidement après l\'accident.',exE:'Emergency services intervened very quickly after the accident.'},
+  
+    {t:'p',fr:'avoir l\'air + adj',en:'to seem / look (adjective)',ex:'L\'enfant avait l\'air inquiet depuis le début de la journée.',exE:'The child looked worried from the start of the day.'},
+    {t:'p',fr:'tout(e) seul(e) / sans aide',en:'all alone / without help',ex:'Walid a réussi à arrêter le bus tout seul, sans aide d\'un adulte.',exE:'Walid managed to stop the bus all by himself, without help from an adult.'},
+    {t:'p',fr:'être fier / fière de quelqu\'un',en:'to be proud of someone',ex:'Ses parents étaient tellement fiers de ce qu\'il avait accompli.',exE:'His parents were so proud of what he had accomplished.'},
+    {t:'p',fr:'ne pas réfléchir avant d\'agir',en:'to act without thinking',ex:'Il n\'a pas réfléchi avant d\'agir — c\'est instinctif chez lui.',exE:'He didn\'t think before acting — it comes instinctively to him.'},
+    {t:'p',fr:'tout le monde était admiratif',en:'everyone was full of admiration',ex:'Après la nouvelle, tout le monde était admiratif devant son geste.',exE:'After the news broke, everyone was full of admiration for his act.'},
+    {t:'p',fr:'en parler à ses parents',en:'to tell one\'s parents about it',ex:'Il n\'a pas eu peur d\'en parler à ses parents dès son retour.',exE:'He wasn\'t afraid to tell his parents about it as soon as he got home.'},
+    {t:'v',fr:'bravo / félicitations',wc:'interj',en:'well done / congratulations',ex:'Bravo ! Tu as réussi à faire quelque chose qu\'un adulte n\'aurait pas osé faire.',exE:'Well done! You managed to do something that an adult wouldn\'t have dared to do.'},
+    {t:'v',fr:'un geste héroïque',wc:'nm',en:'a heroic act / gesture',ex:'Son geste héroïque a été salué par toute la ville.',exE:'His heroic act was praised by the entire town.'},
+    {t:'v',fr:'avoir peur / prendre peur',wc:'loc',en:'to be scared / get frightened',ex:'Malgré la situation, il n\'a pas pris peur et a gardé la tête froide.',exE:'Despite the situation, he didn\'t get frightened and kept a cool head.'},
+    {t:'v',fr:'réagir vite / rapidement',wc:'loc',en:'to react quickly',ex:'Il a fallu réagir très vite pour éviter un accident.',exE:'It was necessary to react very quickly to avoid an accident.'},
+    {t:'v',fr:'incroyable / remarquable',wc:'adj',en:'incredible / remarkable',ex:'La réaction de cet enfant était vraiment incroyable pour son âge.',exE:'This child\'s reaction was truly incredible for his age.'},
+    {t:'v',fr:'un enfant de + âge',wc:'loc',en:'a child of (age)',ex:'Un enfant de sept ans a réussi à conduire le bus scolaire.',exE:'A seven-year-old child managed to drive the school bus.'},
+    {t:'v',fr:'sauver la mise',wc:'loc',en:'to save the day / save the situation',ex:'Grâce à son intervention, il a sauvé la mise pour tout le groupe.',exE:'Thanks to his intervention, he saved the day for the whole group.'},
+]},
+
+  {id:'famille',fr:'Famille',en:'Family & couples',c:'#FFC400',l:true,items:[
+    {t:'p',fr:'cacher une vérité à quelqu\'un depuis des années',en:'to hide a truth from someone for years',ex:'Elle a découvert que son mari lui cachait une vérité depuis plus de trente ans.',exE:'She discovered her husband had been hiding a truth from her for more than thirty years.'},
+    {t:'p',fr:'prendre une décision qui va tout changer',en:'to make a decision that will change everything',ex:'Ce jour-là, elle a pris une décision qui allait changer leur vie pour toujours.',exE:'That day, she made a decision that would change their lives forever.'},
+    {t:'p',fr:'malgré les apparences,…',en:'despite appearances,…',ex:'Malgré les apparences, leur relation était bien plus fragile qu\'ils ne le montraient.',exE:'Despite appearances, their relationship was far more fragile than they showed.'},
+    {t:'p',fr:'fêter leur Nième anniversaire de mariage',en:'to celebrate their Nth wedding anniversary',ex:'Ils fêtaient leur vingtième anniversaire de mariage au bord de la mer.',exE:'They were celebrating their twentieth wedding anniversary by the sea.'},
+    {t:'p',fr:'garder un secret pendant des décennies',en:'to keep a secret for decades',ex:'Ce couple discret avait gardé un secret extraordinaire pendant soixante ans.',exE:'This discreet couple had kept an extraordinary secret for sixty years.'},
+    {t:'p',fr:'se réconcilier après une brouille',en:'to make up after a falling-out',ex:'Après des années de silence, les deux frères ont fini par se réconcilier.',exE:'After years of silence, the two brothers finally made up.'},
+    {t:'p',fr:'se confier à quelqu\'un',en:'to confide in someone / open up to someone',ex:'Elle n\'avait jamais osé se confier à quiconque avant ce soir-là.',exE:'She had never dared confide in anyone before that evening.'},
+    {t:'p',fr:'remettre en question leur relation',en:'to call their relationship into question',ex:'Cette découverte a remis en question toute leur relation.',exE:'This discovery called their entire relationship into question.'},
+    {t:'v',fr:'une grande complicité',wc:'nf',en:'a close, easy bond / strong rapport',ex:'La grand-mère et sa petite-fille vivaient dans une grande complicité.',exE:'The grandmother and granddaughter lived in a close, easy bond.'},
+    {t:'v',fr:'protecteur / protectrice',wc:'adj',en:'protective',ex:'La petite-fille était très protectrice envers sa grand-mère âgée.',exE:'The granddaughter was very protective of her elderly grandmother.'},
+    {t:'v',fr:'se venger discrètement',wc:'loc',en:'to take quiet revenge',ex:'Elle a décidé de se venger discrètement, sans rien laisser paraître.',exE:'She decided to take quiet revenge, without letting anything show.'},
+    {t:'v',fr:'capricieux / capricieuse',wc:'adj',en:'unpredictable / capricious',ex:'La météo est devenue capricieuse en plein après-midi.',exE:'The weather turned unpredictable in the middle of the afternoon.'},
+    {t:'v',fr:'prendre sa liberté',wc:'loc',en:'to claim one\'s independence',ex:'Un jour, la grand-mère de 80 ans a décidé de prendre sa liberté.',exE:'One day, the 80-year-old grandmother decided to claim her independence.'},
+    {t:'v',fr:'une brouille',wc:'nf',en:'a falling-out / a quarrel',ex:'Une simple brouille s\'est transformée en dispute qui a duré dix ans.',exE:'A simple falling-out turned into a dispute that lasted ten years.'},
+    {t:'v',fr:'un malentendu',wc:'nm',en:'a misunderstanding',ex:'Tout était parti d\'un malentendu qui aurait pu être évité.',exE:'It all started from a misunderstanding that could have been avoided.'},
+    {t:'v',fr:'dévoiler / révéler un secret',wc:'v',en:'to reveal / unveil a secret',ex:'Ce jour-là, ils ont enfin révélé le secret qu\'ils gardaient depuis soixante ans.',exE:'That day, they finally revealed the secret they had kept for sixty years.'},
+    {t:'v',fr:'se méfier de',wc:'v',en:'to be wary of / distrust',ex:'Depuis cette trahison, elle ne pouvait plus s\'empêcher de se méfier de lui.',exE:'Since that betrayal, she could not help but be wary of him.'},
+    {t:'v',fr:'soupçonner quelqu\'un',wc:'v',en:'to suspect someone',ex:'Elle avait longtemps soupçonné que son mari lui cachait quelque chose.',exE:'She had long suspected that her husband was hiding something from her.'},
+    {t:'v',fr:'une rupture / une séparation',wc:'nf',en:'a break-up / separation',ex:'Après cette révélation, une rupture semblait inévitable.',exE:'After this revelation, a break-up seemed inevitable.'},
+    {t:'v',fr:'pardonner / ne pas pardonner',wc:'v',en:'to forgive / not forgive',ex:'Contre toute attente, elle a choisi de tout pardonner.',exE:'Against all expectations, she chose to forgive everything.'},
+  
+    {t:'p',fr:'s\'entendre bien / mal avec quelqu\'un',en:'to get along well / badly with someone',ex:'Depuis toujours, elle s\'entendait très bien avec sa grand-mère.',exE:'She had always got along very well with her grandmother.'},
+    {t:'p',fr:'tenir à quelqu\'un / quelque chose',en:'to care about someone / something',ex:'Il tenait beaucoup à cette montre que son père lui avait offerte.',exE:'He really cared about this watch that his father had given him.'},
+    {t:'p',fr:'avoir du mal à pardonner',en:'to have difficulty forgiving',ex:'Après cette trahison, elle avait du mal à lui pardonner.',exE:'After this betrayal, she had difficulty forgiving him.'},
+    {t:'p',fr:'ne plus se parler depuis…',en:'to no longer speak to each other since…',ex:'Les deux sœurs ne se parlaient plus depuis leur dispute l\'année dernière.',exE:'The two sisters had not spoken to each other since their argument last year.'},
+    {t:'p',fr:'tout recommencer de zéro',en:'to start everything from scratch again',ex:'Après leur séparation, elle a décidé de tout recommencer de zéro.',exE:'After their separation, she decided to start everything from scratch again.'},
+    {t:'p',fr:'manquer à quelqu\'un',en:'to be missed by someone / to miss (French structure)',ex:'Tu me manques beaucoup depuis que tu es parti vivre à l\'étranger.',exE:'I miss you a lot since you went to live abroad.'},
+    {t:'v',fr:'les liens familiaux',wc:'nm pl',en:'family bonds / ties',ex:'Elle accordait une grande importance aux liens familiaux.',exE:'She placed great importance on family bonds.'},
+    {t:'v',fr:'élever ses enfants',wc:'v',en:'to raise one\'s children',ex:'Elle a élevé ses trois enfants seule après leur séparation.',exE:'She raised her three children alone after their separation.'},
+    {t:'v',fr:'une dispute / se disputer',wc:'nf/v',en:'an argument / to argue',ex:'Une dispute ridicule a failli détruire leur amitié de vingt ans.',exE:'A ridiculous argument almost destroyed their twenty-year friendship.'},
+    {t:'v',fr:'proche de quelqu\'un',wc:'adj',en:'close to someone',ex:'Elle était très proche de sa cousine pendant l\'enfance.',exE:'She was very close to her cousin during childhood.'},
+    {t:'v',fr:'s\'en vouloir de + inf',wc:'loc',en:'to blame oneself for doing something',ex:'Il s\'en voulait de ne pas avoir appelé sa mère plus souvent.',exE:'He blamed himself for not calling his mother more often.'},
+    {t:'v',fr:'avoir besoin de soutien',wc:'loc',en:'to need support',ex:'Dans les moments difficiles, elle avait besoin du soutien de sa famille.',exE:'In difficult times, she needed the support of her family.'},
+    {t:'v',fr:'s\'occuper de',wc:'v',en:'to take care of / look after',ex:'La fille aînée s\'occupait de ses parents depuis leur retraite.',exE:'The eldest daughter had been looking after her parents since their retirement.'},
+]},
+
+  {id:'police',fr:'Police',en:'Police & mystery',c:'#0A6CF0',l:false,items:[
+    {t:'p',fr:'ouvrir / mener une enquête',en:'to open / conduct an investigation',ex:'Une enquête a été ouverte après la découverte des 24 000 lettres non remises.',exE:'An investigation was opened after the discovery of the 24,000 undelivered letters.'},
+    {t:'p',fr:'être retrouvé(e) coincé(e) à l\'intérieur',en:'to be found trapped inside',ex:'L\'homme a été retrouvé coincé à l\'intérieur du magasin fermé le matin de Noël.',exE:'The man was found trapped inside the closed shop on Christmas morning.'},
+    {t:'p',fr:'rouler à toute vitesse / à tombeau ouvert',en:'to drive at full speed / at breakneck speed',ex:'Le motard roulait à tombeau ouvert, une seule main sur le guidon.',exE:'The biker was riding at breakneck speed, with one hand on the handlebars.'},
+    {t:'p',fr:'sans se douter que…',en:'without suspecting that…',ex:'Elle est partie sans se douter que quelqu\'un l\'avait vue.',exE:'She left without suspecting that someone had seen her.'},
+    {t:'p',fr:'quelle surprise quand…',en:'what a surprise when…',ex:'Quelle surprise quand la police a finalement découvert le coupable !',exE:'What a surprise when the police finally discovered the culprit!'},
+    {t:'p',fr:'être placé(e) en garde à vue',en:'to be taken into police custody',ex:'Le suspect a été placé en garde à vue pendant 48 heures.',exE:'The suspect was taken into police custody for 48 hours.'},
+    {t:'p',fr:'reconnaître quelqu\'un / quelque chose',en:'to recognise someone / something',ex:'Un témoin a reconnu le vélo volé dès le lendemain matin.',exE:'A witness recognised the stolen bike the very next morning.'},
+    {t:'p',fr:'être pris(e) en flagrant délit',en:'to be caught red-handed',ex:'Le voleur a finalement été pris en flagrant délit devant la bijouterie.',exE:'The thief was finally caught red-handed outside the jewellery shop.'},
+    {t:'v',fr:'interpeller / appréhender',wc:'v',en:'to apprehend / detain a suspect',ex:'La police a fini par interpeller le coupable grâce à un témoin.',exE:'The police eventually apprehended the culprit thanks to a witness.'},
+    {t:'v',fr:'un témoin oculaire',wc:'nm',en:'an eyewitness',ex:'Les enquêteurs ont recueilli les témoignages de plusieurs témoins oculaires.',exE:'The investigators gathered statements from several eyewitnesses.'},
+    {t:'v',fr:'dérober / voler',wc:'v',en:'to steal / rob',ex:'Son vélo avait été dérobé devant la bibliothèque.',exE:'His bicycle had been stolen in front of the library.'},
+    {t:'v',fr:'une perquisition',wc:'nf',en:'a police search / raid',ex:'La police a effectué une perquisition dans l\'appartement du suspect.',exE:'The police carried out a search of the suspect\'s apartment.'},
+    {t:'v',fr:'inculper / mettre en examen',wc:'v',en:'to charge (with an offence)',ex:'Le suspect a finalement été inculpé pour vol avec effraction.',exE:'The suspect was finally charged with breaking and entering.'},
+    {t:'v',fr:'une filature',wc:'nf',en:'a stakeout / surveillance tail',ex:'Les policiers ont effectué une longue filature avant d\'arrêter le suspect.',exE:'The police officers carried out a long stakeout before arresting the suspect.'},
+    {t:'v',fr:'le guidon',wc:'nm',en:'the handlebars (bike/motorbike)',ex:'Il tenait une tasse de café dans une main et son guidon de l\'autre.',exE:'He held a coffee cup in one hand and his handlebars in the other.'},
+    {t:'v',fr:'élucider une affaire',wc:'v',en:'to solve a case / clear up a matter',ex:'Grâce à un coup de chance, les enquêteurs ont pu élucider l\'affaire.',exE:'Thanks to a stroke of luck, the investigators managed to solve the case.'},
+    {t:'v',fr:'un coup de chance / de théâtre',wc:'nm',en:'a stroke of luck / a dramatic twist',ex:'L\'affaire a connu un coup de théâtre inattendu lors du procès.',exE:'The case had an unexpected dramatic twist during the trial.'},
+    {t:'v',fr:'déposer une plainte',wc:'loc',en:'to file a complaint',ex:'La victime a déposé une plainte auprès du commissariat de quartier.',exE:'The victim filed a complaint at the local police station.'},
+    {t:'v',fr:'un mobile',wc:'nm',en:'a motive (crime)',ex:'La police n\'avait toujours pas trouvé le mobile du crime.',exE:'The police still had not found the motive for the crime.'},
+    {t:'v',fr:'soupçonner quelqu\'un',wc:'v',en:'to suspect someone',ex:'Les enquêteurs soupçonnaient depuis longtemps le voisin.',exE:'The investigators had long suspected the neighbour.'},
+  
+    {t:'p',fr:'appeler la police / composer le 17',en:'to call the police / dial 17',ex:'Un passant a composé le 17 après avoir vu quelque chose de suspect.',exE:'A passer-by dialled 17 after seeing something suspicious.'},
+    {t:'p',fr:'donner une description de quelqu\'un',en:'to give a description of someone',ex:'Le témoin a pu donner une description précise du suspect aux policiers.',exE:'The witness was able to give a precise description of the suspect to the police.'},
+    {t:'p',fr:'être au mauvais endroit au mauvais moment',en:'to be in the wrong place at the wrong time',ex:'Malheureusement, il s\'était trouvé au mauvais endroit au mauvais moment.',exE:'Unfortunately, he had found himself in the wrong place at the wrong time.'},
+    {t:'p',fr:'ne pas avoir vu venir la chose',en:'to not have seen it coming',ex:'Personne n\'avait vu venir une telle escroquerie dans ce quartier calme.',exE:'Nobody had seen such a scam coming in this quiet neighbourhood.'},
+    {t:'p',fr:'reconnaître ses torts',en:'to admit one\'s faults / acknowledge wrongdoing',ex:'Finalement, le suspect a reconnu ses torts devant les enquêteurs.',exE:'In the end, the suspect acknowledged his wrongdoing before the investigators.'},
+    {t:'p',fr:'rester calme / ne pas paniquer',en:'to stay calm / not to panic',ex:'Face au danger, il a su rester calme et ne pas paniquer.',exE:'Faced with danger, he managed to stay calm and not panic.'},
+    {t:'v',fr:'un suspect / une suspecte',wc:'nm/f',en:'a suspect',ex:'La police recherchait un suspect aperçu près de la scène du crime.',exE:'The police were looking for a suspect spotted near the crime scene.'},
+    {t:'v',fr:'un voleur / une voleuse',wc:'nm/f',en:'a thief',ex:'Le voleur avait opéré en pleine nuit sans laisser de traces.',exE:'The thief had operated in the dead of night without leaving any traces.'},
+    {t:'v',fr:'s\'enfuir / prendre la fuite',wc:'v',en:'to flee / to run away',ex:'Le suspect a tenté de s\'enfuir mais a été rattrapé par la police.',exE:'The suspect tried to flee but was caught by the police.'},
+    {t:'v',fr:'un vol / un cambriolage',wc:'nm',en:'a theft / burglary',ex:'Un cambriolage avait eu lieu dans le quartier la semaine précédente.',exE:'A burglary had taken place in the neighbourhood the previous week.'},
+    {t:'v',fr:'en sécurité / à l\'abri',wc:'adj',en:'safe / sheltered',ex:'Les habitants ne se sentaient plus en sécurité après l\'incident.',exE:'The residents no longer felt safe after the incident.'},
+    {t:'v',fr:'les forces de l\'ordre',wc:'nfpl',en:'law enforcement / the police',ex:'Les forces de l\'ordre ont réagi très rapidement à l\'appel.',exE:'Law enforcement responded very quickly to the call.'},
+    {t:'v',fr:'une scène de crime / les lieux',wc:'nf',en:'a crime scene / the scene',ex:'Les enquêteurs ont sécurisé la scène de crime avant d\'investiguer.',exE:'The investigators secured the crime scene before investigating.'},
+]},
+
+  {id:'voyage',fr:'Voyages',en:'Travel & adventure',c:'#00968F',l:false,items:[
+    {t:'p',fr:'se rendre quelque part pour la première fois de sa vie',en:'to go somewhere for the first time in one\'s life',ex:'L\'homme de 80 ans se rendait en ville pour la première fois de sa vie.',exE:'The 80-year-old man was going into the city for the first time in his life.'},
+    {t:'p',fr:'faire demi-tour en plein vol',en:'to turn back mid-flight',ex:'L\'avion a dû faire demi-tour en plein vol à cause d\'une passagère malade.',exE:'The plane had to turn back mid-flight because of a sick passenger.'},
+    {t:'p',fr:'ne pas s\'attendre à ce que…',en:'to not expect / be in for a surprise',ex:'Les voisins ne s\'attendaient pas à une maison aussi moderne dans ce village.',exE:'The neighbours didn\'t expect such a modern house in that village.'},
+    {t:'p',fr:'avoir l\'habitude de faire quelque chose',en:'to be in the habit of doing something',ex:'Il avait l\'habitude de photographier tous les monuments historiques qu\'il visitait.',exE:'He was in the habit of photographing all the historical monuments he visited.'},
+    {t:'p',fr:'prendre la fuite sans demander son reste',en:'to flee without looking back',ex:'L\'homme a pris la fuite sans demander son reste quand la police est arrivée.',exE:'The man fled without looking back when the police arrived.'},
+    {t:'p',fr:'être contraint(e) de faire demi-tour',en:'to be forced to turn back',ex:'Les randonneurs ont été contraints de faire demi-tour à cause des conditions météo.',exE:'The hikers were forced to turn back because of the weather conditions.'},
+    {t:'p',fr:'s\'aventurer dans un endroit inconnu',en:'to venture into an unknown place',ex:'Elle s\'est aventurée seule dans les ruelles d\'une ville qu\'elle ne connaissait pas.',exE:'She ventured alone into the alleyways of a city she did not know.'},
+    {t:'v',fr:'pittoresque',wc:'adj',en:'picturesque',ex:'L\'architecte a choisi de construire sa maison dans un village pittoresque.',exE:'The architect chose to build her house in a picturesque village.'},
+    {t:'v',fr:'les autorités municipales',wc:'nfpl',en:'the local / municipal authorities',ex:'Les autorités municipales sont intervenues sans prévenir le propriétaire.',exE:'The municipal authorities stepped in without warning the owner.'},
+    {t:'v',fr:'le décollage / l\'atterrissage',wc:'nm',en:'take-off / landing',ex:'L\'avion a eu un problème moteur juste après le décollage.',exE:'The plane had an engine problem right after take-off.'},
+    {t:'v',fr:'une escale',wc:'nf',en:'a stopover / layover',ex:'Il avait prévu une escale de quelques heures à Paris avant de rejoindre Montréal.',exE:'He had planned a few-hour stopover in Paris before continuing to Montreal.'},
+    {t:'v',fr:'le dépaysement',wc:'nm',en:'the feeling of being somewhere new / change of scenery',ex:'Elle avait besoin de dépaysement après plusieurs mois de travail intense.',exE:'She needed a change of scenery after several months of intense work.'},
+    {t:'v',fr:'parcourir',wc:'v',en:'to travel through / cover (a distance)',ex:'Il a parcouru plus de cinq mille kilomètres en voiture pour ce voyage.',exE:'He covered more than five thousand kilometres by car for this journey.'},
+    {t:'v',fr:'une correspondance',wc:'nf',en:'a connecting flight / train connection',ex:'Il a raté sa correspondance à cause d\'un retard imprévu.',exE:'He missed his connecting flight because of an unexpected delay.'},
+    {t:'v',fr:'interrompre son voyage',wc:'loc',en:'to interrupt / cut short one\'s trip',ex:'Un problème médical l\'a obligé à interrompre son voyage.',exE:'A medical problem forced him to cut his trip short.'},
+    {t:'v',fr:'un incident / un imprévu',wc:'nm',en:'an incident / unexpected event',ex:'Un imprévu de dernière minute a failli tout compromettre.',exE:'A last-minute unexpected event almost ruined everything.'},
+    {t:'v',fr:'contraint(e) et forcé(e)',wc:'loc',en:'under duress / with no choice',ex:'Contraint et forcé, il a dû abandonner son projet de voyage.',exE:'With no other choice, he had to abandon his travel plan.'},
+    {t:'v',fr:'interdit(e) d\'entrée',wc:'adj',en:'banned from entering / denied entry',ex:'Il a été interdit d\'entrée dans le monument pour des raisons de sécurité.',exE:'He was denied entry to the monument for security reasons.'},
+  
+    {t:'p',fr:'partir en voyage pour la première fois',en:'to go on a trip for the first time',ex:'C\'était la première fois qu\'elle partait seule en voyage à l\'étranger.',exE:'It was the first time she had gone on a trip abroad alone.'},
+    {t:'p',fr:'avoir peur de / ne pas avoir l\'habitude de',en:'to be afraid of / not be used to',ex:'Au début, elle avait un peu peur de voyager seule, mais elle s\'y est vite habituée.',exE:'At first, she was a little afraid of travelling alone, but she quickly got used to it.'},
+    {t:'p',fr:'se perdre dans une grande ville',en:'to get lost in a big city',ex:'Il s\'est perdu dans les ruelles d\'une vieille médina pendant plusieurs heures.',exE:'He got lost in the alleyways of an old medina for several hours.'},
+    {t:'p',fr:'demander son chemin',en:'to ask for directions',ex:'Il a dû demander son chemin plusieurs fois avant de trouver l\'hôtel.',exE:'He had to ask for directions several times before finding the hotel.'},
+    {t:'p',fr:'manquer son vol / son train',en:'to miss one\'s flight / train',ex:'À cause des embouteillages, elle a manqué son vol de deux minutes.',exE:'Because of traffic jams, she missed her flight by two minutes.'},
+    {t:'p',fr:'arriver à destination sain(e) et sauf(ve)',en:'to arrive at the destination safe and sound',ex:'Après vingt heures de voyage, ils sont arrivés à destination sains et saufs.',exE:'After twenty hours of travel, they arrived at their destination safe and sound.'},
+    {t:'v',fr:'les bagages / la valise',wc:'nm pl',en:'luggage / suitcase',ex:'Elle avait perdu ses bagages à l\'aéroport de transit.',exE:'She had lost her luggage at the transit airport.'},
+    {t:'v',fr:'réserver / faire une réservation',wc:'v',en:'to book / make a reservation',ex:'Il avait réservé son billet de train trois semaines à l\'avance.',exE:'He had booked his train ticket three weeks in advance.'},
+    {t:'v',fr:'un retard / être en retard',wc:'nm',en:'a delay / to be late',ex:'Un retard imprévu a compromis l\'ensemble du voyage.',exE:'An unexpected delay disrupted the entire trip.'},
+    {t:'v',fr:'s\'adapter à la culture locale',wc:'loc',en:'to adapt to the local culture',ex:'Il a fallu du temps pour s\'adapter à la culture locale et aux habitudes du pays.',exE:'It took time to adapt to the local culture and the country\'s customs.'},
+    {t:'v',fr:'un souvenir de voyage',wc:'nm',en:'a travel souvenir / memory',ex:'Elle avait rapporté de nombreux souvenirs de son séjour en Asie.',exE:'She had brought back many souvenirs from her stay in Asia.'},
+    {t:'v',fr:'le mal du pays / la nostalgie',wc:'nm',en:'homesickness / nostalgia',ex:'Après trois mois à l\'étranger, le mal du pays s\'est fait sentir.',exE:'After three months abroad, homesickness set in.'},
+    {t:'v',fr:'en voyage d\'affaires / pour le tourisme',wc:'loc',en:'on a business trip / for tourism',ex:'Il se trouvait à Lyon non pas pour le tourisme, mais en voyage d\'affaires.',exE:'He was in Lyon not for tourism, but on a business trip.'},
+]},
+
+  {id:'animaux',fr:'Animaux',en:'Animal stories',c:'#7B5BD6',l:false,items:[
+    {t:'p',fr:'accueillir / adopter un animal abandonné',en:'to take in / adopt an abandoned animal',ex:'Le zoo a accueilli cinq perroquets abandonnés par leur propriétaire.',exE:'The zoo took in five parrots abandoned by their owner.'},
+    {t:'p',fr:'se mettre à faire quelque chose de façon inattendue',en:'to unexpectedly start doing something',ex:'Les perroquets se sont mis à insulter les visiteurs pendant le spectacle.',exE:'The parrots suddenly started insulting the visitors during the show.'},
+    {t:'p',fr:'provoquer un fou rire général',en:'to cause general fits of laughter',ex:'La scène a provoqué un fou rire général dans le public.',exE:'The scene caused general fits of laughter in the audience.'},
+    {t:'p',fr:'être étonné(e) de voir',en:'to be astonished to see',ex:'Les pompiers étaient très étonnés de voir un tel animal dans cet endroit.',exE:'The firefighters were very astonished to see such an animal in that place.'},
+    {t:'p',fr:'se retrouver face à un animal dangereux',en:'to come face to face with a dangerous animal',ex:'Le randonneur s\'est retrouvé face à un ours dans la forêt.',exE:'The hiker came face to face with a bear in the forest.'},
+    {t:'p',fr:'nuire à la biodiversité',en:'to harm biodiversity',ex:'Ces espèces invasives nuisent gravement à la biodiversité locale.',exE:'These invasive species seriously harm local biodiversity.'},
+    {t:'v',fr:'dresser / apprivoiser',wc:'v',en:'to train / tame',ex:'Personne ne savait que les perroquets avaient été dressés à parler ainsi.',exE:'No one knew the parrots had been trained to talk like that.'},
+    {t:'v',fr:'un perroquet',wc:'nm',en:'a parrot',ex:'Les cinq perroquets ont été abandonnés par leur propriétaire.',exE:'The five parrots were abandoned by their owner.'},
+    {t:'v',fr:'un enclos',wc:'nm',en:'an enclosure / pen',ex:'Le peintre célèbre a eu un accident dans l\'enclos des animaux.',exE:'The famous painter had an accident in the animal enclosure.'},
+    {t:'v',fr:'une espèce menacée / protégée',wc:'nf',en:'an endangered / protected species',ex:'Le braconnier avait chassé des animaux appartenant à une espèce protégée.',exE:'The poacher had hunted animals belonging to a protected species.'},
+    {t:'v',fr:'le braconnage / un braconnier',wc:'nm',en:'poaching / a poacher',ex:'Le braconnage reste un problème grave dans de nombreuses régions.',exE:'Poaching remains a serious problem in many regions.'},
+    {t:'v',fr:'réintroduire une espèce',wc:'v',en:'to reintroduce a species',ex:'Des loups ont été réintroduits dans les Alpes après des décennies d\'absence.',exE:'Wolves were reintroduced in the Alps after decades of absence.'},
+    {t:'v',fr:'la faune sauvage',wc:'nf',en:'wildlife / wild fauna',ex:'Il est essentiel de protéger la faune sauvage des régions nordiques.',exE:'It is essential to protect the wildlife of the northern regions.'},
+    {t:'v',fr:'inoffensif / inoffensive',wc:'adj',en:'harmless',ex:'Contrairement aux apparences, cet animal est totalement inoffensif.',exE:'Despite appearances, this animal is completely harmless.'},
+    {t:'v',fr:'un animal de compagnie',wc:'nm',en:'a pet',ex:'Les pompiers ont découvert un animal de compagnie un peu inhabituel.',exE:'The firefighters found a rather unusual pet.'},
+    {t:'v',fr:'cohabiter avec',wc:'v',en:'to coexist / live alongside',ex:'Il est possible d\'apprendre à cohabiter avec les animaux sauvages.',exE:'It is possible to learn to coexist with wild animals.'},
+    {t:'v',fr:'s\'échapper de son enclos',wc:'loc',en:'to escape from its enclosure',ex:'Un tigre s\'est échappé de son enclos pendant la nuit.',exE:'A tiger escaped from its enclosure during the night.'},
+  
+    {t:'p',fr:'avoir peur des animaux',en:'to be afraid of animals',ex:'Elle avouait qu\'elle avait un peu peur des grands chiens.',exE:'She admitted that she was a little afraid of big dogs.'},
+    {t:'p',fr:'nourrir un animal',en:'to feed an animal',ex:'Les enfants adoraient nourrir les canards au bord du lac.',exE:'The children loved feeding the ducks by the lake.'},
+    {t:'p',fr:'être mordu(e) par un animal',en:'to be bitten by an animal',ex:'La femme avait été mordue par un chien errant dans le parc.',exE:'The woman had been bitten by a stray dog in the park.'},
+    {t:'p',fr:'appeler les autorités / la fourrière',en:'to call the authorities / animal control',ex:'Les voisins ont appelé la fourrière pour signaler un animal blessé.',exE:'The neighbours called animal control to report an injured animal.'},
+    {t:'p',fr:'être en danger / une espèce en voie de disparition',en:'to be in danger / an endangered species',ex:'Ces animaux sont en danger car leur habitat naturel disparaît progressivement.',exE:'These animals are in danger because their natural habitat is gradually disappearing.'},
+    {t:'p',fr:'s\'occuper d\'un animal / en prendre soin',en:'to look after an animal / take care of it',ex:'S\'occuper d\'un animal de compagnie demande beaucoup de temps et d\'énergie.',exE:'Looking after a pet requires a lot of time and energy.'},
+    {t:'v',fr:'un animal domestique / sauvage',wc:'nm',en:'a domestic / wild animal',ex:'Contrairement aux animaux sauvages, les animaux domestiques s\'adaptent à la vie en maison.',exE:'Unlike wild animals, domestic animals adapt to life in a home.'},
+    {t:'v',fr:'une morsure / une griffure',wc:'nf',en:'a bite / a scratch',ex:'La morsure du chien était assez grave pour nécessiter des soins.',exE:'The dog bite was serious enough to require medical attention.'},
+    {t:'v',fr:'adopter un chien / un chat',wc:'v',en:'to adopt a dog / cat',ex:'Elle avait décidé d\'adopter un vieux chien abandonné dans un refuge.',exE:'She had decided to adopt an old abandoned dog from a shelter.'},
+    {t:'v',fr:'un refuge pour animaux',wc:'nm',en:'an animal shelter',ex:'Des centaines d\'animaux attendent une famille dans les refuges.',exE:'Hundreds of animals are waiting for a family in shelters.'},
+    {t:'v',fr:'interdit(e) / autorisé(e)',wc:'adj',en:'forbidden / allowed',ex:'Les chiens sont interdits dans ce parc depuis l\'incident.',exE:'Dogs have been banned in this park since the incident.'},
+    {t:'v',fr:'attirer l\'attention / se faire remarquer',wc:'loc',en:'to attract attention / get noticed',ex:'L\'animal a attiré l\'attention de tous les passants.',exE:'The animal attracted the attention of all the passers-by.'},
+    {t:'v',fr:'s\'approcher de / s\'éloigner de',wc:'v',en:'to approach / move away from',ex:'Les secouristes lui ont conseillé de ne pas s\'approcher de l\'animal blessé.',exE:'The rescuers advised him not to approach the injured animal.'},
+]},
+
+  {id:'exploits',fr:'Exploits',en:'Records & achievements',c:'#007A42',l:false,items:[
+    {t:'p',fr:'se mettre au sport sur le tard / commencer tardivement',en:'to take up sport late in life',ex:'Elle s\'est mise au sport sur le tard, à l\'âge de cinquante-neuf ans.',exE:'She took up sport late in life, at the age of fifty-nine.'},
+    {t:'p',fr:'battre un record / entrer dans le livre des records',en:'to break a record / enter the record books',ex:'Le couple a battu le record mondial de longévité conjugale.',exE:'The couple broke the world record for the longest marriage.'},
+    {t:'p',fr:'prouver que l\'âge n\'est qu\'un chiffre',en:'to prove that age is just a number',ex:'Elle a prouvé que l\'âge n\'était qu\'un chiffre en terminant son premier marathon.',exE:'She proved that age is just a number by finishing her first marathon.'},
+    {t:'p',fr:'contre toute attente, réussir là où…',en:'against all expectations, succeed where…',ex:'Contre toute attente, elle a réussi là où des athlètes professionnels avaient échoué.',exE:'Against all expectations, she succeeded where professional athletes had failed.'},
+    {t:'p',fr:'révéler un secret au grand jour',en:'to reveal a secret publicly',ex:'Ce jour-là, ils ont révélé au grand jour le secret qu\'ils gardaient depuis soixante ans.',exE:'That day, they revealed to the world the secret they had kept for sixty years.'},
+    {t:'p',fr:'surmonter un obstacle / une épreuve',en:'to overcome an obstacle / ordeal',ex:'Elle a surmonté de nombreuses épreuves avant d\'atteindre son objectif.',exE:'She overcame many ordeals before reaching her goal.'},
+    {t:'p',fr:'être une source d\'inspiration',en:'to be a source of inspiration',ex:'Son parcours est devenu une source d\'inspiration pour de nombreux seniors.',exE:'Her journey became a source of inspiration for many seniors.'},
+    {t:'v',fr:'malgré + nom',wc:'prép',en:'despite / in spite of',ex:'Elle est devenue athlète malgré son manque total d\'expérience sportive.',exE:'She became an athlete despite her complete lack of sporting experience.'},
+    {t:'v',fr:'jusqu\'à l\'âge de…',wc:'loc',en:'until the age of…',ex:'Elle n\'avait jamais fait de sport jusqu\'à l\'âge de cinquante-neuf ans.',exE:'She had never done any sport until the age of fifty-nine.'},
+    {t:'v',fr:'exceptionnel(le)',wc:'adj',en:'exceptional / outstanding',ex:'Son exploit était vraiment exceptionnel pour une femme de son âge.',exE:'Her feat was truly exceptional for a woman of her age.'},
+    {t:'v',fr:'la persévérance / la ténacité',wc:'nf',en:'perseverance / tenacity',ex:'C\'est grâce à sa persévérance qu\'elle a finalement réussi.',exE:'It is thanks to her perseverance that she finally succeeded.'},
+    {t:'v',fr:'un défi',wc:'nm',en:'a challenge',ex:'Elle a décidé de relever ce défi pour prouver qu\'il n\'est jamais trop tard.',exE:'She decided to take up this challenge to prove it is never too late.'},
+    {t:'v',fr:'relever un défi',wc:'loc',en:'to take up / rise to a challenge',ex:'À soixante ans, elle a décidé de relever le défi du marathon.',exE:'At sixty, she decided to rise to the challenge of the marathon.'},
+    {t:'v',fr:'la longévité',wc:'nf',en:'longevity / long life',ex:'Ce couple est célèbre pour sa longévité conjugale record.',exE:'This couple is famous for their record conjugal longevity.'},
+    {t:'v',fr:'s\'acharner',wc:'v',en:'to persevere relentlessly / work stubbornly',ex:'Elle s\'est acharnée pendant des mois avant de réussir sa première course.',exE:'She persevered relentlessly for months before completing her first race.'},
+    {t:'v',fr:'un accomplissement',wc:'nm',en:'an achievement / accomplishment',ex:'Terminer ce marathon était un accomplissement personnel immense pour elle.',exE:'Finishing this marathon was an immense personal accomplishment for her.'},
+    {t:'v',fr:'inspirer / motiver les autres',wc:'v',en:'to inspire / motivate others',ex:'Son histoire a inspiré des milliers de personnes à travers le monde.',exE:'Her story inspired thousands of people around the world.'},
+  
+    {t:'p',fr:'ne jamais avoir fait quelque chose avant',en:'to have never done something before',ex:'Elle n\'avait jamais couru plus de deux kilomètres avant ses soixante ans.',exE:'She had never run more than two kilometres before she was sixty.'},
+    {t:'p',fr:'tout le monde lui déconseillait de…',en:'everyone advised her against…',ex:'Tout le monde lui déconseillait de se lancer dans cette aventure à son âge.',exE:'Everyone advised her against embarking on this adventure at her age.'},
+    {t:'p',fr:'s\'entraîner dur / tous les jours',en:'to train hard / every day',ex:'Pendant deux ans, elle s\'est entraînée tous les jours sans exception.',exE:'For two years, she trained every single day without exception.'},
+    {t:'p',fr:'être déterminé(e) à réussir',en:'to be determined to succeed',ex:'Elle était absolument déterminée à réussir, quoi qu\'il arrive.',exE:'She was absolutely determined to succeed, whatever it took.'},
+    {t:'p',fr:'réaliser son rêve',en:'to fulfil / achieve one\'s dream',ex:'À l\'âge de soixante-deux ans, elle a finalement réalisé son rêve.',exE:'At the age of sixty-two, she finally fulfilled her dream.'},
+    {t:'p',fr:'être reconnu(e) pour ses exploits',en:'to be recognised for one\'s achievements',ex:'Elle a été reconnue et admirée dans le monde entier pour ses exploits.',exE:'She has been recognised and admired around the world for her achievements.'},
+    {t:'v',fr:'le courage / le cran',wc:'nm',en:'courage / guts',ex:'Il faut beaucoup de courage pour tout quitter à cinquante ans pour recommencer.',exE:'It takes a lot of courage to leave everything behind at fifty to start over.'},
+    {t:'v',fr:'une médaille / un trophée',wc:'nf',en:'a medal / a trophy',ex:'Elle a reçu une médaille pour son parcours extraordinaire.',exE:'She received a medal for her extraordinary journey.'},
+    {t:'v',fr:'le dépassement de soi',wc:'nm',en:'self-surpassing / pushing one\'s limits',ex:'Ce marathon représente pour elle un vrai dépassement de soi.',exE:'For her, this marathon represents a true surpassing of one\'s limits.'},
+    {t:'v',fr:'ne jamais abandonner',wc:'loc',en:'never to give up',ex:'Sa règle d\'or : ne jamais abandonner, même quand c\'est difficile.',exE:'Her golden rule: never give up, even when it is hard.'},
+    {t:'v',fr:'se dépasser / repousser ses limites',wc:'v',en:'to surpass oneself / push one\'s limits',ex:'Elle avait appris à se dépasser chaque jour pendant son entraînement.',exE:'She had learned to push her limits every day during her training.'},
+    {t:'v',fr:'une performance / un résultat',wc:'nf',en:'a performance / a result',ex:'Sa performance était d\'autant plus remarquable qu\'elle débutait à soixante ans.',exE:'Her performance was all the more remarkable because she was starting at sixty.'},
+    {t:'v',fr:'croire en soi / avoir confiance en soi',wc:'loc',en:'to believe in oneself / be self-confident',ex:'Le secret de sa réussite ? Croire en soi et ne jamais douter.',exE:'The secret of her success? Believe in yourself and never doubt.'},
+]},
+ ],
+
+ B:[
+  {id:'structureB',fr:'Structurer',en:'Argument structure',c:'#FF6B2C',l:false,items:[
+    {t:'p',fr:'Je suis tout à fait convaincu(e) que…',en:'I am fully convinced that…',ex:'Je suis tout à fait convaincu qu\'une telle mesure serait bénéfique pour notre société.',exE:'I am fully convinced that such a measure would be beneficial for our society.'},
+    {t:'p',fr:'Certes, on peut comprendre que…, mais…',en:'Admittedly… but…',ex:'Certes, on peut comprendre que cette décision soit difficile, mais elle s\'impose.',exE:'Admittedly, one can understand that this decision is difficult, but it is necessary.'},
+    {t:'p',fr:'Il faut néanmoins reconnaître que…',en:'Nevertheless, one must recognise that…',ex:'Il faut néanmoins reconnaître que les conséquences seraient considérables.',exE:'Nevertheless, one must recognise that the consequences would be considerable.'},
+    {t:'p',fr:'En outre, / De plus,…',en:'Furthermore, / Moreover,…',ex:'En outre, cette mesure aurait un impact positif sur l\'environnement.',exE:'Furthermore, this measure would have a positive impact on the environment.'},
+    {t:'p',fr:'Par conséquent, / Ainsi,…',en:'As a result / Therefore / Thus,…',ex:'Par conséquent, il serait urgent d\'agir dès maintenant.',exE:'As a result, it would be urgent to act right now.'},
+    {t:'p',fr:'En conclusion, il apparaît clairement que…',en:'In conclusion, it is clear that…',ex:'En conclusion, il apparaît clairement que cette proposition mérite d\'être soutenue.',exE:'In conclusion, it is clear that this proposal deserves support.'},
+    {t:'p',fr:'d\'un côté… de l\'autre…',en:'on one hand… on the other…',ex:'D\'un côté, cela favorise l\'autonomie ; de l\'autre, cela crée de l\'isolement.',exE:'On one hand, it promotes autonomy; on the other, it creates isolation.'},
+    {t:'p',fr:'Je tiens à souligner que…',en:'I would like to emphasize that…',ex:'Je tiens à souligner que cette question touche directement nos enfants.',exE:'I would like to emphasize that this question directly affects our children.'},
+    {t:'p',fr:'Il serait préférable de… plutôt que de…',en:'It would be preferable to… rather than…',ex:'Il serait préférable de limiter plutôt que d\'interdire complètement.',exE:'It would be preferable to limit rather than ban completely.'},
+    {t:'p',fr:'Force est de constater que…',en:'One cannot help but notice that… / The fact is that…',ex:'Force est de constater que les résultats ne sont pas à la hauteur des attentes.',exE:'One cannot help but notice that the results do not live up to expectations.'},
+    {t:'p',fr:'Il convient de noter que…',en:'It is worth noting that…',ex:'Il convient de noter que cette mesure existe déjà dans plusieurs pays.',exE:'It is worth noting that this measure already exists in several countries.'},
+    {t:'p',fr:'En revanche, / En contrepartie,…',en:'On the other hand, / In return,…',ex:'En revanche, les opposants à ce projet soulèvent des arguments valables.',exE:'On the other hand, the opponents of this project raise valid arguments.'},
+    {t:'v',fr:'nuancé(e)',wc:'adj',en:'nuanced / balanced',ex:'Il faut adopter une position nuancée sur ce sujet complexe.',exE:'One must adopt a nuanced position on this complex topic.'},
+    {t:'v',fr:'souligner / mettre en avant',wc:'v',en:'to underline / highlight',ex:'Je tiens à souligner l\'importance de cette décision pour l\'avenir.',exE:'I would like to highlight the importance of this decision for the future.'},
+    {t:'v',fr:'néanmoins / toutefois / cependant',wc:'adv',en:'nevertheless / however / yet',ex:'Néanmoins, il ne faut pas négliger les effets négatifs de cette mesure.',exE:'Nevertheless, one must not neglect the negative effects of this measure.'},
+    {t:'v',fr:'il s\'agit de + inf',wc:'loc',en:'it is a matter of / what is at stake is',ex:'Il ne s\'agit pas simplement d\'économiser de l\'argent, mais de sauver des vies.',exE:'It is not simply a matter of saving money, but of saving lives.'},
+    {t:'v',fr:'s\'opposer à / être favorable à',wc:'v',en:'to oppose / to be in favour of',ex:'Je m\'oppose fermement à cette décision pour les raisons suivantes.',exE:'I firmly oppose this decision for the following reasons.'},
+    {t:'v',fr:'convaincant(e) / persuasif(-ive)',wc:'adj',en:'convincing / persuasive',ex:'Son argument était convaincant mais manquait d\'exemples concrets.',exE:'His argument was convincing but lacked concrete examples.'},
+    {t:'v',fr:'il va sans dire que…',en:'it goes without saying that…',wc:'loc',ex:'Il va sans dire que les autorités ont une responsabilité dans cette affaire.',exE:'It goes without saying that the authorities have a responsibility in this matter.'},
+    {t:'v',fr:'dans une certaine mesure',wc:'loc',en:'to a certain extent',ex:'Dans une certaine mesure, on peut comprendre la réaction des habitants.',exE:'To a certain extent, one can understand the reaction of the residents.'},
+  
+    {t:'p',fr:'À mon avis / Selon moi,…',en:'In my opinion / According to me,…',ex:'À mon avis, cette mesure n\'aura pas l\'effet escompté sur la population.',exE:'In my opinion, this measure will not have the desired effect on the population.'},
+    {t:'p',fr:'Il me semble que…',en:'It seems to me that…',ex:'Il me semble que nous n\'avons pas encore envisagé toutes les solutions possibles.',exE:'It seems to me that we have not yet considered all the possible solutions.'},
+    {t:'p',fr:'Je pense / crois que…',en:'I think / believe that…',ex:'Je pense que chaque citoyen a une responsabilité dans cette situation.',exE:'I think that every citizen has a responsibility in this situation.'},
+    {t:'p',fr:'Même si…, il n\'en reste pas moins que…',en:'Even if…, it remains true that…',ex:'Même si les arguments sont valables, il n\'en reste pas moins que l\'impact sera négatif.',exE:'Even if the arguments are valid, it remains true that the impact will be negative.'},
+    {t:'p',fr:'Il est vrai que…, mais…',en:'It is true that…, but…',ex:'Il est vrai que cette mesure coûte cher, mais les bénéfices sont considérables.',exE:'It is true that this measure is costly, but the benefits are considerable.'},
+    {t:'p',fr:'Je voudrais souligner le fait que…',en:'I would like to highlight the fact that…',ex:'Je voudrais souligner le fait que les jeunes sont les plus touchés par ce problème.',exE:'I would like to highlight the fact that young people are the most affected by this problem.'},
+    {t:'v',fr:'Tout d\'abord,… / Premièrement,…',wc:'adv',en:'First of all / Firstly,…',ex:'Tout d\'abord, je souhaite exposer les avantages de cette initiative.',exE:'First of all, I wish to present the advantages of this initiative.'},
+    {t:'v',fr:'Deuxièmement,… / De plus,…',wc:'adv',en:'Secondly,… / Furthermore,…',ex:'Deuxièmement, il faut considérer l\'impact environnemental de cette décision.',exE:'Secondly, we must consider the environmental impact of this decision.'},
+    {t:'v',fr:'C\'est pourquoi…',wc:'loc',en:'That is why… / This is why…',ex:'C\'est pourquoi je vous encourage à soutenir cette proposition.',exE:'That is why I encourage you to support this proposal.'},
+    {t:'v',fr:'en effet / effectivement',wc:'adv',en:'indeed / in fact',ex:'En effet, les chiffres prouvent que la situation empire depuis trois ans.',exE:'Indeed, the figures prove that the situation has been getting worse for three years.'},
+    {t:'v',fr:'il faut + inf / il est nécessaire de',wc:'loc',en:'it is necessary to / one must',ex:'Il faut agir maintenant pour éviter que la situation empire encore davantage.',exE:'It is necessary to act now to prevent the situation from getting even worse.'},
+    {t:'v',fr:'pour ces raisons,…',wc:'loc',en:'for these reasons,…',ex:'Pour ces raisons, je vous demande de reconsidérer votre décision.',exE:'For these reasons, I ask you to reconsider your decision.'},
+    {t:'v',fr:'je vous remercie de bien vouloir…',wc:'form',en:'I thank you for kindly… (formal letter close)',ex:'Je vous remercie de bien vouloir prendre en compte mes suggestions.',exE:'I thank you for kindly taking my suggestions into account.'},
+    {t:'v',fr:'dans l\'attente de votre réponse,…',wc:'form',en:'awaiting your reply,… (formal close)',ex:'Dans l\'attente de votre réponse, je vous adresse mes cordiales salutations.',exE:'Awaiting your reply, I extend my warmest regards.'},
+]},
+
+  {id:'techno',fr:'Technologie',en:'Technology & screens',c:'#0A6CF0',l:false,items:[
+    {t:'p',fr:'être accro à son téléphone / aux écrans',en:'to be addicted to one\'s phone / screens',ex:'De plus en plus de jeunes sont accros à leur téléphone portable.',exE:'More and more young people are addicted to their mobile phones.'},
+    {t:'p',fr:'faire défiler les réseaux sociaux pendant des heures',en:'to scroll through social media for hours',ex:'On passe des heures à faire défiler les réseaux sociaux sans vraiment s\'en rendre compte.',exE:'We spend hours scrolling through social media without even realising it.'},
+    {t:'p',fr:'limiter le temps d\'écran dès le plus jeune âge',en:'to limit screen time from an early age',ex:'Il faudrait limiter le temps d\'écran dès le plus jeune âge.',exE:'Screen time should be limited from a very young age.'},
+    {t:'p',fr:'nous sommes devenus des marchandises',en:'we have become commodities',ex:'Avec Internet, nos données personnelles font de nous de véritables marchandises.',exE:'With the Internet, our personal data has made us into real commodities.'},
+    {t:'p',fr:'supprimer la publicité ciblée destinée aux mineurs',en:'to ban targeted advertising aimed at minors',ex:'Il faudrait supprimer la publicité ciblée destinée aux enfants de moins de treize ans.',exE:'Targeted advertising aimed at children under thirteen should be banned.'},
+    {t:'p',fr:'les nouvelles technologies transforment profondément nos vies',en:'new technologies are profoundly transforming our lives',ex:'Les nouvelles technologies transforment profondément nos modes de communication.',exE:'New technologies are profoundly transforming our ways of communicating.'},
+    {t:'p',fr:'l\'IA représente une menace / une opportunité',en:'AI represents a threat / an opportunity',ex:'L\'intelligence artificielle représente à la fois une menace et une formidable opportunité.',exE:'Artificial intelligence represents both a threat and a wonderful opportunity.'},
+    {t:'v',fr:'une dépendance / l\'addiction',wc:'nf',en:'an addiction / dependency',ex:'La dépendance aux écrans touche désormais toutes les générations.',exE:'Screen addiction now affects every generation.'},
+    {t:'v',fr:'nuire à la concentration / au sommeil',wc:'v',en:'to harm concentration / sleep',ex:'Les écrans nuisent à la concentration des enfants en classe.',exE:'Screens harm children\'s concentration in class.'},
+    {t:'v',fr:'une publicité ciblée',wc:'nf',en:'targeted advertising',ex:'La publicité ciblée s\'adresse même aux enfants de moins de dix ans.',exE:'Targeted advertising even targets children under ten years old.'},
+    {t:'v',fr:'les données personnelles',wc:'nfpl',en:'personal data',ex:'Nos données personnelles sont vendues à des entreprises sans notre accord.',exE:'Our personal data is sold to companies without our consent.'},
+    {t:'v',fr:'la désinformation / les fausses nouvelles',wc:'nf',en:'disinformation / fake news',ex:'La désinformation se propage très rapidement sur les réseaux sociaux.',exE:'Disinformation spreads very quickly on social media.'},
+    {t:'v',fr:'l\'intelligence artificielle (IA)',wc:'nf',en:'artificial intelligence (AI)',ex:'L\'intelligence artificielle va bouleverser de nombreux secteurs d\'activité.',exE:'Artificial intelligence will disrupt many sectors of activity.'},
+    {t:'v',fr:'la vie privée numérique',wc:'nf',en:'digital privacy',ex:'La protection de la vie privée numérique est devenue un enjeu majeur.',exE:'The protection of digital privacy has become a major issue.'},
+    {t:'v',fr:'un algorithme',wc:'nm',en:'an algorithm',ex:'Les algorithmes des réseaux sociaux nous exposent à des contenus de plus en plus ciblés.',exE:'Social media algorithms expose us to increasingly targeted content.'},
+    {t:'v',fr:'s\'en rendre compte',wc:'loc',en:'to realise it / become aware of it',ex:'On passe trop de temps en ligne sans vraiment s\'en rendre compte.',exE:'We spend too much time online without really realising it.'},
+    {t:'v',fr:'le cyberharcèlement',wc:'nm',en:'cyberbullying / online harassment',ex:'Le cyberharcèlement touche de nombreux adolescents sur les réseaux sociaux.',exE:'Cyberbullying affects many teenagers on social media.'},
+    {t:'v',fr:'réguler / encadrer',wc:'v',en:'to regulate / oversee',ex:'Il est urgent de mieux réguler l\'usage d\'Internet par les mineurs.',exE:'It is urgent to better regulate children\'s use of the Internet.'},
+    {t:'v',fr:'une fracture numérique',wc:'nf',en:'a digital divide',ex:'La fracture numérique creuse les inégalités entre générations et milieux sociaux.',exE:'The digital divide deepens inequalities between generations and social groups.'},
+  
+    {t:'p',fr:'utiliser son téléphone pour tout',en:'to use one\'s phone for everything',ex:'Aujourd\'hui, on utilise son téléphone pour tout : payer, naviguer, communiquer.',exE:'Today, people use their phones for everything: paying, navigating, communicating.'},
+    {t:'p',fr:'ne plus pouvoir se passer de + nom',en:'to no longer be able to do without something',ex:'Beaucoup de gens ne peuvent plus se passer de leur téléphone, même une heure.',exE:'Many people can no longer do without their phones, even for an hour.'},
+    {t:'p',fr:'cela pose un problème de…',en:'this raises a problem of…',ex:'Cela pose un vrai problème de santé mentale, notamment chez les adolescents.',exE:'This raises a real mental health problem, especially among teenagers.'},
+    {t:'p',fr:'on ne peut pas nier que…',en:'one cannot deny that…',ex:'On ne peut pas nier que les réseaux sociaux ont changé notre façon de communiquer.',exE:'One cannot deny that social media has changed the way we communicate.'},
+    {t:'p',fr:'il est difficile d\'imaginer une vie sans…',en:'it is hard to imagine a life without…',ex:'Il est difficile d\'imaginer une vie sans Internet dans notre société moderne.',exE:'It is hard to imagine a life without the Internet in our modern society.'},
+    {t:'p',fr:'d\'un côté, cela facilite… de l\'autre, cela risque de…',en:'on one hand it makes… easier; on the other, it risks…',ex:'D\'un côté, cela facilite les échanges ; de l\'autre, cela risque de remplacer le lien humain.',exE:'On one hand it makes communication easier; on the other, it risks replacing human bonds.'},
+    {t:'v',fr:'en ligne / hors ligne',wc:'adj',en:'online / offline',ex:'La majorité des jeunes passent plus de cinq heures par jour en ligne.',exE:'The majority of young people spend more than five hours a day online.'},
+    {t:'v',fr:'un réseau social',wc:'nm',en:'a social network / social media platform',ex:'Les réseaux sociaux sont devenus le principal outil de communication des jeunes.',exE:'Social networks have become the main communication tool for young people.'},
+    {t:'v',fr:'partager / publier',wc:'v',en:'to share / post',ex:'Elle publiait chaque jour des photos et des vidéos sur ses réseaux sociaux.',exE:'She posted photos and videos on her social media every day.'},
+    {t:'v',fr:'une application (appli)',wc:'nf',en:'an application (app)',ex:'Il existe des applications pour contrôler le temps passé devant les écrans.',exE:'There are apps to monitor the time spent in front of screens.'},
+    {t:'v',fr:'le bien-être numérique',wc:'nm',en:'digital well-being',ex:'Le concept de bien-être numérique invite à une utilisation plus consciente d\'Internet.',exE:'The concept of digital well-being invites more conscious use of the Internet.'},
+    {t:'v',fr:'une menace / un danger',wc:'nf',en:'a threat / danger',ex:'La désinformation représente une véritable menace pour la démocratie.',exE:'Disinformation represents a real threat to democracy.'},
+    {t:'v',fr:'protéger les mineurs',wc:'v',en:'to protect minors',ex:'Il faut trouver des solutions concrètes pour mieux protéger les mineurs en ligne.',exE:'Concrete solutions must be found to better protect minors online.'},
+]},
+
+  {id:'education',fr:'Éducation',en:'School & education',c:'#FF3D8B',l:false,items:[
+    {t:'p',fr:'supprimer les notes à l\'école primaire',en:'to abolish grades in primary school',ex:'Certains pédagogues proposent de supprimer les notes à l\'école primaire.',exE:'Some educators propose abolishing grades in primary school.'},
+    {t:'p',fr:'s\'épanouir à l\'école plutôt que subir la pression',en:'to thrive at school rather than suffer pressure',ex:'Un enfant doit pouvoir s\'épanouir à l\'école, pas seulement réussir ses examens.',exE:'A child should be able to thrive at school, not just pass exams.'},
+    {t:'p',fr:'tuer la motivation des élèves',en:'to kill students\' motivation',ex:'Une école trop compétitive risque de tuer la motivation des élèves les plus fragiles.',exE:'An overly competitive school risks killing the motivation of the most vulnerable students.'},
+    {t:'p',fr:'encourager l\'esprit critique plutôt que la mémorisation',en:'to encourage critical thinking rather than memorisation',ex:'L\'école devrait davantage encourager l\'esprit critique plutôt que la mémorisation.',exE:'School should do more to encourage critical thinking rather than memorisation.'},
+    {t:'p',fr:'réduire le décrochage scolaire',en:'to reduce school dropout rates',ex:'Des mesures concrètes sont nécessaires pour réduire le décrochage scolaire.',exE:'Concrete measures are needed to reduce school dropout rates.'},
+    {t:'p',fr:'interdire / permettre les smartphones en classe',en:'to ban / allow smartphones in class',ex:'Des professeurs proposent d\'utiliser les smartphones en classe pour rendre les cours plus interactifs.',exE:'Some teachers propose using smartphones in class to make lessons more interactive.'},
+    {t:'p',fr:'favoriser l\'inclusion scolaire',en:'to promote school inclusion',ex:'Il est essentiel de favoriser l\'inclusion scolaire des enfants en situation de handicap.',exE:'It is essential to promote the school inclusion of children with disabilities.'},
+    {t:'v',fr:'la pression scolaire',wc:'nf',en:'academic pressure',ex:'La pression scolaire pèse de plus en plus lourdement sur les jeunes élèves.',exE:'Academic pressure weighs more and more heavily on young students.'},
+    {t:'v',fr:'s\'épanouir',wc:'v',en:'to flourish / thrive',ex:'Il est important que les enfants puissent s\'épanouir à l\'école.',exE:'It is important that children can flourish at school.'},
+    {t:'v',fr:'le décrochage scolaire',wc:'nm',en:'school dropout / disengagement',ex:'Le décrochage scolaire est un phénomène préoccupant dans de nombreux pays.',exE:'School dropout is a worrying phenomenon in many countries.'},
+    {t:'v',fr:'la bienveillance',wc:'nf',en:'caring / compassionate approach',ex:'Une pédagogie fondée sur la bienveillance donne de meilleurs résultats à long terme.',exE:'A compassionate teaching approach gives better results in the long run.'},
+    {t:'v',fr:'l\'enseignement obligatoire',wc:'nm',en:'compulsory education',ex:'L\'enseignement obligatoire jusqu\'à seize ans est une conquête sociale importante.',exE:'Compulsory education until sixteen is an important social achievement.'},
+    {t:'v',fr:'la pédagogie / une méthode pédagogique',wc:'nf',en:'pedagogy / a teaching method',ex:'Une pédagogie innovante peut transformer radicalement l\'attitude des élèves.',exE:'An innovative teaching method can radically transform students\' attitude.'},
+    {t:'v',fr:'inégalités scolaires',wc:'nfpl',en:'educational inequalities',ex:'Les inégalités scolaires se creusent entre les élèves des milieux aisés et défavorisés.',exE:'Educational inequalities are growing between students from wealthy and deprived backgrounds.'},
+    {t:'v',fr:'la formation à distance / en ligne',wc:'nf',en:'distance / online learning',ex:'La formation à distance ne remplace pas totalement le contact humain en classe.',exE:'Distance learning does not fully replace human contact in the classroom.'},
+    {t:'v',fr:'l\'autonomie des élèves',wc:'nf',en:'pupils\' autonomy / independence',ex:'Il faudrait davantage développer l\'autonomie des élèves dès le primaire.',exE:'Students\' autonomy should be developed more from primary school onwards.'},
+    {t:'v',fr:'évaluer / noter',wc:'v',en:'to assess / grade',ex:'Évaluer un élève uniquement par ses notes ne reflète pas toutes ses compétences.',exE:'Assessing a pupil solely by their grades does not reflect all their skills.'},
+    {t:'v',fr:'le harcèlement scolaire',wc:'nm',en:'school bullying',ex:'Le harcèlement scolaire reste un problème grave souvent sous-estimé.',exE:'School bullying remains a serious problem that is often underestimated.'},
+  
+    {t:'p',fr:'avoir du mal à se concentrer en classe',en:'to have difficulty concentrating in class',ex:'De nombreux élèves ont du mal à se concentrer en classe à cause des écrans.',exE:'Many pupils have difficulty concentrating in class because of screens.'},
+    {t:'p',fr:'s\'épanouir grâce à l\'école',en:'to thrive / flourish thanks to school',ex:'L\'école devrait permettre à chaque enfant de s\'épanouir à son rythme.',exE:'School should allow every child to thrive at their own pace.'},
+    {t:'p',fr:'tout le monde n\'apprend pas de la même façon',en:'not everyone learns in the same way',ex:'Il est important de reconnaître que tout le monde n\'apprend pas de la même façon.',exE:'It is important to recognise that not everyone learns in the same way.'},
+    {t:'p',fr:'donner le goût d\'apprendre',en:'to inspire a love of learning',ex:'Le rôle de l\'enseignant est aussi de donner le goût d\'apprendre aux élèves.',exE:'The teacher\'s role is also to inspire a love of learning in pupils.'},
+    {t:'p',fr:'être à la hauteur des attentes',en:'to live up to expectations',ex:'Certains élèves ont peur de ne pas être à la hauteur des attentes.',exE:'Some pupils are afraid of not living up to expectations.'},
+    {t:'p',fr:'avoir de bonnes / mauvaises notes',en:'to have good / bad grades',ex:'Elle avait de très bonnes notes mais ne se sentait pas épanouie pour autant.',exE:'She had very good grades but did not feel fulfilled for all that.'},
+    {t:'v',fr:'un enseignant / un professeur',wc:'nm',en:'a teacher',ex:'Un bon enseignant sait s\'adapter au niveau de chaque élève.',exE:'A good teacher knows how to adapt to the level of each pupil.'},
+    {t:'v',fr:'les résultats scolaires',wc:'nm pl',en:'academic results / school performance',ex:'Les résultats scolaires ne reflètent pas toujours le vrai potentiel d\'un élève.',exE:'Academic results do not always reflect a pupil\'s true potential.'},
+    {t:'v',fr:'apprendre par cœur / mémoriser',wc:'v',en:'to learn by heart / to memorise',ex:'Apprendre par cœur des listes de dates ne développe pas l\'esprit critique.',exE:'Learning lists of dates by heart does not develop critical thinking.'},
+    {t:'v',fr:'un élève / un étudiant',wc:'nm',en:'a pupil / a student',ex:'Les élèves les plus brillants ne sont pas toujours ceux qui réussissent le mieux.',exE:'The brightest pupils are not always those who do best.'},
+    {t:'v',fr:'une école privée / publique',wc:'nf',en:'a private / state school',ex:'Il y a un grand débat sur les avantages des écoles privées par rapport aux publiques.',exE:'There is a major debate on the advantages of private schools versus state schools.'},
+    {t:'v',fr:'le système éducatif',wc:'nm',en:'the education system',ex:'Le système éducatif français est souvent critiqué pour être trop élitiste.',exE:'The French education system is often criticised for being too elitist.'},
+    {t:'v',fr:'réussir / échouer à un examen',wc:'v',en:'to pass / fail an exam',ex:'Il a réussi son baccalauréat du premier coup avec mention très bien.',exE:'He passed his baccalaureate first time with the highest distinction.'},
+]},
+
+  {id:'environnement',fr:'Environnement',en:'Environment & consumption',c:'#007A42',l:false,items:[
+    {t:'p',fr:'réduire sa consommation de manière significative',en:'to significantly cut down on consumption',ex:'Il faudrait réduire sa consommation de vêtements neufs de manière significative.',exE:'We should significantly cut down on buying new clothes.'},
+    {t:'p',fr:'lutter concrètement contre la pollution',en:'to concretely fight against pollution',ex:'Les gouvernements doivent prendre des mesures concrètes pour lutter contre la pollution.',exE:'Governments must take concrete measures to fight against pollution.'},
+    {t:'p',fr:'interdire les vols courts au profit du train',en:'to ban short-haul flights in favour of the train',ex:'Certains pays ont déjà interdit les vols courts au profit du transport ferroviaire.',exE:'Some countries have already banned short-haul flights in favour of rail transport.'},
+    {t:'p',fr:'opter pour des énergies renouvelables',en:'to opt for renewable energies',ex:'Il est urgent d\'opter pour des énergies renouvelables afin de réduire nos émissions.',exE:'It is urgent to opt for renewable energies in order to reduce our emissions.'},
+    {t:'p',fr:'nuire gravement à l\'environnement',en:'to seriously harm the environment',ex:'L\'industrie textile nuit gravement à l\'environnement et aux ressources en eau.',exE:'The textile industry seriously harms the environment and water resources.'},
+    {t:'p',fr:'adopter un mode de vie plus sobre',en:'to adopt a more sober / simpler lifestyle',ex:'Il est possible d\'adopter un mode de vie plus sobre sans sacrifier son confort.',exE:'It is possible to adopt a simpler lifestyle without sacrificing one\'s comfort.'},
+    {t:'p',fr:'sensibiliser le grand public à…',en:'to raise public awareness of…',ex:'Il est essentiel de sensibiliser le grand public aux enjeux du réchauffement climatique.',exE:'It is essential to raise public awareness of the challenges of climate change.'},
+    {t:'v',fr:'les emballages plastiques',wc:'nmpl',en:'plastic packaging',ex:'Les industries devraient urgemment supprimer les emballages plastiques inutiles.',exE:'Industries should urgently eliminate unnecessary plastic packaging.'},
+    {t:'v',fr:'l\'empreinte carbone',wc:'nf',en:'carbon footprint',ex:'Prendre l\'avion régulièrement augmente fortement son empreinte carbone.',exE:'Flying regularly greatly increases one\'s carbon footprint.'},
+    {t:'v',fr:'la mode éphémère / fast fashion',wc:'nf',en:'fast fashion / throwaway fashion',ex:'La mode éphémère pousse les consommateurs à acheter sans réfléchir aux conséquences.',exE:'Fast fashion pushes consumers to buy without thinking about the consequences.'},
+    {t:'v',fr:'le développement durable',wc:'nm',en:'sustainable development',ex:'Le développement durable doit devenir une priorité pour toutes les entreprises.',exE:'Sustainable development must become a priority for all companies.'},
+    {t:'v',fr:'le réchauffement climatique',wc:'nm',en:'global warming / climate change',ex:'Le réchauffement climatique menace des millions d\'espèces animales.',exE:'Global warming threatens millions of animal species.'},
+    {t:'v',fr:'les énergies renouvelables',wc:'nfpl',en:'renewable energies',ex:'Les énergies renouvelables représentent l\'avenir de notre système énergétique.',exE:'Renewable energies represent the future of our energy system.'},
+    {t:'v',fr:'la transition écologique',wc:'nf',en:'the ecological transition',ex:'La transition écologique nécessite des efforts collectifs et individuels.',exE:'The ecological transition requires collective and individual efforts.'},
+    {t:'v',fr:'une prise de conscience',wc:'nf',en:'an awareness / a realisation',ex:'Une véritable prise de conscience est nécessaire pour changer nos comportements.',exE:'A genuine awareness is needed to change our behaviour.'},
+    {t:'v',fr:'un geste écologique',wc:'nm',en:'an eco-friendly action / green gesture',ex:'Chaque geste écologique, même petit, contribue à la protection de l\'environnement.',exE:'Every eco-friendly action, however small, contributes to environmental protection.'},
+    {t:'v',fr:'irresponsable / inconscient(e)',wc:'adj',en:'irresponsible / reckless',ex:'Acheter des vêtements sans penser à l\'environnement est devenu irresponsable.',exE:'Buying clothes without thinking about the environment has become irresponsible.'},
+    {t:'v',fr:'les émissions de gaz à effet de serre',wc:'nfpl',en:'greenhouse gas emissions',ex:'Il faut réduire les émissions de gaz à effet de serre de 50 % d\'ici 2030.',exE:'Greenhouse gas emissions must be reduced by 50% by 2030.'},
+  
+    {t:'p',fr:'nous avons tous un rôle à jouer',en:'we all have a role to play',ex:'Face au changement climatique, nous avons tous un rôle à jouer.',exE:'In the face of climate change, we all have a role to play.'},
+    {t:'p',fr:'les gestes du quotidien pour l\'environnement',en:'everyday gestures for the environment',ex:'Les gestes du quotidien — trier, économiser l\'eau — font une vraie différence.',exE:'Everyday gestures — sorting waste, saving water — make a real difference.'},
+    {t:'p',fr:'cela nuit à l\'environnement',en:'this harms the environment',ex:'La production excessive de plastique nuit gravement à l\'environnement marin.',exE:'The excessive production of plastic seriously harms the marine environment.'},
+    {t:'p',fr:'prendre conscience du problème',en:'to become aware of the problem',ex:'De plus en plus de citoyens prennent conscience du problème climatique.',exE:'More and more citizens are becoming aware of the climate problem.'},
+    {t:'p',fr:'agir avant qu\'il ne soit trop tard',en:'to act before it is too late',ex:'Il faut agir collectivement avant qu\'il ne soit trop tard pour notre planète.',exE:'We must act collectively before it is too late for our planet.'},
+    {t:'p',fr:'réduire son empreinte carbone',en:'to reduce one\'s carbon footprint',ex:'Chacun peut réduire son empreinte carbone en changeant quelques habitudes.',exE:'Each person can reduce their carbon footprint by changing a few habits.'},
+    {t:'v',fr:'le réchauffement climatique',wc:'nm',en:'global warming / climate change',ex:'Le réchauffement climatique représente un défi majeur pour notre génération.',exE:'Global warming represents a major challenge for our generation.'},
+    {t:'v',fr:'les énergies renouvelables',wc:'nfpl',en:'renewable energy',ex:'L\'investissement dans les énergies renouvelables est essentiel pour l\'avenir.',exE:'Investment in renewable energy is essential for the future.'},
+    {t:'v',fr:'trier ses déchets / le recyclage',wc:'v',en:'to sort one\'s waste / recycling',ex:'Trier ses déchets est un geste simple mais efficace pour l\'environnement.',exE:'Sorting your waste is a simple but effective gesture for the environment.'},
+    {t:'v',fr:'polluer / la pollution',wc:'v/nf',en:'to pollute / pollution',ex:'La pollution de l\'air dans les grandes villes atteint des niveaux alarmants.',exE:'Air pollution in large cities is reaching alarming levels.'},
+    {t:'v',fr:'une catastrophe naturelle',wc:'nf',en:'a natural disaster',ex:'Les catastrophes naturelles deviennent de plus en plus fréquentes et violentes.',exE:'Natural disasters are becoming increasingly frequent and violent.'},
+    {t:'v',fr:'s\'engager pour / militer pour',wc:'v',en:'to commit to / campaign for',ex:'Des milliers de jeunes militants s\'engagent pour la protection du climat.',exE:'Thousands of young activists commit to protecting the climate.'},
+    {t:'v',fr:'durable / le développement durable',wc:'adj/nm',en:'sustainable / sustainable development',ex:'Il est urgent d\'adopter un modèle de développement durable à l\'échelle mondiale.',exE:'It is urgent to adopt a sustainable development model on a global scale.'},
+]},
+
+  {id:'sante',fr:'Santé',en:'Health & lifestyle',c:'#FF6B2C',l:false,items:[
+    {t:'p',fr:'manger sainement sans se priver',en:'to eat healthily without depriving oneself',ex:'Il est possible de manger sainement sans se priver ni devenir végétarien.',exE:'It is possible to eat healthily without depriving oneself or becoming vegetarian.'},
+    {t:'p',fr:'adopter un régime végétarien / végétalien',en:'to adopt a vegetarian / vegan diet',ex:'Adopter un régime végétarien n\'est pas la seule façon d\'être en bonne santé.',exE:'Adopting a vegetarian diet is not the only way to be healthy.'},
+    {t:'p',fr:'prendre soin de sa santé physique et mentale',en:'to take care of one\'s physical and mental health',ex:'Il est essentiel de prendre soin de sa santé physique autant que mentale.',exE:'It is essential to take care of one\'s physical health as much as mental health.'},
+    {t:'p',fr:'les gens ne mangent plus que de l\'alimentation industrielle',en:'people eat nothing but processed food',ex:'De nos jours, beaucoup de gens ne mangent plus que de l\'alimentation industrielle.',exE:'Nowadays, many people eat nothing but processed food.'},
+    {t:'p',fr:'lutter contre la sédentarité',en:'to fight against a sedentary lifestyle',ex:'Il est urgent de lutter contre la sédentarité, notamment chez les jeunes.',exE:'It is urgent to fight against sedentary lifestyles, particularly among young people.'},
+    {t:'p',fr:'accès à des soins de santé de qualité',en:'access to quality healthcare',ex:'L\'accès à des soins de santé de qualité ne devrait pas dépendre du revenu.',exE:'Access to quality healthcare should not depend on income.'},
+    {t:'p',fr:'privilégier les produits locaux et de saison',en:'to favour local and seasonal products',ex:'Il faudrait davantage privilégier les produits locaux et de saison dans notre alimentation.',exE:'We should favour local and seasonal products more in our diet.'},
+    {t:'v',fr:'une alimentation malsaine / équilibrée',wc:'nf',en:'an unhealthy / balanced diet',ex:'Beaucoup de gens ont une alimentation malsaine par manque de temps et d\'argent.',exE:'Many people have an unhealthy diet due to lack of time and money.'},
+    {t:'v',fr:'l\'alimentation industrielle',wc:'nf',en:'processed / industrial food',ex:'L\'alimentation industrielle est souvent trop riche en sucres et en graisses.',exE:'Processed food is often too high in sugars and fats.'},
+    {t:'v',fr:'les habitudes alimentaires',wc:'nfpl',en:'eating habits / dietary habits',ex:'Les habitudes alimentaires se forment dès l\'enfance et sont difficiles à changer.',exE:'Eating habits are formed in childhood and are hard to change.'},
+    {t:'v',fr:'la sédentarité',wc:'nf',en:'sedentary lifestyle / physical inactivity',ex:'La sédentarité favorise de nombreuses maladies chroniques.',exE:'A sedentary lifestyle promotes many chronic diseases.'},
+    {t:'v',fr:'la prévention',wc:'nf',en:'prevention',ex:'La médecine préventive coûte moins cher que la médecine curative.',exE:'Preventive medicine costs less than curative medicine.'},
+    {t:'v',fr:'l\'obésité',wc:'nf',en:'obesity',ex:'L\'obésité est devenue un problème de santé publique majeur dans de nombreux pays.',exE:'Obesity has become a major public health problem in many countries.'},
+    {t:'v',fr:'le bien-être',wc:'nm',en:'well-being / wellness',ex:'Le bien-être ne se résume pas à l\'absence de maladie.',exE:'Well-being is not simply the absence of illness.'},
+    {t:'v',fr:'une perte de temps (ne pas être)',wc:'nf',en:'a waste of time (not to be)',ex:'Apprendre à cuisiner n\'est jamais une perte de temps, au contraire.',exE:'Learning to cook is never a waste of time, quite the opposite.'},
+    {t:'v',fr:'chronique / récurrent(e)',wc:'adj',en:'chronic / recurring',ex:'Les maladies chroniques liées à l\'alimentation sont en forte augmentation.',exE:'Diet-related chronic illnesses are strongly on the rise.'},
+    {t:'v',fr:'la médecine préventive',wc:'nf',en:'preventive medicine',ex:'Investir dans la médecine préventive permet de réduire les coûts de santé.',exE:'Investing in preventive medicine helps reduce healthcare costs.'},
+    {t:'v',fr:'en bonne santé / en mauvaise santé',wc:'loc',en:'in good / poor health',ex:'Pour rester en bonne santé, l\'alimentation seule ne suffit pas.',exE:'To remain in good health, diet alone is not enough.'},
+  
+    {t:'p',fr:'prendre soin de sa santé',en:'to take care of one\'s health',ex:'Il est important de prendre soin de sa santé dès le plus jeune âge.',exE:'It is important to take care of one\'s health from a very young age.'},
+    {t:'p',fr:'avoir une alimentation équilibrée',en:'to have a balanced diet',ex:'Avoir une alimentation équilibrée est la base d\'une bonne santé.',exE:'Having a balanced diet is the foundation of good health.'},
+    {t:'p',fr:'faire du sport régulièrement',en:'to do sport regularly',ex:'Faire du sport régulièrement aide à réduire le stress et améliore le sommeil.',exE:'Doing sport regularly helps to reduce stress and improves sleep.'},
+    {t:'p',fr:'cela a des effets néfastes sur la santé',en:'this has harmful effects on health',ex:'La consommation excessive de sucre a des effets néfastes sur la santé.',exE:'Excessive sugar consumption has harmful effects on health.'},
+    {t:'p',fr:'se sentir bien dans sa peau',en:'to feel comfortable in one\'s own skin / feel good about oneself',ex:'L\'objectif n\'est pas d\'être parfait, mais de se sentir bien dans sa peau.',exE:'The goal is not to be perfect, but to feel good about oneself.'},
+    {t:'p',fr:'aller chez le médecin / consulter un spécialiste',en:'to go to the doctor / consult a specialist',ex:'Trop de gens évitent d\'aller chez le médecin par peur ou par négligence.',exE:'Too many people avoid going to the doctor out of fear or neglect.'},
+    {t:'v',fr:'la santé mentale',wc:'nf',en:'mental health',ex:'La santé mentale est aussi importante que la santé physique.',exE:'Mental health is just as important as physical health.'},
+    {t:'v',fr:'les habitudes alimentaires',wc:'nfpl',en:'eating habits / dietary habits',ex:'Les mauvaises habitudes alimentaires se forment souvent dès l\'enfance.',exE:'Bad eating habits often form in childhood.'},
+    {t:'v',fr:'une maladie / tomber malade',wc:'nf/loc',en:'an illness / to fall ill',ex:'Il est tombé malade après avoir négligé sa santé pendant trop longtemps.',exE:'He fell ill after neglecting his health for too long.'},
+    {t:'v',fr:'soigner / guérir',wc:'v',en:'to treat / to heal / to cure',ex:'Les médecins ont pu soigner la maladie grâce à un nouveau traitement.',exE:'The doctors were able to treat the illness thanks to a new treatment.'},
+    {t:'v',fr:'le stress / être stressé(e)',wc:'nm/adj',en:'stress / to be stressed',ex:'Le stress au travail est devenu l\'une des principales causes de maladie.',exE:'Workplace stress has become one of the main causes of illness.'},
+    {t:'v',fr:'une campagne de prévention',wc:'nf',en:'a prevention campaign',ex:'Une campagne de prévention contre le tabac a été lancée dans les écoles.',exE:'A prevention campaign against tobacco was launched in schools.'},
+    {t:'v',fr:'le système de santé / la Sécurité sociale',wc:'nm',en:'the health system / social security',ex:'La France est connue pour la qualité de son système de santé.',exE:'France is known for the quality of its health system.'},
+]},
+
+  {id:'societe',fr:'Société',en:'Society & values',c:'#7B5BD6',l:false,items:[
+    {t:'p',fr:'être livré(e) à soi-même face aux écrans',en:'to be left to one\'s own devices in front of screens',ex:'Les personnes âgées ne devraient pas être livrées à elles-mêmes devant la télévision.',exE:'Older people should not be left to their own devices in front of the TV.'},
+    {t:'p',fr:'s\'entourer de gens différents pour s\'ouvrir aux autres',en:'to surround oneself with different people to open up',ex:'S\'entourer de gens différents nous aide à nous remettre en question et à évoluer.',exE:'Surrounding ourselves with different people helps us question ourselves and grow.'},
+    {t:'p',fr:'ne s\'intéresser qu\'à son image sur les réseaux',en:'to only care about one\'s image on social media',ex:'Les jeunes d\'aujourd\'hui ne s\'intéressent-ils vraiment qu\'à leur image en ligne ?',exE:'Do today\'s young people really only care about their online image?'},
+    {t:'p',fr:'les inégalités se creusent entre…',en:'inequalities are growing between…',ex:'Les inégalités économiques se creusent entre les classes aisées et défavorisées.',exE:'Economic inequalities are growing between wealthy and deprived classes.'},
+    {t:'p',fr:'renforcer la cohésion sociale',en:'to strengthen social cohesion',ex:'Des actions culturelles communes peuvent contribuer à renforcer la cohésion sociale.',exE:'Shared cultural activities can help strengthen social cohesion.'},
+    {t:'p',fr:'vivre en marge de la société',en:'to live on the fringes of society',ex:'Ces personnes vulnérables risquent de se retrouver à vivre en marge de la société.',exE:'These vulnerable people risk ending up living on the fringes of society.'},
+    {t:'p',fr:'remettre en question les valeurs traditionnelles',en:'to call traditional values into question',ex:'Cette évolution sociale tend à remettre en question les valeurs traditionnelles.',exE:'This social evolution tends to call traditional values into question.'},
+    {t:'v',fr:'la vie privée',wc:'nf',en:'privacy',ex:'La vie privée est un droit fondamental qu\'il faut protéger.',exE:'Privacy is a fundamental right that must be protected.'},
+    {t:'v',fr:'une caméra de surveillance',wc:'nf',en:'a surveillance camera / CCTV',ex:'Installer des caméras de surveillance dans les rues pose la question de la vie privée.',exE:'Installing surveillance cameras raises the question of privacy.'},
+    {t:'v',fr:'l\'autonomie',wc:'nf',en:'autonomy / independence',ex:'Vivre seul ne prouve pas nécessairement qu\'on a acquis une vraie autonomie.',exE:'Living alone doesn\'t necessarily prove that one has gained true autonomy.'},
+    {t:'v',fr:'la cohésion sociale',wc:'nf',en:'social cohesion',ex:'La cohésion sociale est fragilisée par les inégalités économiques croissantes.',exE:'Social cohesion is weakened by growing economic inequalities.'},
+    {t:'v',fr:'la solidarité',wc:'nf',en:'solidarity',ex:'La solidarité entre générations est un pilier essentiel de notre société.',exE:'Intergenerational solidarity is an essential pillar of our society.'},
+    {t:'v',fr:'l\'individualisme',wc:'nm',en:'individualism / self-centredness',ex:'L\'individualisme croissant menace le tissu social de nos communautés.',exE:'Growing individualism threatens the social fabric of our communities.'},
+    {t:'v',fr:'se remettre en question',wc:'loc',en:'to question oneself / rethink one\'s views',ex:'S\'entourer de gens différents nous aide à nous remettre en question.',exE:'Surrounding ourselves with different people helps us question ourselves.'},
+    {t:'v',fr:'épanoui(e) / accompli(e)',wc:'adj',en:'fulfilled / well-rounded / happy in oneself',ex:'Mener une vie solitaire ne signifie pas nécessairement qu\'on est épanoui.',exE:'Leading a solitary life does not necessarily mean that one is fulfilled.'},
+    {t:'v',fr:'les inégalités',wc:'nfpl',en:'inequalities',ex:'Les inégalités sociales persistent malgré les politiques de redistribution.',exE:'Social inequalities persist despite redistribution policies.'},
+    {t:'v',fr:'marginaliser',wc:'v',en:'to marginalise / exclude',ex:'Ces politiques risquent de marginaliser davantage les populations déjà fragilisées.',exE:'These policies risk further marginalising already vulnerable populations.'},
+    {t:'v',fr:'le vivre-ensemble',wc:'nm',en:'living together / social harmony',ex:'Le vivre-ensemble repose sur le respect mutuel et la tolérance.',exE:'Social harmony is based on mutual respect and tolerance.'},
+    {t:'v',fr:'les personnes âgées / les seniors',wc:'npl',en:'older people / seniors',ex:'Les personnes âgées méritent une attention particulière dans notre société.',exE:'Older people deserve special attention in our society.'},
+  
+    {t:'p',fr:'cela touche de nombreuses personnes',en:'this affects many people',ex:'Ce problème touche de nombreuses personnes, indépendamment de leur âge ou de leur milieu.',exE:'This problem affects many people, regardless of their age or background.'},
+    {t:'p',fr:'il est important de sensibiliser les gens à…',en:'it is important to raise awareness about…',ex:'Il est important de sensibiliser les gens au problème des inégalités sociales.',exE:'It is important to raise awareness among people about the problem of social inequalities.'},
+    {t:'p',fr:'les inégalités se creusent / s\'aggravent',en:'inequalities are growing / worsening',ex:'Malgré la croissance économique, les inégalités entre riches et pauvres se creusent.',exE:'Despite economic growth, the inequalities between rich and poor are growing.'},
+    {t:'p',fr:'tout le monde devrait avoir accès à…',en:'everyone should have access to…',ex:'Tout le monde devrait avoir accès à une éducation de qualité, quelle que soit son origine.',exE:'Everyone should have access to quality education, whatever their background.'},
+    {t:'p',fr:'cela soulève une question importante',en:'this raises an important question',ex:'Cette situation soulève une question importante : comment garantir l\'égalité des chances ?',exE:'This situation raises an important question: how to guarantee equal opportunities?'},
+    {t:'p',fr:'les autorités doivent prendre des mesures',en:'the authorities must take measures',ex:'Les autorités doivent prendre des mesures concrètes pour lutter contre la pauvreté.',exE:'The authorities must take concrete measures to fight poverty.'},
+    {t:'v',fr:'la solidarité',wc:'nf',en:'solidarity',ex:'La solidarité entre les citoyens est essentielle dans les moments de crise.',exE:'Solidarity among citizens is essential in times of crisis.'},
+    {t:'v',fr:'les inégalités sociales',wc:'nfpl',en:'social inequalities',ex:'Les inégalités sociales représentent un défi majeur pour les démocraties modernes.',exE:'Social inequalities represent a major challenge for modern democracies.'},
+    {t:'v',fr:'intégrer / s\'intégrer dans la société',wc:'v',en:'to integrate / integrate into society',ex:'La capacité à s\'intégrer dans la société est essentielle pour une vie épanouie.',exE:'The ability to integrate into society is essential for a fulfilling life.'},
+    {t:'v',fr:'le chômage / être au chômage',wc:'nm/loc',en:'unemployment / to be unemployed',ex:'Le chômage des jeunes reste une préoccupation majeure dans de nombreux pays.',exE:'Youth unemployment remains a major concern in many countries.'},
+    {t:'v',fr:'une communauté / vivre en communauté',wc:'nf',en:'a community / to live in a community',ex:'Vivre en communauté implique des responsabilités envers les autres.',exE:'Living in a community involves responsibilities towards others.'},
+    {t:'v',fr:'les droits et les devoirs',wc:'nm pl',en:'rights and duties',ex:'Dans une démocratie, chaque citoyen a des droits mais aussi des devoirs.',exE:'In a democracy, every citizen has rights but also duties.'},
+    {t:'v',fr:'lutter contre la discrimination',wc:'loc',en:'to fight against discrimination',ex:'Il est du devoir de chacun de lutter contre toute forme de discrimination.',exE:'It is everyone\'s duty to fight against any form of discrimination.'},
+]},
+ ]
+ },
+
+ EO:{
+  A:[
+   {id:'eoA_phrases',fr:'Demander infos',en:'Universal info-request phrases',c:'#FF6B2C',l:false,items:[
+    {t:'p',fr:'Je vous contacte afin d\'obtenir des renseignements sur…',en:'I\'m contacting you to get information about…',ex:'Je vous contacte afin d\'obtenir des renseignements sur votre programme de cours.',exE:'I\'m contacting you to get information about your course programme.'},
+    {t:'p',fr:'Pourriez-vous me préciser… ?',en:'Could you tell me more about… ?',ex:'Pourriez-vous me préciser les horaires d\'ouverture et les tarifs pratiqués ?',exE:'Could you tell me more about the opening hours and the prices?'},
+    {t:'p',fr:'J\'aimerais savoir si… / J\'aimerais savoir comment…',en:'I\'d like to know if… / I\'d like to know how…',ex:'J\'aimerais savoir si l\'inscription se fait en ligne ou en personne.',exE:'I\'d like to know if registration is done online or in person.'},
+    {t:'p',fr:'Est-ce que vous proposez… ?',en:'Do you offer… ?',ex:'Est-ce que vous proposez des formules pour les débutants complets ?',exE:'Do you offer packages for complete beginners?'},
+    {t:'p',fr:'Quelles sont les conditions requises pour… ?',en:'What are the requirements for… ?',ex:'Quelles sont les conditions requises pour participer à l\'activité ?',exE:'What are the requirements to take part in the activity?'},
+    {t:'p',fr:'Y a-t-il des restrictions concernant… ?',en:'Are there any restrictions regarding… ?',ex:'Y a-t-il des restrictions concernant l\'âge ou le niveau requis ?',exE:'Are there any restrictions regarding age or required level?'},
+    {t:'p',fr:'Dans quel délai peut-on… ?',en:'How quickly can one… ?',ex:'Dans quel délai peut-on obtenir une réponse à notre demande ?',exE:'How quickly can we get a response to our request?'},
+    {t:'p',fr:'Faut-il réserver à l\'avance ou est-ce possible de… ?',en:'Is advance booking required or is it possible to… ?',ex:'Faut-il réserver à l\'avance ou est-ce possible de venir directement sur place ?',exE:'Is advance booking required or is it possible to come directly on the spot?'},
+    {t:'p',fr:'Je souhaiterais avoir plus d\'informations sur les tarifs.',en:'I\'d like more information about the prices.',ex:'Je souhaiterais avoir plus d\'informations sur les tarifs et les modalités de paiement.',exE:'I\'d like more information about the prices and payment methods.'},
+    {t:'p',fr:'Pourriez-vous me dire ce qui est inclus dans… ?',en:'Could you tell me what is included in… ?',ex:'Pourriez-vous me dire ce qui est inclus dans le forfait de base ?',exE:'Could you tell me what is included in the basic package?'},
+    {t:'p',fr:'Dans l\'attente de votre réponse, je vous adresse mes cordiales salutations.',en:'Looking forward to your reply, I send you my kind regards.',ex:'Dans l\'attente de votre réponse, je vous adresse mes cordiales salutations.',exE:'Looking forward to your reply, I send you my kind regards.'},
+    {t:'v',fr:'des renseignements (nmpl)',wc:'nm',en:'information / details',ex:'Je cherche des renseignements sur vos offres pour les familles.',exE:'I\'m looking for information about your family offers.'},
+    {t:'v',fr:'les modalités (nfpl)',wc:'nf',en:'terms / conditions / procedures',ex:'Pourriez-vous m\'expliquer les modalités d\'inscription ?',exE:'Could you explain the registration procedure to me?'},
+    {t:'v',fr:'s\'inscrire (v)',wc:'v',en:'to register / sign up',ex:'Comment puis-je m\'inscrire à votre prochain atelier ?',exE:'How can I sign up for your next workshop?'},
+    {t:'v',fr:'un forfait (nm)',wc:'nm',en:'a package / flat rate',ex:'Proposez-vous un forfait tout compris pour les groupes ?',exE:'Do you offer an all-inclusive package for groups?'},
+    {t:'v',fr:'les disponibilités (nfpl)',wc:'nf',en:'availability',ex:'Quelles sont vos disponibilités pour le mois de mars ?',exE:'What is your availability for the month of March?'},
+    {t:'v',fr:'en personne / sur place',wc:'loc',en:'in person / on-site',ex:'Est-il possible de venir s\'inscrire directement en personne ?',exE:'Is it possible to come and register directly in person?'},
+    {t:'v',fr:'obligatoire / facultatif(ve)',wc:'adj',en:'compulsory / optional',ex:'La réservation est-elle obligatoire ou facultative ?',exE:'Is booking compulsory or optional?'},
+    {t:'v',fr:'adapté(e) à + public',wc:'adj',en:'suitable for / adapted to',ex:'Ces activités sont-elles adaptées aux enfants en bas âge ?',exE:'Are these activities suitable for young children?'},
+    {t:'v',fr:'avoir une question concernant',wc:'loc',en:'to have a question about',ex:'J\'ai une question concernant les délais de livraison.',exE:'I have a question about the delivery times.'},
+    {t:'p',fr:'Serait-il possible de… ?',en:'Would it be possible to… ?',ex:'Serait-il possible de bénéficier d\'un essai gratuit avant de s\'inscrire ?',exE:'Would it be possible to have a free trial before signing up?'},
+    {t:'p',fr:'Je serais également intéressé(e) de savoir…',en:'I would also be interested to know…',ex:'Je serais également intéressé de savoir si des réductions sont prévues pour les groupes.',exE:'I would also be interested to know if discounts are available for groups.'},
+   ]},
+
+   {id:'eoA_loisirs',fr:'Loisirs & sport',en:'Leisure, sports & activities',c:'#7B5BD6',l:false,items:[
+    {t:'p',fr:'Je souhaite louer… sans expérience préalable.',en:'I wish to rent… with no prior experience.',ex:'Je souhaite louer un bateau sans avoir d\'expérience préalable de navigation.',exE:'I wish to rent a boat with no prior sailing experience.'},
+    {t:'p',fr:'Proposez-vous des cours d\'initiation pour les débutants ?',en:'Do you offer beginner introduction courses?',ex:'Proposez-vous des cours d\'initiation pour les débutants absolus ?',exE:'Do you offer introduction courses for absolute beginners?'},
+    {t:'p',fr:'Faut-il posséder un équipement particulier ou est-il fourni ?',en:'Is specific equipment required, or is it provided?',ex:'Faut-il posséder un équipement particulier ou est-il fourni sur place ?',exE:'Is specific equipment required, or is it provided on-site?'},
+    {t:'p',fr:'Quelles sont les mesures de sécurité prévues pour… ?',en:'What safety measures are in place for… ?',ex:'Quelles sont les mesures de sécurité prévues pour le parachutisme en tandem ?',exE:'What safety measures are in place for tandem skydiving?'},
+    {t:'p',fr:'L\'activité est-elle praticable par tous les temps ?',en:'Can the activity be done in any weather?',ex:'L\'activité de ski-joëring est-elle praticable par tous les temps ?',exE:'Can ski-joering be done in any weather?'},
+    {t:'p',fr:'Y a-t-il un encadrement professionnel pendant toute la durée de… ?',en:'Is there professional supervision throughout… ?',ex:'Y a-t-il un encadrement professionnel pendant toute la durée de l\'activité ?',exE:'Is there professional supervision throughout the entire activity?'},
+    {t:'v',fr:'le permis de conduire / le permis bateau',wc:'nm',en:'driving / boating licence',ex:'Est-ce que le permis bateau est obligatoire pour louer une embarcation ?',exE:'Is a boating licence required to rent a vessel?'},
+    {t:'v',fr:'une embarcation (nf)',wc:'nf',en:'a vessel / watercraft / boat',ex:'Quelle taille d\'embarcation est adaptée pour quatre personnes ?',exE:'What size of vessel is suitable for four people?'},
+    {t:'v',fr:'le matériel de sécurité (nm)',wc:'nm',en:'safety equipment',ex:'Le matériel de sécurité comme les gilets de sauvetage est-il fourni ?',exE:'Is safety equipment such as life jackets provided?'},
+    {t:'v',fr:'une sortie accompagnée (nf)',wc:'nf',en:'a guided trip / supervised outing',ex:'Je préférerais commencer par une sortie accompagnée avec un moniteur.',exE:'I would prefer to start with a guided outing with an instructor.'},
+    {t:'v',fr:'le moniteur / la monitrice',wc:'nm',en:'instructor / coach',ex:'Un moniteur qualifié est-il présent durant toute la séance ?',exE:'Is a qualified instructor present throughout the entire session?'},
+    {t:'v',fr:'une séance (nf)',wc:'nf',en:'a session',ex:'La séance d\'initiation dure combien de temps en moyenne ?',exE:'How long does the introduction session last on average?'},
+    {t:'v',fr:'en tandem (loc)',wc:'loc',en:'in tandem / with an expert',ex:'Le saut en parachute se fait-il toujours en tandem avec un professionnel ?',exE:'Is skydiving always done in tandem with a professional?'},
+    {t:'v',fr:'s\'équiper (v)',wc:'v',en:'to gear up / get equipped',ex:'Dois-je m\'équiper moi-même ou tout est-il fourni sur place ?',exE:'Do I need to gear up myself or is everything provided on-site?'},
+    {t:'v',fr:'la caution / le dépôt',wc:'nf',en:'deposit / security payment',ex:'Faut-il verser une caution lors de la réservation ?',exE:'Is a deposit required when booking?'},
+    {t:'p',fr:'Dans quel cas peut-on annuler ou reporter la réservation ?',en:'In what circumstances can the booking be cancelled or rescheduled?',ex:'Dans quel cas peut-on annuler ou reporter la réservation sans frais ?',exE:'In what circumstances can the booking be cancelled or rescheduled free of charge?'},
+    {t:'p',fr:'Combien de temps dure… en moyenne ?',en:'How long does… last on average?',ex:'Combien de temps dure une sortie en bubble football en moyenne ?',exE:'How long does a bubble football session last on average?'},
+    {t:'p',fr:'Jusqu\'à quel âge peut-on pratiquer cette activité ?',en:'Up to what age can this activity be done?',ex:'Jusqu\'à quel âge peut-on pratiquer le parachutisme dans votre club ?',exE:'Up to what age can skydiving be done at your club?'},
+    {t:'v',fr:'débutant(e) / confirmé(e) / expert(e)',wc:'adj',en:'beginner / intermediate / expert',ex:'Des groupes séparés pour débutants et confirmés sont-ils prévus ?',exE:'Are separate groups for beginners and intermediate levels planned?'},
+    {t:'v',fr:'un créneau horaire (nm)',wc:'nm',en:'a time slot',ex:'Quels créneaux horaires sont disponibles le week-end ?',exE:'What time slots are available on weekends?'},
+   ]},
+
+   {id:'eoA_voyages',fr:'Voyages & séjours',en:'Travel & accommodation',c:'#00968F',l:false,items:[
+    {t:'p',fr:'Je souhaite organiser un séjour… pour un groupe de… personnes.',en:'I\'d like to organise a stay… for a group of… people.',ex:'Je souhaite organiser un séjour en train pour un groupe de six personnes.',exE:'I\'d like to organise a train journey for a group of six people.'},
+    {t:'p',fr:'Quelles destinations proposez-vous pour… ?',en:'What destinations do you offer for… ?',ex:'Quelles destinations proposez-vous pour un séjour de deux semaines en été ?',exE:'What destinations do you offer for a two-week stay in summer?'},
+    {t:'p',fr:'L\'hébergement et les repas sont-ils compris dans le prix ?',en:'Are accommodation and meals included in the price?',ex:'L\'hébergement et les repas sont-ils compris dans le forfait proposé ?',exE:'Are accommodation and meals included in the proposed package?'},
+    {t:'p',fr:'Quels sont les moyens de transport inclus dans le voyage ?',en:'What means of transport are included in the trip?',ex:'Quels sont les moyens de transport inclus entre les différentes étapes ?',exE:'What means of transport are included between the different stages?'},
+    {t:'p',fr:'Y a-t-il des visites guidées prévues au programme ?',en:'Are guided tours included in the programme?',ex:'Y a-t-il des visites guidées prévues au programme ou est-il libre ?',exE:'Are guided tours included in the programme or is it free-form?'},
+    {t:'v',fr:'un circuit (nm)',wc:'nm',en:'a tour / circuit',ex:'Proposez-vous un circuit culturel qui passe par plusieurs villes ?',exE:'Do you offer a cultural tour that passes through several cities?'},
+    {t:'v',fr:'les arrhes / l\'acompte (nm)',wc:'nm',en:'deposit / down payment',ex:'Quel montant d\'acompte faut-il verser pour confirmer la réservation ?',exE:'What deposit amount is required to confirm the booking?'},
+    {t:'v',fr:'une escale (nf)',wc:'nf',en:'a stopover',ex:'Le voyage prévoit-il des escales ou est-ce un trajet direct ?',exE:'Does the journey include stopovers or is it a direct route?'},
+    {t:'v',fr:'le programme (nm)',wc:'nm',en:'the itinerary / programme',ex:'Pouvez-vous m\'envoyer le programme détaillé du séjour ?',exE:'Could you send me the detailed itinerary for the stay?'},
+    {t:'v',fr:'personnalisé(e) / sur mesure',wc:'adj',en:'personalised / tailor-made',ex:'Proposez-vous des voyages sur mesure selon les préférences de chaque groupe ?',exE:'Do you offer tailor-made trips based on each group\'s preferences?'},
+    {t:'v',fr:'les frais supplémentaires (nmpl)',wc:'nm',en:'additional charges / extra costs',ex:'Y a-t-il des frais supplémentaires qui ne sont pas mentionnés dans le devis ?',exE:'Are there any additional charges not mentioned in the quote?'},
+    {t:'v',fr:'une roulotte (nf)',wc:'nf',en:'a horse-drawn caravan',ex:'Comment se passe exactement une location de roulotte pour les débutants ?',exE:'How does renting a horse-drawn caravan actually work for beginners?'},
+    {t:'p',fr:'Le guide parle-t-il d\'autres langues que le français ?',en:'Does the guide speak languages other than French?',ex:'Le guide parle-t-il d\'autres langues que le français pour les groupes internationaux ?',exE:'Does the guide speak languages other than French for international groups?'},
+    {t:'p',fr:'Quels documents sont nécessaires pour… ?',en:'What documents are needed for… ?',ex:'Quels documents sont nécessaires pour s\'inscrire à ce séjour linguistique ?',exE:'What documents are needed to sign up for this language stay?'},
+    {t:'p',fr:'Est-ce que les enfants en bas âge peuvent participer ?',en:'Can young children participate?',ex:'Est-ce que les enfants en bas âge peuvent participer à ce type de séjour ?',exE:'Can young children participate in this type of stay?'},
+    {t:'v',fr:'une étape (nf)',wc:'nf',en:'a stage / stop (on a journey)',ex:'Combien d\'étapes le circuit comprend-il au total ?',exE:'How many stages does the circuit include in total?'},
+    {t:'v',fr:'le départ / l\'arrivée',wc:'nm',en:'departure / arrival',ex:'La date de départ peut-elle être modifiée après la réservation ?',exE:'Can the departure date be changed after booking?'},
+    {t:'v',fr:'en demi-pension / en pension complète',wc:'loc',en:'half board / full board',ex:'Les repas sont-ils en demi-pension ou en pension complète ?',exE:'Are meals on a half-board or full-board basis?'},
+    {t:'p',fr:'Y a-t-il une assurance voyage incluse dans le forfait ?',en:'Is travel insurance included in the package?',ex:'Y a-t-il une assurance voyage incluse ou faut-il en souscrire une séparément ?',exE:'Is travel insurance included or does one need to take it out separately?'},
+    {t:'v',fr:'l\'itinéraire (nm)',wc:'nm',en:'the route / itinerary',ex:'L\'itinéraire peut-il être adapté en fonction des souhaits du groupe ?',exE:'Can the itinerary be adapted according to the group\'s wishes?'},
+   ]},
+
+   {id:'eoA_culture',fr:'Culture & spectacles',en:'Cultural events & shows',c:'#FF3D8B',l:false,items:[
+    {t:'p',fr:'Je voudrais réserver des places pour… Quelles sont les possibilités ?',en:'I\'d like to book tickets for… What options are available?',ex:'Je voudrais réserver des places pour votre prochain spectacle musical. Quelles sont les possibilités ?',exE:'I\'d like to book tickets for your upcoming musical show. What options are available?'},
+    {t:'p',fr:'Y a-t-il des tarifs réduits pour les groupes / les étudiants ?',en:'Are there reduced rates for groups / students?',ex:'Y a-t-il des tarifs réduits pour les groupes ou les familles nombreuses ?',exE:'Are there reduced rates for groups or large families?'},
+    {t:'p',fr:'Le spectacle convient-il à quel public ?',en:'What audience is the show suitable for?',ex:'Le spectacle convient-il à un public familial avec de jeunes enfants ?',exE:'Is the show suitable for a family audience with young children?'},
+    {t:'p',fr:'Combien de temps dure la représentation ?',en:'How long does the performance last?',ex:'Combien de temps dure la représentation et y a-t-il un entracte ?',exE:'How long does the performance last and is there an interval?'},
+    {t:'p',fr:'Est-il possible d\'assister à une répétition ou une séance de présentation ?',en:'Is it possible to attend a rehearsal or preview?',ex:'Est-il possible d\'assister à une répétition ou à une séance de présentation gratuite ?',exE:'Is it possible to attend a rehearsal or free preview session?'},
+    {t:'v',fr:'une représentation (nf)',wc:'nf',en:'a performance',ex:'La prochaine représentation a-t-elle lieu en semaine ou le week-end ?',exE:'Is the next performance on a weekday or at the weekend?'},
+    {t:'v',fr:'une séance (nf)',wc:'nf',en:'a screening / session',ex:'À quelle heure commence la première séance de la journée ?',exE:'What time does the first session of the day start?'},
+    {t:'v',fr:'le programme culturel (nm)',wc:'nm',en:'the cultural programme',ex:'Pouvez-vous m\'envoyer le programme culturel de la saison ?',exE:'Can you send me the cultural programme for the season?'},
+    {t:'v',fr:'en plein air / en salle',wc:'loc',en:'outdoors / indoors',ex:'Le festival a-t-il lieu en plein air ou dans des salles couvertes ?',exE:'Does the festival take place outdoors or in covered venues?'},
+    {t:'v',fr:'l\'entracte (nm)',wc:'nm',en:'the interval / intermission',ex:'Y a-t-il un entracte prévu pendant le spectacle ?',exE:'Is an interval planned during the show?'},
+    {t:'v',fr:'la billetterie (nf)',wc:'nf',en:'ticketing / ticket office',ex:'La billetterie en ligne est-elle disponible ou faut-il se déplacer ?',exE:'Is online ticketing available or is it necessary to come in person?'},
+    {t:'p',fr:'Dans quelle langue le spectacle est-il présenté ?',en:'In what language is the show presented?',ex:'Dans quelle langue le spectacle est-il présenté et y a-t-il des sous-titres ?',exE:'In what language is the show presented, and are there subtitles?'},
+    {t:'p',fr:'Faut-il s\'inscrire à l\'avance ou peut-on se présenter directement ?',en:'Is advance registration required or can one just show up?',ex:'Faut-il s\'inscrire à l\'avance pour l\'atelier ou peut-on se présenter directement ?',exE:'Is advance registration required for the workshop or can one just show up?'},
+    {t:'v',fr:'un atelier (nm)',wc:'nm',en:'a workshop',ex:'Des ateliers de pratique sont-ils prévus avant ou après le spectacle ?',exE:'Are practice workshops planned before or after the show?'},
+    {t:'v',fr:'interactif(ve) / participatif(ve)',wc:'adj',en:'interactive / participatory',ex:'Le spectacle est-il interactif ou les spectateurs sont-ils passifs ?',exE:'Is the show interactive or are spectators passive?'},
+    {t:'v',fr:'le lieu (nm)',wc:'nm',en:'the venue / location',ex:'Le lieu est-il facilement accessible en transports en commun ?',exE:'Is the venue easily accessible by public transport?'},
+    {t:'p',fr:'Est-ce que les places peuvent être remboursées en cas d\'annulation ?',en:'Can tickets be refunded in case of cancellation?',ex:'Est-ce que les places peuvent être remboursées si je dois annuler ma réservation ?',exE:'Can tickets be refunded if I have to cancel my booking?'},
+    {t:'v',fr:'une bibliothèque numérique (nf)',wc:'nf',en:'a digital library / e-library',ex:'Comment accède-t-on aux ressources d\'une bibliothèque numérique depuis chez soi ?',exE:'How does one access the resources of a digital library from home?'},
+    {t:'v',fr:'l\'adhésion (nf)',wc:'nf',en:'membership / subscription',ex:'Quel est le coût de l\'adhésion annuelle pour accéder à toutes les ressources ?',exE:'What is the cost of annual membership to access all the resources?'},
+    {t:'p',fr:'Quels sont les avantages d\'un abonnement par rapport à l\'achat à l\'unité ?',en:'What are the benefits of a subscription versus single purchases?',ex:'Quels sont les avantages d\'un abonnement par rapport à l\'achat de places à l\'unité ?',exE:'What are the benefits of a subscription versus buying individual tickets?'},
+   ]},
+
+   {id:'eoA_services',fr:'Services & assos',en:'Services & associations',c:'#007A42',l:false,items:[
+    {t:'p',fr:'Je me renseigne au sujet de vos services de… pour particuliers.',en:'I\'m enquiring about your services for individuals.',ex:'Je me renseigne au sujet de vos services de garde d\'animaux pour particuliers.',exE:'I\'m enquiring about your animal care services for private individuals.'},
+    {t:'p',fr:'Quelles sont les démarches pour devenir bénévole au sein de votre association ?',en:'What steps are needed to become a volunteer in your organisation?',ex:'Quelles sont les démarches pour devenir bénévole au sein de votre association ?',exE:'What steps are needed to become a volunteer in your organisation?'},
+    {t:'p',fr:'Votre association accepte-t-elle les dons en nature ou uniquement en argent ?',en:'Does your organisation accept donations in kind or only money?',ex:'Votre association accepte-t-elle les dons en nature, comme des vêtements ou des jouets ?',exE:'Does your organisation accept donations in kind, such as clothes or toys?'},
+    {t:'p',fr:'Dans quels délais peut-on obtenir… ?',en:'How quickly can one obtain… ?',ex:'Dans quels délais peut-on obtenir un rendez-vous avec l\'un de vos conseillers ?',exE:'How quickly can one get an appointment with one of your advisers?'},
+    {t:'p',fr:'Y a-t-il des frais d\'adhésion ou le service est-il gratuit ?',en:'Are there membership fees or is the service free?',ex:'Y a-t-il des frais d\'adhésion à l\'association ou le service est-il totalement gratuit ?',exE:'Are there membership fees for the association or is the service completely free?'},
+    {t:'v',fr:'une association (nf)',wc:'nf',en:'an organisation / association',ex:'Cette association est-elle reconnue d\'utilité publique ?',exE:'Is this organisation recognised as being of public benefit?'},
+    {t:'v',fr:'le bénévolat (nm)',wc:'nm',en:'volunteering',ex:'Le bénévolat nécessite-t-il une formation préalable obligatoire ?',exE:'Does volunteering require compulsory prior training?'},
+    {t:'v',fr:'un dépôt (nm)',wc:'nm',en:'a deposit / pawnshop transaction',ex:'Quels objets peut-on déposer au mont-de-piété et sous quelles conditions ?',exE:'What items can be deposited at the pawnshop and under what conditions?'},
+    {t:'v',fr:'un remboursement (nm)',wc:'nm',en:'a refund',ex:'Dans quel délai le remboursement est-il effectué en cas de retour ?',exE:'Within what timeframe is the refund processed in the event of a return?'},
+    {t:'v',fr:'en ligne / à distance',wc:'loc',en:'online / remotely',ex:'Les démarches peuvent-elles se faire entièrement en ligne ?',exE:'Can the procedures be completed entirely online?'},
+    {t:'v',fr:'un conseiller (nm)',wc:'nm',en:'an adviser / consultant',ex:'Un conseiller est-il disponible pour répondre aux questions des nouveaux membres ?',exE:'Is an adviser available to answer questions from new members?'},
+    {t:'p',fr:'Pouvez-vous m\'expliquer comment fonctionne exactement le service de… ?',en:'Could you explain exactly how the… service works?',ex:'Pouvez-vous m\'expliquer comment fonctionne exactement le service de livraison à domicile ?',exE:'Could you explain exactly how the home delivery service works?'},
+    {t:'p',fr:'Quels justificatifs faut-il fournir pour bénéficier de… ?',en:'What documents are required to benefit from… ?',ex:'Quels justificatifs faut-il fournir pour bénéficier de l\'aide aux devoirs ?',exE:'What documents are required to benefit from the homework help service?'},
+    {t:'v',fr:'un justificatif (nm)',wc:'nm',en:'supporting document / proof',ex:'Un justificatif de domicile est-il nécessaire pour s\'inscrire ?',exE:'Is proof of address necessary to register?'},
+    {t:'v',fr:'les horaires d\'ouverture (nmpl)',wc:'nm',en:'opening hours',ex:'Quels sont vos horaires d\'ouverture pendant les vacances scolaires ?',exE:'What are your opening hours during the school holidays?'},
+    {t:'v',fr:'livrer à domicile (v)',wc:'v',en:'to deliver to home',ex:'Livrez-vous à domicile dans toute la région ou seulement en ville ?',exE:'Do you deliver to homes across the whole region or only in town?'},
+    {t:'v',fr:'un créneau de rendez-vous (nm)',wc:'nm',en:'an appointment slot',ex:'Quels créneaux de rendez-vous sont disponibles cette semaine ?',exE:'What appointment slots are available this week?'},
+    {t:'p',fr:'Que se passe-t-il si je dois annuler ou reporter mon rendez-vous ?',en:'What happens if I need to cancel or reschedule my appointment?',ex:'Que se passe-t-il si je dois annuler ou reporter mon rendez-vous au dernier moment ?',exE:'What happens if I need to cancel or reschedule my appointment at the last minute?'},
+    {t:'v',fr:'le délai de livraison (nm)',wc:'nm',en:'delivery time',ex:'Quel est le délai de livraison habituel pour ce type de commande ?',exE:'What is the usual delivery time for this type of order?'},
+    {t:'p',fr:'Votre service est-il accessible aux personnes à mobilité réduite ?',en:'Is your service accessible to people with reduced mobility?',ex:'Vos locaux et votre service sont-ils accessibles aux personnes à mobilité réduite ?',exE:'Are your premises and service accessible to people with reduced mobility?'},
+   ]},
+  ],
+  B:[
+   {id:'eoB_persuasion',fr:'Convaincre',en:'Universal persuasion phrases',c:'#FF6B2C',l:false,items:[
+    {t:'p',fr:'Je voudrais te convaincre d\'essayer… avec moi.',en:'I\'d like to convince you to try… with me.',ex:'Je voudrais te convaincre d\'essayer les cours de danse avec moi ce samedi.',exE:'I\'d like to convince you to try dance classes with me this Saturday.'},
+    {t:'p',fr:'Tu ne regretteras pas d\'avoir essayé, je t\'assure.',en:'You won\'t regret trying it, I promise.',ex:'Tu ne regretteras pas d\'avoir essayé, je t\'assure — c\'est vraiment génial.',exE:'You won\'t regret trying it, I promise — it\'s really great.'},
+    {t:'p',fr:'Je comprends tes réticences, mais…',en:'I understand your reluctance, but…',ex:'Je comprends tes réticences, mais tu verras que c\'est bien moins effrayant que tu ne l\'imagines.',exE:'I understand your reluctance, but you\'ll see it\'s much less frightening than you imagine.'},
+    {t:'p',fr:'Imagine un peu… / Imagine-toi en train de…',en:'Just imagine… / Picture yourself…',ex:'Imagine-toi en train de sauter en parachute au-dessus des Alpes — quelle vue !',exE:'Picture yourself skydiving over the Alps — what a view!'},
+    {t:'p',fr:'C\'est une expérience unique / inoubliable.',en:'It\'s a unique / unforgettable experience.',ex:'C\'est une expérience vraiment unique qu\'on ne peut pas vivre ailleurs.',exE:'It\'s a truly unique experience you can\'t have anywhere else.'},
+    {t:'p',fr:'Tu n\'as rien à perdre à essayer.',en:'You have nothing to lose by trying.',ex:'Tu n\'as rien à perdre à essayer — si ça ne te plaît pas, on rentre à la maison.',exE:'You have nothing to lose by trying — if you don\'t like it, we go home.'},
+    {t:'p',fr:'Pense à tout ce que tu pourrais apprendre / découvrir.',en:'Think about everything you could learn / discover.',ex:'Pense à tout ce que tu pourrais découvrir sur toi-même en relevant ce défi.',exE:'Think about everything you could discover about yourself by taking on this challenge.'},
+    {t:'p',fr:'Ce serait l\'occasion idéale de…',en:'It would be the perfect opportunity to…',ex:'Ce serait l\'occasion idéale de sortir de ta zone de confort pour une fois.',exE:'It would be the perfect opportunity to step out of your comfort zone for once.'},
+    {t:'p',fr:'On pourrait y aller ensemble pour que tu te sentes plus à l\'aise.',en:'We could go together so you feel more comfortable.',ex:'On pourrait y aller ensemble pour que tu te sentes plus à l\'aise la première fois.',exE:'We could go together so you feel more comfortable the first time.'},
+    {t:'p',fr:'Ça ne coûte pas grand-chose et les bénéfices sont énormes.',en:'It doesn\'t cost much and the benefits are huge.',ex:'Ça ne coûte pas grand-chose et les bénéfices sur ta santé sont vraiment énormes.',exE:'It doesn\'t cost much and the health benefits are truly huge.'},
+    {t:'v',fr:'convaincre (v)',wc:'v',en:'to convince',ex:'J\'espère t\'avoir convaincu de participer à cet événement avec moi.',exE:'I hope to have convinced you to take part in this event with me.'},
+    {t:'v',fr:'persuader (v)',wc:'v',en:'to persuade',ex:'Je vais te persuader que c\'est exactement ce qu\'il te faut.',exE:'I\'m going to persuade you that it\'s exactly what you need.'},
+    {t:'v',fr:'les avantages vs les inconvénients',wc:'nm',en:'the pros vs the cons',ex:'Si on analyse les avantages et les inconvénients, les avantages l\'emportent largement.',exE:'If we weigh up the pros and cons, the pros clearly outweigh the cons.'},
+    {t:'v',fr:'sortir de sa zone de confort',wc:'loc',en:'to step out of one\'s comfort zone',ex:'Ce genre d\'activité te poussera à sortir de ta zone de confort de façon positive.',exE:'This kind of activity will push you to step outside your comfort zone in a positive way.'},
+    {t:'v',fr:'avoir peur de / craindre',wc:'v',en:'to be afraid of / to fear',ex:'Je sais que tu as peur, mais c\'est justement ce qui rend l\'expérience intéressante.',exE:'I know you\'re afraid, but that\'s exactly what makes the experience interesting.'},
+    {t:'v',fr:'ça vaut le coup / ça vaut la peine',wc:'loc',en:'it\'s worth it',ex:'Je te promets que ça vaut vraiment le coup de dépasser ses appréhensions.',exE:'I promise you it\'s truly worth overcoming your apprehensions.'},
+    {t:'p',fr:'Qu\'est-ce qui te retient vraiment ?',en:'What\'s really holding you back?',ex:'Qu\'est-ce qui te retient vraiment — ce n\'est quand même pas la peur de l\'échec ?',exE:'What\'s really holding you back — it\'s not fear of failure, is it?'},
+    {t:'p',fr:'Je suis sûr(e) que tu adoreras ça une fois que tu auras essayé.',en:'I\'m sure you\'ll love it once you\'ve tried it.',ex:'Je suis sûre que tu adoreras ça une fois que tu auras essayé la première fois.',exE:'I\'m sure you\'ll love it once you\'ve tried it the first time.'},
+    {t:'v',fr:'enthousiasmant(e) (adj)',wc:'adj',en:'exciting / thrilling',ex:'L\'idée de découvrir quelque chose de nouveau est toujours enthousiasmante.',exE:'The idea of discovering something new is always exciting.'},
+    {t:'p',fr:'Si ça ne te plaît pas, on ne recommence pas — promis.',en:'If you don\'t like it, we won\'t do it again — promise.',ex:'Si ça ne te plaît vraiment pas, on ne recommence pas — c\'est promis.',exE:'If you really don\'t like it, we won\'t do it again — that\'s a promise.'},
+    {t:'v',fr:'une appréhension (nf)',wc:'nf',en:'an apprehension / worry',ex:'Toutes tes appréhensions vont disparaître dès que tu commenceras.',exE:'All your apprehensions will disappear as soon as you start.'},
+    {t:'v',fr:'défi / relever un défi',wc:'nm',en:'challenge / to take on a challenge',ex:'Relever ce défi ensemble va renforcer notre amitié, j\'en suis convaincu.',exE:'Taking on this challenge together will strengthen our friendship, I\'m sure of it.'},
+   ]},
+
+   {id:'eoB_aventure',fr:'Aventure & sport',en:'Adventure & sports persuasion',c:'#7B5BD6',l:false,items:[
+    {t:'p',fr:'Ce type d\'activité va vraiment faire monter l\'adrénaline !',en:'This type of activity will really get the adrenaline pumping!',ex:'Ce saut en chute libre va vraiment faire monter l\'adrénaline, tu verras !',exE:'This freefall jump will really get the adrenaline pumping, you\'ll see!'},
+    {t:'p',fr:'C\'est encadré par des professionnels, donc tu seras en sécurité à tout moment.',en:'It\'s supervised by professionals, so you\'ll be safe at all times.',ex:'La descente est encadrée par des professionnels donc tu seras en sécurité à tout moment.',exE:'The descent is supervised by professionals so you\'ll be safe at all times.'},
+    {t:'p',fr:'Des milliers de personnes le font chaque année sans problème.',en:'Thousands of people do it every year without any problem.',ex:'Des milliers de personnes font de la chute libre chaque année sans aucun problème.',exE:'Thousands of people go skydiving every year without any problem.'},
+    {t:'p',fr:'Tu n\'as pas besoin d\'être sportif(ve) pour y participer.',en:'You don\'t need to be sporty to take part.',ex:'Tu n\'as pas besoin d\'être sportif pour faire du vélo en ville — c\'est à ta portée.',exE:'You don\'t need to be sporty to cycle in the city — it\'s well within your reach.'},
+    {t:'v',fr:'l\'adrénaline (nf)',wc:'nf',en:'adrenaline',ex:'La montée d\'adrénaline que tu ressentiras vaut largement la peur du départ.',exE:'The rush of adrenaline you\'ll feel is well worth the initial fear.'},
+    {t:'v',fr:'le dépassement de soi (nm)',wc:'nm',en:'self-surpassing / pushing one\'s limits',ex:'Ce marathon cycliste est une belle opportunité de dépassement de soi.',exE:'This cycling marathon is a great opportunity to push your personal limits.'},
+    {t:'v',fr:'en toute sécurité (loc)',wc:'loc',en:'in complete safety',ex:'Tu pourras pratiquer cette activité en toute sécurité avec des moniteurs qualifiés.',exE:'You\'ll be able to do this activity in complete safety with qualified instructors.'},
+    {t:'p',fr:'Pense à la fierté que tu ressentiras après avoir accompli ça !',en:'Think of the pride you\'ll feel after accomplishing this!',ex:'Pense à la fierté que tu ressentiras après avoir terminé le défi cycliste !',exE:'Think of the pride you\'ll feel after completing the cycling challenge!'},
+    {t:'v',fr:'un accompagnateur (nm)',wc:'nm',en:'a companion / leader (sports)',ex:'Un accompagnateur qualifié sera présent pour encadrer toute l\'activité.',exE:'A qualified group leader will be present to supervise the entire activity.'},
+    {t:'v',fr:'accessible à tous / pour tous les niveaux',wc:'loc',en:'accessible to everyone / for all levels',ex:'L\'activité est accessible à tous les niveaux, même aux grands débutants.',exE:'The activity is accessible to all levels, even complete beginners.'},
+    {t:'p',fr:'Tu verras que tu te sentiras beaucoup plus confiant(e) après.',en:'You\'ll see you\'ll feel much more confident afterwards.',ex:'Tu verras que tu te sentiras beaucoup plus confiant après cet entraînement.',exE:'You\'ll see that you\'ll feel much more confident after this training session.'},
+    {t:'v',fr:'brûler des calories (loc)',wc:'loc',en:'to burn calories',ex:'En plus du plaisir, on brûle énormément de calories lors de cette randonnée.',exE:'On top of the enjoyment, we burn a huge number of calories on this hike.'},
+    {t:'v',fr:'la randonnée (nf)',wc:'nf',en:'hiking / walking',ex:'La randonnée bénévole est un excellent moyen de combiner sport et solidarité.',exE:'Volunteer hiking is an excellent way to combine sport and solidarity.'},
+    {t:'p',fr:'L\'équipement est fourni donc tu n\'as rien à acheter.',en:'The equipment is provided so you don\'t need to buy anything.',ex:'L\'équipement de ski est entièrement fourni donc tu n\'as rien à acheter ou louer.',exE:'All the ski equipment is provided so you don\'t need to buy or rent anything.'},
+    {t:'v',fr:'incroyable / époustouflant(e)',wc:'adj',en:'incredible / breathtaking',ex:'La vue depuis le sommet est absolument époustouflante, tu ne le regretteras pas.',exE:'The view from the summit is absolutely breathtaking, you won\'t regret it.'},
+    {t:'v',fr:'le paysage (nm)',wc:'nm',en:'the landscape / scenery',ex:'Les paysages que tu vas découvrir pendant cette randonnée sont magnifiques.',exE:'The landscapes you\'ll discover during this hike are magnificent.'},
+    {t:'p',fr:'Ça te permettra de te dépasser et de découvrir tes propres limites.',en:'It will allow you to push yourself and discover your own limits.',ex:'Ce défi va te permettre de te dépasser et de découvrir tes vraies limites.',exE:'This challenge will allow you to push yourself and discover your true limits.'},
+    {t:'v',fr:'une sensation forte (nf)',wc:'nf',en:'a thrill / an intense sensation',ex:'Les sensations fortes de la chute libre sont inoubliables, je t\'assure.',exE:'The thrills of skydiving are unforgettable, I promise you.'},
+    {t:'p',fr:'On fait ça une seule fois dans sa vie — autant ne pas passer à côté.',en:'You only do this once in your life — might as well not miss out.',ex:'On fait de la chute libre une seule fois dans sa vie — autant ne pas passer à côté.',exE:'You only go skydiving once in your life — might as well not miss out.'},
+    {t:'v',fr:'s\'entraîner (v)',wc:'v',en:'to train / to work out',ex:'S\'entraîner pour ce défi va te maintenir en forme tout au long de l\'année.',exE:'Training for this challenge will keep you in shape throughout the year.'},
+   ]},
+
+   {id:'eoB_culture',fr:'Culture & créativité',en:'Culture & creativity persuasion',c:'#FF3D8B',l:false,items:[
+    {t:'p',fr:'Tu vas découvrir un univers que tu ne connaissais pas du tout.',en:'You\'re going to discover a world you didn\'t know at all.',ex:'En allant à l\'opéra, tu vas découvrir un univers que tu ne connaissais vraiment pas.',exE:'By going to the opera, you\'re going to discover a world you didn\'t know at all.'},
+    {t:'p',fr:'Ce n\'est pas aussi compliqué / ennuyeux que tu le crois.',en:'It\'s not as complicated / boring as you think.',ex:'Le théâtre d\'improvisation n\'est pas aussi compliqué que tu le crois — c\'est surtout drôle !',exE:'Improv theatre isn\'t as complicated as you think — it\'s mostly funny!'},
+    {t:'p',fr:'C\'est une excellente façon de stimuler ta créativité.',en:'It\'s an excellent way to stimulate your creativity.',ex:'Les ateliers de poterie sont une excellente façon de stimuler ta créativité.',exE:'Pottery workshops are an excellent way to stimulate your creativity.'},
+    {t:'p',fr:'Ça nous donnera quelque chose à faire ensemble et à partager.',en:'It\'ll give us something to do together and share.',ex:'Ça nous donnera quelque chose de concret à faire ensemble et à partager.',exE:'It\'ll give us something concrete to do together and to share.'},
+    {t:'v',fr:'s\'épanouir (v)',wc:'v',en:'to thrive / to blossom / to flourish',ex:'Ce genre d\'activité créative te permettra vraiment de t\'épanouir.',exE:'This kind of creative activity will truly allow you to flourish.'},
+    {t:'v',fr:'libérer sa créativité (loc)',wc:'loc',en:'to unleash one\'s creativity',ex:'Les ateliers d\'écriture poétique permettent vraiment de libérer sa créativité.',exE:'Poetry writing workshops truly allow you to unleash your creativity.'},
+    {t:'v',fr:'s\'exprimer (v)',wc:'v',en:'to express oneself',ex:'La danse est une façon merveilleuse de s\'exprimer sans utiliser les mots.',exE:'Dance is a wonderful way to express oneself without using words.'},
+    {t:'p',fr:'Tu n\'as pas besoin d\'être doué(e) pour apprécier / participer.',en:'You don\'t need to be talented to enjoy / participate.',ex:'Tu n\'as pas besoin d\'être doué en dessin pour apprécier un atelier de poterie.',exE:'You don\'t need to be talented at drawing to enjoy a pottery workshop.'},
+    {t:'v',fr:'une expérience enrichissante (nf)',wc:'nf',en:'an enriching experience',ex:'Assister à un opéra est une expérience culturelle vraiment enrichissante.',exE:'Attending an opera is a truly enriching cultural experience.'},
+    {t:'v',fr:'éveiller la curiosité (loc)',wc:'loc',en:'to awaken curiosity',ex:'Ce type de spectacle est fait pour éveiller la curiosité des spectateurs.',exE:'This type of show is designed to awaken the curiosity of the audience.'},
+    {t:'p',fr:'Au pire, si tu n\'aimes pas, tu auras au moins essayé.',en:'At worst, if you don\'t like it, you\'ll have at least tried.',ex:'Au pire, si tu n\'aimes pas le concours de conte, tu auras au moins essayé quelque chose de nouveau.',exE:'At worst, if you don\'t like the storytelling competition, you\'ll have at least tried something new.'},
+    {t:'v',fr:'s\'amuser (v)',wc:'v',en:'to have fun / enjoy oneself',ex:'Je suis sûre qu\'on va énormément s\'amuser au cours de danse.',exE:'I\'m sure we\'re going to have a great time at the dance class.'},
+    {t:'v',fr:'créatif(ve) / artistique',wc:'adj',en:'creative / artistic',ex:'Tu as un côté très créatif que ces ateliers te permettront d\'explorer.',exE:'You have a very creative side that these workshops will allow you to explore.'},
+    {t:'p',fr:'C\'est l\'occasion de te faire de nouveaux amis qui partagent les mêmes intérêts.',en:'It\'s a chance to make new friends who share the same interests.',ex:'C\'est l\'occasion parfaite de te faire de nouveaux amis qui partagent les mêmes intérêts.',exE:'It\'s the perfect chance to make new friends who share the same interests.'},
+    {t:'v',fr:'le partage (nm)',wc:'nm',en:'sharing',ex:'Le partage d\'une expérience culturelle renforce toujours les liens d\'amitié.',exE:'Sharing a cultural experience always strengthens bonds of friendship.'},
+    {t:'p',fr:'Tu risques d\'y prendre goût et de vouloir y retourner !',en:'You might develop a taste for it and want to go back!',ex:'Tu risques d\'y prendre goût au théâtre et de vouloir y retourner chaque semaine !',exE:'You might develop a taste for theatre and want to go back every week!'},
+    {t:'v',fr:'y prendre goût (loc)',wc:'loc',en:'to develop a taste for it / get into it',ex:'Une fois qu\'on y a goûté, on y prend goût et on ne peut plus s\'en passer.',exE:'Once you\'ve tried it, you develop a taste for it and can\'t do without it.'},
+    {t:'v',fr:'cultiver sa passion (loc)',wc:'loc',en:'to nurture one\'s passion',ex:'Ces ateliers sont parfaits pour cultiver ta passion pour l\'écriture créative.',exE:'These workshops are perfect for nurturing your passion for creative writing.'},
+    {t:'p',fr:'On peut y aller une seule fois juste pour voir si ça nous plaît.',en:'We can go just once to see if we like it.',ex:'On peut y aller une seule fois juste pour voir si ça nous plaît — sans engagement.',exE:'We can go just once to see if we like it — with no commitment.'},
+    {t:'v',fr:'une découverte (nf)',wc:'nf',en:'a discovery',ex:'Chaque nouvelle activité artistique est une découverte sur soi-même.',exE:'Every new artistic activity is a discovery about yourself.'},
+   ]},
+
+   {id:'eoB_benevole',fr:'Bénévolat & causes',en:'Volunteering & social causes',c:'#007A42',l:false,items:[
+    {t:'p',fr:'C\'est une façon concrète d\'aider les autres tout en te sentant utile.',en:'It\'s a concrete way to help others while feeling useful.',ex:'Le bénévolat est une façon concrète d\'aider les autres tout en te sentant utile.',exE:'Volunteering is a concrete way to help others while feeling useful.'},
+    {t:'p',fr:'Tu vas tisser des liens forts avec les autres bénévoles.',en:'You\'ll forge strong bonds with the other volunteers.',ex:'Tu vas tisser des liens forts avec les autres bénévoles et créer de vraies amitiés.',exE:'You\'ll forge strong bonds with the other volunteers and create real friendships.'},
+    {t:'p',fr:'Ça enrichit ton CV et démontre ton engagement.',en:'It boosts your CV and demonstrates your commitment.',ex:'Ce bénévolat va vraiment enrichir ton CV et démontrer ton engagement social.',exE:'This volunteering will really boost your CV and demonstrate your social commitment.'},
+    {t:'p',fr:'Tu verras à quel point ça donne du sens à sa vie.',en:'You\'ll see how much meaning it gives to your life.',ex:'Tu verras à quel point faire du bénévolat donne du sens à sa vie quotidienne.',exE:'You\'ll see how much volunteering gives meaning to your everyday life.'},
+    {t:'v',fr:'s\'engager (v)',wc:'v',en:'to commit / get involved',ex:'S\'engager dans une cause, même ponctuellement, a un impact réel sur la communauté.',exE:'Committing to a cause, even occasionally, has a real impact on the community.'},
+    {t:'v',fr:'la solidarité (nf)',wc:'nf',en:'solidarity',ex:'Participer à cet événement, c\'est un beau geste de solidarité envers les autres.',exE:'Taking part in this event is a beautiful gesture of solidarity towards others.'},
+    {t:'v',fr:'avoir un impact positif (loc)',wc:'loc',en:'to have a positive impact',ex:'Chaque heure de bénévolat a un impact positif réel sur ceux qui en bénéficient.',exE:'Every hour of volunteering has a real positive impact on those who benefit.'},
+    {t:'v',fr:'épanouissant(e) (adj)',wc:'adj',en:'fulfilling / rewarding',ex:'Les témoignages de bénévoles montrent que c\'est une activité très épanouissante.',exE:'Volunteer testimonials show that it\'s a very fulfilling activity.'},
+    {t:'p',fr:'Tu n\'as pas besoin de beaucoup de temps — même quelques heures suffisent.',en:'You don\'t need a lot of time — even a few hours are enough.',ex:'Tu n\'as pas besoin de beaucoup de temps — même quelques heures par mois suffisent.',exE:'You don\'t need a lot of time — even a few hours per month are enough.'},
+    {t:'v',fr:'une cause (nf)',wc:'nf',en:'a cause',ex:'C\'est l\'occasion de soutenir une cause qui correspond à tes valeurs.',exE:'It\'s an opportunity to support a cause that matches your values.'},
+    {t:'p',fr:'Tu vas rencontrer des gens extraordinaires qui partagent tes valeurs.',en:'You\'ll meet extraordinary people who share your values.',ex:'Tu vas rencontrer des gens extraordinaires qui partagent les mêmes valeurs que toi.',exE:'You\'ll meet extraordinary people who share the same values as you.'},
+    {t:'v',fr:'le don de soi (nm)',wc:'nm',en:'self-giving / selflessness',ex:'Le don de soi est l\'une des choses les plus valorisantes qui soit.',exE:'Selflessness is one of the most rewarding things there is.'},
+    {t:'v',fr:'contribuer à (v)',wc:'v',en:'to contribute to',ex:'Ce voyage bénévole te permettra de contribuer à quelque chose de vraiment important.',exE:'This volunteer trip will allow you to contribute to something truly important.'},
+    {t:'p',fr:'Ça ne t\'engage à rien — tu peux essayer une seule fois pour voir.',en:'It doesn\'t commit you to anything — you can try it just once to see.',ex:'Ça ne t\'engage à rien pour l\'avenir — tu peux essayer une seule fois pour voir.',exE:'It doesn\'t commit you to anything for the future — you can try it just once to see.'},
+    {t:'v',fr:'valorisant(e) (adj)',wc:'adj',en:'rewarding / gratifying',ex:'Aider les enfants dans leurs devoirs est une expérience vraiment valorisante.',exE:'Helping children with their homework is a truly gratifying experience.'},
+    {t:'p',fr:'C\'est une belle manière de donner en retour à la société.',en:'It\'s a beautiful way to give back to society.',ex:'C\'est une belle manière de donner en retour à la société tout ce qu\'elle t\'a apporté.',exE:'It\'s a beautiful way to give back to society everything it has given you.'},
+    {t:'v',fr:'l\'altruisme (nm)',wc:'nm',en:'altruism',ex:'L\'altruisme est une valeur que peu de gens pratiquent vraiment au quotidien.',exE:'Altruism is a value that few people truly practise in their daily lives.'},
+    {t:'p',fr:'L\'expérience sera encore plus belle parce qu\'on la vivra ensemble.',en:'The experience will be even more beautiful because we\'ll live it together.',ex:'L\'expérience bénévole sera encore plus belle parce qu\'on la vivra ensemble.',exE:'The volunteer experience will be even more beautiful because we\'ll live it together.'},
+    {t:'v',fr:'l\'impact social (nm)',wc:'nm',en:'social impact',ex:'L\'impact social de ce projet dépasse largement le simple geste individuel.',exE:'The social impact of this project far exceeds a simple individual gesture.'},
+    {t:'v',fr:'concilier + deux noms (v)',wc:'v',en:'to combine / reconcile (two things)',ex:'Ce projet permet de concilier voyage et bénévolat de façon très enrichissante.',exE:'This project allows you to combine travel and volunteering in a very enriching way.'},
+   ]},
+
+   {id:'eoB_lifestyle',fr:'Style de vie & gastronomie',en:'Lifestyle & food persuasion',c:'#FFC400',l:true,items:[
+    {t:'p',fr:'Tu vas épater tes amis avec ce que tu vas apprendre !',en:'You\'re going to impress your friends with what you\'ll learn!',ex:'Tu vas épater tous tes amis avec les plats que tu vas apprendre à cuisiner.',exE:'You\'re going to impress all your friends with the dishes you\'ll learn to cook.'},
+    {t:'p',fr:'C\'est une compétence qui te servira toute ta vie.',en:'It\'s a skill that will serve you for life.',ex:'Apprendre à cuisiner des plats sains est une compétence qui te servira toute ta vie.',exE:'Learning to cook healthy meals is a skill that will serve you for life.'},
+    {t:'p',fr:'Tu risques de faire de belles découvertes gustatives.',en:'You might make some wonderful taste discoveries.',ex:'Dans ce restaurant insolite, tu risques de faire de belles découvertes gustatives.',exE:'In this unusual restaurant, you\'re likely to make some wonderful taste discoveries.'},
+    {t:'p',fr:'Ça nous permettra de faire quelque chose d\'original ensemble.',en:'It\'ll let us do something original together.',ex:'Faire de la cuisine communautaire nous permettra de faire quelque chose d\'original ensemble.',exE:'Community cooking will let us do something original together.'},
+    {t:'v',fr:'culinaire (adj)',wc:'adj',en:'culinary',ex:'Ce cours culinaire va transformer ta façon de voir la nourriture.',exE:'This cookery course will transform the way you see food.'},
+    {t:'v',fr:'les papilles gustatives (nfpl)',wc:'nf',en:'taste buds',ex:'Ce restaurant d\'insectes va éveiller tes papilles gustatives comme jamais !',exE:'This insect restaurant will awaken your taste buds like never before!'},
+    {t:'v',fr:'éco-responsable (adj)',wc:'adj',en:'eco-responsible / environmentally friendly',ex:'Les repas à base d\'insectes sont très éco-responsables et nutritifs.',exE:'Insect-based meals are very eco-responsible and nutritious.'},
+    {t:'p',fr:'L\'expérience est bien plus agréable qu\'on ne le pense.',en:'The experience is much more pleasant than one would think.',ex:'Manger des insectes est bien plus agréable qu\'on ne le pense, vraiment.',exE:'Eating insects is much more pleasant than one would think, honestly.'},
+    {t:'v',fr:'adopter un animal (loc)',wc:'loc',en:'to adopt a pet',ex:'Adopter un chat, c\'est l\'une des décisions les plus gratifiantes qui soit.',exE:'Adopting a cat is one of the most rewarding decisions there is.'},
+    {t:'v',fr:'la compagnie (nf)',wc:'nf',en:'company / companionship',ex:'Un animal de compagnie te donnera une compagnie incomparable au quotidien.',exE:'A pet will give you incomparable companionship in daily life.'},
+    {t:'p',fr:'Ça réduit le stress et améliore le bien-être en général.',en:'It reduces stress and improves general wellbeing.',ex:'Avoir un chat réduit vraiment le stress et améliore le bien-être en général.',exE:'Having a cat really does reduce stress and improve general wellbeing.'},
+    {t:'v',fr:'le bien-être (nm)',wc:'nm',en:'wellbeing',ex:'Ce type d\'activité contribue énormément à notre bien-être mental et physique.',exE:'This type of activity contributes enormously to our mental and physical wellbeing.'},
+    {t:'p',fr:'Tu prendras du plaisir à progresser et à voir les résultats.',en:'You\'ll enjoy progressing and seeing the results.',ex:'Tu prendras vraiment du plaisir à progresser en danse et à voir tes résultats.',exE:'You\'ll truly enjoy progressing in dance and seeing your results.'},
+    {t:'v',fr:'l\'autonomie (nf)',wc:'nf',en:'autonomy / independence',ex:'Apprendre à cuisiner t\'apportera une vraie autonomie dans ta vie quotidienne.',exE:'Learning to cook will give you real autonomy in your daily life.'},
+    {t:'p',fr:'On se sentira tellement mieux dans sa peau après.',en:'We\'ll feel so much better about ourselves afterwards.',ex:'On se sentira tellement mieux dans sa peau après ces cours de danse, je t\'assure.',exE:'We\'ll feel so much better about ourselves after these dance classes, I promise.'},
+    {t:'v',fr:'une croisière (nf)',wc:'nf',en:'a cruise',ex:'Une croisière fluviale, c\'est une façon très relaxante de voyager en famille.',exE:'A river cruise is a very relaxing way to travel as a family.'},
+    {t:'v',fr:'insolite / original(e)',wc:'adj',en:'unusual / original',ex:'Ce restaurant d\'insectes est vraiment insolite et ça mérite d\'être essayé.',exE:'This insect restaurant is truly unusual and it\'s worth trying.'},
+    {t:'p',fr:'L\'important c\'est de sortir de sa routine et de se faire plaisir.',en:'The important thing is to break out of one\'s routine and treat oneself.',ex:'L\'important, c\'est de sortir de notre routine habituelle et de nous faire plaisir.',exE:'The important thing is to break out of our usual routine and treat ourselves.'},
+    {t:'v',fr:'se faire plaisir (loc)',wc:'loc',en:'to treat oneself / indulge',ex:'On travaille suffisamment — on mérite de se faire plaisir de temps en temps.',exE:'We work hard enough — we deserve to treat ourselves from time to time.'},
+    {t:'v',fr:'mémorable (adj)',wc:'adj',en:'memorable',ex:'Ce voyage en croisière sera un souvenir mémorable pour toute la famille.',exE:'This cruise will be a memorable memory for the whole family.'},
+   ]},
+  ],
+ },
+};
+
+/* ═══════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════ */
+let exam='EE', sec='A', ti=0, ci=0, filt='all', expanded=false;
+let known={};
+try{known=JSON.parse(localStorage.getItem('ecrire_k')||'{}')}catch(e){}
+const save=()=>{try{localStorage.setItem('ecrire_k',JSON.stringify(known))}catch(e){}};
+
+const topics=()=>D[exam][sec];
+const topic=()=>topics()[ti];
+const all=()=>topic().items;
+const filtered=()=>{
+  const a=all();
+  if(filt==='all')return a.map((item,i)=>({item,oi:i}));
+  return a.map((item,i)=>({item,oi:i})).filter(({item})=>item.t===filt[0]); // 'v' or 'p'
+};
+const entry=()=>filtered()[ci];
+const kk=(topId,oi)=>`${topId}_${oi}`;
+
+/* ═══════════════════════════════════════════════
+   RENDER
+   ═══════════════════════════════════════════════ */
+function renderTopics(){
+  const row=document.getElementById('topicsRow');
+  row.innerHTML='';
+  topics().forEach((t,i)=>{
+    const b=document.createElement('button');
+    b.className='tpill'+(i===ti?' on':'')+(t.l?' light':'');
+    b.style.setProperty('--tc',t.c);
+    b.textContent=t.fr;
+    b.onclick=()=>{ti=i;ci=0;expanded=false;render()};
+    row.appendChild(b);
+  });
+}
+
+function renderCard(dir){
+  const area=document.getElementById('cardArea');
+  const f=filtered();
+
+  if(!f.length){
+    area.innerHTML='<div class="empty"><div style="font-size:2rem">🤷</div><div>No items for this filter</div></div>';
+    updateChrome(0,0);return;
+  }
+
+  const {item,oi}=f[ci];
+  const t=topic();
+  const ki=kk(t.id,oi);
+  const isKn=!!known[ki];
+  const knCnt=f.filter(({oi:o})=>!!known[kk(t.id,o)]).length;
+
+  updateChrome(ci+1,f.length,knCnt);
+
+  document.getElementById('btnPrev').disabled=ci===0;
+  document.getElementById('btnNext').disabled=ci===f.length-1;
+  document.getElementById('knowBtn').className='know-btn'+(isKn?' on':'');
+  document.getElementById('knowLabel').textContent=isKn?'Marked known':'Mark as known';
+
+  const isV=item.t==='v';
+  const typeBadge=isV
+    ?`<div class="type-badge badge-v">Vocab${item.wc?` · <span class="wc">${item.wc}</span>`:''}</div>`
+    :`<div class="type-badge badge-p">Phrase</div>`;
+
+  const exId='ex'+Date.now();
+  const card=document.createElement('div');
+  card.className='card'+(dir?` enter-${dir}`:'');
+  card.style.setProperty('--tc',t.c);
+  card.innerHTML=`
+    <div class="card-top"></div>
+    <div class="card-scroll">
+      <div class="badge-row">
+        ${typeBadge}
+        <div class="known-chip${isKn?' show':''}">
+          <svg viewBox="0 0 12 10"><polyline points="1,5 4.5,8.5 11,1"/></svg>
+          Known
+        </div>
+      </div>
+      <div class="card-fr">${item.fr}</div>
+      <div class="card-en">${item.en}</div>
+      <div class="card-divider"></div>
+      <div class="ex-toggle${expanded?' open':''}" id="${exId}" onclick="toggleEx(this)">
+        <svg viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,1 6,6 11,1"/></svg>
+        Example
+      </div>
+      <div class="ex-body">
+        <div class="ex-fr">${item.ex}</div>
+        <div class="ex-en-label">↳ in English</div>
+        <div class="ex-en">${item.exE}</div>
+      </div>
+    </div>`;
+  area.innerHTML='';
+  area.appendChild(card);
+}
+
+function updateChrome(cur,tot,knCnt){
+  document.getElementById('progFill').style.width=tot?((cur-1)/tot*100)+'%':'0%';
+  document.getElementById('progLabel').textContent=tot?`${cur} / ${tot}`:'— / —';
+  document.getElementById('knownRow').textContent=knCnt>0?`${knCnt} ✓`:'';
+  ['A','B'].forEach(s=>document.getElementById('btn'+s).className=(sec===s?'on':''));
+  ['EE','EO'].forEach(e=>document.getElementById('btn'+e).className=(exam===e?'on':''));
+  ['All','Vocab','Phrase'].forEach(id=>{
+    const f2=id.toLowerCase();
+    document.getElementById('f'+id).className='filt-tab'+(filt===f2?'':filt==='all'&&f2==='all'?'':'')+((filt===f2||(f2==='all'&&filt==='all'))?'on':' on'.replace(' on',''));
+  });
+  // simpler filter sync:
+  document.getElementById('fAll').className='filt-tab'+(filt==='all'?' on':'');
+  document.getElementById('fVocab').className='filt-tab'+(filt==='vocab'?' on':'');
+  document.getElementById('fPhrase').className='filt-tab'+(filt==='phrase'?' on':'');
+}
+
+function render(dir){
+  renderTopics();
+  renderCard(dir);
+  document.documentElement.style.setProperty('--accent',topic().c);
+  ['A','B'].forEach(s=>document.getElementById('btn'+s).className=(sec===s?'on':''));
+  ['EE','EO'].forEach(e=>document.getElementById('btn'+e).className=(exam===e?'on':''));
+}
+
+/* ═══════════════════════════════════════════════
+   ACTIONS
+   ═══════════════════════════════════════════════ */
+function setSection(s){sec=s;ti=0;ci=0;expanded=false;render()}
+function setExam(e){exam=e;sec='A';ti=0;ci=0;expanded=false;render()}
+function setFilter(f){
+  filt=f; ci=0; expanded=false;
+  document.getElementById('fAll').className='filt-tab'+(f==='all'?' on':'');
+  document.getElementById('fVocab').className='filt-tab'+(f==='vocab'?' on':'');
+  document.getElementById('fPhrase').className='filt-tab'+(f==='phrase'?' on':'');
+  render();
+}
+
+function navigate(dir,anim=true){
+  const f=filtered();
+  const nx=ci+dir;
+  if(nx<0||nx>=f.length)return;
+  if(anim){
+    const old=document.querySelector('.card');
+    if(old){old.className='card '+(dir===1?'exit-fwd':'exit-back'); old.addEventListener('animationend',()=>old.remove(),{once:true});}
+    ci=nx; expanded=false;
+    renderCard(dir===1?'fwd':'back');
+    renderTopics();
+    document.getElementById('btnPrev').disabled=ci===0;
+    document.getElementById('btnNext').disabled=ci===filtered().length-1;
+  } else {
+    ci=nx; expanded=false; render();
+  }
+}
+
+function toggleKnown(){
+  const {oi}=entry();
+  const ki=kk(topic().id,oi);
+  if(known[ki]){delete known[ki]}else{known[ki]=true}
+  save();
+  const f=filtered();
+  const knCnt=f.filter(({oi:o})=>!!known[kk(topic().id,o)]).length;
+  updateChrome(ci+1,f.length,knCnt);
+  const btn=document.getElementById('knowBtn');
+  btn.className='know-btn'+(known[ki]?' on':'');
+  document.getElementById('knowLabel').textContent=known[ki]?'Marked known':'Mark as known';
+  const chip=document.querySelector('.known-chip');
+  if(chip){chip.className='known-chip'+(known[ki]?' show':'')}
+  if(known[ki]&&ci<f.length-1){setTimeout(()=>navigate(1),400)}
+}
+
+function toggleEx(el){
+  expanded=!expanded;
+  el.className='ex-toggle'+(expanded?' open':'');
+}
+
+/* ═══════════════════════════════════════════════
+   KEYBOARD + SWIPE
+   ═══════════════════════════════════════════════ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')navigate(1);
+  if(e.key==='ArrowLeft')navigate(-1);
+  if(e.key===' '){e.preventDefault();toggleKnown()}
+  if(e.key==='e'||e.key==='E'){const el=document.querySelector('.ex-toggle');if(el)toggleEx(el)}
+});
+let tx=0,ty=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx;
+  const dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45)navigate(dx<0?1:-1);
+},{passive:true});
+
+render();
+</script>
+</body>
+</html>

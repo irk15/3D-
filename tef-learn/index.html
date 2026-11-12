@@ -112,9 +112,10 @@ body{
   transition:all .15s; white-space:nowrap;
 }
 .filt-tab.on{background:var(--paper); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.lvl-row{display:flex;gap:6px;padding:2px 16px 8px;overflow-x:auto;scrollbar-width:none}
+.lvl-row{display:flex;gap:6px;padding:8px 16px 10px;overflow-x:auto;scrollbar-width:none}
 .lvl-row::-webkit-scrollbar{display:none}
 .lvl-tab{flex:none;border:1px solid var(--sunk);background:transparent;color:var(--soft);font:600 .72rem/1 inherit;font-family:inherit;padding:7px 12px;border-radius:99px;cursor:pointer}
+.lvl-tab i{font-style:normal;opacity:.6;margin-left:3px;font-weight:500}
 .lvl-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .lv-b{background:transparent;border:1px solid currentColor}
 .lv-1{color:#16a34a}.lv-2{color:#0A6CF0}.lv-3{color:#a855f7}
@@ -465,10 +466,10 @@ body.has-audio .spk{display:flex}
   <button class="quiz-btn" onclick="qOpen()" aria-label="Quick test"><svg viewBox="0 0 12 14" fill="currentColor"><path d="M7 0L0 8h4.5L4 14l8-8.5H7.5z"/></svg>Quiz</button>
 </div>
 <div class="lvl-row">
-  <button class="lvl-tab on" data-l="0" onclick="setLevel(0)">All levels</button>
-  <button class="lvl-tab" data-l="1" onclick="setLevel(1)">Basics</button>
-  <button class="lvl-tab" data-l="2" onclick="setLevel(2)">CLB 7–8</button>
-  <button class="lvl-tab" data-l="3" onclick="setLevel(3)">Advanced</button>
+  <button class="lvl-tab" data-l="0" onclick="setLevel(0)">All levels <i></i></button>
+  <button class="lvl-tab" data-l="1" onclick="setLevel(1)">Basics <i></i></button>
+  <button class="lvl-tab" data-l="2" onclick="setLevel(2)">CLB 7–8 <i></i></button>
+  <button class="lvl-tab" data-l="3" onclick="setLevel(3)">Advanced <i></i></button>
 </div>
 
 <div class="card-area" id="cardArea"></div>
@@ -2170,6 +2171,11 @@ const D={
    STATE
    ═══════════════════════════════════════════════ */
 let exam='EE', sec='A', ti=0, ci=0, filt='all', lvl=0, expanded=false;
+let exPref=false;try{exPref=localStorage.getItem('tef_ex')==='1'}catch(e){}
+expanded=exPref;
+try{const P=JSON.parse(localStorage.getItem('tef_pos')||'null');
+  if(P&&D[P.exam]&&D[P.exam][P.sec]&&D[P.exam][P.sec][P.ti]){exam=P.exam;sec=P.sec;ti=P.ti;ci=P.ci|0;filt=P.filt||'all';lvl=P.lvl|0}}catch(e){}
+const savePos=()=>{try{localStorage.setItem('tef_pos',JSON.stringify({exam,sec,ti,ci,filt,lvl}))}catch(e){}};
 let known={};
 try{known=JSON.parse(localStorage.getItem('ecrire_k')||'{}')}catch(e){}
 const save=()=>{try{localStorage.setItem('ecrire_k',JSON.stringify(known))}catch(e){}};
@@ -2181,7 +2187,7 @@ const LVN={1:'Basics',2:'CLB 7–8',3:'Advanced'};
 // visible items sorted Basics → CLB 7–8 → Advanced (original order kept inside a level); oi stays the ORIGINAL index so "known" keys never break
 const sortedItems=t=>t.items.map((item,i)=>({item,oi:i})).filter(x=>!x.item.h).sort((a,b)=>((a.item.lv||2)-(b.item.lv||2))||(a.oi-b.oi));
 const filtered=()=>sortedItems(topic()).filter(({item})=>(filt==='all'||item.t===filt[0])&&(!lvl||(item.lv||2)===lvl));
-const entry=()=>filtered()[ci];
+const entry=()=>{const f=filtered();if(ci>=f.length)ci=Math.max(0,f.length-1);return f[ci]};
 const kk=(topId,oi)=>`${topId}_${oi}`;
 
 /* ═══════════════════════════════════════════════
@@ -2195,9 +2201,13 @@ function renderTopics(){
     b.className='tpill'+(i===ti?' on':'')+(t.l?' light':'');
     b.style.setProperty('--tc',t.c);
     b.textContent=t.fr;
-    b.onclick=()=>{ti=i;ci=0;expanded=false;render()};
+    b.onclick=()=>{ti=i;ci=0;expanded=exPref;render()};
     row.appendChild(b);
   });
+  const on=row.querySelector('.tpill.on');if(on&&on.scrollIntoView)row.parentElement.scrollTo({left:Math.max(0,on.offsetLeft-24),behavior:'smooth'});
+  const cnt={0:0,1:0,2:0,3:0};
+  topic().items.forEach(it=>{if(!it.h&&(filt==='all'||it.t===filt[0])){cnt[0]++;cnt[it.lv||2]++}});
+  document.querySelectorAll('.lvl-tab').forEach(b=>{const l=+b.dataset.l;b.querySelector('i').textContent=cnt[l];b.classList.toggle('on',l===lvl)});
 }
 
 function renderCard(dir){
@@ -2262,6 +2272,7 @@ function renderCard(dir){
 }
 
 function updateChrome(cur,tot,knCnt){
+  savePos();
   document.getElementById('progFill').style.width=tot?((cur-1)/tot*100)+'%':'0%';
   document.getElementById('progLabel').textContent=tot?`${cur} / ${tot}`:'— / —';
   document.getElementById('knownRow').textContent=knCnt>0?`${knCnt} ✓`:'';
@@ -2288,15 +2299,15 @@ function render(dir){
 /* ═══════════════════════════════════════════════
    ACTIONS
    ═══════════════════════════════════════════════ */
-function setSection(s){sec=s;ti=0;ci=0;expanded=false;render()}
-function setExam(e){exam=e;sec='A';ti=0;ci=0;expanded=false;render()}
+function setSection(s){sec=s;ti=0;ci=0;expanded=exPref;render()}
+function setExam(e){exam=e;sec='A';ti=0;ci=0;expanded=exPref;render()}
 function setLevel(l){
-  lvl=l; ci=0; expanded=false;
+  lvl=l; ci=0; expanded=exPref;
   document.querySelectorAll('.lvl-tab').forEach(b=>b.classList.toggle('on',+b.dataset.l===l));
   render();
 }
 function setFilter(f){
-  filt=f; ci=0; expanded=false;
+  filt=f; ci=0; expanded=exPref;
   document.getElementById('fAll').className='filt-tab'+(f==='all'?' on':'');
   document.getElementById('fVocab').className='filt-tab'+(f==='vocab'?' on':'');
   document.getElementById('fPhrase').className='filt-tab'+(f==='phrase'?' on':'');
@@ -2310,13 +2321,13 @@ function navigate(dir,anim=true){
   if(anim){
     const old=document.querySelector('.card');
     if(old){old.className='card '+(dir===1?'exit-fwd':'exit-back'); old.addEventListener('animationend',()=>old.remove(),{once:true});}
-    ci=nx; expanded=false;
+    ci=nx; expanded=exPref;
     renderCard(dir===1?'fwd':'back');
     renderTopics();
     document.getElementById('btnPrev').disabled=ci===0;
     document.getElementById('btnNext').disabled=ci===filtered().length-1;
   } else {
-    ci=nx; expanded=false; render();
+    ci=nx; expanded=exPref; render();
   }
 }
 
@@ -2333,11 +2344,13 @@ function toggleKnown(){
   document.getElementById('knowLabel').textContent=known[ki]?'Marked known':'Mark as known';
   const chip=document.querySelector('.known-chip');
   if(chip){chip.className='known-chip'+(known[ki]?' show':'')}
+  if(known[ki]&&AU.mode!=='auto'&&ci<f.length-1){const at=ci;setTimeout(()=>{if(ci===at&&!Q.open)navigate(1)},450)}
   if(known[ki]&&ci<f.length-1){setTimeout(()=>navigate(1),400)}
 }
 
 function toggleEx(el){
-  expanded=!expanded;
+  expanded=!expanded;exPref=expanded;
+  try{localStorage.setItem('tef_ex',expanded?'1':'0')}catch(e){}
   el.className='ex-toggle'+(expanded?' open':'');
 }
 
@@ -2634,7 +2647,7 @@ function auMeta(){
 }
 function auShow(oi){
   const idx=filtered().findIndex(x=>x.oi===oi);if(idx<0)return;
-  AU.internal=true;ci=idx;expanded=false;renderCard('fwd');renderTopics();
+  AU.internal=true;ci=idx;expanded=exPref;renderCard('fwd');renderTopics();
   document.getElementById('btnPrev').disabled=ci===0;
   document.getElementById('btnNext').disabled=ci===filtered().length-1;
   AU.internal=false;auMeta();auUI();
@@ -2663,7 +2676,7 @@ function auEnded(){
   if(AU.mode==='seg'){AU.mode='idle';return}
   if(AU.mode!=='auto')return;
   if(AU.p.loop==='stop'){auStop();return}
-  const n=topics().length;AU.internal=true;ti=(ti+1)%n;ci=0;expanded=false;render();AU.internal=false;
+  const n=topics().length;AU.internal=true;ti=(ti+1)%n;ci=0;expanded=exPref;render();AU.internal=false;
   AU.row=null;auGo(topic().id,0,true);auMeta();auUI();
 }
 function auFollow(){   /* user moved to another card/topic while listening: jump the audio there */

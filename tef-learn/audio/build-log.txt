@@ -1,0 +1,61 @@
+3116 clips, 3116 to record, voices: fr-FR-VivienneMultilingualNeural / en-US-AvaMultilingualNeural
+100 / 3116
+200 / 3116
+300 / 3116
+400 / 3116
+500 / 3116
+600 / 3116
+700 / 3116
+800 / 3116
+900 / 3116
+1000 / 3116
+1100 / 3116
+1200 / 3116
+1300 / 3116
+1400 / 3116
+1500 / 3116
+1600 / 3116
+1700 / 3116
+1800 / 3116
+1900 / 3116
+2000 / 3116
+2100 / 3116
+2200 / 3116
+2300 / 3116
+2400 / 3116
+2500 / 3116
+2600 / 3116
+2700 / 3116
+2800 / 3116
+2900 / 3116
+3000 / 3116
+3100 / 3116
+Traceback (most recent call last):
+  File "/home/runner/work/3D-/3D-/tef-learn/tools/make_audio.py", line 112, in <module>
+    asyncio.run(main())
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/runner/work/3D-/3D-/tef-learn/tools/make_audio.py", line 103, in main
+    a = put(i['fr_h'], GAP['fr']); b = put(i['en_h'], GAP['en']); c = put(i['ex_h'], GAP['ex'])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/3D-/3D-/tef-learn/tools/make_audio.py", line 98, in put
+    d = pcm(os.path.join(CACHE, h + '.mp3'))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/3D-/3D-/tef-learn/tools/make_audio.py", line 59, in pcm
+    return subprocess.run(['ffmpeg', '-v', 'error', '-i', path, '-f', 's16le', '-ar', str(SR), '-ac', '1', '-'], check=True, capture_output=True).stdout
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'

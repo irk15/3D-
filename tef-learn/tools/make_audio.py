@@ -36,20 +36,24 @@ async def pick_voices():
     pick = lambda pref: next(v for v in pref if v in have)
     return pick(FR_PREF), pick(EN_PREF)
 
+FAILED = []
 async def tts(text, voice, rate, path):
     if FAKE:
         d = max(0.5, len(text) * 0.06)
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', f'sine=f=440:d={d}', '-ar', str(SR), '-ac', '1', path], check=True)
         return
     import edge_tts
-    for n in range(5):
+    for n in range(8):
         try:
             await edge_tts.Communicate(text, voice, rate=rate).save(path)
             if os.path.getsize(path) > 500: return
         except Exception as e:
-            print('retry', n, e, file=sys.stderr)
-        await asyncio.sleep(1.5 * (n + 1))
-    raise RuntimeError('tts failed: ' + text)
+            print('retry', n, repr(e)[:120], '|', text[:50], file=sys.stderr, flush=True)
+        await asyncio.sleep(2 * (n + 1))
+    # never abort the whole build for one stubborn clip: use a short silence and report it
+    FAILED.append(text)
+    print('FAILED clip:', text, file=sys.stderr, flush=True)
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono', '-t', '0.4', path], check=True)
 
 def pcm(path):
     return subprocess.run(['ffmpeg', '-v', 'error', '-i', path, '-f', 's16le', '-ar', str(SR), '-ac', '1', '-'], check=True, capture_output=True).stdout
@@ -78,7 +82,7 @@ async def main():
         except Exception: pass
     todo = [(h, v) for h, v in jobs.items() if not os.path.exists(os.path.join(CACHE, h + '.mp3'))]
     print(f'{len(jobs)} clips, {len(todo)} to record, voices: {fr_v} / {en_v}')
-    sem = asyncio.Semaphore(8); done = 0
+    sem = asyncio.Semaphore(5); done = 0
     async def run(h, v):
         nonlocal done
         async with sem:
@@ -103,5 +107,6 @@ async def main():
         cues['topics'][t['id']] = {'f': f, 'd': round(pos, 1), 'c': rows}
         print(t['id'], round(pos / 60, 1), 'min')
     json.dump(cues, open(cpath, 'w'), separators=(',', ':'))
+    print('failed clips:', len(FAILED), FAILED[:20])
 
 asyncio.run(main())

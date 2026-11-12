@@ -25,8 +25,20 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install edge-tts
-      - run: python tef-learn/tools/make_audio.py
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/tef-clips
+          key: tef-clips-${{ github.run_id }}
+          restore-keys: tef-clips-
+      - name: Record audio
+        env:
+          TEF_CACHE: ${{ runner.temp }}/tef-clips
+        run: |
+          mkdir -p tef-learn/audio
+          set -o pipefail
+          python -u tef-learn/tools/make_audio.py 2>&1 | tee tef-learn/audio/build-log.txt
       - name: Commit audio
+        if: always()
         run: |
           git config user.name "tef-learn-bot"
           git config user.email "tef-learn-bot@users.noreply.github.com"

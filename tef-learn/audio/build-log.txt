@@ -1,17 +1,161 @@
-4034 clips, 748 to record, voices: fr-FR-VivienneMultilingualNeural / en-US-AvaMultilingualNeural
-100 / 748
-retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | to solve a mystery
-200 / 748
-300 / 748
-retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | She revealed this secret to everyone on the day of
-400 / 748
-retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | L'école est ... mais elle ne doit pas ...
-500 / 748
-retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | une carence
-600 / 748
-700 / 748
-retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | L'isolement est un risque chez les personnes âgées
-retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Il faut nuancer ce propos : ...
+4904 clips, 861 to record, voices: fr-FR-VivienneMultilingualNeural / en-US-AvaMultilingualNeural
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | louer un bateau
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il un permis pour conduire ce bateau ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | louer un bateau
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | deposit
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Bonjour, je vous appelle au sujet de votre locatio
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Pourriez-vous m'expliquer en quoi consiste le stag
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quel est le tarif pour une personne, pour deux per
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quel est le tarif pour une personne, pour deux per
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je m'intéresse à votre stage de parachutisme.
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je m'intéresse à votre stage de parachutisme.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il fournir un certificat médical ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il fournir un certificat médical ?
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il fournir un certificat médical ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | How long does the activity last, and what time mus
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | How long does the activity last, and what time mus
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | safety instructions
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Pourriez-vous me préciser si l'assurance est compr
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je vous remercie pour ces précisions, je vais en p
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je voudrais des renseignements sur votre séjour en
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je vous remercie pour ces précisions, je vais en p
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | une agence de voyages
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je vous appelle au sujet du nouveau catalogue de v
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je voudrais des renseignements sur votre séjour en
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un catalogue
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un catalogue
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Votre nouveau catalogue propose plus de trois cent
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | L'hébergement est-il inclus dans le prix ?
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un catalogue
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | L'hébergement est-il inclus dans le prix ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un château
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un château
+retry 3 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un catalogue
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je souhaiterais avoir des renseignements sur votre
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un château
+100 / 861
+retry 3 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un château
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Combien coûte le séjour de cinq jours par personne
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | gastronomic guide
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un atelier pour enfants
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Y a-t-il des ateliers pour enfants et adultes ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un atelier pour enfants
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | La durée du séjour va de cinq à trente jours.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Comment se déroule une journée type ?
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un atelier pour enfants
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Comment se déroule une journée type pendant le séj
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Est-il possible de personnaliser le programme ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Y a-t-il des activités prévues pour les enfants ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Est-il possible de personnaliser le programme ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Comment puis-je réserver, et jusqu'à quand ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | des arrhes
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il verser des arrhes à la réservation ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Comment puis-je réserver, et jusqu'à quand ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Pourriez-vous m'envoyer la brochure par courriel ?
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Comment puis-je réserver, et jusqu'à quand ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je voudrais des renseignements sur votre spectacle
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je voudrais des renseignements sur votre spectacle
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un théâtre
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je voudrais des renseignements sur votre spectacle
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Vous louez des déguisements pour adultes ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Vous louez des déguisements pour adultes ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | À quelle date et à quelle heure a lieu le spectacl
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Vous louez des déguisements pour adultes ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Où peut-on acheter les billets, et combien coûtent
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Où peut-on acheter les billets, et combien coûtent
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Où peut-on acheter les billets, et combien coûtent
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | La semaine propose des dégustations avec des chefs
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un atelier de cuisine
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | cooking workshop
+retry 3 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Où peut-on acheter les billets, et combien coûtent
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quel est l'âge minimum pour entrer ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quel est le parcours de la discothèque en bus ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | capacity
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quelle est la capacité d'accueil du parc ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Existe-t-il des formules de groupe pour ... ?
+200 / 861
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Seriez-vous en mesure de nous proposer un devis ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Would you be able to give us a quote?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un monte-de-piété
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quels sont vos horaires d'ouverture le week-end ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quels documents dois-je fournir ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quels sont vos horaires d'ouverture le week-end ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Combien de temps faut-il compter pour la réparatio
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | une estimation
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il envoyer son ordonnance pour les verres cor
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un retour gratuit
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | ouvrir un compte
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un entretien de voiture
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Votre service de garde d'animaux est-il disponible
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Comment peut-on participer à votre sondage ?
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Votre service de garde d'animaux est-il disponible
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Are there hidden or extra fees?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quelle est la prise en charge de la réparation ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | une décoration florale
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Pourriez-vous me proposer une décoration florale p
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | une décoration florale
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Pourriez-vous me proposer une décoration florale p
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je voudrais devenir bénévole.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | prêter
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Vous prêtez des ordinateurs aux bénévoles ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | l'aide aux devoirs
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | homework help
+300 / 861
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | charity
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Quelle association caritative reçoit les dons ?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | tool rental
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Must I register in advance and are there fees?
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il s'inscrire à l'avance et y a-t-il des frai
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Faut-il s'inscrire à l'avance et y a-t-il des frai
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Est-ce que les intervenants sont formés ou vérifié
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | e-book
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | La réservation de salles est-elle gratuite ?
+400 / 861
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Are the classes also for people without experience
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | skydiving, free fall
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | You don't need to be sporty to ...
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un collecteur de pierres
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Pense à la fierté que tu ressentiras après ...
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | You'll thank me when you see ...
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | caravan, horse-drawn wagon
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un agriculteur
+500 / 861
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | cruise
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Ce serait beaucoup moins cher qu'un hôtel classiqu
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Les bénévoles sont toujours les bienvenus.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | teenager
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | community kitchen
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | You know, I think you'd be perfect for ...
+600 / 861
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | On pourrait y aller ensemble, comme ça on se souti
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Tu y gagnerais autant que ceux que tu aides.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Je comprends tes réticences, mais ...
+700 / 861
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | opera
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | opera
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | un concours de conte
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | opera
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | at your own pace
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | at your own pace
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Tu pourras t'exercer chez toi, quand tu veux.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Avec l'école en ligne, tu pourras t'exercer chez t
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Imagine la fierté de voir ton poème publié dans la
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Si ça ne te plaît pas, tu pourras toujours arrêter
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | to express oneself freely
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | arroser les plantes
+800 / 861
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | It costs you nothing to try.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Ça ne te coûte rien d'essayer, le premier cours es
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | It costs you nothing to try.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Ça te ferait de la place et de l'argent.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Vendre tes vêtements te ferait de la place et de l
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Sur cette plateforme en ligne, tu fixes tes tarifs
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Tu ferais de la place chez toi.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Le premier cours d'essai est gratuit.
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Le premier cours d'essai est gratuit.
+retry 2 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Le premier cours d'essai est gratuit.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Un chat, c'est de la compagnie sans trop de contra
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Tu pourrais rentabiliser ton temps libre.
 structureA 10.6 min
 sujA_urgence 5.6 min
 sujA_decouverte 5.2 min
@@ -40,6 +184,12 @@ societe 10.5 min
 travail 6.0 min
 ville 5.4 min
 eoA_phrases 10.0 min
+eA_sport 5.3 min
+eA_voyage 4.5 min
+eA_spectacle 4.9 min
+eA_service 5.0 min
+eA_asso 4.7 min
+eA_culture 4.6 min
 eoA_loisirs 5.2 min
 eoA_voyages 5.1 min
 eoA_culture 5.6 min
@@ -47,6 +197,12 @@ eoA_services 6.2 min
 eoA_logement 4.6 min
 eoA_cours 4.6 min
 eoB_persuasion 9.4 min
+eB_sport 5.3 min
+eB_voyage2 4.6 min
+eB_benevole2 4.4 min
+eB_cuisine2 4.7 min
+eB_arts2 5.1 min
+eB_quotidien 5.2 min
 eoB_aventure 5.6 min
 eoB_culture 5.1 min
 eoB_benevole 6.5 min

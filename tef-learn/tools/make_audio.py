@@ -99,7 +99,8 @@ async def main():
             s = pos; buf.extend(d); pos += len(d) / 2 / SR
             e = pos; buf.extend(silence(gap)); pos += gap
             return round(s, 2), round(e, 2)
-        for oi, i in enumerate(t['items']):
+        for i in t['items']:
+            oi = i['oi']
             a = put(i['fr_h'], GAP['fr']); b = put(i['en_h'], GAP['en']); c = put(i['ex_h'], GAP['ex'])
             rows.append([oi, a[0], a[1], b[0], b[1], c[0], c[1]])
         f = t['id'] + '.mp3'

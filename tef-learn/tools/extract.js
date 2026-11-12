@@ -5,5 +5,5 @@ const m=s.match(/const D=\{[\s\S]*?\n\};/);
 const D=eval('('+m[0].slice(8,-1)+')');
 const out=[];
 for(const e of ['EE','EO'])for(const x of ['A','B'])for(const t of D[e][x])
-  out.push({id:t.id,fr:t.fr,items:t.items.map(i=>({fr:i.fr,en:i.en,ex:i.ex}))});
+  out.push({id:t.id,fr:t.fr,items:t.items.map((i,oi)=>({oi,lv:i.lv||2,h:!!i.h,fr:i.fr,en:i.en,ex:i.ex})).filter(i=>!i.h).sort((a,b)=>(a.lv-b.lv)||(a.oi-b.oi))});
 process.stdout.write(JSON.stringify(out));

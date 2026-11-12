@@ -255,6 +255,173 @@ body{
   align-items:center; justify-content:center;
   gap:10px; color:var(--soft); font-size:.9rem; text-align:center;
 }
+
+/* ── QUICK TEST (overlay) ───────────────────── */
+.quiz-btn{
+  font-family:var(--ui); font-size:0.7rem; font-weight:700; color:#fff;
+  background:var(--accent); border:2px solid var(--ink); border-radius:100px;
+  padding:4px 11px 4px 9px; margin-left:10px; cursor:pointer;
+  display:flex; align-items:center; gap:5px; box-shadow:2px 2px 0 var(--ink);
+  transition:transform .1s, box-shadow .1s; white-space:nowrap;
+}
+.quiz-btn:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink)}
+.quiz-btn svg{width:11px; height:11px}
+#quiz{
+  position:fixed; inset:0; z-index:100; background:var(--paper);
+  display:none; flex-direction:column; padding-top:env(safe-area-inset-top,0px);
+}
+#quiz.show{display:flex; animation:qin .25s cubic-bezier(.2,.8,.3,1)}
+@keyframes qin{from{opacity:0; transform:translateY(28px)}to{opacity:1; transform:none}}
+.q-top{display:flex; align-items:center; gap:10px; padding:12px 16px 6px; flex-shrink:0}
+.q-x{
+  width:34px; height:34px; border-radius:50%; border:2px solid var(--hair);
+  background:none; color:var(--soft); font-size:1rem; cursor:pointer; flex-shrink:0;
+}
+.q-track{flex:1; height:6px; background:var(--hair); border-radius:3px; overflow:hidden}
+.q-fill{height:100%; width:0; background:var(--accent); border-radius:3px; transition:width .3s}
+.q-count{font-size:0.72rem; font-weight:700; color:var(--soft); min-width:42px; text-align:right}
+.q-streak{font-size:0.72rem; font-weight:700; color:#FF6B2C; min-width:30px; opacity:0; transition:opacity .2s}
+.q-streak.on{opacity:1}
+#qbody{flex:1; display:flex; flex-direction:column; min-height:0}
+
+/* setup */
+.q-setup{flex:1; overflow-y:auto; padding:8px 20px 12px; max-width:480px; width:100%; margin:0 auto}
+.q-h{font-size:1.5rem; font-weight:800; letter-spacing:-0.03em; margin-top:6px}
+.q-sub{font-size:0.8rem; color:var(--soft); margin:4px 0 14px}
+.q-grp{margin-bottom:14px}
+.q-lab{font-size:0.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--soft); margin-bottom:6px}
+.q-chips{display:flex; gap:6px; flex-wrap:wrap}
+.q-chip{
+  font-family:var(--ui); font-size:0.78rem; font-weight:600; color:var(--ink);
+  background:transparent; border:2px solid var(--hair); border-radius:100px;
+  padding:6px 13px; cursor:pointer; transition:all .12s;
+}
+.q-chip.on{background:var(--ink); border-color:var(--ink); color:var(--paper)}
+.q-foot{padding:10px 20px calc(14px + var(--bar)); max-width:480px; width:100%; margin:0 auto; flex-shrink:0}
+.q-go{
+  width:100%; font-family:var(--ui); font-size:0.95rem; font-weight:700; color:#fff;
+  background:var(--accent); border:2px solid var(--ink); border-radius:12px;
+  padding:14px; cursor:pointer; box-shadow:var(--pop);
+}
+.q-go:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink)}
+.q-go:disabled{opacity:.4; box-shadow:none}
+.q-note{font-size:0.74rem; color:var(--soft); text-align:center; margin-top:8px}
+
+/* run */
+.q-stage{flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:8px 16px; perspective:1200px}
+.q-drag{
+  width:100%; max-width:480px; height:min(100%,440px); position:relative;
+  touch-action:pan-y; will-change:transform; user-select:none; -webkit-user-select:none;
+}
+.q-drag.fly{transition:transform .28s cubic-bezier(.4,0,.8,.6), opacity .28s}
+.q-drag.back{transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
+.q-flip{position:absolute; inset:0; transform-style:preserve-3d; transition:transform .45s cubic-bezier(.3,.8,.3,1)}
+.q-drag.rev .q-flip{transform:rotateY(180deg)}
+.q-face{
+  position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  background:var(--paper); border:2px solid var(--ink); border-top:8px solid var(--tc,var(--accent));
+  border-radius:14px; box-shadow:var(--pop); overflow-y:auto; padding:18px 20px;
+  display:flex; flex-direction:column; cursor:pointer;
+}
+.q-back{transform:rotateY(180deg)}
+.q-mid{margin:auto 0; text-align:center}
+.q-tag{display:flex; justify-content:space-between; align-items:center; font-size:0.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--soft)}
+.q-prompt{font-size:1.65rem; font-weight:700; line-height:1.25; letter-spacing:-0.02em; margin:auto 0; text-align:center}
+.q-prompt.long{font-size:1.2rem; line-height:1.4}
+.q-hint{text-align:center; font-size:0.72rem; color:var(--soft); font-weight:500}
+.q-small{font-size:0.8rem; color:var(--soft); font-weight:500; margin-bottom:8px}
+.q-ans{font-size:1.5rem; font-weight:800; line-height:1.25; letter-spacing:-0.02em}
+.q-ans.long{font-size:1.15rem; line-height:1.4}
+.q-exbox{margin-top:16px; padding-top:12px; border-top:1.5px dashed var(--hair); text-align:left}
+.q-exfr{font-size:0.88rem; font-weight:600; line-height:1.5}
+.q-exen{font-size:0.8rem; color:var(--soft); line-height:1.5; margin-top:4px}
+.q-stamp{
+  position:absolute; top:22px; z-index:5; pointer-events:none; opacity:0;
+  font-weight:800; font-size:1.1rem; letter-spacing:.06em; padding:3px 10px;
+  border:3px solid; border-radius:8px; background:var(--paper);
+}
+.q-stamp.ok{right:18px; color:var(--vert); transform:rotate(10deg)}
+.q-stamp.no{left:18px; color:var(--rouge); transform:rotate(-10deg)}
+.q-actions{display:flex; gap:10px; padding:10px 16px calc(12px + var(--bar)); max-width:480px; width:100%; margin:0 auto; flex-shrink:0}
+.q-act{
+  flex:1; font-family:var(--ui); font-size:0.9rem; font-weight:700; border:2px solid var(--ink);
+  border-radius:12px; padding:13px 8px; cursor:pointer; box-shadow:var(--pop); color:#fff;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.q-act:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink)}
+.q-act svg{width:15px; height:15px}
+.q-act.rev{background:var(--ink)}
+.q-act.miss{background:var(--rouge)}
+.q-act.got{background:var(--vert)}
+.q-keys{text-align:center; font-size:0.66rem; color:var(--soft); padding-bottom:calc(8px + var(--bar)); margin-top:-4px}
+@media (hover:none){.q-keys{display:none}}
+
+/* done */
+.q-done{flex:1; overflow-y:auto; padding:6px 20px 12px; max-width:480px; width:100%; margin:0 auto; text-align:center}
+.q-ring{width:132px; height:132px; margin:10px auto 6px; position:relative}
+.q-ring svg{width:100%; height:100%; transform:rotate(-90deg)}
+.q-ring circle{fill:none; stroke-width:10; stroke-linecap:round}
+.q-ring .bg{stroke:var(--hair)}
+.q-ring .fg{stroke:var(--vert); stroke-dasharray:276.46; stroke-dashoffset:276.46; transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1) .15s}
+.q-pct{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.9rem; font-weight:800; letter-spacing:-0.04em}
+.q-stats{display:flex; justify-content:center; gap:18px; font-size:0.78rem; font-weight:600; color:var(--soft); margin:8px 0 14px}
+.q-stats b{color:var(--ink); font-weight:800}
+.q-mlist{text-align:left; border:2px solid var(--ink); border-radius:12px; box-shadow:var(--pop); overflow:hidden; margin-bottom:6px}
+.q-mhead{font-size:0.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--rouge); padding:8px 12px; background:var(--sunk)}
+.q-mrow{padding:8px 12px; border-top:1.5px solid var(--hair); font-size:0.82rem; line-height:1.4}
+.q-mrow b{font-weight:700}
+.q-mrow span{color:var(--soft)}
+.q-donebtns{display:flex; flex-direction:column; gap:8px}
+.q-sec{
+  font-family:var(--ui); font-size:0.85rem; font-weight:700; color:var(--ink); background:transparent;
+  border:2px solid var(--ink); border-radius:12px; padding:12px; cursor:pointer;
+}
+.q-sec:disabled{opacity:.5}
+
+/* ── LISTEN (recorded audio + hands-free) ───── */
+.listen-btn,.spk{display:none}
+body.has-audio .listen-btn{display:flex}
+body.has-audio .spk{display:flex}
+.listen-btn{
+  font-family:var(--ui); font-size:0.7rem; font-weight:700; color:var(--ink);
+  background:var(--paper); border:2px solid var(--ink); border-radius:100px;
+  padding:4px 11px 4px 9px; margin-left:8px; cursor:pointer;
+  align-items:center; gap:5px; box-shadow:2px 2px 0 var(--ink); white-space:nowrap;
+}
+.listen-btn:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink)}
+.listen-btn.on{background:var(--ink); color:var(--paper)}
+.listen-btn svg{width:12px; height:12px}
+.spk{
+  width:28px; height:28px; border-radius:50%; border:2px solid var(--ink);
+  background:var(--paper); color:var(--ink); cursor:pointer; flex-shrink:0;
+  align-items:center; justify-content:center; box-shadow:2px 2px 0 var(--ink); margin-left:auto;
+}
+.spk:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink)}
+.spk svg{width:13px; height:13px}
+.known-chip + .spk{margin-left:8px}
+.ex-spk{width:24px; height:24px; margin-left:8px; box-shadow:1px 1px 0 var(--ink)}
+.ex-spk svg{width:11px; height:11px}
+.ex-en-label{display:flex; align-items:center}
+.card-fr.sp,.card-en.sp,.ex-fr.sp{color:var(--tc,var(--accent)); transition:color .2s}
+.player{
+  display:none; align-items:center; gap:8px; flex-shrink:0;
+  margin:0 12px 8px; padding:8px 10px; background:var(--ink); color:var(--paper);
+  border-radius:14px; box-shadow:0 4px 14px rgba(22,18,31,.25);
+}
+.player.show{display:flex; animation:qin .25s cubic-bezier(.2,.8,.3,1)}
+.pl-play{
+  width:38px; height:38px; border-radius:50%; border:none; background:var(--accent);
+  color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.pl-play svg{width:15px; height:15px}
+.pl-info{flex:1; min-width:0}
+.pl-t{font-size:0.82rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.pl-s{font-size:0.66rem; opacity:.65; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.pl-chip{
+  font-family:var(--ui); font-size:0.68rem; font-weight:700; color:var(--paper);
+  background:rgba(255,252,244,.14); border:none; border-radius:100px; padding:6px 10px; cursor:pointer; white-space:nowrap;
+}
+.pl-x{width:26px; height:26px; border:none; background:none; color:var(--paper); opacity:.6; font-size:0.95rem; cursor:pointer}
 </style>
 </head>
 <body>
@@ -288,9 +455,19 @@ body{
     <button class="filt-tab"    id="fPhrase" onclick="setFilter('phrase')">Phrases</button>
   </div>
   <div class="known-badge-row" id="knownRow"></div>
+  <button class="listen-btn" id="listenBtn" onclick="auToggleStart()" aria-label="Listen hands-free"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 10V8a5.5 5.5 0 0111 0v2"/><rect x="1.5" y="9.5" width="3" height="4.5" rx="1" fill="currentColor"/><rect x="11.5" y="9.5" width="3" height="4.5" rx="1" fill="currentColor"/></svg>Listen</button>
+  <button class="quiz-btn" onclick="qOpen()" aria-label="Quick test"><svg viewBox="0 0 12 14" fill="currentColor"><path d="M7 0L0 8h4.5L4 14l8-8.5H7.5z"/></svg>Quiz</button>
 </div>
 
 <div class="card-area" id="cardArea"></div>
+
+<div class="player" id="player">
+  <button class="pl-play" id="plPlay" onclick="auToggle()" aria-label="Play / pause"></button>
+  <div class="pl-info"><div class="pl-t" id="plT"></div><div class="pl-s" id="plS"></div></div>
+  <button class="pl-chip" id="plRate" onclick="auRate()"></button>
+  <button class="pl-chip" id="plLoop" onclick="auLoop()"></button>
+  <button class="pl-x" onclick="auStop()" aria-label="Stop">✕</button>
+</div>
 
 <div class="bottom-nav">
   <button class="nav-btn" id="btnPrev" onclick="navigate(-1)">
@@ -303,6 +480,16 @@ body{
   <button class="nav-btn" id="btnNext" onclick="navigate(1)">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6,3 11,8 6,13"/></svg>
   </button>
+</div>
+
+<div id="quiz" role="dialog" aria-label="Quick test">
+  <div class="q-top">
+    <button class="q-x" onclick="qClose()" aria-label="Close">✕</button>
+    <div class="q-track"><div class="q-fill" id="qFill"></div></div>
+    <div class="q-streak" id="qStreak"></div>
+    <div class="q-count" id="qCount"></div>
+  </div>
+  <div id="qbody"></div>
 </div>
 
 <script>
@@ -1526,6 +1713,7 @@ function renderCard(dir){
     <div class="card-scroll">
       <div class="badge-row">
         ${typeBadge}
+        <button class="spk" onclick="playCard(event,'w')" aria-label="Hear this card">${AU_SPK}</button>
         <div class="known-chip${isKn?' show':''}">
           <svg viewBox="0 0 12 10"><polyline points="1,5 4.5,8.5 11,1"/></svg>
           Known
@@ -1540,12 +1728,13 @@ function renderCard(dir){
       </div>
       <div class="ex-body">
         <div class="ex-fr">${item.ex}</div>
-        <div class="ex-en-label">↳ in English</div>
+        <div class="ex-en-label">↳ in English<button class="spk ex-spk" onclick="playCard(event,'x')" aria-label="Hear the example">${AU_SPK}</button></div>
         <div class="ex-en">${item.exE}</div>
       </div>
     </div>`;
   area.innerHTML='';
   area.appendChild(card);
+  auFollow();
 }
 
 function updateChrome(cur,tot,knCnt){
@@ -1624,9 +1813,349 @@ function toggleEx(el){
 }
 
 /* ═══════════════════════════════════════════════
+   QUICK TEST — self-graded flashcard overlay
+   Never touches the main deck unless you tap
+   "Mark as known" on the results screen.
+   ═══════════════════════════════════════════════ */
+const Q={open:false,deck:[],byK:{},i:0,rev:false,busy:false,first:{},streak:0,best:0,
+  p:{scope:'topic',type:'all',dir:'fr',count:20,unk:true}};
+try{Object.assign(Q.p,JSON.parse(localStorage.getItem('tef_quiz')||'{}'))}catch(e){}
+const qe=id=>document.getElementById(id);
+const qSave=()=>{try{localStorage.setItem('tef_quiz',JSON.stringify(Q.p))}catch(e){}};
+const qBuzz=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
+const qShuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const SVG_X='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg>';
+const SVG_OK='<svg viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,6 5,10 13,2"/></svg>';
+
+function qPool(){
+  const p=Q.p;let tops;
+  if(p.scope==='topic')tops=[topic()];
+  else if(p.scope==='section')tops=topics();
+  else{tops=[];for(const e in D)for(const s in D[e])tops.push(...D[e][s])}
+  const out=[];
+  tops.forEach(t=>t.items.forEach((it,oi)=>{
+    if(p.type==='vocab'&&it.t!=='v')return;
+    if(p.type==='phrase'&&it.t!=='p')return;
+    const k=kk(t.id,oi);
+    if(p.unk&&known[k])return;
+    out.push({it,k,c:t.c});
+  }));
+  return out;
+}
+function qOpen(){
+  auStop();
+  Q.open=true;
+  Q.p.type=filt==='vocab'?'vocab':filt==='phrase'?'phrase':'all';
+  qe('quiz').classList.add('show');
+  qSetup();
+}
+function qClose(){
+  Q.open=false;
+  qe('quiz').classList.remove('show');
+  render();
+}
+function qTop(i,total){
+  qe('qFill').style.width=(total?i/total*100:0)+'%';
+  qe('qCount').textContent=total?`${Math.min(i+1,total)} / ${total}`:'';
+  const s=qe('qStreak');s.textContent='🔥'+Q.streak;s.className='q-streak'+(Q.streak>=3?' on':'');
+}
+function qChip(key,val,label){
+  const v=typeof val==='string'?`'${val}'`:val;
+  return `<button class="q-chip${Q.p[key]===val?' on':''}" onclick="qSet('${key}',${v})">${label}</button>`;
+}
+function qSet(k,v){Q.p[k]=v;qSave();qSetup()}
+function qSetup(){
+  qTop(0,0);
+  const n=qPool().length, take=Q.p.count?Math.min(Q.p.count,n):n;
+  qe('qbody').innerHTML=`
+  <div class="q-setup">
+    <div class="q-h">Quick test</div>
+    <div class="q-sub">See one side, say the answer in your head, flip, then tap how you did.</div>
+    <div class="q-grp"><div class="q-lab">Test me on</div><div class="q-chips">
+      ${qChip('scope','topic','This topic')}${qChip('scope','section','This section')}${qChip('scope','all','Everything')}</div></div>
+    <div class="q-grp"><div class="q-lab">Cards</div><div class="q-chips">
+      ${qChip('type','all','Vocab + phrases')}${qChip('type','vocab','Vocab')}${qChip('type','phrase','Phrases')}</div></div>
+    <div class="q-grp"><div class="q-lab">Show me</div><div class="q-chips">
+      ${qChip('dir','fr','Français → English')}${qChip('dir','en','English → Français')}${qChip('dir','mix','Mixed')}</div></div>
+    <div class="q-grp"><div class="q-lab">How many</div><div class="q-chips">
+      ${qChip('count',10,'10')}${qChip('count',20,'20')}${qChip('count',40,'40')}${qChip('count',0,'All')}</div></div>
+    <div class="q-grp"><div class="q-lab">Skip cards I already know</div><div class="q-chips">
+      ${qChip('unk',true,'Yes')}${qChip('unk',false,'No, include them')}</div></div>
+  </div>
+  <div class="q-foot">
+    <button class="q-go" id="qGo" onclick="qStart()" ${n?'':'disabled'}>${n?`Start · ${take} card${take>1?'s':''}`:'No cards to test'}</button>
+    ${n?'':'<div class="q-note">Everything here is marked known. Try “No, include them”.</div>'}
+  </div>`;
+}
+function qStart(deck){
+  if(!Array.isArray(deck)){
+    const all=qPool();Q.byK={};all.forEach(c=>Q.byK[c.k]=c);
+    deck=qShuf(all);if(Q.p.count)deck=deck.slice(0,Q.p.count);
+  }
+  Q.deck=deck.map(c=>({...c,d:Q.p.dir==='mix'?(Math.random()<.5?'fr':'en'):Q.p.dir,retry:false}));
+  Q.i=0;Q.rev=false;Q.busy=false;Q.first={};Q.streak=0;Q.best=0;
+  qRender();
+}
+function qRender(){
+  if(Q.i>=Q.deck.length){qDone();return}
+  const c=Q.deck[Q.i],it=c.it,front=c.d==='fr'?it.fr:it.en,back=c.d==='fr'?it.en:it.fr;
+  const strip=s=>s.replace(/<[^>]*>/g,'');
+  const lf=strip(front).length>34, lb=strip(back).length>34;
+  const badge=it.t==='v'?`Vocab${it.wc?' · '+it.wc:''}`:'Phrase';
+  qTop(Q.i,Q.deck.length);
+  qe('qbody').innerHTML=`
+  <div class="q-stage"><div class="q-drag" id="qDrag" style="--tc:${c.c}">
+    <div class="q-stamp ok" id="stOk">GOT IT</div><div class="q-stamp no" id="stNo">MISSED</div>
+    <div class="q-flip">
+      <div class="q-face q-front">
+        <div class="q-tag"><span>${c.d==='fr'?'Français':'English'}</span><span>${badge}${c.retry?' · again':''}</span></div>
+        <div class="q-prompt${lf?' long':''}">${front}</div>
+        <div class="q-hint">Tap to reveal</div>
+      </div>
+      <div class="q-face q-back">
+        <div class="q-tag"><span>${c.d==='fr'?'English':'Français'}</span><span>${badge}</span></div>
+        <div class="q-mid">
+          <div class="q-small">${front}</div>
+          <div class="q-ans${lb?' long':''}">${back}</div>
+          <div class="q-exbox"><div class="q-exfr">${it.ex}</div><div class="q-exen">${it.exE}</div></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="q-actions" id="qAct"></div>
+  <div class="q-keys">Space = flip · ← missed · → got it · Esc = close</div>`;
+  qActs();qBind(qe('qDrag'));
+}
+function qActs(){
+  qe('qAct').innerHTML=Q.rev
+    ?`<button class="q-act miss" onclick="qAnswer(false)">${SVG_X} Missed</button><button class="q-act got" onclick="qAnswer(true)">${SVG_OK} Got it</button>`
+    :`<button class="q-act rev" onclick="qFlip()">Show answer</button>`;
+}
+function qFlip(){
+  if(Q.busy)return;
+  Q.rev=!Q.rev;qe('qDrag').classList.toggle('rev',Q.rev);qActs();qBuzz(8);
+}
+function qBind(el){
+  let sx=0,dx=0,down=false,moved=false;
+  const stamps=()=>{
+    qe('stOk').style.opacity=Math.max(0,Math.min(1,dx/90));
+    qe('stNo').style.opacity=Math.max(0,Math.min(1,-dx/90));
+  };
+  el.addEventListener('pointerdown',e=>{
+    if(Q.busy)return;down=true;moved=false;sx=e.clientX;dx=0;
+    el.classList.remove('back');try{el.setPointerCapture(e.pointerId)}catch(_){}
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!down)return;dx=e.clientX-sx;
+    if(Math.abs(dx)>8)moved=true;
+    if(moved&&Q.rev){el.style.transform=`translateX(${dx}px) rotate(${dx/20}deg)`;stamps()}
+  });
+  const end=ev=>{
+    if(!down)return;down=false;
+    if(ev.type==='pointerup'&&!moved){qFlip();return}
+    if(Q.rev&&Math.abs(dx)>90&&ev.type==='pointerup'){qAnswer(dx>0);return}
+    el.classList.add('back');el.style.transform='';dx=0;stamps();
+  };
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+}
+function qAnswer(ok){
+  if(Q.busy||!Q.rev)return;Q.busy=true;
+  const c=Q.deck[Q.i];
+  if(Q.first[c.k]===undefined)Q.first[c.k]=ok;
+  if(ok){Q.streak++;Q.best=Math.max(Q.best,Q.streak);qBuzz(12)}
+  else{
+    Q.streak=0;qBuzz([20,40,20]);
+    if(!c.retry)Q.deck.splice(Math.min(Q.i+5,Q.deck.length),0,{...c,retry:true});
+  }
+  const el=qe('qDrag');
+  qe('stOk').style.opacity=ok?1:0;qe('stNo').style.opacity=ok?0:1;
+  el.classList.remove('back');el.classList.add('fly');
+  el.style.transform=`translateX(${ok?'':'-'}130vw) rotate(${ok?18:-18}deg)`;el.style.opacity=0;
+  setTimeout(()=>{Q.i++;Q.rev=false;Q.busy=false;qRender()},240);
+}
+function qDone(){
+  const ks=Object.keys(Q.first),got=ks.filter(k=>Q.first[k]),miss=ks.filter(k=>!Q.first[k]);
+  const pct=ks.length?Math.round(got.length/ks.length*100):0;
+  qTop(1,1);qe('qFill').style.width='100%';qe('qCount').textContent='Done';
+  qe('qbody').innerHTML=`
+  <div class="q-done">
+    <div class="q-h">${pct>=90?'Excellent !':pct>=70?'Bien joué !':pct>=40?'Getting there':'Keep going'}</div>
+    <div class="q-ring"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="qRing" cx="50" cy="50" r="44"/></svg><div class="q-pct">${pct}%</div></div>
+    <div class="q-stats"><span><b>${got.length}</b> got it</span><span><b>${miss.length}</b> missed</span><span>best streak <b>${Q.best}</b></span></div>
+    ${miss.length?`<div class="q-mlist"><div class="q-mhead">To review</div>${miss.map(k=>{const it=Q.byK[k].it;return `<div class="q-mrow"><b>${it.fr}</b><br><span>${it.en}</span></div>`}).join('')}</div>`:''}
+  </div>
+  <div class="q-foot"><div class="q-donebtns">
+    ${got.length?`<button class="q-go" id="qMark" onclick="qMarkKnown()">Mark ${got.length} as known</button>`:''}
+    ${miss.length?`<button class="q-sec" onclick="qRetry()">Retry ${miss.length} missed</button>`:''}
+    <button class="q-sec" onclick="qClose()">Back to cards</button>
+  </div></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const r=qe('qRing');if(r)r.style.strokeDashoffset=276.46*(1-pct/100)}));
+}
+function qMarkKnown(){
+  Object.keys(Q.first).filter(k=>Q.first[k]).forEach(k=>{known[k]=true});save();
+  const b=qe('qMark');b.textContent='✓ Marked as known';b.disabled=true;qBuzz(15);
+}
+function qRetry(){
+  const m=Object.keys(Q.first).filter(k=>!Q.first[k]).map(k=>Q.byK[k]);
+  qStart(qShuf(m));
+}
+document.addEventListener('keydown',e=>{
+  if(!Q.open)return;
+  const run=!!qe('qDrag');
+  if(e.key==='Escape'){qClose();return}
+  if(!run){if(e.key==='Enter'&&qe('qGo')&&!qe('qGo').disabled)qStart();return}
+  if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!Q.rev)qFlip();else qAnswer(true)}
+  else if(e.key==='ArrowRight'){Q.rev?qAnswer(true):qFlip()}
+  else if(e.key==='ArrowLeft'){Q.rev?qAnswer(false):qFlip()}
+  else if(e.key==='ArrowDown'||e.key==='ArrowUp'){qFlip()}
+});
+
+/* ═══════════════════════════════════════════════
+   LISTEN — recorded female voice (see tools/make_audio.py)
+   One mp3 episode per topic: word · meaning · example.
+   Auto mode just keeps that file playing, so it keeps
+   going with the screen off. Card buttons play a clip.
+   ═══════════════════════════════════════════════ */
+const AU={cues:null,el:null,mode:'idle',on:false,tid:null,row:null,internal:false,stopAt:0,
+  p:{rate:1,loop:'next'}};
+try{Object.assign(AU.p,JSON.parse(localStorage.getItem('tef_audio')||'{}'))}catch(e){}
+const auSave=()=>{try{localStorage.setItem('tef_audio',JSON.stringify(AU.p))}catch(e){}};
+const AU_RATES=[0.85,1,1.15,1.3], AU_LOOPS=[['next','Next topic'],['topic','Repeat topic'],['stop','Play once']];
+const AU_SPK='<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 6v4h3l4 3V3L5 6z"/><path d="M11 5.2a4 4 0 010 5.6M12.8 3.5a6.5 6.5 0 010 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+const AU_PLAY='<svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 1l10 6-10 6z"/></svg>';
+const AU_PAUSE='<svg viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="1" width="4" height="12" rx="1"/><rect x="8" y="1" width="4" height="12" rx="1"/></svg>';
+fetch('audio/cues.json').then(r=>r.ok?r.json():null).then(j=>{
+  if(j&&j.topics){AU.cues=j;document.body.classList.add('has-audio');render()}
+}).catch(()=>{});
+const auStrip=s=>String(s||'').replace(/<[^>]*>/g,'');
+const auRow=(tid,oi)=>{const T=AU.cues&&AU.cues.topics[tid];return T?T.c.find(r=>r[0]===oi):null};
+
+function auEl(){
+  if(AU.el)return AU.el;
+  const a=AU.el=new Audio();a.preload='auto';a.setAttribute('playsinline','');
+  a.addEventListener('timeupdate',auTick);
+  a.addEventListener('ended',auEnded);
+  a.addEventListener('play',()=>{AU.on=true;auUI();if('mediaSession' in navigator)navigator.mediaSession.playbackState='playing'});
+  a.addEventListener('pause',()=>{if(AU.mode==='auto'){AU.on=false;auUI()}if('mediaSession' in navigator)navigator.mediaSession.playbackState='paused'});
+  if('mediaSession' in navigator){
+    const ms=navigator.mediaSession,set=(n,f)=>{try{ms.setActionHandler(n,f)}catch(e){}};
+    set('play',()=>{if(AU.mode==='auto')a.play();else auStart()});
+    set('pause',()=>a.pause());
+    set('nexttrack',()=>navigate(1));
+    set('previoustrack',()=>navigate(-1));
+  }
+  return a;
+}
+function auGo(tid,t,play){
+  const el=auEl(),T=AU.cues.topics[tid];AU.tid=tid;
+  const go=()=>{
+    try{el.currentTime=Math.max(0,t)}catch(e){}
+    el.playbackRate=AU.p.rate;el.loop=AU.mode==='auto'&&AU.p.loop==='topic';
+    if(play){const pr=el.play();if(pr&&pr.catch)pr.catch(()=>{AU.on=false;auUI()})}
+  };
+  if(el.getAttribute('data-t')===tid&&el.readyState>0){go();return}
+  el.setAttribute('data-t',tid);el.src='audio/'+T.f;el.load();
+  el.addEventListener('loadedmetadata',go,{once:true});
+}
+function auStart(){
+  if(!AU.cues)return;
+  if(Q.open)qClose();
+  if(filt!=='all')setFilter('all');
+  const e=entry();if(!e)return;
+  const tid=topic().id,r=auRow(tid,e.oi);
+  AU.mode='auto';AU.row=r;
+  auGo(tid,r?r[1]-0.05:0,true);auMeta();auUI();
+}
+function auStop(){
+  if(AU.el){AU.el.pause();AU.el.loop=false}
+  AU.mode='idle';AU.on=false;AU.row=null;auUI();
+  document.querySelectorAll('.sp').forEach(x=>x.classList.remove('sp'));
+}
+function auToggleStart(){AU.mode==='auto'?auStop():auStart()}
+function auToggle(){if(!AU.el)return;AU.el.paused?AU.el.play():AU.el.pause()}
+function auRate(){
+  const i=AU_RATES.indexOf(AU.p.rate);AU.p.rate=AU_RATES[(i+1)%AU_RATES.length];auSave();
+  if(AU.el)AU.el.playbackRate=AU.p.rate;auUI();
+}
+function auLoop(){
+  const i=AU_LOOPS.findIndex(x=>x[0]===AU.p.loop);AU.p.loop=AU_LOOPS[(i+1)%AU_LOOPS.length][0];auSave();
+  if(AU.el)AU.el.loop=AU.mode==='auto'&&AU.p.loop==='topic';auUI();
+}
+function auUI(){
+  const on=AU.mode==='auto';
+  const pl=document.getElementById('player');if(!pl)return;
+  pl.className='player'+(on?' show':'');
+  const lb=document.getElementById('listenBtn');if(lb)lb.className='listen-btn'+(on?' on':'');
+  if(!on)return;
+  document.getElementById('plPlay').innerHTML=AU.on?AU_PAUSE:AU_PLAY;
+  document.getElementById('plRate').textContent=AU.p.rate+'×';
+  document.getElementById('plLoop').textContent=AU_LOOPS.find(x=>x[0]===AU.p.loop)[1];
+  const e=entry();
+  document.getElementById('plT').textContent=e?auStrip(e.item.fr):'Listening';
+  document.getElementById('plS').textContent=topic().fr+' · '+(ci+1)+' / '+filtered().length;
+}
+function auMeta(){
+  if(!('mediaSession' in navigator)||typeof MediaMetadata==='undefined')return;
+  const e=entry();if(!e)return;
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:auStrip(e.item.fr),artist:auStrip(e.item.en),album:'TEF · '+topic().fr})}catch(x){}
+}
+function auShow(oi){
+  const idx=filtered().findIndex(x=>x.oi===oi);if(idx<0)return;
+  AU.internal=true;ci=idx;expanded=false;renderCard('fwd');renderTopics();
+  document.getElementById('btnPrev').disabled=ci===0;
+  document.getElementById('btnNext').disabled=ci===filtered().length-1;
+  AU.internal=false;auMeta();auUI();
+}
+function auTick(){
+  const el=AU.el,t=el.currentTime;
+  if(AU.mode==='seg'){if(t>=AU.stopAt){el.pause();AU.mode='idle'}auMarkSeg(t);return}
+  if(AU.mode!=='auto')return;
+  const T=AU.cues.topics[AU.tid];if(!T)return;
+  let row=null;for(const r of T.c){if(r[1]-0.15<=t)row=r;else break}
+  if(!row)return;
+  if(AU.row!==row){AU.row=row;if(topic().id===AU.tid)auShow(row[0])}
+  if(t>=row[5]-0.05&&!expanded){expanded=true;const x=document.querySelector('.ex-toggle');if(x)x.className='ex-toggle open'}
+  auMarkSeg(t,row);
+}
+function auMarkSeg(t,row){
+  if(!row){const T=AU.cues.topics[AU.tid];row=T&&T.c.find(r=>t>=r[1]-0.1&&t<=r[6]+0.2)}
+  if(!row)return;
+  const q=s=>document.querySelector(s);
+  const f=q('.card-fr'),n=q('.card-en'),x=q('.ex-fr');
+  if(f)f.classList.toggle('sp',t>=row[1]-0.1&&t<=row[2]+0.2);
+  if(n)n.classList.toggle('sp',t>=row[3]-0.1&&t<=row[4]+0.2);
+  if(x)x.classList.toggle('sp',t>=row[5]-0.1&&t<=row[6]+0.2);
+}
+function auEnded(){
+  if(AU.mode==='seg'){AU.mode='idle';return}
+  if(AU.mode!=='auto')return;
+  if(AU.p.loop==='stop'){auStop();return}
+  const n=topics().length;AU.internal=true;ti=(ti+1)%n;ci=0;expanded=false;render();AU.internal=false;
+  AU.row=null;auGo(topic().id,0,true);auMeta();auUI();
+}
+function auFollow(){   /* user moved to another card/topic while listening: jump the audio there */
+  if(AU.mode!=='auto'||AU.internal||!AU.cues)return;
+  const e=entry();if(!e)return;
+  const tid=topic().id,r=auRow(tid,e.oi);
+  if(!r||(AU.row===r&&AU.tid===tid)){auUI();return}
+  AU.row=r;auGo(tid,r[1]-0.05,AU.on);auMeta();auUI();
+}
+function playCard(ev,kind){
+  if(ev)ev.stopPropagation();
+  if(!AU.cues)return;
+  const e=entry();if(!e)return;
+  const r=auRow(topic().id,e.oi);if(!r)return;
+  if(AU.mode==='auto')auStop();
+  AU.mode='seg';AU.stopAt=(kind==='w'?r[4]:r[6])+0.15;
+  auGo(topic().id,(kind==='w'?r[1]:r[5])-0.05,true);
+}
+
+/* ═══════════════════════════════════════════════
    KEYBOARD + SWIPE
    ═══════════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
+  if(Q.open)return;
+  if(e.key==='p'||e.key==='P'){AU.mode==='auto'?auToggle():auStart();return}
   if(e.key==='ArrowRight')navigate(1);
   if(e.key==='ArrowLeft')navigate(-1);
   if(e.key===' '){e.preventDefault();toggleKnown()}
@@ -1635,6 +2164,7 @@ document.addEventListener('keydown',e=>{
 let tx=0,ty=0;
 document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
 document.addEventListener('touchend',e=>{
+  if(Q.open)return;
   const dx=e.changedTouches[0].clientX-tx;
   const dy=e.changedTouches[0].clientY-ty;
   if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45)navigate(dx<0?1:-1);

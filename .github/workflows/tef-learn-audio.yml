@@ -1,0 +1,36 @@
+name: TEF Learn audio
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tef-learn/index.html'
+      - 'tef-learn/tools/**'
+      - '.github/workflows/tef-learn-audio.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: tef-learn-audio
+  cancel-in-progress: false
+jobs:
+  audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tef-learn
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install edge-tts
+      - run: python tef-learn/tools/make_audio.py
+      - name: Commit audio
+        run: |
+          git config user.name "tef-learn-bot"
+          git config user.email "tef-learn-bot@users.noreply.github.com"
+          git add -A tef-learn/audio
+          git diff --cached --quiet && echo "no changes" && exit 0
+          git commit -m "TEF Learn: refresh recorded audio"
+          for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break || sleep 5; done

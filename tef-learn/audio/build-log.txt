@@ -1,1 +1,53 @@
-audio up to date
+3276 clips, 445 to record, voices: fr-FR-VivienneMultilingualNeural / en-US-AvaMultilingualNeural
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Ses parents étaient fiers de lui, car ...
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Heureusement, quelqu'un a entendu ...
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Rien ne laissait présager que ...
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | From that day on, their relationship was never the
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Sans se douter que la police le surveillait, le vo
+100 / 445
+200 / 445
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Tout s'est bien passé jusqu'à ce que la pluie se m
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Admittedly, technology makes ... easier, but it ..
+300 / 445
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Il vaut mieux prévenir que guérir, c'est pourquoi 
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | La santé mentale mérite autant d'attention que la 
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Il est de la responsabilité de l'État de protéger 
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Trouver un emploi est de plus en plus difficile po
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Le télétravail présente des avantages, notamment u
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Les employeurs devraient offrir davantage de ...
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Les employeurs devraient offrir davantage de flexi
+400 / 445
+retry 1 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Le télétravail présente des avantages, notamment u
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Le prix des logements ne cesse d'augmenter.
+retry 0 NoAudioReceived('No audio was received. Please verify that your parameters are correct.') | Il faut développer les transports en commun afin d
+structureA 10.6 min
+enfants 8.2 min
+famille 8.2 min
+police 9.7 min
+voyage 6.7 min
+animaux 6.3 min
+exploits 9.1 min
+accident 7.0 min
+evenement 5.8 min
+structureB 12.9 min
+techno 9.9 min
+education 8.4 min
+environnement 8.1 min
+sante 8.5 min
+societe 10.5 min
+travail 6.0 min
+ville 5.4 min
+eoA_phrases 10.0 min
+eoA_loisirs 5.2 min
+eoA_voyages 5.1 min
+eoA_culture 5.6 min
+eoA_services 6.2 min
+eoA_logement 4.6 min
+eoA_cours 4.6 min
+eoB_persuasion 9.4 min
+eoB_aventure 5.6 min
+eoB_culture 5.1 min
+eoB_benevole 6.5 min
+eoB_lifestyle 5.0 min
+eoB_voyage 3.4 min
+failed clips: 0 []

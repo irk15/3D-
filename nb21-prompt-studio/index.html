@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NB 2.1 Prompt Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #08090E; --surface: #0F1018; --card: #161720; --card-hover: #1C1D2A;
+  --border: rgba(255,255,255,0.07); --border-hover: rgba(255,255,255,0.16);
+  --text: #EEEEF4; --muted: #8A8AA6; --muted2: #5A5A74;
+  --mode-color: #FDE047; --mode-color-dim: rgba(253,224,71,0.10);
+  --radius: 12px; --radius-sm: 9px; --radius-xs: 6px; --gold: #FBBF24;
+}
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: var(--muted2); border-radius: 3px; }
+
+/* TOP BAR */
+.topbar {
+  flex: 0 0 56px; display: flex; align-items: center; gap: 12px;
+  padding: 0 18px; border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.logo {
+  width: 34px; height: 34px; border-radius: 9px; font-size: 17px;
+  border: 1px solid var(--mode-color); background: var(--mode-color-dim);
+  display: flex; align-items: center; justify-content: center; transition: all .3s;
+}
+.app-name { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: -0.4px; line-height: 1.1; }
+.app-desc { font-size: 11px; color: var(--muted); }
+.spacer { flex: 1; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  font-size: 12.5px; font-weight: 500; transition: all .15s; white-space: nowrap;
+}
+.btn:hover { border-color: var(--border-hover); background: var(--card-hover); }
+.badge {
+  font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 9px;
+  background: var(--mode-color); color: #000; line-height: 1.6;
+}
+
+/* LAYOUT */
+.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 330px 1fr; }
+.side {
+  padding: 14px 16px; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 12px; overflow-y: auto; background: var(--surface);
+}
+.main { padding: 14px 18px 16px; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.label { font-size: 10.5px; font-weight: 600; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; margin-bottom: 6px; }
+
+/* MODES */
+.mode-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.mode-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 7px 2px 6px; text-align: center; color: var(--muted); transition: all .15s;
+}
+.mode-card:hover { border-color: var(--border-hover); color: var(--text); }
+.mode-card.active { border-color: var(--mc); background: color-mix(in srgb, var(--mc) 12%, transparent); color: var(--mc); }
+.mode-icon { display: block; font-size: 17px; line-height: 1.2; }
+.mode-name { display: block; font-size: 10px; font-weight: 600; margin-top: 2px; }
+.mode-tip {
+  display: flex; gap: 8px; font-size: 11.5px; line-height: 1.45; color: var(--muted);
+  border-left: 2px solid var(--mode-color); padding: 2px 0 2px 9px;
+}
+
+/* FIELDS */
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field-label { font-size: 11.5px; font-weight: 500; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.req { font-size: 9px; font-weight: 600; padding: 0 5px; border-radius: 3px; color: var(--mode-color); background: var(--mode-color-dim); }
+.field input {
+  width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-size: 13px; color: var(--text); font-family: inherit; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.field input::placeholder { color: var(--muted2); }
+.field input:focus { border-color: var(--mode-color); box-shadow: 0 0 0 3px var(--mode-color-dim); }
+.btn-shuffle { width: 100%; justify-content: center; padding: 10px; font-size: 13px; }
+.btn-shuffle:hover { border-color: var(--mode-color); color: var(--mode-color); }
+
+/* MAIN BAR */
+.main-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; flex: 0 0 auto; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.seg button {
+  border: none; background: none; color: var(--muted); padding: 6px 16px; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; transition: all .15s;
+}
+.seg button.active { background: var(--mode-color); color: #000; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip {
+  padding: 5px 11px; border-radius: 7px; font-size: 11.5px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--card); color: var(--muted); transition: all .15s;
+}
+.chip:hover { color: var(--text); border-color: var(--border-hover); }
+.chip.active { color: var(--mode-color); border-color: var(--mode-color); background: var(--mode-color-dim); font-weight: 600; }
+.mode-badge { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--mode-color); }
+
+/* CARD GRID (fills the screen, no page scroll) */
+.grid { flex: 1; min-height: 0; display: grid; gap: 10px; }
+.grid.styles { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.grid.angles { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.grid.angles .card { grid-column: span 2; }
+.grid.angles .card:nth-child(n+4) { grid-column: span 3; }
+.card {
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 12px 10px; transition: border-color .2s;
+}
+.card:hover { border-color: var(--border-hover); }
+.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex: 0 0 auto; }
+.card-label {
+  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 5px;
+  background: var(--mode-color-dim); color: var(--mode-color);
+  border: 1px solid color-mix(in srgb, var(--mode-color) 25%, transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.card-words { font-size: 10.5px; color: var(--muted2); margin-left: auto; white-space: nowrap; }
+.btn-sm {
+  padding: 4px 10px; border-radius: var(--radius-xs); font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all .15s; white-space: nowrap;
+}
+.btn-sm:hover { border-color: var(--mode-color); color: var(--mode-color); }
+.btn-sm.copy { background: var(--mode-color); border-color: var(--mode-color); color: #000; }
+.btn-sm.copy:hover { filter: brightness(1.1); color: #000; }
+.btn-sm.saved { border-color: var(--mode-color); color: var(--mode-color); background: var(--mode-color-dim); }
+.card-hint { font-size: 10.5px; color: var(--muted2); line-height: 1.4; margin-bottom: 8px; flex: 0 0 auto;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-body { flex: 1; min-height: 0; overflow-y: auto; font-size: clamp(11.5px, 1.75vh, 13.5px); line-height: 1.55; word-break: break-word; padding-right: 2px; }
+.card-body.mono { white-space: pre-wrap; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: clamp(10.5px, 1.6vh, 12px); line-height: 1.45; }
+
+.empty {
+  grid-column: 1 / -1; grid-row: 1 / -1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; gap: 8px;
+  border: 1px dashed var(--border-hover); border-radius: var(--radius); color: var(--muted);
+}
+.empty b { font-size: 34px; font-weight: 400; }
+.empty p { font-size: 13px; max-width: 340px; }
+
+/* SAVED DRAWER */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50; }
+.scrim.show { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); z-index: 60;
+  background: var(--surface); border-left: 1px solid var(--border-hover);
+  transform: translateX(100%); transition: transform .25s ease; display: flex; flex-direction: column;
+}
+.drawer.show { transform: none; }
+.drawer-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.drawer-top h3 { font-family: 'Syne', sans-serif; font-size: 15px; flex: 1; }
+.drawer-list { flex: 1; overflow-y: auto; padding: 12px 16px; }
+.saved-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px; margin-bottom: 8px; }
+.saved-item-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.saved-dot { width: 7px; height: 7px; border-radius: 50%; }
+.saved-meta { flex: 1; font-size: 10px; font-weight: 600; color: var(--muted); }
+.btn-star { background: none; border: none; font-size: 15px; color: var(--muted2); }
+.btn-star.active { color: var(--gold); }
+.saved-text { font-size: 12px; line-height: 1.5; max-height: 4.6em; overflow: hidden; white-space: pre-wrap; margin-bottom: 9px; }
+.saved-actions { display: flex; gap: 6px; }
+.btn-txt { background: none; border: none; font-size: 11px; color: var(--muted2); }
+.btn-txt:hover { color: #EF4444; }
+.empty-state { text-align: center; padding: 28px 12px; font-size: 13px; color: var(--muted2); }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translate(-50%, 80px); opacity: 0;
+  background: var(--card); border: 1px solid var(--mode-color); border-radius: var(--radius-sm);
+  padding: 9px 16px; font-size: 13px; z-index: 999; display: flex; gap: 8px; align-items: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5); transition: all .25s; pointer-events: none;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+/* Shorter laptop screens: tighten */
+@media (max-height: 780px) {
+  .card-hint { display: none; }
+  .side { gap: 9px; padding: 10px 14px; }
+  .mode-card { padding: 5px 2px 4px; }
+  .mode-tip { display: none; }
+}
+/* Narrow screens: stack and scroll normally */
+@media (max-width: 1000px) {
+  body { overflow: auto; height: auto; }
+  .layout { grid-template-columns: 1fr; }
+  .side { border-right: none; border-bottom: 1px solid var(--border); overflow: visible; }
+  .grid.styles, .grid.angles { grid-template-columns: 1fr 1fr; grid-template-rows: none; }
+  .grid.angles .card, .grid.angles .card:nth-child(n+4) { grid-column: auto; }
+  .card { min-height: 230px; }
+  .app-desc { display: none; }
+}
+@media (max-width: 640px) {
+  .grid.styles, .grid.angles { grid-template-columns: 1fr; }
+  .mode-badge { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo" id="logo">👻</div>
+  <div>
+    <div class="app-name">NB 2.1 Prompt Studio</div>
+    <div class="app-desc">Rejection-proof prompts for Nano Banana 2.1 in Google Flow</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="savedBtn">★ Saved <span class="badge" id="savedCount">0</span></button>
+</div>
+
+<div class="layout">
+  <aside class="side">
+    <div>
+      <div class="label">Shoot mode</div>
+      <div class="mode-grid" id="modeGrid"></div>
+    </div>
+    <div class="mode-tip" id="modeTip"><span id="tipText"></span></div>
+
+    <div class="field">
+      <div class="field-label">Subject <span class="req">required</span></div>
+      <input id="f-subject" placeholder="e.g. a woman in her 20s, two friends, a man" autocomplete="off" />
+    </div>
+    <div class="field">
+      <div class="field-label">Scene / Location</div>
+      <input id="f-scene" placeholder="e.g. rooftop at golden hour, busy Tokyo street" autocomplete="off" />
+    </div>
+    <div class="field">
+      <div class="field-label">Outfit</div>
+      <input id="f-outfit" placeholder="e.g. oversized white hoodie, leather jacket" autocomplete="off" />
+    </div>
+    <div class="field">
+      <div class="field-label">Expression / Mood</div>
+      <input id="f-expression" placeholder="e.g. laughing, looking away, intense gaze" autocomplete="off" />
+    </div>
+    <button class="btn btn-shuffle" id="shuffleBtn">🎲 Shuffle fields</button>
+  </aside>
+
+  <main class="main">
+    <div class="main-bar">
+      <div class="seg" id="viewSeg">
+        <button data-view="styles" class="active">6 Prompt styles</button>
+        <button data-view="angles">5 Angles</button>
+      </div>
+      <div class="chips" id="styleChips" style="display:none"></div>
+      <div class="mode-badge" id="modeBadge"></div>
+    </div>
+    <div class="grid styles" id="grid"></div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-top">
+    <h3>Saved prompts</h3>
+    <button class="btn-sm" id="tabAll">All <span id="countAll">0</span></button>
+    <button class="btn-sm" id="tabFav">★ <span id="countFav">0</span></button>
+    <button class="btn-txt" id="clearBtn">Clear</button>
+    <button class="btn-sm" id="closeDrawer">✕</button>
+  </div>
+  <div class="drawer-list" id="savedList"></div>
+</aside>
+
+<div class="toast" id="toast"><span id="toastIcon">✓</span><span id="toastMsg">Done</span></div>
+
+<script>
+// ─── MODE DATA ─────────────────────────────────────────────────────────────────
+const MODES = [
+  {
+    id: 'snapchat', label: 'Snapchat Pic', shortLabel: 'Snap',
+    icon: '👻', color: '#FDE047', textColor: '#000000',
+    tip: 'Casual, authentic, real-moment energy. Angles cover front selfie, mirror selfie, friend-shot candid, direct flash and timer shot. Best at 9:16.',
+    shuffles: {
+      subject:    ['a young woman laughing', 'two friends hanging out', 'a guy in his early 20s', 'a girl with curly hair', 'a college student'],
+      scene:      ['a convenience store at night', 'inside a moving car', 'a kitchen counter', 'a sunny park', 'a dorm room', 'a stairwell'],
+      outfit:     ['oversized white hoodie', 'crop top and jeans', 'vintage graphic tee', 'cozy knit sweater', 'baggy cargos and tank'],
+      expression: ['mid-laugh, eyes crinkled', 'looking away candidly', 'caught off-guard smiling', 'big grin at camera', 'squinting in sunlight']
+    },
+    build: (s) => {
+      let p = s.subject || 'a person';
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      p += '. Casual handheld POV snapshot, natural available light, authentic candid moment';
+      if (s.outfit) p += `, ${s.outfit}`;
+      p += '. Slightly imperfect framing, real-life texture, no filters, no staging. No watermarks, no text, no duplicate subjects.';
+      return p;
+    },
+    // Snapchat-specific capture concepts (replace the generic framing angles)
+    angles: [
+      { label: 'Front selfie', cam: 'Front-camera selfie held at arm\'s length, phone slightly above eye level, visible arm and shoulder at the frame edge, subtle wide-angle phone-lens distortion, looking into the lens' },
+      { label: 'Mirror selfie', cam: 'Mirror selfie, phone held up and visible in the reflection covering part of the face or chest, full or half-body in the mirror, slightly smudged mirror glass, room details reflected behind' },
+      { label: 'Friend-shot candid', cam: 'Candid photo taken by a friend from a few steps away, subject caught mid-moment and not striking a pose, handheld phone shot, slightly off-center framing, mid-moment' },
+      { label: 'Direct flash', cam: 'Direct on-camera phone flash snap, harsh flash falloff, blown-out highlights, dark background, shiny skin, late-night party-photo energy', light: 'Harsh direct flash lighting as the main light source' },
+      { label: 'Propped / timer shot', cam: 'Phone propped on a surface with the self-timer, subject stepping back into frame, full body visible, slightly tilted horizon, wide-angle phone lens' }
+    ],
+    angleBuild: (s, a) => {
+      let p = s.subject || 'a person';
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      if (s.outfit) p += `, wearing ${s.outfit}`;
+      p += `. ${a.cam}. ${a.light || 'Natural available light'}, authentic Snapchat-style snapshot, slightly imperfect framing, real-life texture, no filters, no staging. No watermarks, no text, no duplicate subjects.`;
+      return p;
+    }
+  },
+  {
+    id: 'photoshoot', label: 'Photoshoot', shortLabel: 'Studio',
+    icon: '📸', color: '#38BDF8', textColor: '#000000',
+    tip: 'Editorial studio quality. Three-quarter angle, clean commercial finish. 4:5 for feed-ready results.',
+    shuffles: {
+      subject:    ['a model in her mid-20s', 'a young couple', 'a man with strong features', 'a woman with short hair', 'a teenager'],
+      scene:      ['a white cyclorama studio', 'an ivy-covered brick wall', 'a rooftop in golden hour', 'a minimal loft with concrete walls', 'an empty warehouse'],
+      outfit:     ['a sharp black blazer and trousers', 'a flowy white silk dress', 'fitted cream turtleneck', 'oversized tailored coat', 'structured denim set'],
+      expression: ['confident direct gaze', 'soft smile, eyes slightly down', 'looking over shoulder', 'neutral, jaw relaxed', 'chin tilted up, composed']
+    },
+    build: (s) => {
+      let p = s.subject || 'a person';
+      if (s.outfit) p += ` wearing ${s.outfit}`;
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      p += '. Editorial photography, three-quarter angle, soft box light from the left, shallow depth of field, clean commercial finish. No watermarks, no extra people, no text.';
+      return p;
+    }
+  },
+  {
+    id: 'cinematic', label: 'Cinematic', shortLabel: 'Film',
+    icon: '🎬', color: '#FB923C', textColor: '#000000',
+    tip: 'Film still energy. Anamorphic lens, dramatic backlight, deep color grading. 16:9 for widescreen.',
+    shuffles: {
+      subject:    ['a lone figure', 'a detective', 'a young soldier', 'a scientist', 'a woman in her 40s standing still'],
+      scene:      ['a rain-soaked city street at night', 'a desert highway at dusk', 'an empty subway car', 'a fog-covered bridge', 'a burning warehouse exterior'],
+      outfit:     ['a dark trench coat', 'worn military fatigues', 'a weathered leather jacket', 'a white lab coat, open', 'a tailored suit, collar up'],
+      expression: ['stoic, forward gaze', 'jaw set, determined', 'haunted, distant look', 'fearless, eyes sharp', 'resigned, looking down']
+    },
+    build: (s) => {
+      let p = s.subject || 'a person';
+      if (s.outfit) p += ` in ${s.outfit}`;
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      p += '. Cinematic film still, anamorphic lens, dramatic backlight, deep color grading, wide establishing angle. No text, no watermarks, no duplicate figures.';
+      return p;
+    }
+  },
+  {
+    id: 'editorial', label: 'Editorial', shortLabel: 'Magazine',
+    icon: '✦', color: '#F472B6', textColor: '#000000',
+    tip: 'Magazine and high-fashion grade. Overhead rim light, clean editorial backdrop. 2:3 for a natural cover format.',
+    shuffles: {
+      subject:    ['a fashion figure', 'a model with strong bone structure', 'a woman in her 30s', 'a man with striking presence'],
+      scene:      ['a marble floor gallery', 'a Paris courtyard in soft daylight', 'a minimal all-white room', 'a coastal cliff at magic hour'],
+      outfit:     ['a sculptural couture gown in ivory', 'a sharp double-breasted suit', 'a sheer layered top with wide-leg trousers', 'bold printed co-ord set'],
+      expression: ['aloof, slightly parted lips', 'intense direct stare', 'chin raised, composed', 'eyes closed, serene']
+    },
+    build: (s) => {
+      let p = s.subject || 'a fashion figure';
+      if (s.outfit) p += ` wearing ${s.outfit}`;
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      p += '. High fashion editorial photography, overhead rim light, clean editorial backdrop, magazine quality finish. No watermarks, no text overlay, no extra figures.';
+      return p;
+    }
+  },
+  {
+    id: 'portrait', label: 'Dramatic Portrait', shortLabel: 'Portrait',
+    icon: '🎭', color: '#A78BFA', textColor: '#ffffff',
+    tip: 'Moody, close-up, artistic. Dramatic single-source light with fine skin texture. 1:1 for square portraits.',
+    shuffles: {
+      subject:    ['a middle-aged man', 'a young woman with striking eyes', 'an elderly person with deep lines', 'a person with natural textured hair'],
+      scene:      ['a dark studio background', 'warm candlelight from below', 'a blue hour window', 'morning fog outside, diffused'],
+      outfit:     ['a collarless linen shirt', 'bare shoulders, draped fabric', 'a dark turtleneck', 'nothing, shoulders only'],
+      expression: ['intense, slightly furrowed', 'eyes glistening with held emotion', 'calm, deeply inward', 'a barely-there smirk']
+    },
+    build: (s) => {
+      let p = `Close-up portrait of ${s.subject || 'a person'}`;
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      if (s.outfit) p += `, ${s.outfit}`;
+      p += '. Dramatic single-source side lighting, shallow depth of field, fine skin texture, artistic mood. No text, no watermarks.';
+      return p;
+    }
+  },
+  {
+    id: 'street', label: 'Street', shortLabel: 'Street',
+    icon: '🏙️', color: '#4ADE80', textColor: '#000000',
+    tip: 'Raw, urban, documentary style. 35mm grain, available light, environmental context.',
+    shuffles: {
+      subject:    ['a street vendor', 'a commuter mid-step', 'a skateboarder in motion', 'a person on a phone call', 'a couple arguing quietly'],
+      scene:      ['a wet neon-lit street in Tokyo at night', 'a New York subway platform', 'a London market in the morning', 'a Mumbai side alley at noon'],
+      outfit:     ['a worn denim jacket', 'a business suit, slightly disheveled', 'a bright orange tracksuit', 'a long floral dress, wind-caught'],
+      expression: ['unaware of camera', 'mid-step, focused ahead', 'eyes on the horizon', 'talking, hands gesturing']
+    },
+    build: (s) => {
+      let p = s.subject || 'a person';
+      if (s.outfit) p += ` in ${s.outfit}`;
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      p += '. Street documentary photography, 35mm grain, available light, environmental context, candid moment. No watermarks, no text.';
+      return p;
+    }
+  },
+  {
+    id: 'fantasy', label: 'Fantasy', shortLabel: 'Fantasy',
+    icon: '✨', color: '#818CF8', textColor: '#ffffff',
+    tip: 'Surreal and imaginative. God-ray lighting, hyper-detailed painterly realism. Best at 2:3.',
+    shuffles: {
+      subject:    ['a warrior goddess', 'a celestial being made of light', 'an ancient mage', 'a fallen angel', 'a cyborg oracle'],
+      scene:      ['a crumbling floating palace above storm clouds', 'an underwater cathedral filled with bioluminescence', 'a burning forest at night, frozen in time', 'a cosmic void with floating ancient ruins'],
+      outfit:     ['ethereal white armor with golden runes', 'flowing iridescent robes, wind-torn', 'obsidian plate mail with ember cracks', 'a cloak woven from starlight and shadow'],
+      expression: ['commanding, eyes glowing faintly', 'serene, all-knowing', 'fierce and unbreakable', 'quiet grief, otherworldly calm']
+    },
+    build: (s) => {
+      let p = s.subject || 'a figure';
+      if (s.outfit) p += ` wearing ${s.outfit}`;
+      if (s.expression) p += `, ${s.expression}`;
+      if (s.scene) p += `, ${s.scene}`;
+      p += '. Fantasy concept art, god-ray lighting, surreal atmosphere, hyper-detailed painterly realism. No watermarks, no text, no extra figures.';
+      return p;
+    }
+  },
+  {
+    id: 'product', label: 'Product Shot', shortLabel: 'Product',
+    icon: '🛍️', color: '#CBD5E1', textColor: '#000000',
+    tip: 'Commercial-clean product photography. Leave Outfit and Expression blank — focus on Subject and Surface.',
+    shuffles: {
+      subject:    ['a glass perfume bottle with gold cap', 'a matte black coffee mug', 'a skincare serum in an amber dropper bottle', 'a pair of white minimalist sneakers', 'a leather wallet, open'],
+      scene:      ['a white marble surface with soft shadows', 'a dark linen fabric background', 'a wet black stone surface', 'a pastel peach gradient backdrop', 'a rough concrete shelf'],
+      outfit:     ['', '', '', '', ''],
+      expression: ['', '', '', '', '']
+    },
+    build: (s) => {
+      let p = s.subject || 'a product';
+      p += ` on ${s.scene || 'a clean white surface'}`;
+      p += ', centered, three-quarter angle, soft diffused light from the left, shallow depth of field, commercial product photography. No additional objects, no watermarks, no text.';
+      return p;
+    }
+  }
+];
+
+// ─── ANGLE DEFINITIONS ───────────────────────────────────────────────────────
+const ANGLE_DEFS = [
+  { label: 'Standard',      frame: null }, // uses base build as-is
+  { label: 'Close-up',      frame: 'tight close-up frame, subject fills the shot' },
+  { label: 'Wide shot',     frame: 'wide environmental frame, subject small in context' },
+  { label: 'Over-shoulder', frame: 'over-the-shoulder camera angle, looking past subject' },
+  { label: 'Low angle',     frame: 'low camera angle looking upward, dramatic perspective' }
+];
+
+function buildAngles(fields) {
+  if (activeMode.angles && activeMode.angleBuild) {
+    return activeMode.angles.map(a => ({
+      label: a.label, shot: a.cam, prompt: activeMode.angleBuild(fields, a)
+    }));
+  }
+  const base = activeMode.build(fields);
+  const dotIdx = base.indexOf('. ');
+  if (dotIdx === -1) {
+    return ANGLE_DEFS.map(a => ({ label: a.label, shot: a.frame || '', prompt: base }));
+  }
+  const desc  = base.slice(0, dotIdx);
+  const style = base.slice(dotIdx + 2);
+
+  return ANGLE_DEFS.map(a => ({
+    label: a.label,
+    shot: a.frame || '',
+    prompt: a.frame
+      ? `${desc}, ${a.frame}. ${style}`
+      : base
+  }));
+}
+
+// ─── PROMPT STYLES ───────────────────────────────────────────────────────────
+// Same idea, written in different shapes that Nano Banana 2.x understands well.
+// Sources: Google's Nano Banana prompting guide (narrative scene formula,
+// creative-director controls, verb-led edits with "keep unchanged"),
+// plus structured / comma-hierarchy formats used by the community.
+
+// Per-mode extras for the "Creative-director brief" style
+const DIRECTOR = {
+  snapchat:   { lead: 'Create a photorealistic phone-camera snapshot of ',       grade: 'unedited phone-camera color, slight sensor noise, no beauty filter', texture: 'real skin texture, fabric creases, everyday clutter in the background' },
+  photoshoot: { lead: 'Create a photorealistic studio photograph of ',           grade: 'clean neutral grade with true-to-life skin tones',                   texture: 'visible fabric weave, natural skin pores' },
+  cinematic:  { lead: 'Create a photorealistic cinematic film still of ',        grade: 'cinematic color grading with muted teal shadows and warm highlights, subtle 35mm film grain', texture: 'practical-light halation, atmospheric haze' },
+  editorial:  { lead: 'Create a high-end editorial photograph of ',              grade: 'high-saturation magazine grade, medium-format film look with visible grain', texture: 'fabric sheen, fine makeup detail' },
+  portrait:   { lead: 'Create a dramatic photorealistic portrait of ',           grade: 'deep contrast with slightly desaturated tones',                      texture: 'skin pores, fine hair strands, catchlights in the eyes' },
+  street:     { lead: 'Create a candid street photograph of ',                   grade: 'documentary grade, slightly grainy, as if shot on 1980s color film', texture: 'weathered surfaces, reflections on wet asphalt' },
+  fantasy:    { lead: 'Create a painterly fantasy concept-art image of ',        grade: 'rich painterly grade with luminous highlights',                      texture: 'etched metal, woven cloth, layered atmospheric depth' },
+  product:    { lead: 'Create a commercial product photograph of ',              grade: 'neutral clean grade with accurate product color',                    texture: 'material grain, crisp edges, subtle micro-reflections' }
+};
+
+function parsePrompt(raw, shot, f) {
+  const i = raw.indexOf('. ');
+  const desc = i === -1 ? raw.replace(/\.$/, '') : raw.slice(0, i);
+  const rest = i === -1 ? '' : raw.slice(i + 2);
+  const dropOutfit = x => {
+    if (!f || !f.outfit) return x;
+    return x.split(', wearing ' + f.outfit).join('').split(', ' + f.outfit).join('');
+  };
+  const sents = rest.split(/\.\s+/).map(x => dropOutfit(x.replace(/\.$/, '').trim())).filter(Boolean);
+  const isNeg = x => /^no\s/i.test(x);
+  // A few modes put framing/style words inside the first sentence; pull them out
+  const extra = [];
+  if (/^Close-up portrait of /.test(desc)) extra.push('Close-up portrait framing');
+  if (activeMode.id === 'product') {
+    let t = desc.replace(f && f.subject ? f.subject : '', '').replace(' on ' + ((f && f.scene) || 'a clean white surface'), '');
+    t = t.replace(/^[,\s]+/, '').trim();
+    if (t) extra.push(t);
+  }
+  return {
+    raw, desc,
+    style:  [...extra, ...sents.filter(x => !isNeg(x) && x !== shot)],
+    negRaw: sents.filter(isNeg),
+    neg:    sents.filter(isNeg).flatMap(x => x.replace(/\bno\s+/gi, '').split(/,\s*/))
+  };
+}
+
+const joinSent = arr => arr.filter(Boolean).map(x => (x[0].toUpperCase() + x.slice(1)).replace(/([^.!?])$/, '$1.')).join(' ');
+
+const PROMPT_STYLES = [
+  {
+    id: 'narrative', label: 'Narrative scene',
+    hint: 'Google’s core formula: subject + action + location + composition + style, as one flowing description. Best all-rounder.',
+    render: (f, c) => c.raw
+  },
+  {
+    id: 'director', label: 'Director brief',
+    hint: 'Narrative plus the director controls Google recommends: strong opening verb, color grading / film stock, and named materials and textures.',
+    render: (f, c, mode) => {
+      const d = DIRECTOR[mode.id] || {};
+      const lead = d.lead || 'Create an image of ';
+      return lead + c.desc + '. ' + joinSent([
+        ...c.style,
+        d.grade ? 'Color grading: ' + d.grade : '',
+        d.texture ? 'Materials and texture: ' + d.texture : '',
+        ...c.negRaw
+      ]);
+    }
+  },
+  {
+    id: 'labeled', label: 'Labeled blocks', mono: true,
+    hint: 'Each element on its own line. Easy to scan and tweak one part at a time (swap the setting, keep the rest).',
+    render: (f, c) => {
+      const L = [];
+      if (f.subject)    L.push('Subject: ' + f.subject);
+      if (f.expression) L.push('Expression / mood: ' + f.expression);
+      if (f.scene)      L.push('Setting: ' + f.scene);
+      if (f.outfit)     L.push('Wardrobe: ' + f.outfit);
+      if (c.shot)       L.push('Shot: ' + c.shot);
+      if (c.style.length) L.push('Style and light: ' + c.style.join('. ') + '.');
+      if (c.neg.length) L.push('Avoid: ' + c.neg.join(', ') + '.');
+      return L.join('\n');
+    }
+  },
+  {
+    id: 'json', label: 'Structured JSON', mono: true,
+    hint: 'Same content as named fields. It is a way to organize, not a magic switch — useful when you reuse and swap parts across many generations.',
+    render: (f, c) => {
+      const o = {};
+      if (f.subject)    o.subject = f.subject;
+      if (f.expression) o.expression = f.expression;
+      if (f.scene)      o.setting = f.scene;
+      if (f.outfit)     o.wardrobe = f.outfit;
+      if (c.shot)       o.shot = c.shot;
+      if (c.style.length) o.style_and_lighting = c.style;
+      if (c.neg.length) o.avoid = c.neg;
+      return JSON.stringify(o, null, 2).replace(/"avoid": \[\s*([\s\S]*?)\s*\]/, (m, inner) => '"avoid": [' + inner.replace(/\s*\n\s*/g, ' ') + ']');
+    }
+  },
+  {
+    id: 'keywords', label: 'Keyword stack',
+    hint: 'Compact comma-separated hierarchy (subject, action, setting, wardrobe, shot, style). Short and fast, good for lighter models and quick drafts.',
+    render: (f, c) => {
+      const lc = x => /^[A-Z][a-z]/.test(x) ? x[0].toLowerCase() + x.slice(1) : x;
+      const parts = [f.subject, f.expression, f.scene, f.outfit, c.shot, ...c.style].filter(Boolean).map(lc);
+      let out = parts.join(', ');
+      if (c.neg.length) out += '. Avoid: ' + c.neg.join(', ');
+      return out + '.';
+    }
+  },
+  {
+    id: 'reference', label: 'Reference edit',
+    hint: 'For when you attach your own photo (or a product photo). Verb-led, and states exactly what must stay unchanged. Your Subject field is replaced by the photo.',
+    render: (f, c, mode) => {
+      if (mode.id === 'product') {
+        return joinSent([
+          'Using the attached product photo as the exact reference, keep the product’s shape, label, logo and colors unchanged',
+          'Place it ' + (f.scene ? 'on ' + f.scene : 'on a clean surface'),
+          c.shot,
+          ...c.style,
+          ...c.negRaw
+        ]);
+      }
+      const scene = ['show that exact person', f.expression, f.scene, f.outfit ? 'wearing ' + f.outfit : ''].filter(Boolean).join(', ');
+      return joinSent([
+        'Using the attached reference photo as the identity reference, ' + scene,
+        'Keep their face, hairstyle, skin tone and proportions identical to the reference; change only what is described here',
+        c.shot,
+        ...c.style,
+        ...c.negRaw
+      ]);
+    }
+  }
+];
+
+function renderStyle(styleId, fields, built) {
+  const st = PROMPT_STYLES.find(x => x.id === styleId) || PROMPT_STYLES[0];
+  const ctx = parsePrompt(built.prompt, built.shot || '', fields);
+  ctx.shot = built.shot || '';
+  return st.render(fields, ctx, activeMode);
+}
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let activeMode = MODES[0];
+let view = 'styles';
+let angleStyle = 'narrative';
+let activeTab = 'all';
+let saved = [];
+try { saved = JSON.parse(localStorage.getItem('nb21_saved') || '[]'); } catch (e) {}
+let debounceTimer;
+const $ = id => document.getElementById(id);
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function init() {
+  const grid = $('modeGrid');
+  MODES.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'mode-card'; b.id = 'mcard-' + m.id;
+    b.style.setProperty('--mc', m.color);
+    b.innerHTML = `<span class="mode-icon">${m.icon}</span><span class="mode-name">${esc(m.shortLabel)}</span>`;
+    b.title = m.label;
+    b.addEventListener('click', () => selectMode(m));
+    grid.appendChild(b);
+  });
+
+  ['f-subject', 'f-scene', 'f-outfit', 'f-expression'].forEach(id => {
+    $(id).addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(render, 120); });
+  });
+
+  document.querySelectorAll('#viewSeg button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  $('shuffleBtn').addEventListener('click', shuffle);
+  $('savedBtn').addEventListener('click', () => toggleDrawer(true));
+  $('closeDrawer').addEventListener('click', () => toggleDrawer(false));
+  $('scrim').addEventListener('click', () => toggleDrawer(false));
+  $('tabAll').addEventListener('click', () => { activeTab = 'all'; renderSaved(); });
+  $('tabFav').addEventListener('click', () => { activeTab = 'favorites'; renderSaved(); });
+  $('clearBtn').addEventListener('click', clearSaved);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleDrawer(false); });
+
+  buildStyleChips();
+  selectMode(MODES[0]);
+  renderSaved();
+  $('f-subject').focus();
+}
+
+function selectMode(mode) {
+  activeMode = mode;
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+  $('mcard-' + mode.id).classList.add('active');
+  const root = document.documentElement;
+  root.style.setProperty('--mode-color', mode.color);
+  root.style.setProperty('--mode-color-dim', hexAlpha(mode.color, 0.10));
+  const logo = $('logo');
+  logo.textContent = mode.icon;
+  logo.style.background = hexAlpha(mode.color, 0.12);
+  $('tipText').textContent = mode.tip;
+  $('modeBadge').textContent = mode.icon + ' ' + mode.label;
+  const prod = mode.id === 'product';
+  $('f-outfit').placeholder = prod ? 'Leave blank for products' : 'e.g. oversized white hoodie, leather jacket';
+  $('f-expression').placeholder = prod ? 'Leave blank for products' : 'e.g. laughing, looking away, intense gaze';
+  render();
+}
+
+function setView(v) {
+  view = v;
+  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  $('styleChips').style.display = v === 'angles' ? 'flex' : 'none';
+  render();
+}
+
+function buildStyleChips() {
+  const box = $('styleChips');
+  box.innerHTML = '';
+  PROMPT_STYLES.forEach(st => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (st.id === angleStyle ? ' active' : '');
+    b.textContent = st.label;
+    b.title = st.hint;
+    b.addEventListener('click', () => { angleStyle = st.id; buildStyleChips(); render(); });
+    box.appendChild(b);
+  });
+}
+
+function getFields() {
+  return {
+    subject: $('f-subject').value.trim(),
+    scene: $('f-scene').value.trim(),
+    outfit: $('f-outfit').value.trim(),
+    expression: $('f-expression').value.trim()
+  };
+}
+
+// ─── RENDER (everything updates live, no Generate button) ─────────────────────
+function render() {
+  const f = getFields();
+  const grid = $('grid');
+  grid.className = 'grid ' + view;
+  grid.innerHTML = '';
+
+  if (!f.subject) {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    e.innerHTML = `<b>${activeMode.icon}</b><p>Type a <strong>Subject</strong> on the left. Your prompt appears here instantly in 6 styles, and in 5 camera angles.</p>`;
+    grid.appendChild(e);
+    return;
+  }
+
+  if (view === 'styles') {
+    const built = { prompt: activeMode.build(f), shot: '' };
+    PROMPT_STYLES.forEach(st => {
+      grid.appendChild(makeCard({ label: st.label, hint: st.hint, prompt: renderStyle(st.id, f, built), mono: st.mono, saveLabel: st.label }));
+    });
+  } else {
+    const st = PROMPT_STYLES.find(x => x.id === angleStyle) || PROMPT_STYLES[0];
+    buildAngles(f).forEach(a => {
+      grid.appendChild(makeCard({ label: a.label, hint: st.label + ' style', prompt: renderStyle(st.id, f, a), mono: st.mono, saveLabel: a.label + ' · ' + st.label }));
+    });
+  }
+}
+
+function makeCard({ label, hint, prompt, mono, saveLabel }) {
+  const isSaved = saved.some(x => x.prompt === prompt);
+  const words = prompt.split(/\s+/).filter(Boolean).length;
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.prompt = prompt;
+
+  const head = document.createElement('div');
+  head.className = 'card-head';
+  const lab = document.createElement('span'); lab.className = 'card-label'; lab.textContent = label;
+  const w = document.createElement('span'); w.className = 'card-words'; w.textContent = words + 'w';
+  const save = document.createElement('button');
+  save.className = 'btn-sm save' + (isSaved ? ' saved' : '');
+  save.textContent = isSaved ? 'Saved ✓' : 'Save';
+  save.addEventListener('click', () => toggleSave(prompt, saveLabel || label));
+  const copy = document.createElement('button');
+  copy.className = 'btn-sm copy'; copy.textContent = 'Copy';
+  copy.addEventListener('click', () => copyText(prompt));
+  head.append(lab, w, save, copy);
+  card.appendChild(head);
+
+  if (hint) { const h = document.createElement('div'); h.className = 'card-hint'; h.textContent = hint; h.title = hint; card.appendChild(h); }
+  const body = document.createElement('div');
+  body.className = 'card-body' + (mono ? ' mono' : '');
+  body.textContent = prompt;
+  card.appendChild(body);
+  return card;
+}
+
+function refreshSaveStates() {
+  document.querySelectorAll('#grid .card').forEach(card => {
+    const btn = card.querySelector('.save');
+    const isSaved = saved.some(x => x.prompt === card.dataset.prompt);
+    btn.textContent = isSaved ? 'Saved ✓' : 'Save';
+    btn.classList.toggle('saved', isSaved);
+  });
+}
+
+// ─── SHUFFLE ─────────────────────────────────────────────────────────────────
+function shuffle() {
+  const s = activeMode.shuffles;
+  const pick = arr => { const v = arr.filter(x => x.trim()); return v.length ? v[Math.floor(Math.random() * v.length)] : ''; };
+  $('f-subject').value = pick(s.subject);
+  $('f-scene').value = pick(s.scene);
+  $('f-outfit').value = pick(s.outfit);
+  $('f-expression').value = pick(s.expression);
+  render();
+}
+
+// ─── SAVED ───────────────────────────────────────────────────────────────────
+function toggleSave(prompt, label) {
+  if (saved.some(x => x.prompt === prompt)) {
+    saved = saved.filter(x => x.prompt !== prompt);
+    showToast('−', 'Removed');
+  } else {
+    saved.unshift({ id: Date.now() + Math.random(), modeId: activeMode.id, modeLabel: activeMode.label, modeColor: activeMode.color, angleLabel: label || 'Prompt', prompt, savedAt: new Date().toISOString(), favorite: false });
+    if (saved.length > 50) saved.pop();
+    showToast('💾', 'Saved');
+  }
+  persistSaved(); renderSaved(); refreshSaveStates();
+}
+function persistSaved() { try { localStorage.setItem('nb21_saved', JSON.stringify(saved)); } catch (e) {} }
+function toggleFavorite(id) {
+  const it = saved.find(x => x.id === id); if (!it) return;
+  it.favorite = !it.favorite; persistSaved(); renderSaved();
+}
+function removeFromSaved(id) { saved = saved.filter(x => x.id !== id); persistSaved(); renderSaved(); refreshSaveStates(); }
+function clearSaved() { saved = []; persistSaved(); renderSaved(); refreshSaveStates(); showToast('🗑', 'Cleared'); }
+function toggleDrawer(show) { $('drawer').classList.toggle('show', show); $('scrim').classList.toggle('show', show); }
+
+function renderSaved() {
+  const fav = saved.filter(x => x.favorite).length;
+  $('savedCount').textContent = saved.length;
+  $('countAll').textContent = saved.length;
+  $('countFav').textContent = fav;
+  $('tabAll').classList.toggle('saved', activeTab === 'all');
+  $('tabFav').classList.toggle('saved', activeTab === 'favorites');
+  const items = activeTab === 'favorites' ? saved.filter(x => x.favorite) : saved;
+  const list = $('savedList');
+  list.innerHTML = '';
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state">${saved.length ? 'No favorites yet — star a saved prompt.' : 'Nothing saved yet. Hit Save on any prompt.'}</div>`;
+    return;
+  }
+  items.forEach(item => {
+    const d = document.createElement('div');
+    d.className = 'saved-item';
+    d.innerHTML = `
+      <div class="saved-item-top">
+        <div class="saved-dot" style="background:${item.modeColor}"></div>
+        <div class="saved-meta">${esc(item.modeLabel)} · ${esc(item.angleLabel)}</div>
+        <button class="btn-star ${item.favorite ? 'active' : ''}">★</button>
+      </div>
+      <div class="saved-text">${esc(item.prompt)}</div>
+      <div class="saved-actions">
+        <button class="btn-sm copy">Copy</button>
+        <button class="btn-sm del">Remove</button>
+      </div>`;
+    d.querySelector('.btn-star').addEventListener('click', () => toggleFavorite(item.id));
+    d.querySelector('.copy').addEventListener('click', () => copyText(item.prompt));
+    d.querySelector('.del').addEventListener('click', () => removeFromSaved(item.id));
+    list.appendChild(d);
+  });
+}
+
+// ─── COPY / TOAST / UTILS ────────────────────────────────────────────────────
+function copyText(text) {
+  if (!text) return;
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta); showToast('✓', 'Copied');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast('✓', 'Copied')).catch(fallback);
+  } else fallback();
+}
+let toastTimer;
+function showToast(icon, msg) {
+  $('toastIcon').textContent = icon; $('toastMsg').textContent = msg;
+  const t = $('toast'); t.style.borderColor = activeMode.color; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+function hexAlpha(hex, a) {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+init();
+</script>
+</body>
+</html>

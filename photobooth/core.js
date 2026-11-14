@@ -18,7 +18,7 @@ async function ghPut(path,content,msg){
 }
 function cloudStatus(){
   const el=$("#cloud");if(!el)return;
-  if(!gh.repo||!gh.token){el.className="cloud";el.textContent="☁ Backup off — set up in title menu";return}
+  if(!gh.repo||!gh.token){el.className="cloud";el.textContent="";return}
   const n=photos.filter(p=>!p.synced).length;
   if(syncErr){el.className="cloud err";el.textContent="☁ "+syncErr+(n?` · ${n} pending`:"")}
   else if(n){el.className="cloud";el.textContent=`☁ Uploading ${n}…`}
@@ -51,7 +51,7 @@ const dbDel=id=>tx("readwrite",s=>s.delete(id));
 /* ---------- helpers ---------- */
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),1800)};
-const capHTML=p=>`<b>@${esc(p.name||"Guest")}</b>${p.msg?" – "+esc(p.msg):""}`;
+const capHTML=p=>`<b>${esc(p.name||"Guest")}</b>${p.msg?`<span>${esc(p.msg)}</span>`:""}`;
 function polEl(p,w){
   const d=document.createElement("div");d.className="pol";d.dataset.id=p.id;
   if(w)d.style.setProperty("--w",w+"px");
@@ -59,7 +59,7 @@ function polEl(p,w){
   return d;
 }
 function renderHeader(){
-  $("#evTitle").textContent=settings.title;$("#evDate").textContent=settings.date||"Tap the title to edit";
+  $("#evTitle").textContent=settings.title;$("#evDate").textContent=settings.date||T.tagline;
   $("#nPhotos").textContent=photos.length;
   $("#nGuests").textContent=new Set(photos.map(p=>(p.name||"").trim().toLowerCase())).size;
   $("#empty").style.display=photos.length?"none":"block";
@@ -130,11 +130,12 @@ $("#post").onclick=async()=>{
 };
 
 /* ---------- board ---------- */
-function polW(){return Math.max(110,Math.min(250,$("#board").clientWidth/3.9))}
+function polW(){return Math.max(110,Math.min(230,$("#board").clientWidth/4.3))}
 function place(el,p){
   const b=$("#board"),w=polW(),h=w*1.24;
   const x=Math.min(Math.max(p.x*b.clientWidth-w/2,4),b.clientWidth-w-4);
-  const y=Math.min(Math.max(p.y*b.clientHeight-h/2,4),b.clientHeight-h-112);
+  const bt=$("#booth").offsetTop+$("#booth").offsetHeight+26,ymax=b.clientHeight-h-112;
+  const y=Math.min(Math.max(p.y*b.clientHeight-h/2,Math.min(bt,ymax),4),ymax);
   el.style.left=x+"px";el.style.top=y+"px";el.style.transform=`rotate(${p.r}deg)`;
 }
 function addToBoard(p,animate){
@@ -229,9 +230,9 @@ function cardCanvas(p){
       x.fillStyle=T.card.ink;x.textBaseline="top";
       const fam=T.card.font;
       x.font=`bold 54px ${fam}`;
-      const n="@"+p.name;let lines=[];
+      const n=p.name;let lines=[];
       x.font=`48px ${fam}`;
-      const full=n+(p.msg?" – "+p.msg:"");
+      const full=n+(p.msg?" — "+p.msg:"");
       lines=wrap(x,full,ph);
       let fs=48;while(lines.length>3&&fs>32){fs-=4;x.font=`${fs}px ${fam}`;lines=wrap(x,full,ph)}
       lines.slice(0,5).forEach((l,i)=>x.fillText(l,pad,pad+ph+20+i*(fs*1.2)));
@@ -255,7 +256,7 @@ function renderGrid(){
   const g=$("#grid");g.innerHTML="";
   photos.slice().sort((a,b)=>b.t-a.t).forEach(p=>{
     const t=document.createElement("div");t.className="tile";
-    t.innerHTML=`<img src="${p.img}" alt=""><div class="who">@${esc(p.name)}</div>`;
+    t.innerHTML=`<img src="${p.img}" alt=""><div class="who">${esc(p.name)}</div>`;
     t.onclick=()=>openBig(p.id);g.appendChild(t);
   });
 }

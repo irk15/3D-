@@ -5,58 +5,58 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#07020f">
+<meta name="theme-color" content="#0f0b12">
+<link rel="icon" href="data:,">
 <title>Bachelorette Photobooth</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;800&family=Permanent+Marker&display=swap" rel="stylesheet">
+<link rel="preload" href="../photobooth/fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../photobooth/core.css">
 <style>
 
-:root{--bg:#07020f;--ink:#fff;--dim:#c3aee6;--paper:#fff;--hand:"Permanent Marker","Marker Felt","Comic Sans MS",cursive;--sans:"Unbounded","Arial Rounded MT Bold",system-ui,-apple-system,sans-serif}
-html,body{background:#07020f}
-#app::before{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;background:radial-gradient(40% 35% at 20% 20%,rgba(255,45,149,.55),transparent 70%),radial-gradient(38% 40% at 85% 25%,rgba(139,92,255,.55),transparent 70%),radial-gradient(45% 40% at 60% 92%,rgba(34,228,255,.35),transparent 70%);filter:blur(28px);animation:drift 14s ease-in-out infinite alternate}
-@keyframes drift{to{transform:translate3d(-4%,3%,0) scale(1.08)}}
+:root{--bg:#0f0b12;--ink:#f7f2f5;--dim:#9a90a0;--paper:#fff;--hand:"Bricolage Grotesque","Inter",sans-serif;--sans:"Inter",-apple-system,"SF Pro Text",system-ui,sans-serif;--acc:#ff4f81}
+html,body{background:#0f0b12}
+body{font-family:var(--sans);-webkit-font-smoothing:antialiased}
+#app::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(70% 45% at 50% -5%,rgba(255,79,129,.20),transparent 70%),radial-gradient(55% 40% at 100% 100%,rgba(130,100,255,.13),transparent 70%)}
 header,.tabs,main{position:relative;z-index:1}
-header{align-items:center}
-.title h1{font-family:inherit;font-weight:800;font-size:22px;text-transform:uppercase;letter-spacing:.02em;color:#fff;text-shadow:0 0 6px #ff2d95,0 0 18px #ff2d95,0 0 42px #ff2d95}
-.title .sub{color:#ffb8e0;text-transform:uppercase;letter-spacing:.22em;font-size:9px}
-.cloud{color:#c3aee6}
-.stat b{color:#7be4ff;text-shadow:0 0 12px #22e4ff;font-size:19px;font-weight:700}.stat span{color:#c3aee6;font-size:8px;letter-spacing:.2em}
-.tabs button{font-family:inherit;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#e8dcff;border:1px solid rgba(255,255,255,.22);padding:8px 16px}
-.tabs button.on{background:linear-gradient(90deg,#ff2d95,#8b5cff);border-color:transparent;color:#fff;box-shadow:0 0 22px rgba(255,45,149,.6)}
-#board{background-color:transparent;background-image:linear-gradient(transparent 55%,rgba(255,45,149,.18)),repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 48px),repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 48px);background-size:auto}
-#board::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(1.6px 1.6px at 12% 18%,#fff,transparent),radial-gradient(1.2px 1.2px at 28% 62%,#ffb8e0,transparent),radial-gradient(1.8px 1.8px at 44% 30%,#fff,transparent),radial-gradient(1.2px 1.2px at 63% 74%,#9ff3ff,transparent),radial-gradient(1.6px 1.6px at 78% 22%,#fff,transparent),radial-gradient(1.4px 1.4px at 90% 58%,#ffb8e0,transparent),radial-gradient(1.2px 1.2px at 6% 80%,#fff,transparent),radial-gradient(1.6px 1.6px at 54% 90%,#fff,transparent);animation:twinkle 2.4s ease-in-out infinite alternate}
-@keyframes twinkle{from{opacity:.25}to{opacity:1}}
-#board::after{content:"🪩";position:absolute;top:-8px;right:10px;font-size:50px;pointer-events:none;transform-origin:50% -24px;animation:swing 3.2s ease-in-out infinite alternate;filter:drop-shadow(0 0 16px #ff2d95)}
-@keyframes swing{from{transform:rotate(-13deg)}to{transform:rotate(13deg)}}
-#booth{width:min(36vw,230px,28vh)}
-#viewfinder{border-radius:28px;border:3px solid #ff2d95;background:#12081f;box-shadow:0 0 0 2px #07020f,0 0 26px #ff2d95,0 0 64px rgba(139,92,255,.65)}
-.hint{font-weight:600;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;text-shadow:0 0 8px #ff2d95}
-#slot{height:6px;margin:12px 10% 0;border-radius:6px;background:linear-gradient(90deg,#ff2d95,#8b5cff,#22e4ff);box-shadow:0 0 14px #ff2d95}
-.pol{background:linear-gradient(135deg,#ff9ad5,#b69cff 35%,#7be4ff 65%,#fff3a1);padding:2.2% 2.2% 2.2%;border-radius:4px;box-shadow:0 10px 30px rgba(0,0,0,.65),0 0 22px rgba(255,45,149,.4)}
-.pol .cap{background:#fff;margin-top:2%;border-radius:0 0 2px 2px;font-family:"Permanent Marker","Marker Felt","Comic Sans MS",cursive;color:#1a0b2e;font-size:calc(var(--w,120px)*.072);padding:3% 3% 1%;height:calc(var(--w,120px)*.2)}
-.pol .cap b{color:#e0187f;font-weight:400}
-.pol::after{position:absolute;top:-13px;right:-11px;font-size:calc(var(--w,120px)*.2);content:"💋";filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));pointer-events:none}
-.pol:nth-child(5n+2)::after{content:"✨"}.pol:nth-child(5n+3)::after{content:"🍾"}.pol:nth-child(5n+4)::after{content:"💖"}.pol:nth-child(5n)::after{content:"👑"}
-.pol.drag{box-shadow:0 24px 50px rgba(0,0,0,.8),0 0 36px rgba(255,45,149,.6)}
-#big .pol .cap{padding:3%}
-#empty{font-family:"Permanent Marker","Marker Felt",cursive;font-size:22px;color:#ffb8e0;text-shadow:0 0 14px #ff2d95}
-.bar{background:linear-gradient(transparent,rgba(7,2,15,.94) 45%)}
-.btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#fff;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:13px 20px}
-.btn.pri{background:linear-gradient(90deg,#ff2d95,#8b5cff);border:0;color:#fff;box-shadow:0 0 24px rgba(255,45,149,.65)}
-.btn.dng{color:#ff9ab8}
-#filters button{background:rgba(10,4,22,.7);border:1px solid rgba(255,255,255,.24);border-radius:99px;padding:8px 14px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.05em;color:#fff;backdrop-filter:blur(6px)}
-#filters button.on{background:linear-gradient(90deg,#ff2d95,#8b5cff);border-color:transparent;box-shadow:0 0 20px rgba(255,45,149,.65)}
-.ov{background:rgba(7,2,15,.84)}
-.sheet{background:#130a24;border:1px solid rgba(255,45,149,.55);box-shadow:0 0 44px rgba(139,92,255,.4)}
-.sheet h2{font-family:inherit;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.06em;text-shadow:0 0 14px #ff2d95}
-input[type=text],textarea{background:#1d1136;border:1px solid rgba(255,255,255,.2);color:#fff}
-textarea{font-family:"Permanent Marker","Marker Felt",cursive;font-size:17px}
-input:focus,textarea:focus{border-color:#ff2d95;box-shadow:0 0 14px rgba(255,45,149,.45)}
-.emojis button:active{background:#2b1a4d}
-.grid .tile{border-radius:16px;border:2px solid rgba(255,45,149,.7);box-shadow:0 0 18px rgba(255,45,149,.35)}
-.grid .who{font-family:"Permanent Marker",cursive;font-size:13px}
-#toast{background:#ff2d95;color:#fff;font-weight:700;box-shadow:0 0 24px #ff2d95}
+header{padding:24px 30px 4px;align-items:flex-end}
+.title h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:-.035em;color:#fff}
+.title .sub{font-size:10.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--acc);margin-top:12px}
+.cloud{font-size:10px;color:#9a90a0}.cloud.ok{color:#8fd5a6}
+.stat{gap:26px}.stat b{font-family:"Bricolage Grotesque",sans-serif;font-size:26px;font-weight:600;letter-spacing:-.02em;color:#fff}
+.stat span{font-size:9px;font-weight:600;letter-spacing:.2em;color:var(--dim)}
+.tabs{gap:24px;padding:10px 0 8px}
+.tabs button{font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#7d7385;border-radius:0;padding:7px 0;background:none;border-bottom:2px solid transparent}
+.tabs button.on{background:none;color:#fff;border-bottom-color:var(--acc)}
+#board{background-image:none;background-color:transparent}
+#board::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.07;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+#booth{width:min(34vw,220px,27vh)}
+#viewfinder{border-radius:30px;border:1px solid rgba(255,255,255,.14);background:#16101b;box-shadow:0 0 0 7px rgba(255,255,255,.035),0 36px 60px -22px rgba(0,0,0,.85)}
+.hint{font-size:9.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+#slot{height:3px;width:40%;margin:16px auto 0;border-radius:3px;background:var(--acc);box-shadow:0 0 16px rgba(255,79,129,.55)}
+.pol{background:#fff;padding:1.7% 1.7% 0;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.2),0 26px 40px -14px rgba(0,0,0,.75)}
+.pol .cap{font-family:"Bricolage Grotesque",sans-serif;font-weight:500;color:#17121a;font-size:calc(var(--w,120px)*.075);line-height:1.15;letter-spacing:-.01em;padding:4% 3% 3%;height:calc(var(--w,120px)*.285)}
+.pol .cap b{display:block;font-family:"Inter",sans-serif;font-weight:700;font-size:.62em;letter-spacing:.16em;text-transform:uppercase;color:#e0396a;margin-bottom:.3em}
+.cap b+span::before{content:none}.cap span{display:block}
+.pol.drag{box-shadow:0 34px 56px -14px rgba(0,0,0,.9)}
+#big .pol .cap{padding:4%}
+#empty{font-family:"Bricolage Grotesque",sans-serif;font-weight:500;font-size:20px;color:#7d7385;letter-spacing:-.01em}
+.bar{background:linear-gradient(transparent,rgba(15,11,18,.96) 55%)}
+.btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#fff;font-family:inherit;font-size:12px;font-weight:600;letter-spacing:.04em;padding:13px 24px}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.dng{color:#ff8fa9}
+#filters{gap:6px}
+#filters button{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:99px;padding:7px 14px;font-family:inherit;font-size:12px;font-weight:500;color:#b9aebf}
+#filters button.on{background:#fff;border-color:#fff;color:#0f0b12}
+.ov{background:rgba(10,7,13,.86)}
+.sheet{background:#18121d;border:1px solid rgba(255,255,255,.09);box-shadow:0 40px 80px -20px rgba(0,0,0,.8);border-radius:24px}
+.sheet h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:22px;letter-spacing:-.02em}
+.sheet h3{letter-spacing:.14em;text-transform:uppercase;font-size:10px}
+input[type=text],textarea{background:#221a28;border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:14px}
+textarea{font-family:"Bricolage Grotesque",sans-serif;font-size:17px;font-weight:500}
+input:focus,textarea:focus{border-color:var(--acc)}
+.emojis button:active{background:#2c2234}
+.grid .tile{border-radius:14px;box-shadow:0 18px 30px -14px rgba(0,0,0,.8)}
+.grid .who{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+#toast{background:#fff;color:#0f0b12;font-weight:600}
 
 </style>
 </head>
@@ -66,7 +66,7 @@ input:focus,textarea:focus{border-color:#ff2d95;box-shadow:0 0 14px rgba(255,45,
     <div class="title"><h1 id="evTitle">Bride Tribe</h1><div class="sub" id="evDate">Tap the title to edit</div><div class="cloud" id="cloud"></div></div>
     <div class="stat"><div><b id="nPhotos">0</b><span>Photos</span></div><div><b id="nGuests">0</b><span>People</span></div></div>
   </header>
-  <div class="tabs"><button data-t="album">All shots</button><button data-t="book" class="on">The Wall</button></div>
+  <div class="tabs"><button data-t="album">All photos</button><button data-t="book" class="on">The wall</button></div>
   <main>
     <section class="view on" id="v-book">
       <div id="board">
@@ -81,10 +81,10 @@ input:focus,textarea:focus{border-color:#ff2d95;box-shadow:0 0 14px rgba(255,45,
           <div id="slot"></div>
           <div id="printer"></div>
         </div>
-        <div id="empty">Wall's empty. Make it iconic 🪩</div>
+        <div id="empty">Nothing here yet — be the first</div>
       </div>
       <div id="filters"></div>
-      <div class="bar"><button class="btn" id="flip">Flip camera</button><button class="btn pri" id="snapBtn">Snap it! 📸</button></div>
+      <div class="bar"><button class="btn" id="flip">Flip camera</button><button class="btn pri" id="snapBtn">Take a photo</button></div>
     </section>
     <section class="view" id="v-album">
       <div id="album"><div class="grid" id="grid"></div></div>
@@ -95,17 +95,17 @@ input:focus,textarea:focus{border-color:#ff2d95;box-shadow:0 0 14px rgba(255,45,
 
 <!-- note sheet -->
 <div class="ov" id="noteOv"><div class="sheet">
-  <h2>Say something iconic 💋</h2>
+  <h2>Say something</h2>
   <div class="row">
     <div class="thumb" id="noteThumb"></div>
     <div style="flex:1;display:flex;flex-direction:column;gap:8px">
       <input type="text" id="nm" placeholder="Your name" maxlength="24" autocomplete="off">
-      <textarea id="msg" placeholder="Dare, drama or a toast…" maxlength="140"></textarea>
+      <textarea id="msg" placeholder="A toast, a dare, a secret…" maxlength="140"></textarea>
       <div class="cnt"><span id="cc">0</span>/140</div>
     </div>
   </div>
   <div class="emojis" id="emo"></div>
-  <div class="acts"><button class="btn" id="retake">Retake</button><button class="btn pri" id="post">Drop it on the wall</button></div>
+  <div class="acts"><button class="btn" id="retake">Retake</button><button class="btn pri" id="post">Add to the wall</button></div>
 </div></div>
 
 <!-- enlarged -->
@@ -132,21 +132,21 @@ input:focus,textarea:focus{border-color:#ff2d95;box-shadow:0 0 14px rgba(255,45,
 
 
 <script>window.PB_THEME={
- id:"bachelorette",title:"Bride Tribe",date:"",
- emoji:["👑","💅","🥂","🍾","💃","🔥","✨","💋","🪩","💖","🎀","🥳","😈","🍸","🍑","🕶️"],
+ id:"bachelorette",title:"Bride Tribe",date:"",tagline:"Bachelorette night",
+ emoji:["🥂","🍾","💃","🔥","✨","💋","🪩","💖","🎀","🥳","😈","🍸","🍑","🕶️"],
  filters:[
- {id:"natural",name:"Natural",icon:"📷"},
- {id:"flash",name:"Disco Flash",icon:"🪩",b:1.2,c:1.25,s:1.3,vig:.35},
- {id:"pink",name:"Neon Pink",icon:"💖",s:1.3,c:1.1,tint:[255,45,149,.35],blend:"screen",vig:.25},
- {id:"uv",name:"Ultraviolet",icon:"🔮",c:1.15,s:1.2,tint:[110,70,255,.38],blend:"screen",vig:.4},
- {id:"y2k",name:"Y2K Cam",icon:"💿",b:1.15,c:.9,s:1.4,tint:[180,220,255,.12],grain:.1,vig:.2},
- {id:"glam",name:"Glam",icon:"💄",b:1.1,c:.9,s:1.1,tint:[255,214,220,.15],vig:.1},
- {id:"sunset",name:"Sunset Shot",icon:"🍑",s:1.4,hue:-15,tint:[255,120,60,.3],blend:"screen",vig:.3},
- {id:"bw",name:"B&W Flash",icon:"🖤",gray:1,c:1.4,b:1.15,vig:.3,grain:.08}
+ {id:"natural",name:"Natural",},
+ {id:"flash",name:"Disco Flash",b:1.2,c:1.25,s:1.3,vig:.35},
+ {id:"pink",name:"Neon Pink",s:1.3,c:1.1,tint:[255,45,149,.35],blend:"screen",vig:.25},
+ {id:"uv",name:"Ultraviolet",c:1.15,s:1.2,tint:[110,70,255,.38],blend:"screen",vig:.4},
+ {id:"y2k",name:"Y2K Cam",b:1.15,c:.9,s:1.4,tint:[180,220,255,.12],grain:.1,vig:.2},
+ {id:"glam",name:"Glam",b:1.1,c:.9,s:1.1,tint:[255,214,220,.15],vig:.1},
+ {id:"sunset",name:"Sunset Shot",s:1.4,hue:-15,tint:[255,120,60,.3],blend:"screen",vig:.3},
+ {id:"bw",name:"B&W Flash",gray:1,c:1.4,b:1.15,vig:.3,grain:.08}
 ],
- confetti:{count:130,gravity:.34,colors:["#ff2d95","#8b5cff","#22e4ff","#ffd86b","#ffffff","#ff7ac6"],shapes:["rect","circle","star","heart","star"]},
- card:{paper:"#ffffff",ink:"#1a0b2e",sub:"#c2338a",font:'"Permanent Marker","Marker Felt","Comic Sans MS",cursive',fontLoad:'"Permanent Marker"',
-   deco:(x,W,H)=>{const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,"#ff2d95");g.addColorStop(.5,"#8b5cff");g.addColorStop(1,"#22e4ff");x.strokeStyle=g;x.lineWidth=14;x.strokeRect(7,7,W-14,H-14)}}
+ confetti:{count:60,gravity:.3,colors:["#ff4f81","#ffffff","#ffb3c8","#b9a4ff"],shapes:["circle","rect","circle"]},
+ card:{paper:"#ffffff",ink:"#17121a",sub:"#e0396a",font:'"Bricolage Grotesque","Inter",system-ui,sans-serif',fontLoad:'"Bricolage Grotesque"',
+   deco:(x,W,H)=>{x.fillStyle="#ff4f81";x.fillRect(0,H-12,W,12)}}
 };</script>
 <script src="../photobooth/core.js"></script>
 </body>

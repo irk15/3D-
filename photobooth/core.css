@@ -1,3 +1,7 @@
+@font-face{font-family:"Instrument Serif";src:url(fonts/instrument-serif.woff2) format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url(fonts/instrument-serif-italic.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Inter";src:url(fonts/inter.woff2) format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:"Bricolage Grotesque";src:url(fonts/bricolage.woff2) format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
 
 :root{--bg:#0b0b0d;--ink:#f4f1ea;--dim:#8d8a84;--paper:#fbfaf7;--hand:"Bradley Hand","Segoe Print","Noteworthy","Comic Sans MS",cursive;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -78,6 +82,7 @@ input:focus,textarea:focus{border-color:#555}
 #toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#fff;color:#111;padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;transition:.25s;z-index:99;pointer-events:none}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 
+.cap b+span::before{content:" – "}
 /* --- shared additions --- */
 #tintov,#vigov{position:absolute;inset:0;pointer-events:none}
 #vigov{background:radial-gradient(circle at center,transparent 52%,rgba(0,0,0,.9) 100%);opacity:0;transition:opacity .2s}

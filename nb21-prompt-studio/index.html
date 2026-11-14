@@ -20,6 +20,7 @@ body.editorial{--ac:#f472b6;--ac-dim:#9a4f75;--acs:rgba(244,114,182,.13);}
 body.portrait{--ac:#a78bfa;--ac-dim:#675596;--acs:rgba(167,139,250,.13);}
 body.fantasy{--ac:#818cf8;--ac-dim:#4f5599;--acs:rgba(129,140,248,.13);}
 body.farsnap{--ac:#ff8a5c;--ac-dim:#96553a;--acs:rgba(255,138,92,.13);}
+body.spicy{--ac:#ff4d4d;--ac-dim:#992e2e;--acs:rgba(255,77,77,.14);}
 body.webcam{--ac:#ff9ec4;--ac-dim:#965e75;--acs:rgba(255,158,196,.13);}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;}
@@ -1016,6 +1017,62 @@ CFG.farsnap={
   {n:'Walking past',txt:"from a moving vantage while walking, the frame slightly smeared and the subject sliding off-centre"}]
 };
 
+CFG.spicy={
+ icon:'🌶️',title:'SPICY SNAP',sub:'late night · flirty · chaotic energy',ratio:'9:16',verb:'A bold late-night smartphone snap',
+ ph:{subject:'a confident woman in her twenties, glossy lips, messy hair',
+     outfit:'a tiny black going-out dress, chunky silver jewellery, heeled boots',
+     scene:'half-empty drinks, a wristband, mascara slightly smudged',
+     expr:'a slow smirk straight into the lens',
+     story:'the night is only getting started and she knows exactly who is watching'},
+ gritLabel:'Grit',gritPh:'✎ your own grit…',
+ DNA:"Shot on a phone at the peak of a night out and sent straight to a story with no edit. The subject is an adult in a fully dressed going-out look, confident and playful, with nothing explicit or revealing beyond ordinary nightlife fashion. The optics are a phone's: a small sensor, deep depth of field and no creamy bokeh. Harsh direct flash blows out skin highlights and drops the background into black or saturated colour, while mixed neon and club lighting skews the white balance. Computational HDR over-sharpens edges, shadows are noisy and smeared, and motion arrives as dragged flash-and-blur ghosting. Skin is unretouched with real shine, texture and smudged makeup. The framing is impulsive and slightly crooked, full of energy, never composed. Social-app compression softens the fine detail. No professional lighting, styling or retouching.",
+ DNAJ:{device:"consumer smartphone, small sensor, 26mm-equivalent lens",
+  wardrobe:"fully dressed ordinary going-out fashion, nothing explicit",
+  depth_of_field:"deep — no bokeh",
+  flash:"harsh direct flash, blown skin highlights, background falls to black or saturated colour",
+  colour:"mixed neon and club white balance",
+  motion:"dragged flash-and-blur ghosting",
+  processing:"computational HDR, over-sharpened edges, noisy smeared shadows",
+  skin:"unretouched, real shine and texture, smudged makeup",
+  framing:"impulsive, slightly crooked, high energy",
+  compression:"social app upload softening fine detail"},
+ notLike:"a professional photograph, a staged glamour shoot, an explicit or nude image, or a cinematic still",
+ GRIT:["harsh flash blowing out the nearest skin and shoulders","a dragged-flash ghost trailing behind a moving hand","the horizon tilted and the subject off-centre","neon colour spill staining half the face magenta","heavy noise crawling through the dark corners","a fingerprint smudge hazing the lens","red-eye glare from the direct flash","a friend's arm or drink intruding at the edge","the frame half-blurred from moving while shooting","over-sharpened edges and crunchy highlights"],
+ WHERE:[{id:'club',em:'🪩',t:'Club floor',d:'packed, neon',txt:"on a packed club dance floor under strobing coloured lights, bodies and raised hands all around",light:'neon'},
+  {id:'toilet',em:'🚻',t:'Club bathroom',d:'mirror, queue',txt:"in a cramped club bathroom in front of a scuffed mirror, a queue and spilled products behind",light:'flash'},
+  {id:'car',em:'🚕',t:'Back of a cab',d:'city streaks',txt:"in the back of a cab at 2am, city lights streaking past the window",light:'street'},
+  {id:'roof',em:'🍸',t:'Rooftop afterparty',d:'skyline',txt:"at a rooftop afterparty with string lights and the city glittering behind",light:'string'},
+  {id:'kitchen',em:'🍾',t:'Kitchen 2am',d:'house party',txt:"in a crowded house-party kitchen at 2am, bottles and cups covering every surface",light:'flash'},
+  {id:'hall',em:'🛎️',t:'Hotel hallway',d:'carpet, doors',txt:"in a long hotel hallway with patterned carpet and rows of identical doors",light:'warm'},
+  {id:'pool',em:'🏊',t:'Pool party',d:'night swim',txt:"beside a pool at a night party, wet tiles reflecting coloured lights",light:'neon'},
+  {id:'street',em:'🌃',t:'Street outside',d:'queue, smoke',txt:"on the pavement outside a venue, a queue and smokers lit by the signage",light:'neon'}],
+ LIGHT:[{id:'flash',em:'⚡',t:'Harsh flash',d:'blown skin',txt:"lit by a harsh direct phone flash that blows out the nearest skin and drops everything behind into black"},
+  {id:'neon',em:'🌈',t:'Neon wash',d:'magenta, cyan',txt:"washed in saturated magenta and cyan neon that stains the skin and clips to pure colour"},
+  {id:'street',em:'🏮',t:'Streetlight streaks',d:'orange',txt:"lit by passing streetlights and headlights, orange pools sliding across the face"},
+  {id:'string',em:'✨',t:'String lights',d:'warm bokeh dots',txt:"lit by warm string lights and the glow of the skyline, phone struggling in the dim"},
+  {id:'warm',em:'💡',t:'Dim warm bulbs',d:'moody',txt:"lit by dim warm wall lights, murky and slightly green where they mix"},
+  {id:'strobe',em:'🎆',t:'Strobe',d:'frozen moment',txt:"caught in a strobe flash that freezes the moment in hard white with deep black between"}],
+ SHOT:[{id:'mirror',em:'🪞',t:'Mirror flash',d:'phone in frame',txt:"a mirror shot with the flash firing, the phone visible in the reflection and the glass slightly smudged"},
+  {id:'look',em:'👀',t:'Look back',d:'over shoulder',txt:"a quick shot of the subject glancing back over their shoulder at the camera, half turned away and caught mid-step"},
+  {id:'selfie',em:'🤳',t:'Close selfie',d:'flash selfie',txt:"an arm's-length flash selfie, face large and close with the party blowing out behind"},
+  {id:'dance',em:'💃',t:'Mid-dance',d:'blurred motion',txt:"a shot caught mid-dance with the subject half-blurred, arms up and hair swinging"},
+  {id:'caught',em:'🫣',t:'Caught looking',d:'eyes meet lens',txt:"a candid by a friend at a distance, the subject noticing the camera and breaking into a smirk"},
+  {id:'drag',em:'🌠',t:'Dragged flash',d:'ghost trails',txt:"a dragged-shutter flash shot with the subject frozen sharp while the lights smear into trails around them"}],
+ VIBE:[{id:'smirk',em:'😏',t:'Smirk',d:'knowing',txt:"with a slow knowing smirk straight into the lens"},
+  {id:'giggle',em:'🤭',t:'Tipsy giggle',d:'caught laughing',txt:"mid-giggle and a little tipsy, covering a smile"},
+  {id:'stare',em:'😮‍💨',t:'Lazy stare',d:'half-lidded',txt:"a lazy, half-lidded stare with total confidence"},
+  {id:'dare',em:'😈',t:'Up to no good',d:'mischief',txt:"a mischievous grin, clearly up to no good"},
+  {id:'kiss',em:'😘',t:'Blown kiss',d:'playful',txt:"blowing a playful kiss at the camera"},
+  {id:'hype',em:'🔥',t:'Hyped',d:'screaming along',txt:"mid-shout and hyped, singing along to the loudest part of the night"}],
+ SEQ:['caught','mirror','dance','selfie','look','drag'],
+ ANG:[{n:'Arm high',txt:"held up high above the faces and angled down"},
+  {n:'Low up',txt:"held low and tilted up, chin and lights in shot"},
+  {n:'Straight on',txt:"held straight out at face height, flat and level"},
+  {n:'Over shoulder',txt:"shot past a friend's shoulder in the near foreground, partly blocked"},
+  {n:'Crowd distance',txt:"from across the dance floor by a friend, the subject small among the crowd"},
+  {n:'Tilted rush',txt:"snapped in a hurry with the phone tilted hard, horizon sliding off"}]
+};
+
 /* ===== SHARED REALISM LAYERS (optional, apply to both modes) ===== */
 const EXTRA={
  air:{label:'Air &amp; atmosphere',hint:'What sits between lens and subject',o:[
@@ -1097,7 +1154,7 @@ const EXTRA={
   {id:'empty',t:'Empty immensity',txt:"empty immensity, the subject the only human presence for miles"}]}
 };
 
-const MODELIST=[['snap','📱','Snapchat'],['farsnap','🔭','Far Snap'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
+const MODELIST=[['snap','📱','Snapchat'],['farsnap','🔭','Far Snap'],['spicy','🌶️','Spicy Snap'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
   ['portrait','🎭','Portrait'],['doc','📰','Street'],['fantasy','🌌','Fantasy'],['product','📦','Product'],
   ['cctv','🎥','CCTV'],['webcam','💻','Webcam'],['interior','🏠','Interior']];
 
@@ -1129,7 +1186,7 @@ function panes(){const c=C();
   return [{k:'where',n:'Setting'},{k:'light',n:'Light'},{k:'shot',n:'Shot'},{k:'vibe',n:'Mood'},{k:'grit',n:'Finish'},
     ...(c.xp||[]),{k:'real',n:'✦ Realism',keys:REALKEYS},{k:'era',n:'✦ Era',keys:ERAKEYS}];}
 const allowedX=k=>panes().some(p=>p.keys&&p.keys.includes(k));
-const snapish=()=>M==='snap'||M==='farsnap';
+const snapish=()=>M==='snap'||M==='farsnap'||M==='spicy';
 
 function rollGrit(){const p=[...C().GRIT].sort(()=>Math.random()-.5).slice(0,2);S.grit=p;}
 function pick(arr,key,id){const s=id||S[key];if(s==='__own')return (S.own[key]||'').trim();
@@ -1361,7 +1418,7 @@ function refreshBase(){
     });
     $('btnCopy').textContent='Copy All 6';
     $('cnt').textContent=OUT==='story'
-      ?(c.BEATS?'6 story beats · one continuous drama':M==='farsnap'?'6 snap types · same night, all from afar':M==='snap'?'6 moments · same night':'6 shots · same setup')
+      ?(c.BEATS?'6 story beats · one continuous drama':M==='farsnap'?'6 snap types · same night, all from afar':M==='spicy'?'6 moments · one wild night':M==='snap'?'6 moments · same night':'6 shots · same setup')
       :'6 camera angles · identical scene';
   }
   window.ALLTXT=OUT==='single'?L[0].p:L.map((o,i)=>`— ${String(i+1).padStart(2,'0')} ${o.n} —\n${o.p}`).join('\n\n\n');

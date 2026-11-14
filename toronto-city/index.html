@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Toronto Live 3D</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+  "pbf": "https://cdn.jsdelivr.net/npm/pbf@4.0.1/+esm",
+  "@mapbox/vector-tile": "https://cdn.jsdelivr.net/npm/@mapbox/vector-tile@2.0.3/+esm",
+  "earcut": "https://cdn.jsdelivr.net/npm/earcut@2.2.4/+esm"
+} }
+</script>
+</head>
+<body>
+<div id="hud">
+  <b>Toronto Live 3D</b>
+  <pre id="stat">loading…</pre>
+  <label><input type="checkbox" id="live" checked> Live Toronto time</label>
+  <input type="range" id="hour" min="0" max="24" step="0.05" value="12">
+  <button id="follow">Ride nearest streetcar (F)</button>
+  <small>WASD move · Q/E down/up · drag look · wheel speed · Shift fast · B ride a bus</small>
+</div>
+<div id="attr">Map data © OpenStreetMap contributors · tiles by OpenFreeMap / OpenMapTiles · vehicles: TTC open data</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

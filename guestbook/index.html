@@ -16,6 +16,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 header{display:flex;align-items:flex-start;justify-content:space-between;padding:14px 20px 6px;gap:12px}
 .title h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em;cursor:pointer}
 .title .sub{color:var(--dim);font-size:13px;margin-top:2px}
+.cloud{font-size:11px;color:var(--dim);margin-top:3px;cursor:pointer}.cloud.ok{color:#7fd69a}.cloud.err{color:#ff9a7a}
+.sheet h3{margin:6px 0 0;font-size:13px;color:var(--dim);font-weight:600}.sheet small{color:var(--dim);font-size:12px;line-height:1.4}
 .stat{display:flex;gap:22px;text-align:center}
 .stat b{display:block;font-size:20px;font-weight:600}
 .stat span{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
@@ -89,7 +91,7 @@ input:focus,textarea:focus{border-color:#555}
 <body>
 <div id="app">
   <header>
-    <div class="title"><h1 id="evTitle">Photobooth</h1><div class="sub" id="evDate">Tap the title to edit</div></div>
+    <div class="title"><h1 id="evTitle">Photobooth</h1><div class="sub" id="evDate">Tap the title to edit</div><div class="cloud" id="cloud"></div></div>
     <div class="stat"><div><b id="nPhotos">0</b><span>Photos</span></div><div><b id="nGuests">0</b><span>People</span></div></div>
   </header>
   <div class="tabs"><button data-t="album">Album</button><button data-t="book" class="on">Guest Book</button></div>
@@ -143,6 +145,10 @@ input:focus,textarea:focus{border-color:#555}
   <h2>Event details</h2>
   <input type="text" id="sTitle" placeholder="Event title" maxlength="50">
   <input type="text" id="sDate" placeholder="Date (e.g. Aug 25th)" maxlength="30">
+  <h3>Cloud backup (GitHub)</h3>
+  <input type="text" id="sRepo" placeholder="owner/repo  e.g. irk15/photobooth-photos" autocapitalize="off" autocorrect="off">
+  <input type="password" id="sTok" placeholder="GitHub token (stays on this device)" autocomplete="off">
+  <small>Every photo is uploaded as a JPG plus a small JSON with the name and note. Use a private repo and a fine-grained token limited to that repo (Contents: read and write).</small>
   <div class="acts"><button class="btn" id="sCancel">Cancel</button><button class="btn pri" id="sSave">Save</button></div>
 </div></div>
 
@@ -154,6 +160,38 @@ input:focus,textarea:focus{border-color:#555}
 const $=s=>document.querySelector(s);
 const EMOJI=["😍","🥹","🥂","💍","💕","🎉","🤍","✨","🔥","😘","👰","🤵","🍾","💃","🕺","🥳"];
 const SIZE=800;           // saved photo resolution
+const gh=JSON.parse(localStorage.getItem("gb-gh")||"{}");
+let syncing=false,syncErr="";
+const b64u=t=>btoa(unescape(encodeURIComponent(t)));
+async function ghPut(path,content,msg){
+  const r=await fetch(`https://api.github.com/repos/${gh.repo}/contents/${path}`,{method:"PUT",
+    headers:{Authorization:"Bearer "+gh.token,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+    body:JSON.stringify({message:msg,content})});
+  if(r.ok||r.status===422)return true; // 422 = already exists
+  const j=await r.json().catch(()=>({}));throw new Error(r.status===401||r.status===403||r.status===404?"check token/repo ("+r.status+")":(j.message||r.status));
+}
+function cloudStatus(){
+  const el=$("#cloud");if(!el)return;
+  if(!gh.repo||!gh.token){el.className="cloud";el.textContent="☁ Backup off — set up in title menu";return}
+  const n=photos.filter(p=>!p.synced).length;
+  if(syncErr){el.className="cloud err";el.textContent="☁ "+syncErr+(n?` · ${n} pending`:"")}
+  else if(n){el.className="cloud";el.textContent=`☁ Uploading ${n}…`}
+  else{el.className="cloud ok";el.textContent="☁ All photos backed up"}
+}
+async function syncAll(){
+  if(syncing||!gh.repo||!gh.token){cloudStatus();return}
+  syncing=true;syncErr="";cloudStatus();
+  try{
+    for(const p of photos.filter(x=>!x.synced)){
+      const d=new Date(p.t).toISOString().slice(0,10),base=`photos/${d}/${p.id}`;
+      await ghPut(base+".jpg",p.img.split(",")[1],`photo from ${p.name}`);
+      await ghPut(base+".json",b64u(JSON.stringify({id:p.id,name:p.name,message:p.msg,time:new Date(p.t).toISOString(),event:settings.title},null,2)),`note from ${p.name}`);
+      p.synced=true;await dbPut(p);cloudStatus();
+    }
+  }catch(e){syncErr=navigator.onLine?e.message:"offline"}
+  syncing=false;cloudStatus();
+}
+addEventListener("online",syncAll);setInterval(syncAll,60000);
 let facing="user",stream=null,photos=[],pendingImg=null,openId=null,z=1;
 const settings=JSON.parse(localStorage.getItem("gb-settings")||'{"title":"Photobooth","date":""}');
 
@@ -239,10 +277,10 @@ $("#retake").onclick=()=>{$("#noteOv").classList.remove("on");pendingImg=null};
 $("#post").onclick=async()=>{
   const name=$("#nm").value.trim()||"Guest",msg=$("#msg").value.trim();
   localStorage.setItem("gb-lastname",name);
-  const p={id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),img:pendingImg,name,msg,t:Date.now(),
+  const p={id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),img:pendingImg,name,msg,t:Date.now(),synced:false,
     x:.12+Math.random()*.76,y:.30+Math.random()*.55,r:(Math.random()*20-10)};
   $("#noteOv").classList.remove("on");pendingImg=null;
-  photos.push(p);await dbPut(p);renderHeader();printOut(p);renderGrid();
+  photos.push(p);await dbPut(p);renderHeader();printOut(p);renderGrid();syncAll();
 };
 
 /* ---------- board ---------- */
@@ -357,16 +395,17 @@ document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.id==="v-"+b.dataset.t));
   if(b.dataset.t==="book"){startCam();setTimeout(renderBoard,0)}else stopCam();
 });
-$("#evTitle").onclick=()=>{$("#sTitle").value=settings.title;$("#sDate").value=settings.date;$("#setOv").classList.add("on")};
+$("#cloud").onclick=()=>$("#evTitle").click();
+$("#evTitle").onclick=()=>{$("#sTitle").value=settings.title;$("#sDate").value=settings.date;$("#sRepo").value=gh.repo||"";$("#sTok").value=gh.token||"";$("#setOv").classList.add("on")};
 $("#sCancel").onclick=()=>$("#setOv").classList.remove("on");
 $("#sSave").onclick=()=>{settings.title=$("#sTitle").value.trim()||settings.title;settings.date=$("#sDate").value.trim();
-  localStorage.setItem("gb-settings",JSON.stringify(settings));renderHeader();$("#setOv").classList.remove("on")};
+  localStorage.setItem("gb-settings",JSON.stringify(settings));gh.repo=$("#sRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,"");gh.token=$("#sTok").value.trim();localStorage.setItem("gb-gh",JSON.stringify(gh));renderHeader();syncAll();$("#setOv").classList.remove("on")};
 $("#fb").onclick=()=>$("#file").click();
 addEventListener("resize",()=>{if($("#v-book").classList.contains("on"))renderBoard()});
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopCam();else if($("#v-book").classList.contains("on"))startCam()});
 
 /* ---------- init ---------- */
-(async()=>{photos=await dbAll();renderHeader();renderBoard();renderGrid();startCam()})();
+(async()=>{photos=await dbAll();renderHeader();renderBoard();renderGrid();startCam();syncAll()})();
 })();
 </script>
 </body>

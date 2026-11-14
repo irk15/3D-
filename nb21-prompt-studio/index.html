@@ -21,6 +21,7 @@ body.portrait{--ac:#a78bfa;--ac-dim:#675596;--acs:rgba(167,139,250,.13);}
 body.fantasy{--ac:#818cf8;--ac-dim:#4f5599;--acs:rgba(129,140,248,.13);}
 body.farsnap{--ac:#ff8a5c;--ac-dim:#96553a;--acs:rgba(255,138,92,.13);}
 body.spicy{--ac:#ff4d4d;--ac-dim:#992e2e;--acs:rgba(255,77,77,.14);}
+body.honeymoon{--ac:#f0b27a;--ac-dim:#946b49;--acs:rgba(240,178,122,.14);}
 body.webcam{--ac:#ff9ec4;--ac-dim:#965e75;--acs:rgba(255,158,196,.13);}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;}
@@ -1073,6 +1074,70 @@ CFG.spicy={
   {n:'Tilted rush',txt:"snapped in a hurry with the phone tilted hard, horizon sliding off"}]
 };
 
+CFG.honeymoon={
+ icon:'💞',title:'HONEYMOON',sub:'couple · chemistry · cinematic romance',ratio:'4:5',verb:'A high-end cinematic honeymoon editorial photograph of a couple, charged with real chemistry',
+ ph:{subject:'a newly married couple in their thirties, he tall with a shadow of stubble, she dark-haired and radiant',
+     outfit:'she in a flowing silk slip dress in deep emerald, he in an open-collar white linen shirt and tailored trousers',
+     scene:'two glasses of champagne left on the edge of the pool, a wedding band catching the light',
+     expr:'(leave blank — each beat sets the chemistry)',
+     story:'the first night of their honeymoon, no phones, nobody else for miles'},
+ gritLabel:'Finish',gritPh:'✎ your own finish…',
+ DNA:"Captured on a large-format digital cinema-grade system with a premium prime lens, giving the warm tonal depth, fine gradation and three-dimensional separation of a top-tier luxury travel and fashion campaign shot like a film still. The subjects are two adults, fully dressed in resort and evening wear, and the photograph is about chemistry: the charged space between them, a hand at the jaw, foreheads touching, breath shared, eyes locked, genuine unposed intimacy rather than stock-photo posing. Bodies overlap naturally and lean into each other with real weight. Lighting is warm, sensual and sculpted, with glowing skin, soft specular sheen and deep romantic shadow. Skin is professionally retouched but keeps real texture, visible pores and natural warmth, never plastic. Fabric moves with the air and clings believably. The setting is breathtaking and luxurious, layered in depth, with the couple held inside it. Everything is staged, styled and lit with full intent for a major campaign, tasteful and sensual with nothing explicit.",
+ DNAJ:{system:"large-format digital cinema-grade system, premium prime lens",
+  subjects:"two adults, fully dressed in resort and evening wear",
+  chemistry:"charged space between them, hand at the jaw, foreheads touching, locked eyes, genuine unposed intimacy, not stock-photo posing",
+  lighting:"warm, sensual, sculpted, glowing skin, soft specular sheen, deep romantic shadow",
+  skin:"professionally retouched but real texture and natural warmth, never plastic",
+  setting:"breathtaking luxurious location, layered depth, couple held inside it",
+  intent:"staged, styled and lit for a major campaign, tasteful, nothing explicit"},
+ notLike:"a stock-photo couple, a phone snapshot, an explicit or nude image, a 3D render, CGI or an illustration",
+ GRIT:["a warm highlight roll-off across glowing skin","fine natural film grain sitting under the image","a soft optical bloom around the warmest light","a gentle haze softening the background","rich shadow detail retained rather than crushed","sea spray or fine mist catching the light","a delicate vignette pulling the eye to the pair","golden dust drifting through the light"],
+ WHERE:[{id:'maldives',em:'🏝️',t:'Overwater villa',d:'Maldives',txt:"on the deck of an overwater villa in the Maldives, turquoise lagoon glowing around them to the horizon",light:'golden'},
+  {id:'amalfi',em:'🍋',t:'Amalfi terrace',d:'lemons, sea',txt:"on a stone terrace above the Amalfi coast, lemon trees, linen drapes and the sea far below",light:'golden'},
+  {id:'santorini',em:'🏛️',t:'Santorini caldera',d:'white domes',txt:"on a whitewashed Santorini terrace above the caldera, blue domes and a burning sky behind",light:'blue'},
+  {id:'bali',em:'🌴',t:'Jungle pool villa',d:'Bali, candles',txt:"at a private jungle pool villa in Bali, candles on the pool edge and mist rising from the trees",light:'candle'},
+  {id:'paris',em:'🗼',t:'Paris suite',d:'balcony, rooftops',txt:"on the balcony of a Paris hotel suite, zinc rooftops and the lit tower behind them",light:'blue'},
+  {id:'desert',em:'🏜️',t:'Desert camp',d:'dunes, lanterns',txt:"at a luxury desert camp among enormous dunes, lanterns glowing on rugs and cushions",light:'fire'},
+  {id:'chalet',em:'🏔️',t:'Alpine chalet',d:'fireplace',txt:"in an alpine chalet with a roaring fireplace, sheepskin throws and snow falling outside the windows",light:'fire'},
+  {id:'yacht',em:'⛵',t:'Yacht at sunset',d:'open water',txt:"on the bow of a yacht at sunset with open water in every direction",light:'golden'},
+  {id:'suite',em:'🛏️',t:'Suite at dawn',d:'white linen',txt:"in a bright villa suite at dawn, billowing white linen curtains and tousled sheets",light:'linen'}],
+ LIGHT:[{id:'golden',em:'🌅',t:'Golden hour',d:'warm glow',txt:"lit by low golden-hour sun wrapping warm light around both of them, skin glowing and every edge rimmed with gold"},
+  {id:'candle',em:'🕯️',t:'Candlelit',d:'intimate pools',txt:"lit by candles and warm practicals, intimate pools of light on skin with the rest sinking into darkness"},
+  {id:'blue',em:'🌌',t:'Blue hour',d:'cobalt + glow',txt:"lit at blue hour, deep cobalt ambient light against glowing warm windows and the last streak of sunset"},
+  {id:'linen',em:'🪟',t:'Morning linen',d:'soft, airy',txt:"lit by soft morning sun filtering through white linen, airy, luminous and bright"},
+  {id:'fire',em:'🔥',t:'Firelight',d:'flicker',txt:"lit by flickering firelight, warm orange moving on skin against a cool blue night"},
+  {id:'moon',em:'🌙',t:'Moonlit',d:'silver',txt:"lit by cool silver moonlight with a single warm lamp, skin shimmering against dark water"},
+  {id:'rim',em:'🌗',t:'Sunset backlight',d:'rim + haze',txt:"lit from behind by a blazing low sun so a golden rim traces both silhouettes and haze glows around them"}],
+ SHOT:[{id:'forehead',em:'💞',t:'Forehead touch',d:'eyes closed',txt:"a close two-shot with foreheads touching and eyes closed, noses a breath apart"},
+  {id:'near',em:'💋',t:'Almost kiss',d:'inches apart',txt:"a close two-shot an inch before a kiss, lips apart, the tension held in the space between them"},
+  {id:'backhug',em:'🫂',t:'Wrapped from behind',d:'arms around',txt:"a medium shot with him wrapped around her from behind, his chin on her shoulder, both gazing out at the view"},
+  {id:'dance',em:'💃',t:'Slow dance',d:'swaying',txt:"a slow dance mid-sway, her hand at the back of his neck, fabric swirling with the motion"},
+  {id:'jaw',em:'🤲',t:'Hand at the jaw',d:'locked eyes',txt:"a tight frame with his hand at her jaw and their eyes locked, the intensity unmistakable"},
+  {id:'laugh',em:'😄',t:'Laughing candid',d:'genuine joy',txt:"a candid two-shot of both of them laughing together, genuine and unposed, heads leaned in"},
+  {id:'walk',em:'🚶',t:'Walking away',d:'hands held',txt:"a wide frame of the couple walking away hand in hand, small within the breathtaking space"},
+  {id:'monument',em:'🏔️',t:'Epic wide',d:'dwarfed by it',txt:"an epic wide establishing frame, the pair a small embracing silhouette held inside the vast, beautiful location"},
+  {id:'detail',em:'💍',t:'Hands & rings',d:'detail',txt:"a tight detail shot of intertwined hands, wedding bands and fabric, resolved to individual fibres"}],
+ VIBE:[{id:'chem',em:'⚡',t:'Electric',d:'charged',txt:"charged and magnetic, unable to look away from each other"},
+  {id:'tender',em:'🕊️',t:'Tender',d:'soft',txt:"tender and unhurried, completely absorbed in one another"},
+  {id:'play',em:'😏',t:'Playful heat',d:'teasing',txt:"playful and teasing, a knowing smile passing between them"},
+  {id:'hungry',em:'🔥',t:'Barely restrained',d:'hungry',txt:"barely restrained, breath held, wanting each other"},
+  {id:'serene',em:'🌊',t:'Serene',d:'at peace',txt:"serene and quietly euphoric, the world far away"}],
+ SEQ:['monument','backhug','dance','jaw','near','detail'],
+ BEATS:[{n:'I · The Arrival',shot:'monument',beat:"The couple arrives at their honeymoon hideaway and stands together, small before the breathtaking place, the first moment of being alone as newlyweds.",mood:"quiet awe, her hand finding his"},
+  {n:'II · The Look',shot:'backhug',beat:"They stop and take in the view. He wraps around her from behind and the air between them changes.",mood:"the first spark, slow smiles, closeness growing"},
+  {n:'III · The Dance',shot:'dance',beat:"Music from somewhere and no one watching. They sway together, fabric moving, her hand at the back of his neck.",mood:"playful heat, teasing, eyes never leaving"},
+  {n:'IV · The Pull',shot:'jaw',beat:"The playfulness falls away. His hand at her jaw, their eyes locked, the intensity unmistakable.",mood:"electric, breath held, magnetic"},
+  {n:'V · The Almost',shot:'near',beat:"An inch before the kiss, the tension held in the space between them, the peak of the night.",mood:"barely restrained, wanting each other"},
+  {n:'VI · The Afterglow',shot:'detail',beat:"What is left in the quiet: intertwined hands, wedding bands, fabric, a glass left on the edge, the story told without faces.",mood:"warm, spent, utterly content"}],
+ xp:[{k:'cine',n:'✦ Cinematic',keys:['lens','grade','scale']}],
+ ANG:[{n:'Eye level',txt:"from a straight eye-level angle, intimate and close"},
+  {n:'Over his shoulder',txt:"from just behind his shoulder, looking at her face and the view beyond"},
+  {n:'Low romantic',txt:"from low looking up, the pair embracing against the sky"},
+  {n:'High looking down',txt:"from above looking down, the pair small in a beautiful setting"},
+  {n:'Profile two-shot',txt:"from a pure side profile of both faces, almost touching"},
+  {n:'Through the veil',txt:"through a foreground of sheer drapery or palms, glimpsing the pair in layers"}]
+};
+
 /* ===== SHARED REALISM LAYERS (optional, apply to both modes) ===== */
 const EXTRA={
  air:{label:'Air &amp; atmosphere',hint:'What sits between lens and subject',o:[
@@ -1154,7 +1219,7 @@ const EXTRA={
   {id:'empty',t:'Empty immensity',txt:"empty immensity, the subject the only human presence for miles"}]}
 };
 
-const MODELIST=[['snap','📱','Snapchat'],['farsnap','🔭','Far Snap'],['spicy','🌶️','Spicy Snap'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
+const MODELIST=[['snap','📱','Snapchat'],['farsnap','🔭','Far Snap'],['spicy','🌶️','Spicy Snap'],['honeymoon','💞','Honeymoon'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
   ['portrait','🎭','Portrait'],['doc','📰','Street'],['fantasy','🌌','Fantasy'],['product','📦','Product'],
   ['cctv','🎥','CCTV'],['webcam','💻','Webcam'],['interior','🏠','Interior']];
 

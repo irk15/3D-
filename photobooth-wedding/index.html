@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f1e8d7">
+<title>Wedding Photobooth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Pinyon+Script&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../photobooth/core.css">
+<style>
+
+:root{--bg:#f1e8d7;--ink:#3b2f25;--dim:#8f7c60;--paper:#fffdf8;--hand:"Pinyon Script","Snell Roundhand","Brush Script MT",cursive;--sans:"Cormorant Garamond",Georgia,"Times New Roman",serif}
+html,body{background:var(--bg)} body{font-size:16px}
+header{padding:16px 22px 4px;align-items:center}
+.title h1{font-family:"Pinyon Script","Snell Roundhand","Brush Script MT",cursive;font-weight:400;font-size:44px;line-height:1.05;letter-spacing:.01em;background:linear-gradient(120deg,#9b7226,#e7cd8a 40%,#b0862f 70%,#e9d49a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.title .sub{text-transform:uppercase;letter-spacing:.34em;font-size:10px;color:var(--dim);margin-top:4px}
+.cloud{letter-spacing:.06em} .cloud.ok{color:#6b8f5a}
+.stat b{font-size:26px;font-weight:600;color:#8a6a2a} .stat span{letter-spacing:.26em;font-size:9px;color:var(--dim)}
+.tabs{gap:28px;padding:2px 0 6px}
+.tabs button{font-family:inherit;font-size:15px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim);border-radius:0;padding:6px 2px;border-bottom:1px solid transparent;background:none}
+.tabs button.on{background:none;color:#8a6a2a;border-bottom-color:#b98f3e}
+#board{background-image:radial-gradient(ellipse at 50% 0%,#fffaf0 0%,rgba(255,250,240,0) 62%),repeating-linear-gradient(0deg,rgba(150,120,70,.04) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(150,120,70,.035) 0 1px,transparent 1px 3px);background-size:auto;background-color:#efe5d2}
+#board::before,#board::after{content:"";position:absolute;width:190px;height:110px;pointer-events:none;background-repeat:no-repeat;background-size:contain}
+#board::before{left:4px;top:2px;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22190%22%20height%3D%22110%22%20viewBox%3D%220%200%20190%20110%22%3E%3Cpath%20d%3D%22M6%20100%20C50%2092%20100%2070%20180%206%22%20stroke%3D%22%238d9a6c%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20opacity%3D%22.7%22/%3E%3Cellipse%20cx%3D%2218%22%20cy%3D%2279%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2018%2070%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2231%22%20cy%3D%2254%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%2031%2063%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2244%22%20cy%3D%2265%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2044%2056%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2257%22%20cy%3D%2240%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%2057%2049%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2270%22%20cy%3D%2251%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2070%2042%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2283%22%20cy%3D%2226%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%2083%2035%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2296%22%20cy%3D%2237%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2096%2028%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%22109%22%20cy%3D%2212%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%20109%2021%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%22122%22%20cy%3D%2223%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%20122%2014%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2258%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%2252%22%20cy%3D%2248%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%2274%22%20cy%3D%2238%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%2296%22%20cy%3D%2228%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%22118%22%20cy%3D%2218%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3C/svg%3E")}
+#board::after{right:4px;bottom:112px;transform:scale(-1,-1);background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22190%22%20height%3D%22110%22%20viewBox%3D%220%200%20190%20110%22%3E%3Cpath%20d%3D%22M6%20100%20C50%2092%20100%2070%20180%206%22%20stroke%3D%22%238d9a6c%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20opacity%3D%22.7%22/%3E%3Cellipse%20cx%3D%2218%22%20cy%3D%2279%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2018%2070%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2231%22%20cy%3D%2254%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%2031%2063%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2244%22%20cy%3D%2265%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2044%2056%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2257%22%20cy%3D%2240%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%2057%2049%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2270%22%20cy%3D%2251%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2070%2042%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2283%22%20cy%3D%2226%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%2083%2035%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%2296%22%20cy%3D%2237%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%2096%2028%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%22109%22%20cy%3D%2212%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%28-35%20109%2021%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Cellipse%20cx%3D%22122%22%20cy%3D%2223%22%20rx%3D%229%22%20ry%3D%224%22%20transform%3D%22rotate%2835%20122%2014%29%22%20fill%3D%22%239aa87a%22%20opacity%3D%22.55%22/%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2258%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%2252%22%20cy%3D%2248%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%2274%22%20cy%3D%2238%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%2296%22%20cy%3D%2228%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3Ccircle%20cx%3D%22118%22%20cy%3D%2218%22%20r%3D%222.6%22%20fill%3D%22%23d8b46a%22%20opacity%3D%22.8%22/%3E%3C/svg%3E")}
+#booth{width:min(36vw,230px,28vh)}
+#viewfinder{border-radius:50% 50% 16px 16px;border:3px solid #c9a45c;background:#e8dcc4;box-shadow:0 0 0 5px #f6efe0,0 0 0 6.5px #c9a45c,0 22px 44px rgba(120,90,40,.32)}
+.hint{color:#fff;font-style:italic;letter-spacing:.08em;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+#slot{height:7px;margin:12px 10% 0;border-radius:6px;background:linear-gradient(#ecd596,#a8802f);box-shadow:0 2px 6px rgba(120,90,40,.4)}
+.pol{background:#fffdf8;padding:1.6% 1.6% 0;border-radius:1px;box-shadow:0 12px 26px rgba(90,65,30,.3),0 1px 2px rgba(90,65,30,.35),inset 0 0 0 1px rgba(201,164,92,.6)}
+.pol::before{content:"";position:absolute;top:-5px;left:50%;width:11px;height:11px;border-radius:50%;transform:translateX(-50%);z-index:2;background:radial-gradient(circle at 35% 30%,#fff3c4,#b98f3e 70%);box-shadow:0 2px 3px rgba(0,0,0,.35)}
+.pol .cap{font-family:"Pinyon Script","Snell Roundhand","Brush Script MT",cursive;color:#4a3a2a;font-size:calc(var(--w,120px)*.088);line-height:1.02}
+.pol .cap b{font-weight:400;color:#9b7226}
+.pol.drag{box-shadow:0 24px 44px rgba(90,65,30,.4)}
+#empty{font-family:"Pinyon Script","Snell Roundhand",cursive;font-size:28px;color:#a8905f}
+.bar{background:linear-gradient(transparent,#efe5d2ee 45%)}
+.btn{background:#fffaf0;color:#6e5522;border:1px solid #d8c18a;font-family:inherit;letter-spacing:.16em;text-transform:uppercase;font-size:12px;font-weight:700;padding:12px 22px}
+.btn.pri{background:linear-gradient(135deg,#b98f3e,#ecd596 50%,#b98f3e);color:#2f2410;border-color:#b98f3e;box-shadow:0 8px 20px rgba(185,143,62,.4)}
+.btn.dng{color:#a14a3a}
+#filters button{background:rgba(255,252,244,.85);border:1px solid #dcc58e;border-radius:99px;padding:7px 15px;font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.06em;color:#6e5522}
+#filters button.on{background:linear-gradient(135deg,#b98f3e,#ecd596 55%,#b98f3e);color:#2f2410;border-color:#b98f3e}
+.ov{background:rgba(241,232,215,.86)}
+.sheet{background:#fffaf0;color:var(--ink);border:1px solid #dcc58e;box-shadow:0 24px 60px rgba(90,65,30,.3)}
+.sheet h2{font-family:"Pinyon Script","Snell Roundhand",cursive;font-size:32px;font-weight:400;color:#9b7226}
+input[type=text],textarea{background:#fff;border:1px solid #dcc58e;color:var(--ink);font-family:inherit}
+textarea{font-family:"Pinyon Script","Snell Roundhand",cursive;font-size:23px;line-height:1.1}
+input:focus,textarea:focus{border-color:#b98f3e}
+.emojis button:active{background:#f0e3c2}
+.grid .tile{border-radius:3px;box-shadow:0 8px 18px rgba(90,65,30,.25);border:5px solid #fffdf8}
+.grid .who{background:linear-gradient(transparent,rgba(60,40,15,.75));font-style:italic}
+#toast{background:#3b2f25;color:#f3ebdc}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title"><h1 id="evTitle">The Wedding</h1><div class="sub" id="evDate">Tap the title to edit</div><div class="cloud" id="cloud"></div></div>
+    <div class="stat"><div><b id="nPhotos">0</b><span>Photos</span></div><div><b id="nGuests">0</b><span>People</span></div></div>
+  </header>
+  <div class="tabs"><button data-t="album">Album</button><button data-t="book" class="on">Guest Book</button></div>
+  <main>
+    <section class="view on" id="v-book">
+      <div id="board">
+        <div id="booth">
+          <div id="viewfinder">
+            <video id="vid" playsinline muted autoplay></video>
+            <div class="fallback" id="fb" style="display:none"><span>📷</span><span id="fbMsg">Camera unavailable</span></div>
+            <div id="tintov"></div><div id="vigov"></div><div id="flash"></div>
+            <button id="shutter" aria-label="Take photo"></button>
+            <div class="hint">Tap to capture</div>
+          </div>
+          <div id="slot"></div>
+          <div id="printer"></div>
+        </div>
+        <div id="empty">Every smile, every blessing — captured here</div>
+      </div>
+      <div id="filters"></div>
+      <div class="bar"><button class="btn" id="flip">Flip camera</button><button class="btn pri" id="snapBtn">Capture a memory</button></div>
+    </section>
+    <section class="view" id="v-album">
+      <div id="album"><div class="grid" id="grid"></div></div>
+      <div class="bar"><button class="btn" id="dlAll">Download all photo cards</button></div>
+    </section>
+  </main>
+</div>
+
+<!-- note sheet -->
+<div class="ov" id="noteOv"><div class="sheet">
+  <h2>Leave a wish 🤍</h2>
+  <div class="row">
+    <div class="thumb" id="noteThumb"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+      <input type="text" id="nm" placeholder="Your name" maxlength="24" autocomplete="off">
+      <textarea id="msg" placeholder="A wish for the couple…" maxlength="140"></textarea>
+      <div class="cnt"><span id="cc">0</span>/140</div>
+    </div>
+  </div>
+  <div class="emojis" id="emo"></div>
+  <div class="acts"><button class="btn" id="retake">Retake</button><button class="btn pri" id="post">Pin to the board</button></div>
+</div></div>
+
+<!-- enlarged -->
+<div class="ov" id="big"><div id="bigHold"></div>
+  <div class="bigacts"><button class="btn pri" id="saveCard">Save photo card</button><button class="btn dng" id="del">Delete</button><button class="btn" id="closeBig">Close</button></div>
+</div>
+
+<!-- settings -->
+<div class="ov" id="setOv"><div class="sheet">
+  <h2>Event details</h2>
+  <input type="text" id="sTitle" placeholder="Event title" maxlength="50">
+  <input type="text" id="sDate" placeholder="Date (e.g. Aug 25th)" maxlength="30">
+  <h3>Cloud backup (GitHub)</h3>
+  <input type="text" id="sRepo" placeholder="owner/repo  e.g. irk15/photobooth-photos" autocapitalize="off" autocorrect="off">
+  <input type="password" id="sTok" placeholder="GitHub token (stays on this device)" autocomplete="off">
+  <button class="btn" id="copyLink" type="button">Copy guest link (anyone who opens it uploads to your repo)</button>
+  <small>Every photo is uploaded as a JPG plus a small JSON with the name and note. Use a private repo and a fine-grained token limited to that repo (Contents: read and write).</small>
+  <div class="acts"><button class="btn" id="sCancel">Cancel</button><button class="btn pri" id="sSave">Save</button></div>
+</div></div>
+
+<canvas id="fx"></canvas>
+<div id="toast"></div>
+<input type="file" id="file" accept="image/*" capture="user" hidden>
+
+
+<script>window.PB_THEME={
+ id:"wedding",title:"The Wedding",date:"",
+ emoji:["🤍","💍","🥂","✨","💐","🕊️","💛","🌸","🥹","💕","👰","🤵","🍾","🎶","💃","🕺"],
+ filters:[
+ {id:"classic",name:"Classic",icon:"🤍"},
+ {id:"ivory",name:"Ivory Film",icon:"🎞️",b:1.05,c:.92,s:.85,sep:.25,tint:[255,236,205,.10],vig:.25,grain:.04},
+ {id:"golden",name:"Golden Hour",icon:"🌅",b:1.08,c:1.05,s:1.2,sep:.18,hue:-8,tint:[255,190,110,.18],vig:.3},
+ {id:"blush",name:"Blush",icon:"🌸",b:1.08,c:.95,s:.9,tint:[255,182,193,.16],vig:.2},
+ {id:"dreamy",name:"Dreamy",icon:"☁️",b:1.12,c:.85,s:.9,tint:[255,255,255,.12],vig:.15},
+ {id:"vintage",name:"Vintage",icon:"📜",sep:.6,c:.9,s:.8,tint:[120,90,40,.1],vig:.4,grain:.08},
+ {id:"noir",name:"Silk Noir",icon:"🖤",gray:1,c:1.15,vig:.45,grain:.06}
+],
+ confetti:{count:90,gravity:.28,colors:["#f7e7c6","#d8b46a","#ffffff","#f4c9cf","#c9a45c","#e9d49a"],shapes:["petal","petal","circle","rect"]},
+ card:{paper:"#fdfaf3",ink:"#3a2f25",sub:"#a88a4e",font:'"Pinyon Script","Snell Roundhand","Brush Script MT",cursive',fontLoad:'"Pinyon Script"',
+   deco:(x,W,H)=>{x.strokeStyle="#c9a45c";x.lineWidth=3;x.strokeRect(6,6,W-12,H-12)}}
+};</script>
+<script src="../photobooth/core.js"></script>
+</body>
+</html>

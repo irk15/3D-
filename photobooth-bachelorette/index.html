@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07020f">
+<title>Bachelorette Photobooth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;800&family=Permanent+Marker&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../photobooth/core.css">
+<style>
+
+:root{--bg:#07020f;--ink:#fff;--dim:#c3aee6;--paper:#fff;--hand:"Permanent Marker","Marker Felt","Comic Sans MS",cursive;--sans:"Unbounded","Arial Rounded MT Bold",system-ui,-apple-system,sans-serif}
+html,body{background:#07020f}
+#app::before{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;background:radial-gradient(40% 35% at 20% 20%,rgba(255,45,149,.55),transparent 70%),radial-gradient(38% 40% at 85% 25%,rgba(139,92,255,.55),transparent 70%),radial-gradient(45% 40% at 60% 92%,rgba(34,228,255,.35),transparent 70%);filter:blur(28px);animation:drift 14s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(-4%,3%,0) scale(1.08)}}
+header,.tabs,main{position:relative;z-index:1}
+header{align-items:center}
+.title h1{font-family:inherit;font-weight:800;font-size:22px;text-transform:uppercase;letter-spacing:.02em;color:#fff;text-shadow:0 0 6px #ff2d95,0 0 18px #ff2d95,0 0 42px #ff2d95}
+.title .sub{color:#ffb8e0;text-transform:uppercase;letter-spacing:.22em;font-size:9px}
+.cloud{color:#c3aee6}
+.stat b{color:#7be4ff;text-shadow:0 0 12px #22e4ff;font-size:19px;font-weight:700}.stat span{color:#c3aee6;font-size:8px;letter-spacing:.2em}
+.tabs button{font-family:inherit;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#e8dcff;border:1px solid rgba(255,255,255,.22);padding:8px 16px}
+.tabs button.on{background:linear-gradient(90deg,#ff2d95,#8b5cff);border-color:transparent;color:#fff;box-shadow:0 0 22px rgba(255,45,149,.6)}
+#board{background-color:transparent;background-image:linear-gradient(transparent 55%,rgba(255,45,149,.18)),repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 48px),repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 48px);background-size:auto}
+#board::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(1.6px 1.6px at 12% 18%,#fff,transparent),radial-gradient(1.2px 1.2px at 28% 62%,#ffb8e0,transparent),radial-gradient(1.8px 1.8px at 44% 30%,#fff,transparent),radial-gradient(1.2px 1.2px at 63% 74%,#9ff3ff,transparent),radial-gradient(1.6px 1.6px at 78% 22%,#fff,transparent),radial-gradient(1.4px 1.4px at 90% 58%,#ffb8e0,transparent),radial-gradient(1.2px 1.2px at 6% 80%,#fff,transparent),radial-gradient(1.6px 1.6px at 54% 90%,#fff,transparent);animation:twinkle 2.4s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.25}to{opacity:1}}
+#board::after{content:"🪩";position:absolute;top:-8px;right:10px;font-size:50px;pointer-events:none;transform-origin:50% -24px;animation:swing 3.2s ease-in-out infinite alternate;filter:drop-shadow(0 0 16px #ff2d95)}
+@keyframes swing{from{transform:rotate(-13deg)}to{transform:rotate(13deg)}}
+#booth{width:min(36vw,230px,28vh)}
+#viewfinder{border-radius:28px;border:3px solid #ff2d95;background:#12081f;box-shadow:0 0 0 2px #07020f,0 0 26px #ff2d95,0 0 64px rgba(139,92,255,.65)}
+.hint{font-weight:600;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;text-shadow:0 0 8px #ff2d95}
+#slot{height:6px;margin:12px 10% 0;border-radius:6px;background:linear-gradient(90deg,#ff2d95,#8b5cff,#22e4ff);box-shadow:0 0 14px #ff2d95}
+.pol{background:linear-gradient(135deg,#ff9ad5,#b69cff 35%,#7be4ff 65%,#fff3a1);padding:2.2% 2.2% 2.2%;border-radius:4px;box-shadow:0 10px 30px rgba(0,0,0,.65),0 0 22px rgba(255,45,149,.4)}
+.pol .cap{background:#fff;margin-top:2%;border-radius:0 0 2px 2px;font-family:"Permanent Marker","Marker Felt","Comic Sans MS",cursive;color:#1a0b2e;font-size:calc(var(--w,120px)*.072);padding:3% 3% 1%;height:calc(var(--w,120px)*.2)}
+.pol .cap b{color:#e0187f;font-weight:400}
+.pol::after{position:absolute;top:-13px;right:-11px;font-size:calc(var(--w,120px)*.2);content:"💋";filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));pointer-events:none}
+.pol:nth-child(5n+2)::after{content:"✨"}.pol:nth-child(5n+3)::after{content:"🍾"}.pol:nth-child(5n+4)::after{content:"💖"}.pol:nth-child(5n)::after{content:"👑"}
+.pol.drag{box-shadow:0 24px 50px rgba(0,0,0,.8),0 0 36px rgba(255,45,149,.6)}
+#big .pol .cap{padding:3%}
+#empty{font-family:"Permanent Marker","Marker Felt",cursive;font-size:22px;color:#ffb8e0;text-shadow:0 0 14px #ff2d95}
+.bar{background:linear-gradient(transparent,rgba(7,2,15,.94) 45%)}
+.btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#fff;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:13px 20px}
+.btn.pri{background:linear-gradient(90deg,#ff2d95,#8b5cff);border:0;color:#fff;box-shadow:0 0 24px rgba(255,45,149,.65)}
+.btn.dng{color:#ff9ab8}
+#filters button{background:rgba(10,4,22,.7);border:1px solid rgba(255,255,255,.24);border-radius:99px;padding:8px 14px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.05em;color:#fff;backdrop-filter:blur(6px)}
+#filters button.on{background:linear-gradient(90deg,#ff2d95,#8b5cff);border-color:transparent;box-shadow:0 0 20px rgba(255,45,149,.65)}
+.ov{background:rgba(7,2,15,.84)}
+.sheet{background:#130a24;border:1px solid rgba(255,45,149,.55);box-shadow:0 0 44px rgba(139,92,255,.4)}
+.sheet h2{font-family:inherit;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.06em;text-shadow:0 0 14px #ff2d95}
+input[type=text],textarea{background:#1d1136;border:1px solid rgba(255,255,255,.2);color:#fff}
+textarea{font-family:"Permanent Marker","Marker Felt",cursive;font-size:17px}
+input:focus,textarea:focus{border-color:#ff2d95;box-shadow:0 0 14px rgba(255,45,149,.45)}
+.emojis button:active{background:#2b1a4d}
+.grid .tile{border-radius:16px;border:2px solid rgba(255,45,149,.7);box-shadow:0 0 18px rgba(255,45,149,.35)}
+.grid .who{font-family:"Permanent Marker",cursive;font-size:13px}
+#toast{background:#ff2d95;color:#fff;font-weight:700;box-shadow:0 0 24px #ff2d95}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title"><h1 id="evTitle">Bride Tribe</h1><div class="sub" id="evDate">Tap the title to edit</div><div class="cloud" id="cloud"></div></div>
+    <div class="stat"><div><b id="nPhotos">0</b><span>Photos</span></div><div><b id="nGuests">0</b><span>People</span></div></div>
+  </header>
+  <div class="tabs"><button data-t="album">All shots</button><button data-t="book" class="on">The Wall</button></div>
+  <main>
+    <section class="view on" id="v-book">
+      <div id="board">
+        <div id="booth">
+          <div id="viewfinder">
+            <video id="vid" playsinline muted autoplay></video>
+            <div class="fallback" id="fb" style="display:none"><span>📷</span><span id="fbMsg">Camera unavailable</span></div>
+            <div id="tintov"></div><div id="vigov"></div><div id="flash"></div>
+            <button id="shutter" aria-label="Take photo"></button>
+            <div class="hint">Tap to snap</div>
+          </div>
+          <div id="slot"></div>
+          <div id="printer"></div>
+        </div>
+        <div id="empty">Wall's empty. Make it iconic 🪩</div>
+      </div>
+      <div id="filters"></div>
+      <div class="bar"><button class="btn" id="flip">Flip camera</button><button class="btn pri" id="snapBtn">Snap it! 📸</button></div>
+    </section>
+    <section class="view" id="v-album">
+      <div id="album"><div class="grid" id="grid"></div></div>
+      <div class="bar"><button class="btn" id="dlAll">Download all photo cards</button></div>
+    </section>
+  </main>
+</div>
+
+<!-- note sheet -->
+<div class="ov" id="noteOv"><div class="sheet">
+  <h2>Say something iconic 💋</h2>
+  <div class="row">
+    <div class="thumb" id="noteThumb"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+      <input type="text" id="nm" placeholder="Your name" maxlength="24" autocomplete="off">
+      <textarea id="msg" placeholder="Dare, drama or a toast…" maxlength="140"></textarea>
+      <div class="cnt"><span id="cc">0</span>/140</div>
+    </div>
+  </div>
+  <div class="emojis" id="emo"></div>
+  <div class="acts"><button class="btn" id="retake">Retake</button><button class="btn pri" id="post">Drop it on the wall</button></div>
+</div></div>
+
+<!-- enlarged -->
+<div class="ov" id="big"><div id="bigHold"></div>
+  <div class="bigacts"><button class="btn pri" id="saveCard">Save photo card</button><button class="btn dng" id="del">Delete</button><button class="btn" id="closeBig">Close</button></div>
+</div>
+
+<!-- settings -->
+<div class="ov" id="setOv"><div class="sheet">
+  <h2>Event details</h2>
+  <input type="text" id="sTitle" placeholder="Event title" maxlength="50">
+  <input type="text" id="sDate" placeholder="Date (e.g. Aug 25th)" maxlength="30">
+  <h3>Cloud backup (GitHub)</h3>
+  <input type="text" id="sRepo" placeholder="owner/repo  e.g. irk15/photobooth-photos" autocapitalize="off" autocorrect="off">
+  <input type="password" id="sTok" placeholder="GitHub token (stays on this device)" autocomplete="off">
+  <button class="btn" id="copyLink" type="button">Copy guest link (anyone who opens it uploads to your repo)</button>
+  <small>Every photo is uploaded as a JPG plus a small JSON with the name and note. Use a private repo and a fine-grained token limited to that repo (Contents: read and write).</small>
+  <div class="acts"><button class="btn" id="sCancel">Cancel</button><button class="btn pri" id="sSave">Save</button></div>
+</div></div>
+
+<canvas id="fx"></canvas>
+<div id="toast"></div>
+<input type="file" id="file" accept="image/*" capture="user" hidden>
+
+
+<script>window.PB_THEME={
+ id:"bachelorette",title:"Bride Tribe",date:"",
+ emoji:["👑","💅","🥂","🍾","💃","🔥","✨","💋","🪩","💖","🎀","🥳","😈","🍸","🍑","🕶️"],
+ filters:[
+ {id:"natural",name:"Natural",icon:"📷"},
+ {id:"flash",name:"Disco Flash",icon:"🪩",b:1.2,c:1.25,s:1.3,vig:.35},
+ {id:"pink",name:"Neon Pink",icon:"💖",s:1.3,c:1.1,tint:[255,45,149,.35],blend:"screen",vig:.25},
+ {id:"uv",name:"Ultraviolet",icon:"🔮",c:1.15,s:1.2,tint:[110,70,255,.38],blend:"screen",vig:.4},
+ {id:"y2k",name:"Y2K Cam",icon:"💿",b:1.15,c:.9,s:1.4,tint:[180,220,255,.12],grain:.1,vig:.2},
+ {id:"glam",name:"Glam",icon:"💄",b:1.1,c:.9,s:1.1,tint:[255,214,220,.15],vig:.1},
+ {id:"sunset",name:"Sunset Shot",icon:"🍑",s:1.4,hue:-15,tint:[255,120,60,.3],blend:"screen",vig:.3},
+ {id:"bw",name:"B&W Flash",icon:"🖤",gray:1,c:1.4,b:1.15,vig:.3,grain:.08}
+],
+ confetti:{count:130,gravity:.34,colors:["#ff2d95","#8b5cff","#22e4ff","#ffd86b","#ffffff","#ff7ac6"],shapes:["rect","circle","star","heart","star"]},
+ card:{paper:"#ffffff",ink:"#1a0b2e",sub:"#c2338a",font:'"Permanent Marker","Marker Felt","Comic Sans MS",cursive',fontLoad:'"Permanent Marker"',
+   deco:(x,W,H)=>{const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,"#ff2d95");g.addColorStop(.5,"#8b5cff");g.addColorStop(1,"#22e4ff");x.strokeStyle=g;x.lineWidth=14;x.strokeRect(7,7,W-14,H-14)}}
+};</script>
+<script src="../photobooth/core.js"></script>
+</body>
+</html>

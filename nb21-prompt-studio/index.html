@@ -19,6 +19,7 @@ body.interior{--ac:#e0b98a;--ac-dim:#8a7055;--acs:rgba(224,185,138,.13);}
 body.editorial{--ac:#f472b6;--ac-dim:#9a4f75;--acs:rgba(244,114,182,.13);}
 body.portrait{--ac:#a78bfa;--ac-dim:#675596;--acs:rgba(167,139,250,.13);}
 body.fantasy{--ac:#818cf8;--ac-dim:#4f5599;--acs:rgba(129,140,248,.13);}
+body.farsnap{--ac:#ff8a5c;--ac-dim:#96553a;--acs:rgba(255,138,92,.13);}
 body.webcam{--ac:#ff9ec4;--ac-dim:#965e75;--acs:rgba(255,158,196,.13);}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;}
@@ -81,6 +82,7 @@ button{font-family:inherit;}
 
 /* ===== CENTER ===== */
 .f4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.fld.wide{grid-column:1/-1;}
 .fld label{font-size:9.5px;text-transform:uppercase;letter-spacing:.9px;color:var(--faint);font-weight:800;
   display:block;margin-bottom:5px;}
 .fld input,.fld textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:9px;
@@ -317,6 +319,7 @@ button{font-family:inherit;}
       <div class="fld"><label>Outfit</label><textarea id="fOutfit" rows="2"></textarea></div>
       <div class="fld"><label>Scene detail</label><textarea id="fScene" rows="2"></textarea></div>
       <div class="fld"><label>Expression</label><textarea id="fExpr" rows="2"></textarea></div>
+      <div class="fld wide"><label>Story premise <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--faint)">· optional — what is happening, and why it matters</span></label><textarea id="fStory" rows="2"></textarea></div>
     </div>
 
     <div class="pTabs" id="pTabs"></div>
@@ -406,60 +409,88 @@ snap:{
   {n:'Flat overhead',txt:"held flat directly overhead pointing straight down at the scene below"}]
 },
 studio:{
- icon:'✨',title:'STUDIO',sub:'high-end · campaign grade',ratio:'4:5',verb:'A high-end professional photograph',
- ph:{subject:'a woman in her thirties, sharp features, dark hair pulled back',
-     outfit:'a sharply tailored camel wool coat over black silk',
-     scene:'travertine floors, a single sculptural chair, tall windows',
-     expr:'direct unwavering gaze, chin slightly lifted'},
+ icon:'✨',title:'STUDIO',sub:'grand · cinematic · story & drama',ratio:'16:9',verb:'A high-end cinematic campaign photograph, staged with the scale and drama of a feature-film poster',
+ ph:{subject:'a woman in her thirties, sharp features, dark hair, an unreadable stare',
+     outfit:'a floor-length structured gown in deep oxblood satin, the train pooling behind her',
+     scene:'a long banquet table set for a dinner no one came to, candles guttering',
+     expr:'(leave blank — each story beat sets the emotion)',
+     story:'she has just inherited the house and everything inside it, and someone is waiting in the next room'},
  gritLabel:'Finish',gritPh:'✎ your own finish…',
- DNA:"Captured on a medium-format digital system with a prime lens, giving the deep tonal roll-off, fine gradation and three-dimensional subject separation of a real commercial shoot. Depth of field is shallow and deliberate, with a soft creamy falloff behind the plane of focus while the eyes stay critically sharp. Lighting ratios are measured and intentional, with clean shadow detail and highlights that roll off rather than clip. Colour science is accurate and calibrated. Skin is retouched to a professional standard but keeps real texture — visible pores, fine lines and natural specular sheen, never plastic, waxy or airbrushed. Micro-detail holds in fabric weave, hair strands and surface materials. Framed and lit with full intent, exactly as a working photographer would deliver to a client.",
- DNAJ:{system:"medium-format digital, prime lens",
-  depth_of_field:"shallow and deliberate, creamy falloff, eyes critically sharp",
-  lighting:"measured ratios, clean shadow detail, highlights roll off without clipping",
-  colour:"accurate calibrated colour science",
+ DNA:"Captured on a large-format digital cinema-grade system with a premium prime lens, giving the monumental tonal depth, fine gradation and three-dimensional subject separation of a top-tier fashion campaign shot like a film still. The frame carries the scale and gravity of an epic: a human presence held inside something far larger than themselves, with real architectural or natural grandeur, layered depth from foreground to far distance, and the unmistakable sense that a story is mid-unfolding just outside the frame. Lighting is dramatic and sculpted — strong directional sources, deep controlled shadow, luminous highlights that roll off rather than clip, and volumetric light visible in the air. Colour is deliberately graded with a restrained cinematic palette. Skin is retouched to a professional standard but keeps real texture — visible pores, fine lines and natural specular sheen, never plastic, waxy or airbrushed. Fabric, hair and surfaces resolve to the fibre, and costume moves as though caught by real wind and motion. Every element is staged, costumed and lit with full intent, exactly as a director of photography and a world-class fashion photographer would deliver for a major campaign.",
+ DNAJ:{system:"large-format digital cinema-grade system, premium prime lens",
+  scale:"epic — a human figure held inside real architectural or natural grandeur, layered depth foreground to far distance",
+  narrative:"a story clearly mid-unfolding just outside the frame",
+  lighting:"dramatic, sculpted, strong directional sources, deep controlled shadow, highlights roll off without clipping, volumetric light visible in the air",
+  colour:"deliberately graded, restrained cinematic palette",
   skin:"professionally retouched but real — visible pores, fine lines, natural sheen, never plastic",
-  micro_detail:"fabric weave, hair strands and surface materials fully resolved",
-  separation:"three-dimensional subject separation from background",
-  intent:"client-delivery quality, every element deliberate"},
- notLike:"a snapshot, an amateur photo, a phone picture, a 3D render, CGI or an illustration",
- GRIT:["a warm highlight roll-off through the brightest tones","fine natural film grain sitting under the image","a soft optical bloom where the key light is strongest","rich shadow detail retained rather than crushed","a gentle vignette drawing the eye inward","deep saturated blacks with no colour cast","crisp specular catchlights in the eyes","a delicate haze softening the deepest background"],
- WHERE:[{id:'seamless',em:'🎬',t:'Studio cyc',d:'seamless',txt:"against a seamless studio backdrop in a controlled photographic space",light:'soft'},
-  {id:'luxint',em:'🛋️',t:'Luxury interior',d:'designed',txt:"in a designed luxury interior with considered furniture and architectural detail",light:'window'},
-  {id:'roof',em:'🌇',t:'Rooftop',d:'skyline',txt:"on a rooftop with a city skyline stretching out behind",light:'golden'},
-  {id:'loft',em:'🏭',t:'Loft',d:'concrete',txt:"in a raw industrial loft with concrete floors and tall factory windows",light:'window'},
-  {id:'nature',em:'🏔️',t:'Landscape',d:'open',txt:"in an open natural landscape with real distance falling away behind",light:'golden'},
-  {id:'street',em:'🏙️',t:'City street',d:'urban',txt:"on an urban street with genuine architecture and depth behind the subject",light:'overcast'},
-  {id:'water',em:'🌊',t:'Coast / pool',d:'water',txt:"beside water — a pool edge or open coastline — light bouncing off the surface",light:'golden'},
-  {id:'dark',em:'🕯️',t:'Dark set',d:'moody',txt:"on a darkened set with almost nothing visible beyond the pool of light",light:'lowkey'}],
- LIGHT:[{id:'soft',em:'☁️',t:'Softbox key',d:'clean',txt:"lit with a large softbox key close to the subject, soft-edged shadows and even falloff"},
+  micro_detail:"fabric, hair and surfaces resolved to the fibre, costume moving as if caught by real wind",
+  intent:"every element staged, costumed and lit with full intent, major-campaign quality"},
+ notLike:"a snapshot, a phone picture, a flat catalogue photo, a stock image, a 3D render, CGI or an illustration",
+ GRIT:["a warm highlight roll-off through the brightest tones","fine natural film grain sitting under the image","a soft optical bloom around the strongest light","anamorphic horizontal flares streaking from the brightest source","volumetric haze catching and holding the light","rich shadow detail retained rather than crushed","a gentle vignette pulling the eye inward","embers, dust or rain caught in the light for depth","a delicate haze softening the deepest background","deep saturated blacks with no colour cast"],
+ WHERE:[{id:'stair',em:'🏛️',t:'Palazzo staircase',d:'marble, vaulted',txt:"at the foot of a monumental marble palazzo staircase beneath a vaulted painted ceiling, columns receding into shadow",light:'god'},
+  {id:'ballroom',em:'🕯️',t:'Flooded ballroom',d:'chandeliers, water',txt:"in an abandoned grand ballroom flooded ankle-deep, dark chandeliers hanging overhead and the black water mirroring everything",light:'chandelier'},
+  {id:'cathedral',em:'⛪',t:'Cathedral nave',d:'stained glass',txt:"down the nave of a vast gothic cathedral, colour falling through towering stained glass onto worn stone",light:'god'},
+  {id:'salt',em:'🌩️',t:'Salt flat storm',d:'endless, monolith',txt:"alone on an endless white salt flat beneath a colossal storm sky, a lone monolithic structure on the horizon",light:'storm'},
+  {id:'opera',em:'🎭',t:'Opera house',d:'empty stage',txt:"on the stage of a grand empty opera house, gilded tiers and red velvet rising into the dark beyond the footlights",light:'spot'},
+  {id:'cliff',em:'🌊',t:'Sea cliff',d:'storm rolling in',txt:"on a sheer sea cliff with enormous waves breaking far below and weather rolling in off the water",light:'storm'},
+  {id:'hall',em:'🏭',t:'Colossal hall',d:'rust, gantries',txt:"inside a colossal derelict industrial hall, rusted gantries and shafts of dusty light, the scale dwarfing the figure",light:'god'},
+  {id:'library',em:'📚',t:'Grand library',d:'baroque galleries',txt:"in a monumental baroque library, galleries of books climbing out of sight, ladders and a single lit desk",light:'chiaro'},
+  {id:'court',em:'🔥',t:'Fire courtyard',d:'torches, embers',txt:"in a stone courtyard ringed by flaming torches and braziers, embers lifting into the night",light:'fire'},
+  {id:'terminus',em:'🚂',t:'Grand terminus',d:'iron & glass',txt:"beneath the iron-and-glass roof of a monumental railway terminus, steam and light drifting down the empty platforms",light:'rim'},
+  {id:'forest',em:'🌲',t:'Ancient forest',d:'colossal trees',txt:"within an ancient forest of colossal trees, mist threading between the trunks",light:'blue'},
+  {id:'roof',em:'🌇',t:'Skyline rooftop',d:'blue hour',txt:"on a high rooftop at blue hour with a vast city skyline glittering below",light:'blue'},
+  {id:'seamless',em:'🎬',t:'Studio cyc',d:'clean seamless',txt:"against a seamless studio backdrop in a controlled photographic space",light:'soft'},
+  {id:'dark',em:'🌑',t:'Black void set',d:'one monument',txt:"on a vast darkened soundstage with one monumental sculptural set piece and almost nothing else visible",light:'lowkey'}],
+ LIGHT:[{id:'god',em:'☀️',t:'God rays',d:'volumetric beams',txt:"lit by hard shafts of sunlight cutting through dust and haze, volumetric beams striking the subject while the vast space around falls into shadow"},
+  {id:'chiaro',em:'🖼️',t:'Chiaroscuro',d:'oil-painting drama',txt:"lit in painterly chiaroscuro, a single warm source carving the face out of deep darkness with the drama of a Baroque oil painting"},
   {id:'rembrandt',em:'🔺',t:'Rembrandt',d:'classic',txt:"lit in classic Rembrandt style, a small triangle of light on the shadowed cheek"},
-  {id:'beauty',em:'💎',t:'Beauty dish',d:'crisp',txt:"lit by a beauty dish above the lens with a reflector below, sculpted cheekbones"},
-  {id:'rim',em:'🌗',t:'Rim light',d:'separation',txt:"lit from behind so a bright rim traces the edge and lifts the subject off the background"},
-  {id:'golden',em:'🌅',t:'Golden hour',d:'warm',txt:"lit by low golden-hour sun raking across the scene, warm and directional"},
+  {id:'rim',em:'🌗',t:'Blazing backlight',d:'rim + haze',txt:"lit from behind by a blazing source so a bright rim traces the whole silhouette and haze glows around the figure"},
+  {id:'storm',em:'⛈️',t:'Storm light',d:'breaking sky',txt:"lit by a bruised, breaking storm sky, a narrow slot of low sunlight spilling through dark cloud while the rest of the world is steel and shadow"},
+  {id:'fire',em:'🔥',t:'Firelight',d:'flicker, warm',txt:"lit by flickering firelight from braziers and torches, warm orange pulsing on the skin against a cold blue ambient fall-off"},
+  {id:'chandelier',em:'🕯️',t:'Practicals',d:'candles & lamps',txt:"lit by practical sources within the set — candles, chandeliers and lamps — warm pools of light with the room beyond sinking into darkness"},
+  {id:'spot',em:'🔦',t:'Theatre spot',d:'cone in smoke',txt:"lit by a single hard theatrical spotlight from above, a clean cone of light in drifting smoke with black all around"},
+  {id:'blue',em:'🌌',t:'Blue hour',d:'cobalt + glow',txt:"lit at blue hour, deep cobalt ambient light set against glowing warm windows and distant city lights"},
+  {id:'golden',em:'🌅',t:'Golden hour',d:'raking, warm',txt:"lit by low golden-hour sun raking across the scene, warm, directional and enormous"},
   {id:'window',em:'🪟',t:'Window light',d:'natural',txt:"lit by large window light falling from one side, soft and naturally directional"},
-  {id:'overcast',em:'🌫️',t:'Overcast',d:'even',txt:"lit by broad overcast daylight acting as a giant diffuser, even and flattering"},
+  {id:'soft',em:'☁️',t:'Softbox key',d:'clean',txt:"lit with a large softbox key close to the subject, soft-edged shadows and even falloff"},
+  {id:'beauty',em:'💎',t:'Beauty dish',d:'crisp',txt:"lit by a beauty dish above the lens with a reflector below, sculpted cheekbones"},
   {id:'lowkey',em:'🌑',t:'Low key',d:'deep shadow',txt:"lit low-key with a single controlled source, deep shadow swallowing the rest"}],
- SHOT:[{id:'full',em:'🧍',t:'Full body',d:'head to toe',txt:"a full-body shot, head to toe with deliberate breathing room"},
+ SHOT:[{id:'monument',em:'🏔️',t:'Epic wide',d:'dwarfed',txt:"an epic ultra-wide establishing frame, the subject a small deliberate figure dwarfed by the monumental space with every layer of depth visible"},
+  {id:'full',em:'🧍',t:'Full body hero',d:'head to toe',txt:"a full-body hero frame, head to toe, with the architecture or landscape towering around and behind"},
   {id:'threeq',em:'📐',t:'Three-quarter',d:'waist up',txt:"a three-quarter shot from the waist up, body angled away while the face turns back"},
-  {id:'beautyCU',em:'💄',t:'Beauty CU',d:'face fills',txt:"a beauty close-up with the face filling the frame, focus critical on the eyes"},
-  {id:'hero',em:'🦸',t:'Hero',d:'towering',txt:"a medium-full hero shot with the subject towering in frame"},
+  {id:'hero',em:'🦸',t:'Low monument',d:'towering',txt:"a low-angle hero shot from near the ground, the subject rising against sky or vaulted ceiling like a monument"},
+  {id:'beautyCU',em:'💄',t:'Emotional CU',d:'face fills',txt:"a close-up with the face filling the frame, focus critical on the eyes and every flicker of emotion legible"},
   {id:'profile',em:'👤',t:'Profile',d:'side view',txt:"a profile shot in pure side view with light tracing the silhouette"},
-  {id:'envwide',em:'🖼️',t:'Environmental',d:'in space',txt:"a wide environmental shot placing the subject small and deliberate within the space"},
-  {id:'detail',em:'🔍',t:'Detail',d:'texture',txt:"a tight detail shot on texture and material, resolved to individual fibres"},
-  {id:'overheadS',em:'🔽',t:'Overhead',d:'top down',txt:"an overhead shot looking straight down, composed as a graphic arrangement"}],
- VIBE:[{id:'power',em:'⚡',t:'Powerful',d:'commanding',txt:"holding a commanding, statuesque presence with direct unwavering eye contact"},
-  {id:'soft',em:'🕊️',t:'Soft',d:'gentle',txt:"with a soft open expression, gaze drifting just past the lens"},
-  {id:'cold',em:'🧊',t:'Editorial',d:'detached',txt:"with the detached, unsmiling stare of high editorial fashion"},
-  {id:'joy',em:'✨',t:'Joyful',d:'alive',txt:"caught in genuine movement and laughter, alive rather than posed"},
+  {id:'over',em:'🎞️',t:'Over-shoulder',d:'facing the vast',txt:"a cinematic over-the-shoulder frame, the edge of a shoulder soft in the foreground while the subject faces something vast"},
+  {id:'through',em:'🪞',t:'Through layers',d:'drapery, smoke',txt:"shot through foreground layers — drapery, smoke or a doorway — framing the subject in depth"},
+  {id:'silhouette',em:'🌘',t:'Silhouette',d:'against the light',txt:"a silhouette against a blazing backlight, the figure reduced to a graphic shape within an enormous frame"},
+  {id:'detail',em:'🔍',t:'Story detail',d:'hands, object',txt:"a tight cinematic detail shot on hands, fabric and a single object that carries the story, resolved to individual fibres"},
+  {id:'overheadS',em:'🔽',t:'Overhead',d:'top down',txt:"an overhead shot looking straight down on the figure at the centre of a vast patterned floor"}],
+ VIBE:[{id:'power',em:'⚡',t:'Commanding',d:'statuesque',txt:"holding a commanding, statuesque presence with direct unwavering eye contact"},
+  {id:'regal',em:'👑',t:'Regal',d:'dynasty weight',txt:"regal and unreachable, the weight of a dynasty held in the posture"},
+  {id:'grief',em:'🥀',t:'Held grief',d:'bright eyes',txt:"holding back grief, eyes bright and unblinking, the jaw tight against everything unsaid"},
+  {id:'defiant',em:'🗡️',t:'Defiant',d:'into the wind',txt:"defiant, chin lifted into the wind, looking down whatever is coming"},
+  {id:'fury',em:'🌋',t:'Cold fury',d:'charged stillness',txt:"barely contained fury, a stillness charged with threat"},
+  {id:'haunted',em:'👁️',t:'Haunted',d:'gaze beyond',txt:"haunted, gaze fixed on something far beyond the lens"},
+  {id:'triumph',em:'🏆',t:'Quiet triumph',d:'after the battle',txt:"quiet triumph, the stillness after a battle won"},
+  {id:'soft',em:'🕊️',t:'Tender',d:'gentle',txt:"with a soft open expression, gaze drifting just past the lens"},
   {id:'brood',em:'🌑',t:'Brooding',d:'intense',txt:"still and intense, weight held in the jaw and the eyes"}],
- SEQ:['envwide','full','threeq','hero','beautyCU','detail'],
+ SEQ:['monument','full','threeq','hero','beautyCU','detail'],
+ BEATS:[{n:'I · The Arrival',shot:'monument',beat:"The opening frame of the story. The subject has just arrived and stands small before the immense space, the world holding its breath, something about to begin.",mood:"composed on the surface, apprehension just beneath it"},
+  {n:'II · The Weight',shot:'threeq',beat:"The quiet before it breaks. The subject carries the weight of what they know, caught between one decision and the next.",mood:"inward and haunted, eyes searching"},
+  {n:'III · The Turn',shot:'hero',beat:"The decision is made. The posture changes, the shoulders set, and the whole frame bends to follow the subject's will.",mood:"resolve hardening, chin lifting"},
+  {n:'IV · The Breaking Point',shot:'beautyCU',beat:"The emotional peak of the story. The face holds everything at once, the one frame the entire sequence turns on.",mood:"overwhelming emotion barely held, eyes glassy and unblinking"},
+  {n:'V · The Aftermath',shot:'detail',beat:"What is left behind. A telling detail of hands, torn fabric or a dropped object tells the story without a face.",mood:"spent stillness"},
+  {n:'VI · The Departure',shot:'silhouette',beat:"The last frame. The subject walks away into the enormity of the world, reduced to a figure against the light as the story closes.",mood:"calm, finished, looking only forward"}],
+ xp:[{k:'cine',n:'✦ Cinematic',keys:['lens','grade','scale']}],
  ANG:[{n:'Eye level',txt:"from a straight eye-level angle, camera level with the subject's eyes"},
-  {n:'Low hero',txt:"from a low angle below the eye line looking up, the subject towering and empowered"},
-  {n:'High angle',txt:"from a high angle above the eye line looking down, the subject gazing up into the lens"},
+  {n:'Low monumental',txt:"from a low angle near the ground looking up, the subject towering and the space soaring above"},
+  {n:'High looking down',txt:"from high above the eye line looking down, the subject small in a vast patterned floor"},
   {n:'Profile',txt:"from a pure side profile angle, ninety degrees to the subject's face"},
-  {n:'Three-quarter',txt:"from a three-quarter angle, the body turned away while the face returns to the lens"},
-  {n:'Overhead',txt:"from directly overhead looking straight down, a deliberate graphic composition"}]
-}};
+  {n:'Over-shoulder',txt:"from just behind the subject's shoulder, looking with them into the vast space ahead"},
+  {n:'Wide establishing',txt:"from far back in an epic wide establishing position, the subject small but unmistakable at the heart of the frame"}]
+}
+};
 
 /* ========== ADDITIONAL MODES ========== */
 CFG.cctv={
@@ -928,6 +959,63 @@ CFG.fantasy={
   {n:'Through foreground',txt:"from behind a foreground shape, the figure framed through a gap"}]
 };
 
+CFG.farsnap={
+ icon:'🔭',title:'FAR SNAP',sub:'shot by someone else · from a distance',ratio:'9:16',verb:'A casual smartphone photo taken from a distance by someone else',
+ ph:{subject:'a girl in her twenties laughing with two friends',
+     outfit:'a cropped leather jacket, wide jeans, white trainers',
+     scene:'paper cups on a wall, a bike leaning on a railing',
+     expr:'laughing at something off-frame',
+     story:'she has no idea the photo is being taken'},
+ gritLabel:'Grit',gritPh:'✎ your own grit…',
+ DNA:"Taken on a phone by a second person standing well away from the subject, never by the subject themselves: there is no selfie arm, no hands in the frame and no mirror. The photographer is at a real distance, so the subject is small in the frame — a figure inside a larger scene rather than a portrait — and the surroundings carry as much of the picture as the subject does. The optics are a phone's: a small sensor, deep depth of field with no creamy bokeh, and wherever the photographer has pinch-zoomed the detail is digitally enlarged, leaving soft mushy faces, smeared edges and over-sharpened texture. Aggressive computational HDR flattens the contrast and denoising smears the shadows into blotches. Colour temperature is uncorrected and mixed, highlights clip to flat white, and any on-camera flash dies out before it reaches the distance so only the nearest foreground is lit. Framing is accidental and imperfect, with things drifting into the foreground edges. Fine detail is softened by social-app compression. Nothing is staged, styled or lit for the camera.",
+ DNAJ:{device:"consumer smartphone, small sensor, held by a second person, not the subject",
+  distance:"photographer stands well away, subject small in frame, no selfie arm, no hands, no mirror",
+  depth_of_field:"deep — no bokeh, background nearly as sharp as the subject",
+  zoom:"digital pinch-zoom where used, soft mushy faces, smeared edges, over-sharpened texture",
+  processing:"aggressive computational HDR, flattened contrast, denoise smearing in shadows",
+  colour:"uncorrected mixed white balance",highlights:"clipped flat white",
+  flash:"on-camera flash does not reach the distance, only the nearest foreground is lit",
+  framing:"accidental, imperfect, things drifting into the foreground edges",
+  compression:"social app upload softening fine detail"},
+ notLike:"a selfie, a close-up portrait, a professional photograph, a staged shoot, or a cinematic still",
+ GRIT:["digital zoom mush smearing the face into soft blotches","a stranger's head or shoulder cutting into the foreground edge","autofocus locked on something in front instead of the subject","the horizon slightly tilted and the subject off-centre","a smear of motion blur from the photographer shifting while shooting","heavy noise crawling through the darker areas","haze and flare from a smudged phone lens","over-sharpened edges ringing around the distant figure","the exposure blown out behind the subject","the subject awkwardly cut off at the frame edge"],
+ WHERE:[{id:'party',em:'🎉',t:'Crowded party',d:'far side of room',txt:"at a crowded house party seen from the far side of the room, a sea of people between the camera and the subject",light:'indoor'},
+  {id:'street',em:'🌃',t:'City street',d:'night traffic',txt:"on a busy city street at night, traffic and pedestrians passing between the camera and the subject",light:'street'},
+  {id:'cafe',em:'☕',t:'Café terrace',d:'afternoon',txt:"at a café terrace in the afternoon, tables and passers-by crowding the frame",light:'day'},
+  {id:'fest',em:'🎪',t:'Festival',d:'crowds, tents',txt:"in a festival field with crowds, tents and stage lights stretching into the distance",light:'stage'},
+  {id:'station',em:'🚉',t:'Station platform',d:'commuters',txt:"on a train platform with commuters streaming past and the tracks receding behind",light:'indoor'},
+  {id:'beach',em:'🏖️',t:'Boardwalk',d:'low sun',txt:"on a beach boardwalk in low sun with strollers and railings in frame",light:'golden'},
+  {id:'park',em:'🌳',t:'City park',d:'bright day',txt:"in a city park on a bright day with trees, benches and open lawn",light:'day'},
+  {id:'club',em:'🌆',t:'Club queue',d:'neon signs',txt:"outside a club entrance under neon signs with a queue running along the wall",light:'neon'}],
+ LIGHT:[{id:'flash',em:'⚡',t:'Weak flash',d:'foreground only',txt:"lit by on-camera flash that only reaches the nearest foreground, the subject far beyond it dim and underexposed"},
+  {id:'street',em:'🏮',t:'Streetlights',d:'orange pools',txt:"lit only by streetlights and passing headlights, patchy orange pools with deep noisy shadows"},
+  {id:'indoor',em:'💡',t:'Indoor bulbs',d:'murky',txt:"lit by ordinary indoor bulbs, warm and slightly green where they mix, dim enough that the sensor struggles"},
+  {id:'day',em:'🌤️',t:'Harsh daylight',d:'blown sky',txt:"in harsh bright daylight with a blown-out sky and hard unflattering shadows"},
+  {id:'golden',em:'🌅',t:'Low sun flare',d:'golden',txt:"in low golden sun flaring across the lens and rimming the distant subject"},
+  {id:'stage',em:'🎆',t:'Stage lights',d:'blown',txt:"lit by coloured stage lights that blow out to pure white where they point"},
+  {id:'neon',em:'🌈',t:'Neon spill',d:'saturated',txt:"lit by saturated neon and signage colours spilling across wet surfaces, the phone struggling to hold skin tone"}],
+ SHOT:[{id:'across',em:'↔️',t:'Across the room',d:'crowd in the way',txt:"a shot from the far side of a crowded room, the subject small in the middle distance with strangers' heads and shoulders partly blocking the foreground"},
+  {id:'zoom',em:'🔎',t:'Candid zoom',d:'pinch-zoomed, mushy',txt:"a pinch-zoomed shot from far away, the subject cropped in tight but soft and mushy from heavy digital zoom, the compressed background stacked behind them"},
+  {id:'friend',em:'🙋',t:"Friend's shot",d:'"take one of me"',txt:"a friend's 'let me take one of you' photo from about eight metres back, the subject full-length and small in a loose, slightly crooked frame"},
+  {id:'street',em:'🛣️',t:'Across the street',d:'traffic between',txt:"a shot from the opposite side of the street, passing cars, a lamp post and pedestrians in the way between the lens and the subject"},
+  {id:'glass',em:'🪟',t:'Through glass',d:'car / shop window',txt:"a shot taken through glass, a car window or a shop front, with reflections, smudges and the scene beyond slightly distorted"},
+  {id:'gap',em:'🚪',t:'Through a gap',d:'doorway, crowd, fence',txt:"a shot through a narrow gap, a doorway, a crack between people or a gap in a fence, the subject glimpsed small inside a dark framing edge"}],
+ VIBE:[{id:'unaware',em:'😐',t:'Unaware',d:'caught mid-motion',txt:"completely unaware of being photographed, caught mid-motion"},
+  {id:'laugh',em:'😂',t:'Mid-laugh',d:'head thrown back',txt:"mid-laugh with friends, head thrown back"},
+  {id:'walk',em:'🚶',t:'Walking through',d:'in a hurry',txt:"walking through the frame in a hurry"},
+  {id:'wave',em:'👋',t:'Waving back',d:'spotted the camera',txt:"turning and waving at the person taking the photo"},
+  {id:'pose',em:'🤳',t:'Awkward pose',d:'asked for a photo',txt:"striking a slightly awkward pose because a friend asked for a photo"},
+  {id:'talk',em:'🗣️',t:'Deep in talk',d:'leaning in',txt:"deep in conversation, leaning in close to someone"}],
+ SEQ:['across','zoom','friend','street','glass','gap'],
+ xp:[{k:'far',n:'✦ Distance',keys:['dist','obst']}],
+ ANG:[{n:'Far & level',txt:"from a long way back at standing eye height, the subject a small figure in a wide frame"},
+  {n:'Balcony down',txt:"from a balcony or stair landing high above, looking down at the subject far below"},
+  {n:'Low behind',txt:"from low down behind a table or railing, shooting up past an obstacle at the subject in the distance"},
+  {n:'Far diagonal',txt:"from the far corner on a sharp diagonal, the subject small at the opposite end of a long space"},
+  {n:'Edge of crowd',txt:"from the edge of a crowd, other people's shoulders and raised phones cutting into both sides of the frame"},
+  {n:'Walking past',txt:"from a moving vantage while walking, the frame slightly smeared and the subject sliding off-centre"}]
+};
+
 /* ===== SHARED REALISM LAYERS (optional, apply to both modes) ===== */
 const EXTRA={
  air:{label:'Air &amp; atmosphere',hint:'What sits between lens and subject',o:[
@@ -971,10 +1059,45 @@ const EXTRA={
   {id:'fold',t:'Folded',txt:"a crease running down the middle from being folded and carried"},
   {id:'fade',t:'Sun-faded',txt:"sun-faded with shifted, weakened colour"},
   {id:'neg',t:'Negative border',txt:"a scanned negative with the film border and frame numbers visible at the edge"},
-  {id:'stain',t:'Water-marked',txt:"a faint water stain discolouring one corner"}]}
+  {id:'stain',t:'Water-marked',txt:"a faint water stain discolouring one corner"}]},
+ dist:{label:'Distance',hint:'How far the photographer is standing',o:[
+  {id:'near',t:'~5 m',txt:"from about 5 metres away, close enough to read expressions but clearly not a portrait"},
+  {id:'mid',t:'~15 m',txt:"from about 15 metres away, the subject a clear but small figure in the middle distance"},
+  {id:'far',t:'~40 m',txt:"from about 40 metres away, the subject small and easily lost among their surroundings"},
+  {id:'vfar',t:'~100 m zoomed',txt:"from roughly 100 metres away at full digital zoom, the subject a tiny soft figure with details smeared"}]},
+ obst:{label:'Foreground obstruction',hint:'What is in the way of the lens',o:[
+  {id:'heads',t:'Heads & phones',txt:"the backs of strangers' heads and raised phones partly blocking the lower foreground"},
+  {id:'pole',t:'Pole / signpost',txt:"a street pole or signpost cutting through the near foreground"},
+  {id:'pane',t:'Smudged glass',txt:"reflections and smudges on a pane of glass in the near foreground"},
+  {id:'fence',t:'Fence / railing',txt:"a wire fence or railing running across the foreground, slightly out of focus"},
+  {id:'leaves',t:'Leaves',txt:"out-of-focus leaves or branches framing one edge"},
+  {id:'clear',t:'Clear line',txt:"an unobstructed line of sight to the subject"}]},
+ lens:{label:'Lens &amp; format',hint:'The glass and the film behind the frame',o:[
+  {id:'anam',t:'Anamorphic',txt:"shot on large-format anamorphic glass with a 2.39:1 feel, oval bokeh, subtle horizontal flares and gently stretched falloff"},
+  {id:'wide',t:'24mm wide',txt:"shot on a 24mm wide-angle prime, the space bending subtly and the subject anchored in deep layered depth from foreground to background"},
+  {id:'tele',t:'135mm compress',txt:"shot on a long 135mm telephoto compressing distance, the background architecture stacking up huge behind the subject"},
+  {id:'f12',t:'85mm f/1.2',txt:"shot on an 85mm f/1.2 prime, paper-thin focus and glowing out-of-focus highlights"},
+  {id:'tilt',t:'Tilt-shift',txt:"shot on a tilt-shift lens, a razor plane of focus and the world falling away into blur"},
+  {id:'imax',t:'65mm film',txt:"shot on 65mm large-format film stock with enormous resolution, fine grain and monumental tonal depth"}]},
+ grade:{label:'Colour grade',hint:'The palette of the whole story',o:[
+  {id:'tealamber',t:'Teal &amp; amber',txt:"a teal-and-amber cinematic grade, warm skin and highlights against cool shadows"},
+  {id:'oil',t:'Old Masters',txt:"a rich Old Masters palette of deep umbers, burnished golds and velvet shadows, like a Renaissance oil painting"},
+  {id:'bleach',t:'Bleach bypass',txt:"a bleach-bypass grade, desaturated and steely with deep contrast and silvery highlights"},
+  {id:'noir',t:'Noir B&amp;W',txt:"high-contrast black and white, deep inky blacks and luminous silver highlights"},
+  {id:'crimson',t:'One red accent',txt:"a restrained near-monochrome palette broken by a single saturated crimson accent"},
+  {id:'dusk',t:'Violet dusk',txt:"a dusky violet-and-rose grade, soft and dreamlike with glowing highlights"}]},
+ scale:{label:'Scale &amp; spectacle',hint:'What makes the frame feel epic',o:[
+  {id:'crowd',t:'Vast crowd',txt:"a vast crowd of extras arranged in the background, hundreds of tiny figures giving the frame epic scale"},
+  {id:'birds',t:'Flock of birds',txt:"an enormous flock of birds lifting across the sky behind the subject"},
+  {id:'clouds',t:'Storm wall',txt:"towering storm clouds stacked across the entire sky"},
+  {id:'horses',t:'Horses',txt:"a line of horses held in the distance, breath steaming in the cold"},
+  {id:'embers',t:'Fire &amp; embers',txt:"fire and burning embers filling the far background"},
+  {id:'train',t:'Billowing silk',txt:"yards of enormous silk billowing and streaming across the frame as if in a gale, filling the foreground"},
+  {id:'columns',t:'Colossal columns',txt:"colossal columns and statues receding in perfect symmetry"},
+  {id:'empty',t:'Empty immensity',txt:"empty immensity, the subject the only human presence for miles"}]}
 };
 
-const MODELIST=[['snap','📱','Snapchat'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
+const MODELIST=[['snap','📱','Snapchat'],['farsnap','🔭','Far Snap'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
   ['portrait','🎭','Portrait'],['doc','📰','Street'],['fantasy','🌌','Fantasy'],['product','📦','Product'],
   ['cctv','🎥','CCTV'],['webcam','💻','Webcam'],['interior','🏠','Interior']];
 
@@ -984,23 +1107,29 @@ function renderModes(){
   $('msw').querySelectorAll('.ms').forEach(b=>b.onclick=()=>{
     if(M===b.dataset.m)return;
     M=b.dataset.m;S.where=S.light=S.shot=S.vibe=null;S.own={};PT='where';
+    ['dist','obst','lens','grade','scale'].forEach(k=>S[k]=null);
     rollGrit();applyMode();renderModes();renderTabs();renderPane();refresh();
   });
 }
 
 /* ================= STATE ================= */
 let M='snap',PT='where',OUT='single',FMT='labeled',libTab='fav';
-let S={where:null,light:null,shot:null,vibe:null,grit:[],own:{},
-       air:null,motion:null,flaws:null,era:null,cond:null};
+const blankS=()=>{const o={where:null,light:null,shot:null,vibe:null,grit:[],own:{}};
+  Object.keys(EXTRA).forEach(k=>o[k]=null);return o;};
+let S=blankS();
 let FAV=JSON.parse(localStorage.getItem('nb21_fav2')||'[]');
 let HIST=JSON.parse(localStorage.getItem('nb21_hist2')||'[]');
 const C=()=>CFG[M], $=id=>document.getElementById(id);
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
 const find=(a,id)=>a.find(x=>x.id===id);
 
-const PANES=[{k:'where',n:'Setting'},{k:'light',n:'Light'},{k:'shot',n:'Shot'},{k:'vibe',n:'Mood'},
-  {k:'grit',n:'Finish'},{k:'real',n:'✦ Realism'},{k:'era',n:'✦ Era'}];
 const REALKEYS=['air','motion','flaws'], ERAKEYS=['era','cond'];
+/* panes are per-mode: a mode can add its own extra panes through CFG[mode].xp */
+function panes(){const c=C();
+  return [{k:'where',n:'Setting'},{k:'light',n:'Light'},{k:'shot',n:'Shot'},{k:'vibe',n:'Mood'},{k:'grit',n:'Finish'},
+    ...(c.xp||[]),{k:'real',n:'✦ Realism',keys:REALKEYS},{k:'era',n:'✦ Era',keys:ERAKEYS}];}
+const allowedX=k=>panes().some(p=>p.keys&&p.keys.includes(k));
+const snapish=()=>M==='snap'||M==='farsnap';
 
 function rollGrit(){const p=[...C().GRIT].sort(()=>Math.random()-.5).slice(0,2);S.grit=p;}
 function pick(arr,key,id){const s=id||S[key];if(s==='__own')return (S.own[key]||'').trim();
@@ -1040,18 +1169,21 @@ function refSpec(){
 }
 
 /* ================= PROMPT ================= */
-function makePrompt(shotId,angTxt){
+function makePrompt(shotId,angTxt,beat){
   const c=C(),v={subject:$('fSubject').value.trim(),outfit:$('fOutfit').value.trim(),
     scene:$('fScene').value.trim(),expr:$('fExpr').value.trim()};
+  const story=$('fStory').value.trim().replace(/[.\s]+$/,'');
+  const cont=beat?`Frame ${beat.i} of 6 in one continuous story told through a single campaign: the same subject, the same wardrobe, the same location and the same lighting design carry through every frame.`:'';
   const who=v.subject||'the subject';
   const wear=v.outfit?` wearing ${v.outfit}`:'';
   const expr=v.expr||pick(c.VIBE,'vibe');
   const w=pick(c.WHERE,'where'), l=pick(c.LIGHT,'light'), sh=pick(c.SHOT,'shot',shotId);
   const grit=(S.own.grit||'').trim()||S.grit[0]+', and '+S.grit[1];
   const setting=[w,v.scene].filter(Boolean).join(', ');
-  const X=k=>{const s=S[k];if(!s)return'';if(s==='__own')return (S.own[k]||'').trim();
+  const X=k=>{if(!allowedX(k))return'';const s=S[k];if(!s)return'';if(s==='__own')return (S.own[k]||'').trim();
     const o=find(EXTRA[k].o,s);return o?o.txt:'';};
   const air=X('air'),motion=X('motion'),flaws=X('flaws'),era=X('era'),cond=X('cond');
+  const dist=X('dist'),obst=X('obst'),lens=X('lens'),grade=X('grade'),scale=X('scale');
   const R=curRatio(),Z=curSize(),RS=refSpec();
   const outLine=`Aspect ratio ${R}.`;
   const notLike=`It must not look like ${c.notLike}.`;
@@ -1060,15 +1192,23 @@ function makePrompt(shotId,angTxt){
     let p=`${c.verb} of ${who}${wear}`;
     if(expr)p+=`, ${expr}`;
     p+='. ';
-    if(setting)p+=`${M==='snap'?'The moment is':'Set'} ${setting}. `;
+    if(setting)p+=`${snapish()?'The moment is':'Set'} ${setting}. `;
+    if(scale)p+=`Scale: ${scale}. `;
+    if(story)p+=`The story behind the frame: ${story}. `;
+    if(beat)p+=`This is moment ${beat.i} of 6, ${beat.n}: ${beat.beat} The subject's emotion here: ${beat.mood}. `;
     if(sh)p+=`It is ${sh}. `;
     if(angTxt)p+=`Shot ${angTxt}. `;
-    if(l)p+=`${M==='snap'?'Everything is':'The scene is'} ${l}. `;
+    if(dist)p+=`Taken ${dist}. `;
+    if(obst)p+=`In the frame: ${obst}. `;
+    if(lens)p+=`Cinematography: ${lens}. `;
+    if(l)p+=`${snapish()?'Everything is':'The scene is'} ${l}. `;
     if(air)p+=`There is ${air}. `;
     if(motion)p+=`The frame is ${motion}. `;
     if(flaws)p+=`Real detail holds: ${flaws}. `;
     if(era)p+=`It reads as ${era}. `;
     if(cond)p+=`Presented as ${cond}. `;
+    if(grade)p+=`Colour: ${grade}. `;
+    if(cont)p+=cont+' ';
     if(RS)p+=[...RS.rules,...RS.keep,...RS.tail].join(' ')+' ';
     p+=`${cap(grit)}. `+c.DNA+` ${notLike} ${outLine}`;
     return p;
@@ -1077,11 +1217,13 @@ function makePrompt(shotId,angTxt){
     const o={deliverable:lowA(c.verb),
       image_type:lowA(c.verb),
       subject:{who,outfit:v.outfit||undefined,expression:expr||undefined,imperfections:flaws||undefined},
-      scene:{setting:w||undefined,details:v.scene||undefined,atmosphere:air||undefined},
-      framing:sh||undefined,camera_angle:angTxt||undefined,lighting:l||undefined,
+      scene:{setting:w||undefined,details:v.scene||undefined,atmosphere:air||undefined,scale:scale||undefined},
+      story:(story||beat)?{premise:story||undefined,moment:beat?`${beat.i} of 6 — ${beat.n}`:undefined,direction:beat?beat.beat:undefined,emotion:beat?beat.mood:undefined,continuity:cont||undefined}:undefined,
+      framing:sh||undefined,camera_angle:angTxt||undefined,distance:dist||undefined,foreground:obst||undefined,
+      lens_and_format:lens||undefined,colour_grade:grade||undefined,lighting:l||undefined,
       shutter_and_motion:motion||undefined,
       era:era||undefined,print_condition:cond||undefined,
-      [M==='snap'?'imperfections':'finish']:((S.own.grit||'').trim()?[S.own.grit]:S.grit),
+      [snapish()?'imperfections':'finish']:((S.own.grit||'').trim()?[S.own.grit]:S.grit),
       capture_characteristics:c.DNAJ,
       reference_rules:RS?[...RS.rules,...RS.tail]:undefined,
       preserve:RS&&RS.keep.length?RS.keep:undefined,
@@ -1097,16 +1239,18 @@ function makePrompt(shotId,angTxt){
   const add=(label,lines)=>{const t=lines.filter(Boolean).join('\n');if(t)sec.push(label+'\n'+t);};
   add('DELIVERABLE',[`Create ${lowA(c.verb)}.`]);
   add('SUBJECT',[`${cap(who)}${wear}${expr?', '+expr:''}.`]);
-  add('SCENE',[setting?`${cap(setting)}.`:'']);
-  add('COMPOSITION',[sh?`Framing: ${cap(sh)}.`:'',angTxt?`Camera angle: ${cap(angTxt)}.`:'']);
+  add('SCENE',[setting?`${cap(setting)}.`:'',scale?`Scale: ${cap(scale)}.`:'']);
+  add('STORY',[story?`${cap(story)}.`:'',beat?`Moment ${beat.i} of 6 — ${beat.n}.`:'',beat?beat.beat:'',beat?`Emotion at this moment: ${beat.mood}.`:'',cont]);
+  add('COMPOSITION',[sh?`Framing: ${cap(sh)}.`:'',angTxt?`Camera angle: ${cap(angTxt)}.`:'',dist?`Distance: ${cap(dist)}.`:'',obst?`In the frame: ${cap(obst)}.`:'']);
   add('LIGHTING',[l?`${cap(l)}.`:'']);
-  add('CAMERA AND CAPTURE',[c.DNA]);
+  add('CAMERA AND CAPTURE',[c.DNA,lens?`Lens and format: ${cap(lens)}.`:'']);
   add('STYLE',[
     air?`Atmosphere: ${cap(air)}.`:'',
     motion?`Motion: ${cap(motion)}.`:'',
     flaws?`Imperfections: ${cap(flaws)}.`:'',
     era?`Era: ${cap(era)}.`:'',
     cond?`Condition: ${cap(cond)}.`:'',
+    grade?`Colour grade: ${cap(grade)}.`:'',
     `${c.gritLabel}: ${cap(grit)}.`]);
   if(RS){
     add('REFERENCE RULES',[...RS.rules,...RS.tail]);
@@ -1126,12 +1270,9 @@ const fmtH=t=>t.split('\n').map(x=>escH(x)
 
 /* ================= CENTER RENDER ================= */
 function renderTabs(){
-  $('pTabs').innerHTML=PANES.map(p=>{
+  $('pTabs').innerHTML=panes().map(p=>{
     const n=p.k==='grit'?C().gritLabel:p.n;
-    const filled = p.k==='grit'?true
-      : p.k==='real'?REALKEYS.some(k=>S[k])
-      : p.k==='era'?ERAKEYS.some(k=>S[k])
-      : !!S[p.k];
+    const filled = p.keys?p.keys.some(k=>S[k]):p.k==='grit'?true:!!S[p.k];
     return `<button class="pt ${PT===p.k?'on':''}" data-p="${p.k}"><span class="dot ${filled?'f':''}"></span>${n}</button>`;
   }).join('');
   $('pTabs').querySelectorAll('.pt').forEach(b=>b.onclick=()=>{PT=b.dataset.p;renderTabs();renderPane();});
@@ -1160,8 +1301,8 @@ function bindRows(p){
 
 function renderPane(){
   const c=C(),p=$('pane');
-  if(PT==='real'){p.innerHTML=rowsHTML(REALKEYS);bindRows(p);return;}
-  if(PT==='era'){p.innerHTML=rowsHTML(ERAKEYS);bindRows(p);return;}
+  const xp=panes().find(q=>q.k===PT&&q.keys);
+  if(xp){p.innerHTML=rowsHTML(xp.keys);bindRows(p);return;}
   if(PT==='grit'){
     p.innerHTML=`<div class="gritBar"><div class="txt"><b>${cap(S.grit[0])}</b>, and ${S.grit[1]}.</div>
       <button class="reroll" id="rr">↻ Reroll</button></div>
@@ -1189,6 +1330,7 @@ function renderPane(){
 /* ================= OUTPUT RENDER ================= */
 function items(){
   const c=C();
+  if(OUT==='story'&&c.BEATS)return c.BEATS.map((b,i)=>({n:b.n,p:makePrompt(b.shot,null,{...b,i:i+1})}));
   if(OUT==='story')return c.SEQ.map(id=>({n:find(c.SHOT,id).t,p:makePrompt(id,null)}));
   if(OUT==='angles')return c.ANG.map(a=>({n:a.n,p:makePrompt(null,a.txt)}));
   return [{n:'Prompt',p:makePrompt(null,null)}];
@@ -1219,22 +1361,23 @@ function refreshBase(){
     });
     $('btnCopy').textContent='Copy All 6';
     $('cnt').textContent=OUT==='story'
-      ?(M==='snap'?'6 moments · same night':'6 shots · same setup')
+      ?(c.BEATS?'6 story beats · one continuous drama':M==='farsnap'?'6 snap types · same night, all from afar':M==='snap'?'6 moments · same night':'6 shots · same setup')
       :'6 camera angles · identical scene';
   }
   window.ALLTXT=OUT==='single'?L[0].p:L.map((o,i)=>`— ${String(i+1).padStart(2,'0')} ${o.n} —\n${o.p}`).join('\n\n\n');
 }
 
 /* ================= LIBRARY ================= */
-const snap=()=>({m:M,f:{subject:$('fSubject').value,outfit:$('fOutfit').value,scene:$('fScene').value,expr:$('fExpr').value},
+const snap=()=>({m:M,f:{subject:$('fSubject').value,outfit:$('fOutfit').value,scene:$('fScene').value,expr:$('fExpr').value,story:$('fStory').value},
   where:S.where,light:S.light,shot:S.shot,vibe:S.vibe,own:{...S.own},grit:[...S.grit],out:OUT,fmt:FMT,
-  air:S.air,motion:S.motion,flaws:S.flaws,era:S.era,cond:S.cond});
+  x:Object.fromEntries(Object.keys(EXTRA).map(k=>[k,S[k]]))});
 function load(r){
   M=r.m||'snap';OUT=r.out||'single';FMT=r.fmt||'narrative';
   S.where=r.where;S.light=r.light;S.shot=r.shot;S.vibe=r.vibe;S.own=r.own||{};S.grit=r.grit||[];
-  S.air=r.air||null;S.motion=r.motion||null;S.flaws=r.flaws||null;S.era=r.era||null;S.cond=r.cond||null;
+  Object.keys(EXTRA).forEach(k=>S[k]=(r.x&&r.x[k])||r[k]||null);
+  if(!panes().some(q=>q.k===PT))PT='where';
   $('fSubject').value=r.f.subject||'';$('fOutfit').value=r.f.outfit||'';
-  $('fScene').value=r.f.scene||'';$('fExpr').value=r.f.expr||'';
+  $('fScene').value=r.f.scene||'';$('fExpr').value=r.f.expr||'';$('fStory').value=r.f.story||'';
   document.querySelectorAll('.os').forEach(x=>x.classList.toggle('on',x.dataset.o===OUT));
   document.querySelectorAll('.fs').forEach(x=>x.classList.toggle('on',x.dataset.f===FMT));
   applyMode();renderModes();renderTabs();renderPane();refresh();
@@ -1270,8 +1413,9 @@ function applyMode(){
   const c=C();
   document.body.className=M==='snap'?'':M;
   $('bIc').textContent=c.icon;$('bS').textContent=c.title.toLowerCase()+' · '+c.sub;
+  const sm=document.querySelector('.os[data-o="story"] small');if(sm)sm.textContent=c.BEATS?'6 story beats':M==='farsnap'?'6 snap types':'6 moments';
   $('fSubject').placeholder=c.ph.subject;$('fOutfit').placeholder=c.ph.outfit;
-  $('fScene').placeholder=c.ph.scene;$('fExpr').placeholder=c.ph.expr||'(not used in this mode)';
+  $('fScene').placeholder=c.ph.scene;$('fStory').placeholder=c.ph.story||'optional: what is happening in this picture…';$('fExpr').placeholder=c.ph.expr||'(not used in this mode)';
 }
 
 /* ================= EVENTS ================= */
@@ -1281,10 +1425,9 @@ document.querySelectorAll('.fs').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.fs').forEach(x=>x.classList.remove('on'));b.classList.add('on');FMT=b.dataset.f;refresh();});
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');libTab=b.dataset.t;renderLib();});
-['fSubject','fOutfit','fScene','fExpr'].forEach(id=>$(id).oninput=refresh);
-$('btnClear').onclick=()=>{S={where:null,light:null,shot:null,vibe:null,grit:[],own:{},
-  air:null,motion:null,flaws:null,era:null,cond:null};
-  ['fSubject','fOutfit','fScene','fExpr'].forEach(id=>$(id).value='');rollGrit();PT='where';renderTabs();renderPane();refresh();};
+['fSubject','fOutfit','fScene','fExpr','fStory'].forEach(id=>$(id).oninput=refresh);
+$('btnClear').onclick=()=>{S=blankS();
+  ['fSubject','fOutfit','fScene','fExpr','fStory'].forEach(id=>$(id).value='');rollGrit();PT='where';renderTabs();renderPane();refresh();};
 $('btnCopy').onclick=e=>{navigator.clipboard.writeText(window.ALLTXT);pushHist(window.ALLTXT);
   const b=e.currentTarget,o=b.textContent;b.textContent='✓ Copied';b.classList.add('done');
   setTimeout(()=>{b.textContent=o;b.classList.remove('done');},1100);};

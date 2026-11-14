@@ -111,7 +111,7 @@ input:focus,textarea:focus{border-color:#555}
         </div>
         <div id="empty">Your guests' memories will land here ✨</div>
       </div>
-      <div class="bar"><button class="btn" id="flip">Flip camera</button><button class="btn" id="shakeBtn">Shake</button><button class="btn pri" id="snapBtn">Add yours</button></div>
+      <div class="bar"><button class="btn" id="flip">Flip camera</button><button class="btn pri" id="snapBtn">Add yours</button></div>
     </section>
     <section class="view" id="v-album">
       <div id="album"><div class="grid" id="grid"></div></div>
@@ -319,69 +319,43 @@ function renderBoard(){
   photos.slice().sort((a,b)=>a.t-b.t).forEach(p=>addToBoard(p));
 }
 function bindDrag(el,p){
-  let sx,sy,ox,oy,moved=false,id=null;
-  el.addEventListener("pointerdown",e=>{id=e.pointerId;el.setPointerCapture(id);sx=e.clientX;sy=e.clientY;ox=el.offsetLeft;oy=el.offsetTop;moved=false;el.style.zIndex=z++;el.classList.add("drag");el.style.transition=""});
-  el.addEventListener("pointermove",e=>{if(e.pointerId!==id)return;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;if(moved){el.style.left=ox+dx+"px";el.style.top=oy+dy+"px"}});
-  const end=async e=>{if(e.pointerId!==id)return;id=null;el.classList.remove("drag");
-    if(!moved){openBig(p.id)}else{const b=$("#board"),w=el.offsetWidth,h=el.offsetHeight;
-      p.x=(el.offsetLeft+w/2)/b.clientWidth;p.y=(el.offsetTop+h/2)/b.clientHeight;dbPut(p)}};
-  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",e=>{id=null;el.classList.remove("drag")});
-}
-
-/* ---------- shake physics ---------- */
-const bodies=new Map();let raf=0,lastT=0,shakeOn=false,sPrev=null,lastShake=0;
-function kick(power){
-  document.querySelectorAll("#board .pol").forEach(el=>{
-    const id=el.dataset.id,p=photos.find(x=>x.id===id);if(!p||el.classList.contains("drag"))return;
-    const b=bodies.get(id)||{x:el.offsetLeft,y:el.offsetTop,r:p.r,vx:0,vy:0,av:0};
-    b.x=el.offsetLeft;b.y=el.offsetTop;
-    const a=Math.random()*Math.PI*2,sp=(350+Math.random()*750)*power;
-    b.vx+=Math.cos(a)*sp;b.vy+=Math.sin(a)*sp;b.av+=(Math.random()-.5)*600*power;
-    bodies.set(id,b);el.style.transition="none";
+  const pts=new Map();let base=null,moved=false;
+  const ang=()=>{const [a,b]=[...pts.values()];return Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI};
+  const mid=()=>{const [a,b]=[...pts.values()];return{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
+  const rebase=()=>{ // restart gesture baseline from the current fingers
+    base={x:el.offsetLeft,y:el.offsetTop,r:p.r};
+    if(pts.size===1){const q=[...pts.values()][0];base.sx=q.x;base.sy=q.y}
+    else if(pts.size>=2){base.a=ang();const m=mid();base.sx=m.x;base.sy=m.y}
+  };
+  el.addEventListener("pointerdown",e=>{
+    el.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===1){moved=false;el.style.zIndex=z++;el.classList.add("drag");el.style.transition=""}
+    else moved=true;
+    rebase();
   });
-  if(!raf){lastT=performance.now();raf=requestAnimationFrame(step)}
-}
-function step(t){
-  const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
-  const bd=$("#board"),W=bd.clientWidth,H=bd.clientHeight-64;
-  if(!W){raf=0;bodies.clear();return}
-  const damp=Math.exp(-2.4*dt),rest=.45;
-  bodies.forEach((b,id)=>{
-    const el=document.querySelector(`#board .pol[data-id="${id}"]`),p=photos.find(x=>x.id===id);
-    if(!el||!p||el.classList.contains("drag")){bodies.delete(id);return}
-    const w=el.offsetWidth,h=el.offsetHeight;
-    b.x+=b.vx*dt;b.y+=b.vy*dt;b.r+=b.av*dt;
-    if(b.x<4){b.x=4;b.vx=Math.abs(b.vx)*rest;b.av*=.7}
-    if(b.x>W-w-4){b.x=W-w-4;b.vx=-Math.abs(b.vx)*rest;b.av*=.7}
-    if(b.y<4){b.y=4;b.vy=Math.abs(b.vy)*rest;b.av*=.7}
-    if(b.y>H-h){b.y=H-h;b.vy=-Math.abs(b.vy)*rest;b.av*=.7}
-    b.vx*=damp;b.vy*=damp;b.av*=Math.exp(-1.8*dt);
-    el.style.left=b.x+"px";el.style.top=b.y+"px";el.style.transform=`rotate(${b.r}deg)`;
-    if(Math.hypot(b.vx,b.vy)<10&&Math.abs(b.av)<8){
-      p.x=(b.x+w/2)/W;p.y=(b.y+h/2)/bd.clientHeight;p.r=Math.max(-25,Math.min(25,((b.r+180)%360+360)%360-180));
-      el.style.transform=`rotate(${p.r}deg)`;dbPut(p);bodies.delete(id);
+  el.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size>=2){
+      const m=mid();p.r=base.r+(ang()-base.a);
+      el.style.left=base.x+(m.x-base.sx)+"px";el.style.top=base.y+(m.y-base.sy)+"px";el.style.transform=`rotate(${p.r}deg)`;
+    }else{
+      const q=pts.get(e.pointerId),dx=q.x-base.sx,dy=q.y-base.sy;
+      if(Math.abs(dx)+Math.abs(dy)>6)moved=true;
+      if(moved){el.style.left=base.x+dx+"px";el.style.top=base.y+dy+"px"}
     }
   });
-  raf=bodies.size?requestAnimationFrame(step):0;
+  const end=e=>{
+    if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);
+    if(pts.size>0){rebase();return}
+    el.classList.remove("drag");
+    if(!moved){openBig(p.id)}else{const b=$("#board"),w=el.offsetWidth,h=el.offsetHeight;
+      p.x=(el.offsetLeft+w/2)/b.clientWidth;p.y=(el.offsetTop+h/2)/b.clientHeight;dbPut(p)}
+  };
+  el.addEventListener("pointerup",end);
+  el.addEventListener("pointercancel",e=>{pts.delete(e.pointerId);if(!pts.size)el.classList.remove("drag")});
+  // mouse/trackpad: scroll over a polaroid to spin it
+  el.addEventListener("wheel",e=>{e.preventDefault();p.r+=e.deltaY*.25;el.style.transform=`rotate(${p.r}deg)`;clearTimeout(el._wt);el._wt=setTimeout(()=>dbPut(p),400)},{passive:false});
 }
-function onMotion(e){
-  const a=e.accelerationIncludingGravity||e.acceleration;if(!a)return;
-  const m=Math.hypot(a.x||0,a.y||0,a.z||0);
-  if(sPrev!==null){const d=Math.abs(m-sPrev);
-    if(d>12&&Date.now()-lastShake>500){lastShake=Date.now();kick(Math.min(2.4,d/12));try{navigator.vibrate&&navigator.vibrate(25)}catch(_){}}}
-  sPrev=m;
-}
-async function enableShake(){
-  if(shakeOn)return true;
-  try{
-    if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function"){
-      const r=await DeviceMotionEvent.requestPermission();if(r!=="granted"){toast("Motion access denied");return false}}
-    addEventListener("devicemotion",onMotion);shakeOn=true;return true;
-  }catch(e){return false}
-}
-$("#shakeBtn").onclick=async()=>{await enableShake();kick(1.6)};
-document.addEventListener("click",()=>enableShake(),{once:true});
-addEventListener("keydown",e=>{if(e.key==="s"&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName))kick(1.6)});
 
 /* ---------- enlarged ---------- */
 function openBig(id){

@@ -44,9 +44,9 @@ main{position:relative;flex:1;overflow:hidden}
 #printer{position:absolute;left:8%;right:8%;top:100%;height:0}
 
 /* Polaroid */
-.pol{position:absolute;width:var(--w,120px);background:var(--paper);padding:6% 6% 0;border-radius:3px;box-shadow:0 6px 18px #0009,0 1px 2px #0006;color:#222;touch-action:none;user-select:none;-webkit-user-select:none;will-change:transform}
+.pol{position:absolute;width:var(--w,120px);background:var(--paper);padding:3% 3% 0;border-radius:2px;box-shadow:0 6px 18px #0009,0 1px 2px #0006;color:#222;touch-action:none;user-select:none;-webkit-user-select:none;will-change:transform}
 .pol img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#ddd;pointer-events:none;-webkit-user-drag:none}
-.pol .cap{font-family:var(--hand);font-size:calc(var(--w,120px)*.092);line-height:1.15;padding:7% 2% 9%;height:calc(var(--w,120px)*.34);overflow:hidden;color:#2b2b2b}
+.pol .cap{font-family:var(--hand);font-size:calc(var(--w,120px)*.08);line-height:1.15;padding:4% 2% 4%;height:calc(var(--w,120px)*.25);overflow:hidden;color:#2b2b2b}
 .pol .cap b{font-weight:700}
 .pol.drag{box-shadow:0 18px 40px #000c;z-index:999!important}
 .printing{animation:print 1.6s cubic-bezier(.3,.7,.3,1) forwards}
@@ -82,7 +82,7 @@ input:focus,textarea:focus{border-color:#555}
 .acts{display:flex;gap:10px;justify-content:flex-end}
 #big{flex-direction:column;gap:18px}
 #big .pol{position:relative;--w:min(78vw,52vh,420px);transform:rotate(-1.5deg)}
-#big .pol .cap{height:auto;min-height:calc(var(--w)*.3);font-size:calc(var(--w)*.065);overflow:visible}
+#big .pol .cap{height:auto;min-height:calc(var(--w)*.2);font-size:calc(var(--w)*.06);overflow:visible}
 .bigacts{display:flex;gap:10px}
 #toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#fff;color:#111;padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;transition:.25s;z-index:99;pointer-events:none}
 #toast.on{opacity:1;transform:translate(-50%,0)}
@@ -288,9 +288,9 @@ $("#post").onclick=async()=>{
 };
 
 /* ---------- board ---------- */
-function polW(){return Math.max(96,Math.min(150,$("#board").clientWidth/6.2))}
+function polW(){return Math.max(96,Math.min(210,$("#board").clientWidth/4.6))}
 function place(el,p){
-  const b=$("#board"),w=polW(),h=w*1.36;
+  const b=$("#board"),w=polW(),h=w*1.26;
   const x=Math.min(Math.max(p.x*b.clientWidth-w/2,4),b.clientWidth-w-4);
   const y=Math.min(Math.max(p.y*b.clientHeight-h/2,4),b.clientHeight-h-70);
   el.style.left=x+"px";el.style.top=y+"px";el.style.transform=`rotate(${p.r}deg)`;
@@ -303,10 +303,10 @@ function printOut(p){
   // animate: polaroid emerges from slot then settles to its spot
   const booth=$("#booth").getBoundingClientRect(),b=$("#board").getBoundingClientRect(),w=polW();
   const el=addToBoard(p);
-  const tx=(booth.left+booth.width/2-w/2)-b.left,ty=booth.bottom-b.top-w*1.36+6;
+  const tx=(booth.left+booth.width/2-w/2)-b.left,ty=booth.bottom-b.top-w*1.26+6;
   const fx=parseFloat(el.style.left),fy=parseFloat(el.style.top);
   el.style.zIndex=4;el.style.transition="none";
-  el.style.left=tx+"px";el.style.top=(ty-w*1.3)+"px";el.style.transform="rotate(0)";el.style.clipPath="inset(0 0 0 0)";
+  el.style.left=tx+"px";el.style.top=(ty-w*1.2)+"px";el.style.transform="rotate(0)";el.style.clipPath="inset(0 0 0 0)";
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     el.style.transition="top 1.1s cubic-bezier(.3,.7,.3,1)";el.style.top=ty+"px";
     setTimeout(()=>{el.style.transition="left .8s cubic-bezier(.2,.8,.2,1),top .8s cubic-bezier(.2,.8,.2,1),transform .8s";
@@ -350,7 +350,7 @@ function wrap(x,t,maxW){const words=t.split(/\s+/),lines=[];let cur="";
 function cardCanvas(p){
   return new Promise(res=>{
     const img=new Image();img.onload=()=>{
-      const W=1000,pad=60,ph=W-pad*2,capH=330,H=pad+ph+capH;
+      const W=1000,pad=28,ph=W-pad*2,capH=250,H=pad+ph+capH;
       const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
       x.fillStyle="#fbfaf7";x.fillRect(0,0,W,H);
       x.drawImage(img,pad,pad,ph,ph);
@@ -358,13 +358,13 @@ function cardCanvas(p){
       const fam='"Bradley Hand","Segoe Print","Noteworthy","Comic Sans MS",cursive';
       x.font=`bold 54px ${fam}`;
       const n="@"+p.name;let lines=[];
-      x.font=`54px ${fam}`;
+      x.font=`48px ${fam}`;
       const full=n+(p.msg?" – "+p.msg:"");
       lines=wrap(x,full,ph);
-      let fs=54;while(lines.length>4&&fs>34){fs-=4;x.font=`${fs}px ${fam}`;lines=wrap(x,full,ph)}
-      lines.slice(0,5).forEach((l,i)=>x.fillText(l,pad,pad+ph+36+i*(fs*1.2)));
+      let fs=48;while(lines.length>3&&fs>32){fs-=4;x.font=`${fs}px ${fam}`;lines=wrap(x,full,ph)}
+      lines.slice(0,5).forEach((l,i)=>x.fillText(l,pad,pad+ph+26+i*(fs*1.2)));
       x.font=`26px ${fam}`;x.fillStyle="#9a9690";x.textAlign="right";
-      x.fillText(settings.title,W-pad,H-52);
+      x.fillText(settings.title,W-pad-4,H-40);
       res(c)};img.src=p.img;
   });
 }

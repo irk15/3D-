@@ -20,9 +20,8 @@ function cloudStatus(){
   const el=$("#cloud");if(!el)return;
   if(!gh.repo||!gh.token){el.className="cloud";el.textContent="";return}
   const n=photos.filter(p=>!p.synced).length;
-  if(syncErr){el.className="cloud err";el.textContent="☁ "+syncErr+(n?` · ${n} pending`:"")}
-  else if(n){el.className="cloud";el.textContent=`☁ Uploading ${n}…`}
-  else{el.className="cloud ok";el.textContent="☁ All photos backed up"}
+  el.textContent="";el.className="cloud";
+  if(syncErr&&syncErr!==window.__lastSyncErr){window.__lastSyncErr=syncErr;toast("Backup issue: "+syncErr)}else if(!syncErr)window.__lastSyncErr="";
 }
 async function syncAll(){
   if(syncing||!gh.repo||!gh.token){cloudStatus();return}
@@ -273,8 +272,7 @@ document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.id==="v-"+b.dataset.t));
   if(b.dataset.t==="book"){startCam();setTimeout(renderBoard,0)}else stopCam();
 });
-$("#cloud").onclick=()=>$("#evTitle").click();
-$("#evTitle").onclick=()=>{$("#sTitle").value=settings.title;$("#sDate").value=settings.date;$("#sRepo").value=gh.repo||"";$("#sTok").value="";$("#sTok").placeholder=gh.token?"Token saved on this device (leave blank to keep)":"GitHub token (stays on this device)";$("#setOv").classList.add("on")};
+document.querySelector(".title").style.cursor="pointer";document.querySelector(".title").onclick=()=>{$("#sTitle").value=settings.title;$("#sDate").value=settings.date;$("#sRepo").value=gh.repo||"";$("#sTok").value="";$("#sTok").placeholder=gh.token?"Token saved on this device (leave blank to keep)":"GitHub token (stays on this device)";$("#setOv").classList.add("on")};
 $("#copyLink").onclick=async()=>{
   if(!gh.repo||!gh.token)return toast("Save repo + token first");
   const u=location.origin+location.pathname+"#r="+encodeURIComponent(gh.repo).replace("%2F","/")+"&t="+encodeURIComponent(gh.token);

@@ -148,6 +148,7 @@ input:focus,textarea:focus{border-color:#555}
   <h3>Cloud backup (GitHub)</h3>
   <input type="text" id="sRepo" placeholder="owner/repo  e.g. irk15/photobooth-photos" autocapitalize="off" autocorrect="off">
   <input type="password" id="sTok" placeholder="GitHub token (stays on this device)" autocomplete="off">
+  <button class="btn" id="copyLink" type="button">Copy guest link (anyone who opens it uploads to your repo)</button>
   <small>Every photo is uploaded as a JPG plus a small JSON with the name and note. Use a private repo and a fine-grained token limited to that repo (Contents: read and write).</small>
   <div class="acts"><button class="btn" id="sCancel">Cancel</button><button class="btn pri" id="sSave">Save</button></div>
 </div></div>
@@ -161,6 +162,9 @@ const $=s=>document.querySelector(s);
 const EMOJI=["😍","🥹","🥂","💍","💕","🎉","🤍","✨","🔥","😘","👰","🤵","🍾","💃","🕺","🥳"];
 const SIZE=800;           // saved photo resolution
 const gh=JSON.parse(localStorage.getItem("gb-gh")||"{}");
+// magic link: ...guestbook/#r=owner/repo&t=TOKEN  -> stored on this device, then removed from the address bar
+try{const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get("r")&&h.get("t")){gh.repo=h.get("r");gh.token=h.get("t");localStorage.setItem("gb-gh",JSON.stringify(gh));history.replaceState(null,"",location.pathname+location.search)}}catch(e){}
 let syncing=false,syncErr="";
 const b64u=t=>btoa(unescape(encodeURIComponent(t)));
 async function ghPut(path,content,msg){
@@ -396,10 +400,15 @@ document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
   if(b.dataset.t==="book"){startCam();setTimeout(renderBoard,0)}else stopCam();
 });
 $("#cloud").onclick=()=>$("#evTitle").click();
-$("#evTitle").onclick=()=>{$("#sTitle").value=settings.title;$("#sDate").value=settings.date;$("#sRepo").value=gh.repo||"";$("#sTok").value=gh.token||"";$("#setOv").classList.add("on")};
+$("#evTitle").onclick=()=>{$("#sTitle").value=settings.title;$("#sDate").value=settings.date;$("#sRepo").value=gh.repo||"";$("#sTok").value="";$("#sTok").placeholder=gh.token?"Token saved on this device (leave blank to keep)":"GitHub token (stays on this device)";$("#setOv").classList.add("on")};
+$("#copyLink").onclick=async()=>{
+  if(!gh.repo||!gh.token)return toast("Save repo + token first");
+  const u=location.origin+location.pathname+"#r="+encodeURIComponent(gh.repo).replace("%2F","/")+"&t="+encodeURIComponent(gh.token);
+  try{await navigator.clipboard.writeText(u);toast("Guest link copied")}catch(e){prompt("Copy this link",u)}
+};
 $("#sCancel").onclick=()=>$("#setOv").classList.remove("on");
 $("#sSave").onclick=()=>{settings.title=$("#sTitle").value.trim()||settings.title;settings.date=$("#sDate").value.trim();
-  localStorage.setItem("gb-settings",JSON.stringify(settings));gh.repo=$("#sRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,"");gh.token=$("#sTok").value.trim();localStorage.setItem("gb-gh",JSON.stringify(gh));renderHeader();syncAll();$("#setOv").classList.remove("on")};
+  localStorage.setItem("gb-settings",JSON.stringify(settings));gh.repo=$("#sRepo").value.trim().replace(/^https?:\/\/github.com\//,"").replace(/\/$/,"");if($("#sTok").value.trim())gh.token=$("#sTok").value.trim();localStorage.setItem("gb-gh",JSON.stringify(gh));renderHeader();syncAll();$("#setOv").classList.remove("on")};
 $("#fb").onclick=()=>$("#file").click();
 addEventListener("resize",()=>{if($("#v-book").classList.contains("on"))renderBoard()});
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopCam();else if($("#v-book").classList.contains("on"))startCam()});

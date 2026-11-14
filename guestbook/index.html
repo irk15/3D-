@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0b0b0d">
-<title>Guest Book Booth</title>
+<title>Photobooth</title>
 <style>
 :root{--bg:#0b0b0d;--ink:#f4f1ea;--dim:#8d8a84;--paper:#fbfaf7;--hand:"Bradley Hand","Segoe Print","Noteworthy","Comic Sans MS",cursive;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -89,7 +89,7 @@ input:focus,textarea:focus{border-color:#555}
 <body>
 <div id="app">
   <header>
-    <div class="title"><h1 id="evTitle">Emma &amp; Daniel's Wedding Day</h1><div class="sub" id="evDate">Tap the title to edit</div></div>
+    <div class="title"><h1 id="evTitle">Photobooth</h1><div class="sub" id="evDate">Tap the title to edit</div></div>
     <div class="stat"><div><b id="nPhotos">0</b><span>Photos</span></div><div><b id="nGuests">0</b><span>People</span></div></div>
   </header>
   <div class="tabs"><button data-t="album">Album</button><button data-t="book" class="on">Guest Book</button></div>
@@ -155,7 +155,7 @@ const $=s=>document.querySelector(s);
 const EMOJI=["😍","🥹","🥂","💍","💕","🎉","🤍","✨","🔥","😘","👰","🤵","🍾","💃","🕺","🥳"];
 const SIZE=800;           // saved photo resolution
 let facing="user",stream=null,photos=[],pendingImg=null,openId=null,z=1;
-const settings=JSON.parse(localStorage.getItem("gb-settings")||'{"title":"Emma & Daniel\'s Wedding Day","date":"Aug 25th"}');
+const settings=JSON.parse(localStorage.getItem("gb-settings")||'{"title":"Photobooth","date":""}');
 
 /* ---------- IndexedDB ---------- */
 const dbp=new Promise((res,rej)=>{const r=indexedDB.open("guestbook",1);r.onupgradeneeded=()=>r.result.createObjectStore("p",{keyPath:"id"});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});

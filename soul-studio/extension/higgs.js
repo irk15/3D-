@@ -17,6 +17,7 @@
     return r.width > 40 && r.height > 16 && cs.visibility !== 'hidden' && cs.display !== 'none';
   };
   function findComposer() {
+    const pinned = fromSaved('box'); if (pinned) return pinned;
     const c = [...document.querySelectorAll('textarea,[contenteditable="true"],[contenteditable=""],[role="textbox"]')]
       .filter(el => visible(el) && !el.closest('#soulbot'));
     if (!c.length) return null;
@@ -28,6 +29,7 @@
     return c.sort((a, b) => score(b) - score(a))[0];
   }
   function findGenerate() {
+    const pinned = fromSaved('gen'); if (pinned) return pinned;
     const b = [...document.querySelectorAll('button,[role="button"]')]
       .filter(el => visible(el) && !el.closest('#soulbot'))
       .filter(el => /^\s*generate\b/i.test((el.innerText || '') + ' ') || /^generate/i.test(el.getAttribute('aria-label') || ''));
@@ -36,7 +38,51 @@
     b.sort((x, y) => (y.type === 'submit') - (x.type === 'submit') || y.getBoundingClientRect().top - x.getBoundingClientRect().top);
     return b[0];
   }
-  const isDisabled = el => el.disabled || el.getAttribute('aria-disabled') === 'true' || el.dataset.disabled === 'true';
+  const isDisabled = el => el.disabled || el.getAttribute('aria-disabled') === 'true' || el.dataset.disabled === 'true' || getComputedStyle(el).pointerEvents === 'none';
+
+
+  /* ---------- user-picked elements (teach it where things are) ---------- */
+  const SEL = { gen: 'soulSelGen', box: 'soulSelBox' };
+  const saved = k => { try { return localStorage.getItem(SEL[k]) || ''; } catch (e) { return ''; } };
+  function cssPath(el) {
+    const parts = [];
+    while (el && el.nodeType === 1 && el !== document.body && parts.length < 9) {
+      if (el.id && !/\d{3,}|:/.test(el.id)) { parts.unshift('#' + CSS.escape(el.id)); break; }
+      let p = el.tagName.toLowerCase();
+      const sib = [...el.parentNode.children].filter(c => c.tagName === el.tagName);
+      if (sib.length > 1) p += ':nth-of-type(' + (sib.indexOf(el) + 1) + ')';
+      parts.unshift(p);
+      el = el.parentElement;
+    }
+    return parts.join(' > ');
+  }
+  function fromSaved(k) {
+    const sel = saved(k);
+    if (!sel) return null;
+    try { const el = document.querySelector(sel); return el && visible(el) ? el : null; } catch (e) { return null; }
+  }
+  function pickMode(kind) {
+    log(kind === 'gen' ? 'Click the GENERATE button now (Esc = cancel)' : 'Click inside the PROMPT box now (Esc = cancel)');
+    const stop = e => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); };
+    const done = () => {
+      ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'click'].forEach(t => window.removeEventListener(t, handler, true));
+      window.removeEventListener('keydown', esc, true);
+    };
+    const esc = e => { if (e.key === 'Escape') { done(); log('pick cancelled'); } };
+    const handler = e => {
+      if (box.contains(e.target)) return;
+      stop(e);
+      if (e.type !== 'click') return;
+      let el = e.target;
+      if (kind === 'gen') el = el.closest('button,[role="button"],a,[tabindex]') || el;
+      else el = el.closest('textarea,[contenteditable],[role="textbox"],input') || el;
+      localStorage.setItem(SEL[kind], cssPath(el));
+      done();
+      log((kind === 'gen' ? 'Generate' : 'Prompt box') + ' saved: <' + el.tagName.toLowerCase() + '> ' + (el.innerText || el.placeholder || '').slice(0, 24).replace(/\s+/g, ' '));
+    };
+    ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'click'].forEach(t => window.addEventListener(t, handler, true));
+    window.addEventListener('keydown', esc, true);
+  }
 
   /* ---------- typing and clicking ---------- */
   function setText(el, text) {
@@ -70,7 +116,7 @@
   /* ---------- panel ---------- */
   const box = document.createElement('div');
   box.id = 'soulbot';
-  box.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:2147483647;width:236px;background:#101012;color:#eee;font:12px/1.4 system-ui,sans-serif;border:1px solid #3a3a42;border-radius:12px;padding:10px 12px;box-shadow:0 8px 30px #0009';
+  box.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:2147483647;width:250px;background:#101012;color:#eee;font:12px/1.4 system-ui,sans-serif;border:1px solid #3a3a42;border-radius:12px;padding:10px 12px;box-shadow:0 8px 30px #0009';
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <b style="color:#c9a2ff">Soul Bridge</b><span id="sb-st" style="color:#888">idle</span></div>
@@ -79,7 +125,10 @@
     <div style="display:flex;gap:6px">
       <button id="sb-go" style="flex:1;padding:6px;border:0;border-radius:8px;background:#c9a2ff;color:#111;font-weight:700;cursor:pointer">Start</button>
       <button id="sb-clr" style="padding:6px 8px;border:1px solid #444;border-radius:8px;background:none;color:#ccc;cursor:pointer">Clear</button></div>
-    <div id="sb-log" style="margin-top:6px;color:#8a8a92;min-height:16px"></div>`;
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button id="sb-pg" style="flex:1;padding:5px;border:1px solid #444;border-radius:8px;background:none;color:#ccc;cursor:pointer">Pick Generate</button>
+      <button id="sb-pb" style="flex:1;padding:5px;border:1px solid #444;border-radius:8px;background:none;color:#ccc;cursor:pointer">Pick box</button></div>
+    <div id="sb-log" style="margin-top:6px;color:#8a8a92;min-height:16px;word-break:break-word"></div>`;
   document.documentElement.appendChild(box);
   const $ = id => box.querySelector('#' + id);
   const log = m => { $('sb-log').textContent = m; };
@@ -87,6 +136,8 @@
   $('sb-gap').value = S.gap;
   $('sb-gap').onchange = e => { S.gap = Math.max(5, +e.target.value || 30); try { localStorage.setItem('soulGap', S.gap); } catch (x) {} };
   $('sb-go').onclick = () => { S.run = !S.run; $('sb-go').textContent = S.run ? 'Pause' : 'Start'; state(S.run ? 'running' : 'paused'); if (S.run) loop(); };
+  $('sb-pg').onclick = () => pickMode('gen');
+  $('sb-pb').onclick = () => pickMode('box');
   $('sb-clr').onclick = async () => { await call({ type: 'clear' }); refresh(); log('queue cleared'); };
   async function refresh() {
     const r = await call({ type: 'status' });
@@ -107,27 +158,30 @@
     const { prompt } = await call({ type: 'pop' });
     if (!prompt) { log('queue empty'); return 'empty'; }
 
-    let typed = false;
+    let typed = false, got = '', want = norm(prompt);
     for (let attempt = 0; attempt < 3 && !typed; attempt++) {
       setText(comp, prompt);
-      await sleep(700);
-      const got = readText(comp), want = norm(prompt);
-      if (got === want || (got.length > want.length * 0.9 && got.startsWith(want.slice(0, 80)))) typed = true; else await sleep(500);
+      await sleep(800);
+      got = readText(comp);
+      if (got === want || (got.length > want.length * 0.5 && got.startsWith(want.slice(0, 40)))) typed = true; else await sleep(500);
     }
-    if (typed) {
+    if (!typed) {
+      log('text not accepted by box (has ' + got.length + ' of ' + want.length + ' chars). Use Pick box.');
+    } else {
       let b = findGenerate();
-      for (let i = 0; i < 8 && (!b || isDisabled(b)); i++) { await sleep(500); b = findGenerate(); }
-      if (b && !isDisabled(b)) {
+      for (let i = 0; i < 20 && (!b || isDisabled(b)); i++) { await sleep(500); b = findGenerate(); }
+      if (!b) log('Generate vanished. Use Pick Generate.');
+      else if (isDisabled(b)) log('Generate stayed disabled for 10s (page may be waiting on references).');
+      else {
         press(b);               // exactly one click per prompt, never retried
         await sleep(2500);
         S.submitted++;
-        const moved = readText(comp) !== norm(prompt) || isDisabled(findGenerate() || b);
+        const moved = readText(comp) !== want || isDisabled(findGenerate() || b);
         log('sent #' + S.submitted + (moved ? '' : ' (page kept text, assumed sent)'));
         return 'ok';
       }
     }
     await call({ type: 'requeue', prompt });
-    log('could not submit, paused');
     return 'fail';
   }
 

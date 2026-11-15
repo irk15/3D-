@@ -107,6 +107,32 @@
   }
   const norm = t => String(t || '').replace(/\s+/g, '');
   const readText = el => norm(el.value !== undefined ? el.value : el.innerText);
+
+  // Empty the prompt box completely (and confirm it) before a new prompt goes in.
+  async function clearBox(el) {
+    for (let i = 0; i < 4; i++) {
+      el.focus();
+      if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+        try { el.select(); document.execCommand('delete'); } catch (e) {}
+        const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, '');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        try {
+          const r = document.createRange(); r.selectNodeContents(el);
+          const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+          document.execCommand('delete');
+        } catch (e) {}
+        if (readText(el)) {
+          el.textContent = '';
+          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContent' }));
+        }
+      }
+      await sleep(350);
+      if (!readText(el)) return true;
+    }
+    return false;
+  }
   function press(el) {
     const r = el.getBoundingClientRect(), o = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, view: window };
     ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(t =>
@@ -160,6 +186,8 @@
 
     let typed = false, got = '', want = norm(prompt);
     for (let attempt = 0; attempt < 3 && !typed; attempt++) {
+      if (!(await clearBox(comp))) log('could not empty the box, trying anyway');
+      await sleep(300);
       setText(comp, prompt);
       await sleep(800);
       got = readText(comp);

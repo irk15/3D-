@@ -8,7 +8,7 @@
   const call = m => new Promise(r => {
     try { chrome.runtime.sendMessage(m, res => r(res || { ok: false })); } catch (e) { r({ ok: false }); }
   });
-  const S = { run: false, gap: 30, submitted: 0 };
+  const S = { run: false, gap: 30, submitted: 0, cdp: false };
   try { S.gap = +localStorage.getItem('soulGap') || 30; } catch (e) {}
 
   /* ---------- finding things on the page ---------- */
@@ -161,7 +161,15 @@
   const state = m => { $('sb-st').textContent = m; };
   $('sb-gap').value = S.gap;
   $('sb-gap').onchange = e => { S.gap = Math.max(5, +e.target.value || 30); try { localStorage.setItem('soulGap', S.gap); } catch (x) {} };
-  $('sb-go').onclick = () => { S.run = !S.run; $('sb-go').textContent = S.run ? 'Pause' : 'Start'; state(S.run ? 'running' : 'paused'); if (S.run) loop(); };
+  $('sb-go').onclick = async () => {
+    S.run = !S.run; $('sb-go').textContent = S.run ? 'Pause' : 'Start'; state(S.run ? 'running' : 'paused');
+    if (S.run) {
+      const r = await T('attach');
+      S.cdp = !!(r && r.ok);
+      log(S.cdp ? 'real keyboard/mouse on' : 'real input unavailable: ' + ((r && r.error) || 'unknown') + ' (using fallback)');
+      loop();
+    } else { S.cdp = false; T('detach'); }
+  };
   $('sb-pg').onclick = () => pickMode('gen');
   $('sb-pb').onclick = () => pickMode('box');
   $('sb-clr').onclick = async () => { await call({ type: 'clear' }); refresh(); log('queue cleared'); };
@@ -176,36 +184,53 @@
   let looping = false;
   const outOfCredits = () => /not enough credits|insufficient credits|out of credits|no credits left/i.test(document.body.innerText || '');
 
+  const T = (op, extra) => call(Object.assign({ type: 'cdp', op }, extra));
+  const center = el => {
+    el.scrollIntoView({ block: 'nearest' });
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  };
+  // Click in the box, Ctrl+A, Backspace with real keystrokes, then confirm it is empty.
+  async function wipe(comp) {
+    if (S.cdp) {
+      await T('click', Object.assign({ what: 'box' }, center(comp)));
+      await sleep(200);
+      await T('wipe');
+      await sleep(350);
+      if (!readText(comp)) return true;
+    }
+    return clearBox(comp);   // fallback if real input is unavailable
+  }
+
   async function submitOne() {
     const comp = findComposer(), btn = findGenerate();
-    if (!comp) { log('prompt box not found'); return 'wait'; }
-    if (!btn) { log('Generate button not found'); return 'wait'; }
+    if (!comp) { log('prompt box not found. Use Pick box.'); return 'wait'; }
+    if (!btn) { log('Generate button not found. Use Pick Generate.'); return 'wait'; }
     if (isDisabled(btn)) { log('Generate busy, waiting'); return 'wait'; }
     const { prompt } = await call({ type: 'pop' });
     if (!prompt) { log('queue empty'); return 'empty'; }
 
+    await wipe(comp);                       // 1. empty the box (Ctrl+A, Backspace)
     let typed = false, got = '', want = norm(prompt);
     for (let attempt = 0; attempt < 3 && !typed; attempt++) {
-      if (!(await clearBox(comp))) log('could not empty the box, trying anyway');
-      await sleep(300);
-      setText(comp, prompt);
+      if (attempt) await wipe(comp);
+      if (S.cdp) await T('type', { text: prompt }); else setText(comp, prompt);   // 2. new prompt
       await sleep(800);
       got = readText(comp);
-      if (got === want || (got.length > want.length * 0.5 && got.startsWith(want.slice(0, 40)))) typed = true; else await sleep(500);
+      if (got === want || (got.length > want.length * 0.5 && got.startsWith(want.slice(0, 40)))) typed = true;
     }
-    if (!typed) {
-      log('text not accepted by box (has ' + got.length + ' of ' + want.length + ' chars). Use Pick box.');
-    } else {
+    if (!typed) { log('box did not accept the text (' + got.length + '/' + want.length + ' chars). Use Pick box.'); }
+    else {
       let b = findGenerate();
       for (let i = 0; i < 20 && (!b || isDisabled(b)); i++) { await sleep(500); b = findGenerate(); }
       if (!b) log('Generate vanished. Use Pick Generate.');
-      else if (isDisabled(b)) log('Generate stayed disabled for 10s (page may be waiting on references).');
+      else if (isDisabled(b)) log('Generate stayed disabled for 10s.');
       else {
-        press(b);               // exactly one click per prompt, never retried
-        await sleep(2500);
+        if (S.cdp) await T('click', Object.assign({ what: 'gen' }, center(b))); else press(b);   // 3. Generate, once
         S.submitted++;
-        const moved = readText(comp) !== want || isDisabled(findGenerate() || b);
-        log('sent #' + S.submitted + (moved ? '' : ' (page kept text, assumed sent)'));
+        await sleep(1500);
+        await wipe(comp);                   // 4. empty the box again right after generating
+        log('sent #' + S.submitted + (S.cdp ? '' : ' (no real input)'));
         return 'ok';
       }
     }

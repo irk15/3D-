@@ -29,6 +29,11 @@ export function buildTrees(tris, seed, cap = 1400) {
       n--; k++;
     }
   }
+  return instTrees(pts);
+}
+// explicit tree positions: flat list [x, z, random01, ...] (used for street trees)
+export function instTrees(pts) {
+  tree();
   if (!pts.length) return null;
   const m = new THREE.InstancedMesh(geo, mat, pts.length / 3);
   const o = new THREE.Object3D(), c = new THREE.Color();

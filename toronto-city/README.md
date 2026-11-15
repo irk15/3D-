@@ -17,3 +17,10 @@ WASD move, Q/E down/up, drag to look, wheel = speed, Shift = fast, **F** ride ne
 ## Notes
 Subway/LRT positions are not in the TTC's open vehicle feed, so they are not shown yet. Desktop first; the Quest 3 version needs the lighter settings pass.
 Data: © OpenStreetMap contributors, OpenFreeMap / OpenMapTiles, TTC open data.
+
+
+## Detail upgrade (v2)
+- Facades in three styles (glass curtain wall, concrete ribbon windows, brick with punched windows) with matching lit night windows; pitched roofs on houses; rooftop equipment; stepped crowns and spires on towers.
+- Road markings: zebra crossings at every junction, dashed lane lines on arterials. Street lamps with night light pools, street trees along residential streets.
+- Street names painted on the roads, floating landmark labels (stations, museums, stadiums, parks…) and neighbourhood names from the OpenStreetMap tiles.
+- Sky with drifting clouds, sky-reflecting glass and animated lake water (image-based lighting from the live sky), sun shadows, night bloom. Press **G** (or the button) to switch the cinematic pipeline off on slower machines; `?r=2` loads fewer tiles.

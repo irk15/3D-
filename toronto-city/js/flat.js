@@ -12,7 +12,7 @@ const LAND = { grass: 'grass', wood: 'wood', sand: 'sand', farmland: 'farm', roc
 const LANDUSE = { residential: 'residential', commercial: 'commercial', retail: 'commercial', industrial: 'industrial', cemetery: 'cemetery', pitch: 'pitch', playground: 'pitch', school: 'school', university: 'school', college: 'school', hospital: 'school', railway: 'industrial', stadium: 'pitch' };
 // y offsets keep coplanar layers apart (no z-fighting)
 const Y = { ground: 0, landuse: 0.05, land: 0.1, park: 0.15, water: 0.2 };
-const ROAD = { // class -> [half width m, rgb, y, sidewalk]
+export const ROAD = { // class -> [half width m, rgb, y, sidewalk]
   motorway: [10, rgb(0x2a2b2e), 0.3, false], trunk: [9, rgb(0x2b2c30), 0.28, false], primary: [8, rgb(0x2d2f33), 0.26, true],
   secondary: [6.5, rgb(0x303236), 0.24, true], tertiary: [5.5, rgb(0x33353a), 0.22, true], minor: [4.2, rgb(0x383a3f), 0.2, true],
   service: [2.6, rgb(0x3d3f44), 0.18, false], track: [1.5, rgb(0x5a5648), 0.18, false], path: [1.0, rgb(0x8a8576), 0.19, false],
@@ -20,6 +20,10 @@ const ROAD = { // class -> [half width m, rgb, y, sidewalk]
 };
 const SIDEWALK = rgb(0x8c8a84), CENTRE = rgb(0xc9b75a);
 
+export function roadClass(p) {
+  let cls = p.class; if (cls === 'motorway_link' || cls === 'trunk_link') cls = cls.split('_')[0]; if (cls === 'primary_link' || cls === 'secondary_link' || cls === 'tertiary_link') cls = 'service';
+  return cls;
+}
 function ribbon(acc, pts, hw, col, y) {
   const n = pts.length; if (n < 2) return;
   const P = [pts[0]]; for (let i = 1; i < n; i++) if (Math.hypot(pts[i][0] - P[P.length - 1][0], pts[i][1] - P[P.length - 1][1]) > 0.2) P.push(pts[i]);
@@ -52,17 +56,17 @@ function fillPoly(acc, poly, y, col) {
 }
 
 export function* buildFlat(vt, T, seed) {
-  const land = new Acc(), roads = new Acc(), treeTris = [];
+  const land = new Acc(), roads = new Acc(), wat = new Acc(), treeTris = [];
   // ground quad for the whole tile
   const g = COL.ground, x1 = T.x0 + T.sx, z1 = T.z0 + T.sz;
   const q = [land.v(T.x0, Y.ground, T.z0, ...g), land.v(x1, Y.ground, T.z0, ...g), land.v(x1, Y.ground, z1, ...g), land.v(T.x0, Y.ground, z1, ...g)];
   land.up(q[0], q[1], q[2]); land.up(q[0], q[2], q[3]);
-  const polyLayer = (name, pick, y, collectTrees) => {
+  const polyLayer = (name, pick, y, collectTrees, acc = land) => {
     const L = vt.layers[name]; if (!L) return;
     for (let i = 0; i < L.length; i++) {
       const f = L.feature(i), key = pick(f.properties); if (!key) continue;
       for (const poly of polygons(f, T)) {
-        const { flat, idx } = fillPoly(land, poly, y, COL[key]);
+        const { flat, idx } = fillPoly(acc, poly, y, COL[key]);
         if (collectTrees && (key === 'wood' || key === 'park' || key === 'grass')) for (let t = 0; t < idx.length; t += 3) treeTris.push(key === 'wood' ? 1 : 0.35, flat[idx[t] * 2], flat[idx[t] * 2 + 1], flat[idx[t + 1] * 2], flat[idx[t + 1] * 2 + 1], flat[idx[t + 2] * 2], flat[idx[t + 2] * 2 + 1]);
       }
     }
@@ -70,7 +74,7 @@ export function* buildFlat(vt, T, seed) {
   polyLayer('landuse', (p) => LANDUSE[p.class], Y.landuse); yield;
   polyLayer('landcover', (p) => LAND[p.class], Y.land, true); yield;
   polyLayer('park', () => 'park', Y.park, true); yield;
-  polyLayer('water', () => 'water', Y.water); yield;
+  polyLayer('water', () => 'water', Y.water, false, wat); yield;
 
   // roads
   const R = vt.layers.transportation;
@@ -78,7 +82,7 @@ export function* buildFlat(vt, T, seed) {
     if (i % 400 === 0) yield;
     const f = R.feature(i), p = f.properties;
     if (f.type !== 2 || p.brunnel === 'tunnel') continue;
-    let cls = p.class; if (cls === 'motorway_link' || cls === 'trunk_link') cls = cls.split('_')[0]; if (cls === 'primary_link' || cls === 'secondary_link' || cls === 'tertiary_link') cls = 'service';
+    const cls = roadClass(p);
     if (cls === 'busway' || cls === 'bus_guideway' || cls === 'ferry' || cls === 'pier') continue;
     const spec = ROAD[cls]; if (!spec) continue;
     const bridge = p.brunnel === 'bridge' ? 0.1 : 0;
@@ -91,5 +95,5 @@ export function* buildFlat(vt, T, seed) {
   const A = vt.layers.aeroway;
   if (A) for (let i = 0; i < A.length; i++) { const f = A.feature(i), s = ROAD[f.properties.class]; if (s && f.type === 2) for (const ln of lines(f, T)) ribbon(roads, ln, s[0], s[1], s[2]); }
   yield;
-  return { land: land.geometry(true), roads: roads.empty ? null : roads.geometry(true), treeTris };
+  return { land: land.geometry(true), water: wat.empty ? null : wat.geometry(true), roads: roads.empty ? null : roads.geometry(true), treeTris };
 }

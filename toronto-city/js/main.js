@@ -6,11 +6,17 @@ import { Sky } from './sky.js';
 import { Transit } from './transit.js';
 import { Controls } from './controls.js';
 import { cnTower } from './landmarks.js';
+import { Env } from './env.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const $ = (id) => document.getElementById(id);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -21,6 +27,14 @@ const controls = new Controls(camera, renderer.domElement); controls.yaw = -0.1;
 const sky = new Sky(scene, renderer);
 const tiles = new TileManager(scene, renderer);
 const cn = cnTower(scene);
+const env = new Env(renderer, scene, sky); scene.environmentIntensity = 0.6;
+// cinematic pipeline: HDR render target (4x MSAA) + bloom for night lights, sun shadows
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }));
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.3, 0.65, 0.9); composer.addPass(bloom); composer.addPass(new OutputPass());
+composer.setSize(innerWidth, innerHeight);
+let cine = true;
+function setCine(v) { cine = v; sky.shadowOn = v; tiles.setShadows(v); $('cine').textContent = v ? 'Cinematic: ON (G)' : 'Cinematic: OFF (G)'; }
 const transit = new Transit(scene);
 scene.fog.far = tiles.tileSize() * (CFG.RADIUS + 0.4); scene.fog.near = scene.fog.far * 0.25;
 
@@ -35,24 +49,28 @@ function toggleFollow(wantCar) {
   if (controls.follow) { controls.follow = null; const e = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); controls.yaw = e.y; controls.pitch = e.x; return; }
   controls.follow = transit.nearest(camera.position, wantCar) || transit.nearest(camera.position, !wantCar);
 }
-addEventListener('keydown', (e) => { if (e.code === 'KeyF') toggleFollow(true); if (e.code === 'KeyB') toggleFollow(false); });
+addEventListener('keydown', (e) => { if (e.code === 'KeyF') toggleFollow(true); if (e.code === 'KeyB') toggleFollow(false); if (e.code === 'KeyG') setCine(!cine); });
+$('cine').onclick = () => setCine(!cine);
 $('follow').onclick = () => toggleFollow(true);
 
 tiles.init().catch((e) => { $('stat').textContent = tiles.status; });
 
-addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); bloom.setSize(innerWidth, innerHeight); });
 
-let last = performance.now(), fpsT = 0, frames = 0, fps = 0;
+let last = performance.now(), fpsT = 0, frames = 0, fps = 0; const fwd = new THREE.Vector3(), focus = new THREE.Vector3();
 renderer.setAnimationLoop(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (live) { hour = torontoHour(); $('hour').value = hour; }
   controls.update(dt);
-  const night = sky.update(hour, camera.position);
-  tiles.setNight(night); transit.setNight(night);
+  camera.getWorldDirection(fwd); { const hz = Math.hypot(fwd.x, fwd.z) || 1, gd = fwd.y < -0.02 ? (camera.position.y / -fwd.y) * hz : 1e5, d = Math.min(gd, 380); focus.set(camera.position.x + (fwd.x / hz) * d, 0, camera.position.z + (fwd.z / hz) * d); }
+  const night = sky.update(hour, camera.position, focus, now / 1000);
+  env.update(hour); tiles.waterU.value = now / 1000;
+  tiles.setNight(night); transit.setNight(night); cn.setNight(night);
+  bloom.strength = cine ? 0.12 + night * 0.55 : 0;
   cn.beacon.visible = Math.floor(now / 900) % 2 === 0;
   tiles.update(camera.position);
   transit.update(dt, camera.position, scene.fog.far * 1.05);
-  renderer.render(scene, camera);
+  if (cine) composer.render(dt); else renderer.render(scene, camera);
   frames++; fpsT += dt;
   if (fpsT > 0.5) { fps = Math.round(frames / fpsT); frames = 0; fpsT = 0;
     const h = Math.floor(hour), m = Math.floor((hour % 1) * 60);

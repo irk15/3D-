@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soul Studio</title>
+<style>
+:root{--bg:#0a0a0c;--pane:#121214;--card:#17171a;--line:#26262b;--ac:#c9a2ff;--tx:#f2f2f4;--dim:#8e8e96;--ok:#7ed492;--red:#e0716b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--pane)}
+header h1{font-size:15px;margin:0;color:var(--ac)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);margin-right:6px}
+.dot.on{background:var(--ok)}
+main{display:grid;grid-template-columns:1fr 380px;gap:16px;padding:16px;max-width:1300px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+label{display:block;font-size:11px;color:var(--dim);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+textarea,input,select{width:100%;background:#0f0f11;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+textarea{resize:vertical;min-height:70px}
+.pools{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.pools textarea{min-height:130px;font-size:12px}
+button{background:var(--ac);color:#111;border:0;border-radius:9px;padding:9px 14px;font-weight:700;cursor:pointer;font:inherit;font-weight:700}
+button.ghost{background:none;border:1px solid var(--line);color:var(--tx);font-weight:500}
+button.stop{background:var(--red);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.row>*{flex:0 0 auto}
+.row input[type=number]{width:80px}
+.stat{font-size:12px;color:var(--dim)}
+#prev{min-height:120px;font-size:13px;line-height:1.55;white-space:pre-wrap}
+#log{max-height:340px;overflow:auto;font-size:11.5px;color:var(--dim)}
+#log div{padding:5px 0;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Soul Studio</h1>
+  <span id="bridge" class="stat"><span class="dot"></span>Soul Bridge not detected</span>
+  <span class="stat" style="margin-left:auto">Queue <b id="qn">0</b> &middot; Made <b id="mn">0</b></span>
+</header>
+<main>
+<div>
+  <div class="card">
+    <label>Character (kept identical in every prompt)</label>
+    <textarea id="char" placeholder="e.g. Mira, 24, wavy dark brown hair, hazel eyes, light freckles, warm olive skin"></textarea>
+    <label>Style tail (added at the end of every prompt)</label>
+    <textarea id="tail" style="min-height:50px"></textarea>
+    <div class="row">
+      <button id="one">Preview one</button>
+      <button id="burst" class="ghost">Send 10 now</button>
+      <button id="clr" class="ghost">Clear queue</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <b>Endless mode</b>
+    <div class="stat">Makes a new prompt on a timer and drops it in the queue. The extension on the Higgsfield tab picks it up, types it into Soul 2.0 and clicks Generate. Keep this tab open.</div>
+    <div class="row">
+      <span class="stat">Every</span><input id="every" type="number" min="5" value="30"><span class="stat">seconds</span>
+      <button id="endless">Start endless</button>
+      <span id="next" class="stat"></span>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <b>Variety pools</b> <span class="stat">one option per line, edit freely, saved in this browser</span>
+    <div class="pools" id="pools"></div>
+    <div class="row"><button id="reset" class="ghost">Reset pools to defaults</button></div>
+  </div>
+</div>
+<div>
+  <div class="card"><b>Preview</b><div id="prev" class="stat" style="color:var(--tx);margin-top:8px">Hit "Preview one".</div></div>
+  <div class="card" style="margin-top:14px"><b>Sent</b><div id="log"></div></div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const DEF={
+  setting:["a sunlit corner café window seat in Toronto","a rooftop terrace at golden hour with the city behind","a quiet wet street right after rain","a bright minimalist apartment kitchen","a boutique hotel lobby with marble and warm lamps","an empty beach at sunrise","a narrow bookstore aisle","a late-night convenience store with neon light","a park bench under orange autumn trees","a train platform at dusk","a sunny balcony with plants","a vintage record shop","a farmers market in the morning","a glass-walled gym lounge","a back seat of a taxi at night"],
+  outfit:["an oversized cream knit sweater and light jeans","a fitted black blazer over a white tee","a flowy linen summer dress","a vintage denim jacket and a simple white tank","a camel trench coat and a silk scarf","an olive cargo set and clean white sneakers","a soft grey hoodie and tailored shorts","a satin slip dress with a leather jacket","a striped Breton top and high-waisted trousers","a long wool coat with a chunky scarf"],
+  action:["laughing mid-sentence, looking just off camera","holding a coffee cup with both hands","adjusting her hair with one hand","walking toward the camera, mid-step","leaning against a wall, arms loosely crossed","looking down at her phone with a small smile","turning her head back over her shoulder","sitting cross-legged, relaxed","reading a book, unaware of the camera","tying her shoe, glancing up"],
+  light:["soft window light, gentle shadows","warm golden hour backlight with a faint lens flare","overcast diffused daylight","neon glow mixed with streetlight","low warm lamp light, cosy and grainy","harsh midday sun with crisp shadows","blue hour ambient light","direct on-camera flash, slightly overexposed"],
+  camera:["candid iPhone photo, 35mm look, slight motion blur","medium shot, eye level, shallow depth of field","close portrait, 85mm, creamy background","wide environmental shot, full body visible","low angle, slightly tilted, casual snapshot","over-the-shoulder shot from a friend's point of view","mirror selfie framing, phone visible","film photo look, soft grain, 50mm"],
+  mood:["relaxed and warm","quietly confident","playful","dreamy and calm","effortless and a bit moody","bright and happy"]
+};
+const DEFCHAR="",DEFTAIL="natural skin texture with visible pores, realistic proportions, candid unposed feel, no retouching, no text or watermark";
+const KEYS=Object.keys(DEF);
+const LS=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const SV=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+
+/* ---- pools UI ---- */
+const NAMES={setting:"Settings",outfit:"Outfits",action:"Actions / poses",light:"Lighting",camera:"Camera / framing",mood:"Mood"};
+function buildPools(){
+  $('pools').innerHTML=KEYS.map(k=>`<div><label>${NAMES[k]}</label><textarea id="p_${k}"></textarea></div>`).join('');
+  KEYS.forEach(k=>{const t=$('p_'+k);t.value=LS('soul_p_'+k)||DEF[k].join('\n');t.oninput=()=>SV('soul_p_'+k,t.value);});
+}
+buildPools();
+$('char').value=LS('soul_char')||DEFCHAR;$('char').oninput=()=>SV('soul_char',$('char').value);
+$('tail').value=LS('soul_tail')||DEFTAIL;$('tail').oninput=()=>SV('soul_tail',$('tail').value);
+$('every').value=LS('soul_every')||30;$('every').onchange=()=>SV('soul_every',$('every').value);
+$('reset').onclick=()=>{KEYS.forEach(k=>{try{localStorage.removeItem('soul_p_'+k)}catch(e){}});buildPools();};
+
+/* ---- prompt maker: shuffled decks so options cycle without quick repeats ---- */
+const decks={};
+function pick(k){
+  const opts=$('p_'+k).value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!opts.length)return '';
+  const d=decks[k];
+  if(!d||!d.cards.length||d.src!==opts.join('|')){
+    const cards=opts.slice();
+    for(let i=cards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cards[i],cards[j]]=[cards[j],cards[i]];}
+    decks[k]={cards,src:opts.join('|')};
+  }
+  return decks[k].cards.pop();
+}
+let made=0;
+function makePrompt(){
+  const who=$('char').value.trim()||'a young woman';
+  const parts=[
+    `${who}, ${pick('action')}`,
+    `wearing ${pick('outfit')}`,
+    `in ${pick('setting')}`,
+    pick('light'),
+    pick('camera'),
+    pick('mood')+' mood',
+    $('tail').value.trim()
+  ].filter(Boolean);
+  made++;$('mn').textContent=made;
+  return parts.join('. ').replace(/\.\s*\./g,'.')+'.';
+}
+
+/* ---- bridge ---- */
+let queued=0;
+function setBridge(ok){$('bridge').innerHTML=`<span class="dot ${ok?'on':''}"></span>${ok?'Soul Bridge connected':'Soul Bridge not detected'}`;}
+let lastReply=0;
+window.addEventListener('message',e=>{
+  if(e.source!==window||!e.data||!e.data.soulReply)return;
+  lastReply=Date.now();setBridge(true);
+  if(typeof e.data.queued==='number'){queued=e.data.queued;$('qn').textContent=queued;}
+});
+function ping(){window.postMessage({soul:'ping'},'*');}
+setInterval(()=>{ping();if(Date.now()-lastReply>9000)setBridge(false);},3000);ping();
+function log(p){const d=document.createElement('div');d.textContent=new Date().toLocaleTimeString()+'  '+p;$('log').prepend(d);while($('log').children.length>60)$('log').lastChild.remove();}
+function send(list){
+  window.postMessage({soul:'send',prompts:list},'*');
+  list.forEach(log);
+  queued+=list.length;$('qn').textContent=queued;
+}
+
+/* ---- buttons ---- */
+$('one').onclick=()=>{$('prev').textContent=makePrompt();$('prev').style.color='var(--tx)';};
+$('burst').onclick=()=>{const l=[];for(let i=0;i<10;i++)l.push(makePrompt());send(l);};
+$('clr').onclick=()=>{window.postMessage({soul:'clear'},'*');queued=0;$('qn').textContent=0;};
+
+/* ---- endless: one new prompt every N seconds ---- */
+let timer=null,nextAt=0,tick=null;
+function stopEndless(){clearInterval(timer);clearInterval(tick);timer=tick=null;$('endless').textContent='Start endless';$('endless').className='';$('next').textContent='';}
+$('endless').onclick=()=>{
+  if(timer){stopEndless();return;}
+  const sec=Math.max(5,+$('every').value||30);
+  const fire=()=>{const p=makePrompt();$('prev').textContent=p;send([p]);nextAt=Date.now()+sec*1000;};
+  fire();
+  timer=setInterval(fire,sec*1000);
+  tick=setInterval(()=>{$('next').textContent='next in '+Math.max(0,Math.ceil((nextAt-Date.now())/1000))+'s';},500);
+  $('endless').textContent='Stop endless';$('endless').className='stop';
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Soul Bridge",
+  "version": "1.0.0",
+  "description": "Sends prompts from Soul Studio into Higgsfield Soul 2.0 and clicks Generate on a loop.",
+  "permissions": ["storage"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://higgsfield.ai/*", "https://*.higgsfield.ai/*"],
+      "js": ["higgs.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://irk15.github.io/3D-/soul-studio/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "file:///*"
+      ],
+      "js": ["page.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

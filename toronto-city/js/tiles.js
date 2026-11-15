@@ -7,6 +7,8 @@ import { tileOfLonLat, tileFrame, x2lon, z2lat } from './proj.js';
 import { buildBuildings, makeFacadeTextures, Occ } from './buildings.js';
 import { buildStreets } from './streets.js';
 import { buildLamps, makePoolTexture } from './props.js';
+import { patchWeather } from '../../lib/atmosphere.js';
+import { MIRROR_LAYER } from '../../lib/mirror.js';
 import { buildLabels, flatMaterial, billboardMaterial } from './labels.js';
 import { buildFlat } from './flat.js';
 import { buildTrees, instTrees } from './trees.js';
@@ -22,18 +24,22 @@ export class TileManager {
     this.detailMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.05 });
     this.landMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
     this.roadMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    patchWeather(this.roofMat, { snow: 1, wet: 0.8, key: 'roof' }); patchWeather(this.detailMat, { snow: 1, wet: 0.8, key: 'det' });
+    patchWeather(this.landMat, { snow: 0.95, wet: 0.6, key: 'land' }); patchWeather(this.roadMat, { snow: 0.55, wet: 1, key: 'road' });
     // animated water: sky-reflecting, gently rippled normals
     this.waterU = { value: 0 };
     this.waterMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.06, metalness: 0.15, envMapIntensity: 1.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     this.waterMat.onBeforeCompile = (sh) => {
-      sh.uniforms.uTime = this.waterU;
+      sh.uniforms.uTime = this.waterU; const mu = this.mirrorU || { tMirror: { value: null }, uMirrorMat: { value: new THREE.Matrix4() }, uMirrorOn: { value: 0 } }; Object.assign(sh.uniforms, mu);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; uniform float uTime;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; uniform float uTime; uniform sampler2D tMirror; uniform mat4 uMirrorMat; uniform float uMirrorOn;')
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         { vec2 p = vWP.xz; float t = uTime;
           vec2 g = vec2(sin(p.x*0.23+t*0.9)+0.6*sin(p.y*0.31-t*0.7)+0.5*sin((p.x+p.y)*0.11+t*0.5)+0.35*sin(p.x*0.9+p.y*0.6+t*1.7),
                         cos(p.y*0.27+t*0.8)+0.6*cos(p.x*0.19-t*0.6)+0.5*sin((p.x-p.y)*0.13+t*0.4)+0.35*cos(p.y*0.8-p.x*0.5+t*1.5));
-          normal = normalize(normal + (viewMatrix * vec4(g.x, 0.0, g.y, 0.0)).xyz * 0.035); }`);
+          normal = normalize(normal + (viewMatrix * vec4(g.x, 0.0, g.y, 0.0)).xyz * 0.035); }`)
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        if (uMirrorOn > 0.5) { vec4 mc = uMirrorMat * vec4(vWP, 1.0); vec2 muv = mc.xy / mc.w + normal.xz * 0.02; vec3 mir = texture2D(tMirror, clamp(muv, 0.001, 0.999)).rgb; float fr = 0.06 + 0.9 * pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 4.0); totalEmissiveRadiance += mir * fr * 0.85; }`);
     };
     this.zebraMat = this.decalMat(0, 0.85);
     this.dashMat = this.decalMat(1, 0.8);
@@ -98,13 +104,13 @@ export class TileManager {
   *build(vt, t) {
     const F = tileFrame(t.x, t.y, this.zoom), ext = (vt.layers.building || vt.layers.transportation || { extent: 4096 }).extent || 4096;
     const T = { ...F, extent: ext }, seed = (t.x * 73856093) ^ (t.y * 19349663), group = new THREE.Group(), occ = new Occ();
-    const add = (g, m, o = {}) => { if (!g) return null; const mesh = new THREE.Mesh(g, m); mesh.matrixAutoUpdate = false; mesh.renderOrder = o.order || 0; mesh.userData.cs = !!o.cast; mesh.userData.rs = !!o.recv; mesh.castShadow = !!o.cast && this.shadows; mesh.receiveShadow = !!o.recv && this.shadows; group.add(mesh); return mesh; };
+    const add = (g, m, o = {}) => { if (!g) return null; const mesh = new THREE.Mesh(g, m); mesh.matrixAutoUpdate = false; mesh.renderOrder = o.order || 0; mesh.userData.cs = !!o.cast; mesh.userData.rs = !!o.recv; if (o.mirror) mesh.layers.enable(MIRROR_LAYER); mesh.castShadow = !!o.cast && this.shadows; mesh.receiveShadow = !!o.recv && this.shadows; group.add(mesh); return mesh; };
     const flat = yield* buildFlat(vt, T, seed); yield;
-    add(flat.land, this.landMat, { recv: true }); add(flat.water, this.waterMat, { recv: false }); add(flat.roads, this.roadMat, { recv: true });
+    add(flat.land, this.landMat, { recv: true, mirror: true }); add(flat.water, this.waterMat, { recv: false }); add(flat.roads, this.roadMat, { recv: true });
     if (vt.layers.building) {
       const b = yield* buildBuildings(vt.layers.building, T, seed, occ);
-      for (const k in b.walls) add(b.walls[k], this.wallMats[k], { cast: true, recv: true });
-      add(b.roofs, this.roofMat, { cast: true, recv: true }); add(b.detail, this.detailMat, { cast: true, recv: true });
+      for (const k in b.walls) add(b.walls[k], this.wallMats[k], { cast: true, recv: true, mirror: true });
+      add(b.roofs, this.roofMat, { cast: true, recv: true, mirror: true }); add(b.detail, this.detailMat, { cast: true, recv: true, mirror: true });
     }
     yield;
     let st = {}; try { st = yield* buildStreets(vt, T, seed, occ); } catch (e) { console.warn('streets failed', e); }

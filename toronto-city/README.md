@@ -24,3 +24,6 @@ Data: © OpenStreetMap contributors, OpenFreeMap / OpenMapTiles, TTC open data.
 - Road markings: zebra crossings at every junction, dashed lane lines on arterials. Street lamps with night light pools, street trees along residential streets.
 - Street names painted on the roads, floating landmark labels (stations, museums, stadiums, parks…) and neighbourhood names from the OpenStreetMap tiles.
 - Sky with drifting clouds, sky-reflecting glass and animated lake water (image-based lighting from the live sky), sun shadows, night bloom. Press **G** (or the button) to switch the cinematic pipeline off on slower machines; `?r=2` loads fewer tiles.
+
+## Montréal atmosphere (v3)
+The sky, seasons, weather and lake mirror now come from the shared `../lib/` (ported from the Montréal city): physical sky with clouds, stars and moon at Toronto's real sun path and date; **live Toronto weather** (Open-Meteo) drives clear / cloudy / rain / snow / fog; autumn leaves, bare winter trees, snow on roofs, wet reflective streets in rain; a planar mirror on Lake Ontario (**M** to toggle). The HUD has Season and Weather pickers to override the live values.

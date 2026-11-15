@@ -30,9 +30,10 @@
   }
   function findGenerate() {
     const pinned = fromSaved('gen'); if (pinned) return pinned;
+    const wanted = t => String(t || '').split('\n').some(l => /^\s*(generate|create)\b/i.test(l));
     const b = [...document.querySelectorAll('button,[role="button"]')]
       .filter(el => visible(el) && !el.closest('#soulbot'))
-      .filter(el => /^\s*generate\b/i.test((el.innerText || '') + ' ') || /^generate/i.test(el.getAttribute('aria-label') || ''));
+      .filter(el => ((el.innerText || '').length < 80 && wanted(el.innerText)) || wanted(el.getAttribute('aria-label')));
     if (!b.length) return null;
     // prefer submit-type, then the one nearest the bottom of the viewport
     b.sort((x, y) => (y.type === 'submit') - (x.type === 'submit') || y.getBoundingClientRect().top - x.getBoundingClientRect().top);

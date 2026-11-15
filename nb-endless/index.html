@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NB 2.1 Endless</title>
+<style>
+:root{--bg:#0a0a0c;--pane:#121214;--card:#17171a;--line:#26262b;--ac:#ffd84d;--tx:#f2f2f4;--dim:#8e8e96;--ok:#7ed492;--red:#e0716b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--pane)}
+header h1{font-size:15px;margin:0;color:var(--ac)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);margin-right:6px}
+.dot.on{background:var(--ok)}
+main{display:grid;grid-template-columns:1fr 380px;gap:16px;padding:16px;max-width:1300px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+label{display:block;font-size:11px;color:var(--dim);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+textarea,input{width:100%;background:#0f0f11;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+textarea{resize:vertical;min-height:60px}
+.pools{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.pools textarea{min-height:130px;font-size:12px}
+button{background:var(--ac);color:#111;border:0;border-radius:9px;padding:9px 14px;cursor:pointer;font:inherit;font-weight:700}
+button.ghost{background:none;border:1px solid var(--line);color:var(--tx);font-weight:500}
+button.stop{background:var(--red);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.row input[type=number]{width:80px}
+.stat{font-size:12px;color:var(--dim)}
+#prev{min-height:120px;max-height:520px;overflow:auto;font-size:13px;line-height:1.55;white-space:pre-wrap;color:var(--tx);margin-top:8px}
+#log{max-height:340px;overflow:auto;font-size:11.5px;color:var(--dim)}
+#log div{padding:5px 0;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <h1>NB 2.1 Endless</h1>
+  <span id="bridge" class="stat"><span class="dot"></span>Soul Bridge not detected</span>
+  <span class="stat" style="margin-left:auto">Queue <b id="qn">0</b> &middot; Made <b id="mn">0</b></span>
+</header>
+<main>
+<div>
+  <div class="card">
+    <label>Subject (always in every prompt)</label>
+    <textarea id="f_subject" placeholder="e.g. a woman in her mid-20s with long dark wavy hair and light brown eyes"></textarea>
+    <label>Outfit (leave blank to let it vary from the outfit pool)</label>
+    <textarea id="f_outfit" placeholder="e.g. a cream oversized knit sweater and high-waisted jeans"></textarea>
+    <label>Scene (leave blank to let it vary from the scene pool)</label>
+    <textarea id="f_scene" placeholder="e.g. a sunlit Parisian café terrace"></textarea>
+    <label>Quality tail (added to every prompt)</label>
+    <textarea id="f_tail" style="min-height:50px"></textarea>
+    <div class="row">
+      <button id="one">Preview one</button>
+      <button id="burst" class="ghost">Send 10 now</button>
+      <button id="clr" class="ghost">Clear queue</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <b>Endless mode</b>
+    <div class="stat">Makes a new prompt on a timer and queues it. The Soul Bridge extension on your Google Flow tab types it in and clicks Generate. Keep this tab open.</div>
+    <div class="row">
+      <span class="stat">Every</span><input id="every" type="number" min="5" value="30"><span class="stat">seconds</span>
+      <button id="endless">Start endless</button>
+      <span id="next" class="stat"></span>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <b>Variety pools</b> <span class="stat">one option per line; each prompt picks one from every pool; saved in this browser</span>
+    <div class="pools" id="pools"></div>
+    <div class="row"><button id="reset" class="ghost">Reset to defaults</button></div>
+  </div>
+</div>
+<div>
+  <div class="card"><b>Preview</b><div id="prev" class="stat">Hit "Preview one".</div></div>
+  <div class="card" style="margin-top:14px"><b>Sent</b><div id="log"></div></div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const DEF={
+  scene:["a sunlit corner café with a marble table and a window onto a busy street","a rooftop terrace at golden hour with the city skyline behind","a quiet cobblestone street right after rain, reflections on the ground","a minimalist apartment with tall windows and linen curtains","a boutique hotel lobby with brass details and warm lamps","an empty beach at sunrise with soft surf","a narrow old bookstore with tall wooden shelves","a neon-lit late-night street with shop signs glowing","a park path under orange autumn trees","a train platform at dusk with motion in the background","a sunny balcony full of plants overlooking a courtyard","a vintage record shop with crates and posters","a modern gallery with white walls and a single sculpture","a lakeside dock in early morning mist","a glass-walled penthouse at dusk with a glowing skyline","a desert road at sunset with long shadows"],
+  pose:["standing with weight on one leg, one hand in a pocket","walking toward the camera, mid-step, relaxed shoulders","leaning against a wall with arms loosely crossed","seated casually, one knee raised, hands resting","looking back over one shoulder","adjusting her hair with one hand","holding a coffee cup in both hands","turning slowly, caught mid-motion","crouching low, resting an elbow on a knee","stretching an arm along the back of a bench","laughing, head tilted slightly","hands in jacket pockets, chin slightly lowered"],
+  expr:["calm, direct eye contact","a soft, warm smile","a playful smirk","serene, eyes just off camera","mid-laugh, genuine and unposed","quietly confident, lips gently closed","thoughtful, looking into the distance","relaxed, slightly sleepy eyes"],
+  camera:["50mm lens, eye level, shallow depth of field","85mm portrait lens, tight framing, creamy bokeh","35mm wide environmental shot, full body visible","low angle looking slightly up, 28mm","over-the-shoulder candid framing","medium shot from the waist up, natural perspective","telephoto compression, subject separated from background","high angle looking slightly down, soft framing"],
+  light:["soft golden-hour light, long gentle shadows","overcast diffused daylight, even and flattering","warm window light from the side with soft falloff","blue-hour ambient light with warm practical lights","backlit with a soft rim glow on the hair","neon and street light mixing in colour","candlelit amber glow with deep soft shadows","bright midday sun with crisp shadows","soft studio-style light with gentle contrast"],
+  mood:["warm, nostalgic film colour grade","clean, natural colours with subtle contrast","moody teal and orange cinematic grade","soft pastel tones, airy and bright","rich deep colours, slightly desaturated shadows","high-end editorial look with muted palette","vibrant but natural colours, crisp detail","dreamy and calm, gentle haze"],
+  detail:["a few flyaway hairs catching the light","subtle film grain","a shallow reflection in a nearby window","small gold jewelry catching light","a soft breeze moving the fabric","tiny dust particles floating in the light","a blurred passer-by far in the background","natural fabric creases and texture"],
+  outfitpool:["a cream oversized knit sweater and high-waisted jeans","a tailored black blazer over a white tee and straight trousers","a flowy linen summer dress","a vintage denim jacket and a simple white tank top","a camel trench coat with a silk scarf","an olive cargo set with clean white sneakers","a satin slip dress with a leather jacket","a striped Breton top and high-waisted trousers"]
+};
+const FIXED={subject:"",outfit:"",scene:"",tail:"photorealistic, natural skin texture with visible pores, realistic fabric, sharp focus on the subject, no text, no watermark"};
+const KEYS=Object.keys(DEF),FKEYS=Object.keys(FIXED);
+const NAMES={scene:"Scene pool (when Scene is blank)",pose:"Poses",expr:"Expressions",camera:"Camera",light:"Lighting",mood:"Colour / mood",detail:"Small details",outfitpool:"Outfit pool (when Outfit is blank)"};
+const LS=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const SV=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+function buildPools(){
+  $('pools').innerHTML=KEYS.map(k=>`<div><label>${NAMES[k]}</label><textarea id="p_${k}"></textarea></div>`).join('');
+  KEYS.forEach(k=>{const t=$('p_'+k);t.value=LS('nbe_p_'+k)||DEF[k].join('\n');t.oninput=()=>SV('nbe_p_'+k,t.value);});
+}
+buildPools();
+FKEYS.forEach(k=>{const t=$('f_'+k);const v=LS('nbe_f_'+k);t.value=v===null?FIXED[k]:v;t.oninput=()=>SV('nbe_f_'+k,t.value);});
+$('every').value=LS('nbe_every')||30;$('every').onchange=()=>SV('nbe_every',$('every').value);
+$('reset').onclick=()=>{KEYS.forEach(k=>{try{localStorage.removeItem('nbe_p_'+k)}catch(e){}});buildPools();};
+
+/* shuffled decks: every option gets used before any repeats, so images keep changing */
+const decks={};
+function pick(k){
+  const opts=$('p_'+k).value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!opts.length)return '';
+  const d=decks[k];
+  if(!d||!d.cards.length||d.src!==opts.join('|')){
+    const cards=opts.slice();
+    for(let i=cards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cards[i],cards[j]]=[cards[j],cards[i]];}
+    decks[k]={cards,src:opts.join('|')};
+  }
+  return decks[k].cards.pop();
+}
+let made=0;
+function makePrompt(){
+  const f=k=>$('f_'+k).value.trim();
+  const subject=f('subject')||'a young woman';
+  const outfit=f('outfit')||pick('outfitpool');
+  const scene=f('scene')||pick('scene');
+  made++;$('mn').textContent=made;
+  return [
+    `${subject}, wearing ${outfit}, ${pick('pose')}. ${cap(pick('expr'))}.`,
+    `Setting: ${scene}.`,
+    `${cap(pick('camera'))}. ${cap(pick('light'))}.`,
+    `${cap(pick('mood'))}. ${cap(pick('detail'))}.`,
+    f('tail')
+  ].filter(Boolean).join(' ');
+}
+function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+
+/* ---- bridge (same extension as Soul Studio) ---- */
+let queued=0,lastReply=0;
+function setBridge(ok){$('bridge').innerHTML=`<span class="dot ${ok?'on':''}"></span>${ok?'Soul Bridge connected':'Soul Bridge not detected'}`;}
+window.addEventListener('message',e=>{
+  if(e.source!==window||!e.data||!e.data.soulReply)return;
+  lastReply=Date.now();setBridge(true);
+  if(typeof e.data.queued==='number'){queued=e.data.queued;$('qn').textContent=queued;}
+});
+function ping(){window.postMessage({soul:'ping'},'*');}
+setInterval(()=>{ping();if(Date.now()-lastReply>9000)setBridge(false);},3000);ping();
+function log(p){const d=document.createElement('div');d.textContent=new Date().toLocaleTimeString()+'  '+p;$('log').prepend(d);while($('log').children.length>60)$('log').lastChild.remove();}
+function send(list){window.postMessage({soul:'send',prompts:list},'*');list.forEach(log);queued+=list.length;$('qn').textContent=queued;}
+
+$('one').onclick=()=>{$('prev').textContent=makePrompt();};
+$('burst').onclick=()=>{const l=[];for(let i=0;i<10;i++)l.push(makePrompt());send(l);};
+$('clr').onclick=()=>{window.postMessage({soul:'clear'},'*');queued=0;$('qn').textContent=0;};
+
+let timer=null,nextAt=0,tick=null;
+function stopEndless(){clearInterval(timer);clearInterval(tick);timer=tick=null;$('endless').textContent='Start endless';$('endless').className='';$('next').textContent='';}
+$('endless').onclick=()=>{
+  if(timer){stopEndless();return;}
+  const sec=Math.max(5,+$('every').value||30);
+  const fire=()=>{const p=makePrompt();$('prev').textContent=p;send([p]);nextAt=Date.now()+sec*1000;};
+  fire();timer=setInterval(fire,sec*1000);
+  tick=setInterval(()=>{$('next').textContent='next in '+Math.max(0,Math.ceil((nextAt-Date.now())/1000))+'s';},500);
+  $('endless').textContent='Stop endless';$('endless').className='stop';
+};
+</script>
+</body>
+</html>

@@ -16,3 +16,6 @@ Makes prompts and feeds them into Higgsfield Soul 2.0 automatically.
 The panel on the Higgsfield tab has its own "Gap" (minimum seconds between submits, default 30). Stops by itself if the page says you are out of credits.
 
 If it cannot find the prompt box or Generate button the panel says so in its log line.
+
+## NB 2.1 Endless (Google Flow)
+Same extension, same steps. Open https://irk15.github.io/3D-/nb-endless/ and your Google Flow project tab (labs.google), type Subject, Outfit and optionally Scene, click Start in the Soul Bridge panel on the Flow tab (use Pick Generate and Pick box once if it does not find them), then Start endless in the studio.

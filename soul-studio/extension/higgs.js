@@ -48,13 +48,18 @@
       el.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
       document.execCommand('selectAll', false, null);
-      if (!document.execCommand('insertText', false, text)) {
+      let okIns = true;
+      text.split('\n').forEach((line, i) => {
+        if (i) okIns = document.execCommand('insertLineBreak') && okIns;
+        if (line) okIns = document.execCommand('insertText', false, line) && okIns;
+      });
+      if (!okIns) {
         el.textContent = text;
         el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
       }
     }
   }
-  const norm = t => String(t || '').replace(/\s+/g, ' ').trim();
+  const norm = t => String(t || '').replace(/\s+/g, '');
   const readText = el => norm(el.value !== undefined ? el.value : el.innerText);
   function press(el) {
     const r = el.getBoundingClientRect(), o = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, view: window };
@@ -70,7 +75,7 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <b style="color:#c9a2ff">Soul Bridge</b><span id="sb-st" style="color:#888">idle</span></div>
     <div>Queue <b id="sb-q">0</b> &middot; Sent <b id="sb-d">0</b></div>
-    <div style="margin:6px 0;display:flex;gap:6px;align-items:center">Gap <input id="sb-gap" type="number" min="5" max="600" style="width:54px;background:#1b1b1f;color:#eee;border:1px solid #333;border-radius:6px;padding:2px 4px"> sec</div>
+    <div style="margin:6px 0;display:flex;gap:6px;align-items:center">Gap <input id="sb-gap" type="number" min="5" max="600" style="width:70px;background:#1b1b1f;color:#eee;border:1px solid #333;border-radius:6px;padding:2px 4px"> sec</div>
     <div style="display:flex;gap:6px">
       <button id="sb-go" style="flex:1;padding:6px;border:0;border-radius:8px;background:#c9a2ff;color:#111;font-weight:700;cursor:pointer">Start</button>
       <button id="sb-clr" style="padding:6px 8px;border:1px solid #444;border-radius:8px;background:none;color:#ccc;cursor:pointer">Clear</button></div>
@@ -102,20 +107,24 @@
     const { prompt } = await call({ type: 'pop' });
     if (!prompt) { log('queue empty'); return 'empty'; }
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    let typed = false;
+    for (let attempt = 0; attempt < 3 && !typed; attempt++) {
       setText(comp, prompt);
       await sleep(700);
-      if (readText(comp) !== norm(prompt)) { await sleep(500); continue; }
-      const b = findGenerate();
-      if (!b || isDisabled(b)) { await sleep(1000); continue; }
-      press(b);
-      await sleep(2500);
-      const after = readText(comp);
-      if (after !== norm(prompt) || isDisabled(findGenerate() || b)) {
-        S.submitted++; log('sent #' + S.submitted); return 'ok';
+      const got = readText(comp), want = norm(prompt);
+      if (got === want || (got.length > want.length * 0.9 && got.startsWith(want.slice(0, 80)))) typed = true; else await sleep(500);
+    }
+    if (typed) {
+      let b = findGenerate();
+      for (let i = 0; i < 8 && (!b || isDisabled(b)); i++) { await sleep(500); b = findGenerate(); }
+      if (b && !isDisabled(b)) {
+        press(b);               // exactly one click per prompt, never retried
+        await sleep(2500);
+        S.submitted++;
+        const moved = readText(comp) !== norm(prompt) || isDisabled(findGenerate() || b);
+        log('sent #' + S.submitted + (moved ? '' : ' (page kept text, assumed sent)'));
+        return 'ok';
       }
-      // page may keep the prompt after submit; accept if a click went through the second time
-      if (attempt === 2) { S.submitted++; log('sent #' + S.submitted + ' (unverified)'); return 'ok'; }
     }
     await call({ type: 'requeue', prompt });
     log('could not submit, paused');

@@ -195,6 +195,9 @@ button{font-family:inherit;}
   width:14px;height:14px;cursor:pointer;line-height:14px;padding:0;}
 .rfT{font-size:9.5px;color:var(--faint);line-height:1.35;flex:1;min-width:110px;}
 .btn.cp2{flex:1;}
+.endBox{margin:8px 0 4px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);}
+.endV{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:7px;font-size:11px;color:var(--dim);align-items:center;}
+.endV label{display:flex;align-items:center;gap:3px;cursor:pointer;}
 .btn.go.stop{background:var(--red);color:#fff;}
 .slot{margin-bottom:10px;}
 .slot:empty{display:none;margin:0;}
@@ -337,6 +340,24 @@ button{font-family:inherit;}
       <div class="genRow">
         <span class="rl">Aspect ratio</span>
         <select id="ratioSel" class="rsel"></select>
+      </div>
+      <div class="endBox" id="endBox">
+        <div class="genRow">
+          <button class="btn go" id="btnEndless" style="flex:1">♾ Endless</button>
+          <span class="rl">every</span>
+          <input id="endSec" type="number" min="5" value="30" style="width:54px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--tx)">
+          <span class="rl">sec</span>
+        </div>
+        <div class="endV"><span class="rl">Vary:</span>
+          <label><input type="checkbox" id="ev_where" checked> Setting</label>
+          <label><input type="checkbox" id="ev_light" checked> Light</label>
+          <label><input type="checkbox" id="ev_shot" checked> Shot</label>
+          <label><input type="checkbox" id="ev_pose" checked> Pose</label>
+          <label><input type="checkbox" id="ev_vibe" checked> Mood</label>
+          <label><input type="checkbox" id="ev_grit" checked> Finish</label>
+          <label><input type="checkbox" id="ev_real" checked> Realism</label>
+          <label><input type="checkbox" id="ev_era"> Era</label>
+        </div>
       </div>
       <div class="modelNote" id="modelNote"></div>
       <div class="fRow">
@@ -1422,6 +1443,58 @@ $('btnGen').onclick=()=>{
   if(OUT==='single'&&L[0])pushHist(L[0].p);
 };
 $('btnFlow').onclick=pingBridge;
+/* ================= ENDLESS: new prompt on a timer, sent to Flow one at a time ================= */
+let ENDT=null,ENDK=null,ENDAT=0,ENDN=0;
+const ENDDECK={};
+function endPick(key,arr){
+  if(!arr||!arr.length)return null;
+  const sig=arr.map(o=>o.id).join('|');
+  let d=ENDDECK[key];
+  if(!d||!d.cards.length||d.sig!==sig){
+    const cards=arr.slice();
+    for(let i=cards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cards[i],cards[j]]=[cards[j],cards[i]];}
+    d=ENDDECK[key]={cards,sig};
+  }
+  return d.cards.pop();
+}
+function endShuffle(){
+  const c=C(),V=k=>$('ev_'+k)&&$('ev_'+k).checked;
+  const set=(k,arr)=>{if(S[k]==='__own')return;const o=endPick(k+M,arr);if(o)S[k]=o.id;};
+  if(V('where')&&S.where!=='__own'){const o=endPick('where'+M,c.WHERE);if(o){S.where=o.id;if(o.light&&S.light!=='__own')S.light=o.light;}}
+  if(V('light'))set('light',c.LIGHT);
+  if(V('shot'))set('shot',c.SHOT);
+  if(V('pose')&&c.POSE)set('pose',c.POSE);
+  if(V('vibe'))set('vibe',c.VIBE);
+  if(V('grit')&&!(S.own.grit||'').trim())rollGrit();
+  if(V('real'))REALKEYS.forEach(k=>{if(S[k]==='__own')return;const o=endPick('x'+k,EXTRA[k].o);S[k]=(o&&Math.random()<.7)?o.id:null;});
+  if(V('era'))ERAKEYS.forEach(k=>{if(S[k]==='__own')return;const o=endPick('x'+k,EXTRA[k].o);S[k]=(o&&Math.random()<.5)?o.id:null;});
+}
+function endFire(){
+  endShuffle();
+  renderTabs();renderPane();refresh();
+  const p=makePrompt(null,null);
+  ENDN++;
+  sendFlow([p]);
+  const sec=Math.max(5,+$('endSec').value||30);
+  ENDAT=Date.now()+sec*1000;
+}
+function endStop(){
+  clearInterval(ENDT);clearInterval(ENDK);ENDT=ENDK=null;
+  $('btnEndless').textContent='♾ Endless';$('btnEndless').classList.remove('stop');
+}
+$('btnEndless').onclick=()=>{
+  if(ENDT){endStop();toast('Endless stopped · '+ENDN+' sent');return;}
+  if(!$('fSubject').value.trim()){toast('Add a subject first');return;}
+  try{localStorage.setItem('nb21_endsec',$('endSec').value);}catch(e){}
+  ENDN=0;
+  const sec=Math.max(5,+$('endSec').value||30);
+  endFire();
+  ENDT=setInterval(endFire,sec*1000);
+  ENDK=setInterval(()=>{$('btnEndless').textContent='■ Stop · #'+ENDN+' · next '+Math.max(0,Math.ceil((ENDAT-Date.now())/1000))+'s';},500);
+  $('btnEndless').classList.add('stop');
+};
+try{const v=localStorage.getItem('nb21_endsec');if(v)$('endSec').value=v;}catch(e){}
+
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();$('btnGen').click();}});
 

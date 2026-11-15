@@ -27,7 +27,7 @@ button.stop{background:var(--red);color:#fff}
 .row>*{flex:0 0 auto}
 .row input[type=number]{width:80px}
 .stat{font-size:12px;color:var(--dim)}
-#prev{min-height:120px;font-size:13px;line-height:1.55;white-space:pre-wrap}
+#prev{min-height:120px;max-height:520px;overflow:auto;font-size:13px;line-height:1.55;white-space:pre-wrap}
 #log{max-height:340px;overflow:auto;font-size:11.5px;color:var(--dim)}
 #log div{padding:5px 0;border-bottom:1px solid var(--line)}
 </style>
@@ -41,10 +41,14 @@ button.stop{background:var(--red);color:#fff}
 <main>
 <div>
   <div class="card">
-    <label>Character (kept identical in every prompt)</label>
-    <textarea id="char" placeholder="e.g. Mira, 24, wavy dark brown hair, hazel eyes, light freckles, warm olive skin"></textarea>
-    <label>Style tail (added at the end of every prompt)</label>
-    <textarea id="tail" style="min-height:50px"></textarea>
+    <label>Intro (fixed, top of every prompt)</label>
+    <textarea id="f_intro" style="min-height:96px"></textarea>
+    <label>Aesthetic (fixed)</label>
+    <textarea id="f_aesth" style="min-height:44px"></textarea>
+    <label>Critical identity instruction (fixed)</label>
+    <textarea id="f_crit" style="min-height:60px"></textarea>
+    <label>Negative prompt (fixed)</label>
+    <textarea id="f_neg" style="min-height:80px"></textarea>
     <div class="row">
       <button id="one">Preview one</button>
       <button id="burst" class="ghost">Send 10 now</button>
@@ -61,7 +65,7 @@ button.stop{background:var(--red);color:#fff}
     </div>
   </div>
   <div class="card" style="margin-top:14px">
-    <b>Variety pools</b> <span class="stat">one option per line, edit freely, saved in this browser</span>
+    <b>Variety pools</b> <span class="stat">one option per line, each prompt picks one from each, saved in this browser</span>
     <div class="pools" id="pools"></div>
     <div class="row"><button id="reset" class="ghost">Reset pools to defaults</button></div>
   </div>
@@ -74,29 +78,96 @@ button.stop{background:var(--red);color:#fff}
 <script>
 const $=id=>document.getElementById(id);
 const DEF={
-  setting:["a sunlit corner café window seat in Toronto","a rooftop terrace at golden hour with the city behind","a quiet wet street right after rain","a bright minimalist apartment kitchen","a boutique hotel lobby with marble and warm lamps","an empty beach at sunrise","a narrow bookstore aisle","a late-night convenience store with neon light","a park bench under orange autumn trees","a train platform at dusk","a sunny balcony with plants","a vintage record shop","a farmers market in the morning","a glass-walled gym lounge","a back seat of a taxi at night"],
-  outfit:["an oversized cream knit sweater and light jeans","a fitted black blazer over a white tee","a flowy linen summer dress","a vintage denim jacket and a simple white tank","a camel trench coat and a silk scarf","an olive cargo set and clean white sneakers","a soft grey hoodie and tailored shorts","a satin slip dress with a leather jacket","a striped Breton top and high-waisted trousers","a long wool coat with a chunky scarf"],
-  action:["laughing mid-sentence, looking just off camera","holding a coffee cup with both hands","adjusting her hair with one hand","walking toward the camera, mid-step","leaning against a wall, arms loosely crossed","looking down at her phone with a small smile","turning her head back over her shoulder","sitting cross-legged, relaxed","reading a book, unaware of the camera","tying her shoe, glancing up"],
-  light:["soft window light, gentle shadows","warm golden hour backlight with a faint lens flare","overcast diffused daylight","neon glow mixed with streetlight","low warm lamp light, cosy and grainy","harsh midday sun with crisp shadows","blue hour ambient light","direct on-camera flash, slightly overexposed"],
-  camera:["candid iPhone photo, 35mm look, slight motion blur","medium shot, eye level, shallow depth of field","close portrait, 85mm, creamy background","wide environmental shot, full body visible","low angle, slightly tilted, casual snapshot","over-the-shoulder shot from a friend's point of view","mirror selfie framing, phone visible","film photo look, soft grain, 50mm"],
-  mood:["relaxed and warm","quietly confident","playful","dreamy and calm","effortless and a bit moody","bright and happy"]
+  scene:[
+    "a luxurious modern penthouse at dusk, large floor-to-ceiling windows behind her showing a glowing city skyline",
+    "a sunlit boutique hotel suite with sheer curtains and a marble bathroom doorway at golden hour",
+    "a rooftop terrace lounge at blue hour with string lights and the skyline glowing behind her",
+    "a minimalist loft with exposed brick and tall industrial windows in warm afternoon light",
+    "a candlelit upscale cocktail bar with dark wood and amber glass at night",
+    "a private poolside terrace at sunset with white loungers and soft water reflections",
+    "a Parisian-style apartment with herringbone floors, tall French windows and a wrought-iron balcony",
+    "a velvet-seated luxury hotel lounge with brass details and warm lamps",
+    "a quiet marble staircase landing in a modern villa lit by a large skylight"
+  ],
+  pose:[
+    "in a confident, sensual three-quarter pose with a strong hip shift and soft back arch",
+    "leaning back against the window glass, one knee slightly bent, one hand running through her hair",
+    "seated sideways on the arm of a chair, legs crossed, torso turned toward the camera",
+    "walking toward the camera mid-step, shoulders relaxed, one hand adjusting her collar",
+    "standing with one hand on her hip and the other resting on the back of a chair, weight on one leg",
+    "kneeling on a plush rug, leaning forward slightly on one hand, looking up at the camera",
+    "standing in a doorway with one arm raised along the frame and her hips angled",
+    "perched on the edge of a console table, ankles crossed, hands resting beside her",
+    "in a relaxed contrapposto stance with her shoulders turned and her chin slightly lowered"
+  ],
+  outfit:[
+    "an oversized deep burgundy silk button-up shirt worn completely open at the front, revealing a black lace bralette and a slim band of midriff. The shirt hangs loosely off one shoulder. She wears matching high-waisted black satin short-shorts that sit low on her hips. Narrow black fashion glasses sit slightly down the bridge of her nose so she looks over them. Delicate gold jewelry.",
+    "a fitted ivory satin corset-style top under a tailored black blazer worn off one shoulder, high-waisted black tailored trousers with a thin gold chain belt. Round tinted sunglasses pushed up into her hair. Delicate gold jewelry.",
+    "a champagne silk slip dress with thin straps and a deep neckline, a loose cream cashmere cardigan slipping off one shoulder. Small gold hoop earrings and a thin gold anklet.",
+    "an oversized white poplin shirt worn open over a black bodysuit, high-waisted light-wash denim and a slim black leather belt. Narrow black fashion glasses sit low on her nose. Delicate gold jewelry.",
+    "a black halter-neck mini dress with a low open back, strappy black heels and a single bold gold cuff.",
+    "a cropped emerald green knit cardigan buttoned low over a black satin camisole, a satin midi skirt with a high slit, layered gold necklaces.",
+    "a tailored cream linen set: a cropped waistcoat and wide-leg trousers sitting low on the hips, a thin gold chain belt, small gold earrings.",
+    "a deep navy velvet wrap top with a plunging neckline and fitted black leather trousers, statement gold drop earrings.",
+    "a pale blush sheer silk robe loosely tied over a matching satin camisole and shorts set, a delicate gold ankle chain."
+  ],
+  hair:[
+    "sleek high ponytail with two long face-framing strands, realistic flyaways",
+    "soft loose waves over one shoulder with a deep side part, realistic flyaways",
+    "a messy low bun with loose strands at the temples",
+    "straight glossy hair tucked behind one ear with a few strands across her cheek",
+    "half-up half-down with a twisted section and face-framing pieces",
+    "a loose side braid over her shoulder with natural flyaways",
+    "slicked-back hair in a low knot with a few wet-look strands"
+  ],
+  expr:[
+    "confident, composed, subtly playful, direct eye contact, slightly parted lips",
+    "a soft warm smile with relaxed eyes looking straight into the lens",
+    "calm and a little moody, chin slightly lowered, intense direct eye contact",
+    "mid-laugh, genuine and unposed, eyes crinkling, looking just off camera",
+    "serene, eyes lifting slowly to the camera, lips gently closed",
+    "a playful smirk with one eyebrow slightly raised and a direct gaze"
+  ],
+  light:[
+    "warm golden-hour light mixed with soft city glow through the windows, gentle dimensional shadows, realistic skin texture",
+    "soft diffused window light from the side with gentle shadow falloff, realistic skin texture",
+    "warm lamp light with a cool blue twilight rim from the window, cinematic contrast, realistic skin texture",
+    "late sunset backlight with a soft warm rim on her hair and shoulders and interior fill light, realistic skin texture",
+    "candlelit amber glow with deep soft shadows and gentle highlights on the skin, realistic skin texture",
+    "bright airy overcast daylight, clean soft shadows, natural skin texture"
+  ],
+  camera:[
+    "vertical 4:5, 50–70mm, chest-level, shallow depth of field, character sharp, background softly blurred",
+    "vertical 4:5, 85mm, eye-level three-quarter framing, creamy bokeh, character sharp",
+    "vertical 4:5, 35mm environmental full-body frame, slightly low angle, background in soft focus",
+    "vertical 4:5, 50mm waist-up, camera at chest height, gentle depth of field, background softly blurred",
+    "vertical 4:5, 70mm tight portrait from the ribs up, shallow depth of field, background melted"
+  ]
 };
-const DEFCHAR="",DEFTAIL="natural skin texture with visible pores, realistic proportions, candid unposed feel, no retouching, no text or watermark";
-const KEYS=Object.keys(DEF);
+const FIXED={
+  intro:"Create a highly photorealistic fashion/lifestyle portrait of my established Soul 2.0 female character, preserving her exact established facial identity, facial structure, skin tone, body proportions, hair colour, and recognizable features from my Soul 2.0 character references.\nDo not copy the identity or facial appearance of the woman in the pose reference. Use the supplied photograph only for the pose, styling concept, clothing, framing, expression, lighting, and environment.",
+  aesth:"premium sensual lifestyle editorial, realistic fabric, natural skin, high-end full-frame quality.",
+  crit:"My existing Soul 2.0 character references are the ONLY source for the woman's identity. Preserve her exact recognizable face and character consistency. Do not morph or replace her face.",
+  neg:"identity drift, different woman, face copied from pose reference, altered facial proportions, exaggerated body proportions, artificial anatomy, plastic skin, over-smoothed face, malformed fingers, extra fingers, fused hands, incorrect glasses placement, crossed eyes, CGI, illustration, cartoon, excessive HDR, oversaturated, harsh flash, cluttered background."
+};
+const KEYS=Object.keys(DEF),FKEYS=Object.keys(FIXED);
 const LS=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
 const SV=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 
-/* ---- pools UI ---- */
-const NAMES={setting:"Settings",outfit:"Outfits",action:"Actions / poses",light:"Lighting",camera:"Camera / framing",mood:"Mood"};
+/* ---- editable pools + fixed blocks ---- */
+const NAMES={scene:"Scenes",pose:"Poses",outfit:"Outfits (with accessories)",hair:"Hair",expr:"Expressions",light:"Lighting",camera:"Camera"};
 function buildPools(){
   $('pools').innerHTML=KEYS.map(k=>`<div><label>${NAMES[k]}</label><textarea id="p_${k}"></textarea></div>`).join('');
-  KEYS.forEach(k=>{const t=$('p_'+k);t.value=LS('soul_p_'+k)||DEF[k].join('\n');t.oninput=()=>SV('soul_p_'+k,t.value);});
+  KEYS.forEach(k=>{const t=$('p_'+k);t.value=LS('soul2_p_'+k)||DEF[k].join('\n');t.oninput=()=>SV('soul2_p_'+k,t.value);});
 }
 buildPools();
-$('char').value=LS('soul_char')||DEFCHAR;$('char').oninput=()=>SV('soul_char',$('char').value);
-$('tail').value=LS('soul_tail')||DEFTAIL;$('tail').oninput=()=>SV('soul_tail',$('tail').value);
+FKEYS.forEach(k=>{const t=$('f_'+k);t.value=LS('soul2_f_'+k)||FIXED[k];t.oninput=()=>SV('soul2_f_'+k,t.value);});
 $('every').value=LS('soul_every')||30;$('every').onchange=()=>SV('soul_every',$('every').value);
-$('reset').onclick=()=>{KEYS.forEach(k=>{try{localStorage.removeItem('soul_p_'+k)}catch(e){}});buildPools();};
+$('reset').onclick=()=>{
+  KEYS.forEach(k=>{try{localStorage.removeItem('soul2_p_'+k)}catch(e){}});
+  FKEYS.forEach(k=>{try{localStorage.removeItem('soul2_f_'+k)}catch(e){}});
+  buildPools();FKEYS.forEach(k=>$('f_'+k).value=FIXED[k]);
+};
 
 /* ---- prompt maker: shuffled decks so options cycle without quick repeats ---- */
 const decks={};
@@ -113,18 +184,20 @@ function pick(k){
 }
 let made=0;
 function makePrompt(){
-  const who=$('char').value.trim()||'a young woman';
-  const parts=[
-    `${who}, ${pick('action')}`,
-    `wearing ${pick('outfit')}`,
-    `in ${pick('setting')}`,
-    pick('light'),
-    pick('camera'),
-    pick('mood')+' mood',
-    $('tail').value.trim()
-  ].filter(Boolean);
+  const f=k=>$('f_'+k).value.trim();
   made++;$('mn').textContent=made;
-  return parts.join('. ').replace(/\.\s*\./g,'.')+'.';
+  return [
+    f('intro'),
+    `My character is in ${pick('scene')}. She is ${pick('pose')}.`,
+    `Outfit: ${pick('outfit')}`,
+    `Hair: ${pick('hair')}.`,
+    `Expression: ${pick('expr')}.`,
+    `Lighting: ${pick('light')}.`,
+    `Camera: ${pick('camera')}.`,
+    `Aesthetic: ${f('aesth')}`,
+    `CRITICAL IDENTITY INSTRUCTION: ${f('crit')}`,
+    `Negative prompt: ${f('neg')}`
+  ].filter(Boolean).join('\n');
 }
 
 /* ---- bridge ---- */

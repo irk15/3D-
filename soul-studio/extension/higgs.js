@@ -54,7 +54,8 @@
       }
     }
   }
-  const readText = el => (el.value !== undefined ? el.value : el.innerText || '').trim();
+  const norm = t => String(t || '').replace(/\s+/g, ' ').trim();
+  const readText = el => norm(el.value !== undefined ? el.value : el.innerText);
   function press(el) {
     const r = el.getBoundingClientRect(), o = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, view: window };
     ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(t =>
@@ -104,13 +105,13 @@
     for (let attempt = 0; attempt < 3; attempt++) {
       setText(comp, prompt);
       await sleep(700);
-      if (readText(comp) !== prompt.trim()) { await sleep(500); continue; }
+      if (readText(comp) !== norm(prompt)) { await sleep(500); continue; }
       const b = findGenerate();
       if (!b || isDisabled(b)) { await sleep(1000); continue; }
       press(b);
       await sleep(2500);
       const after = readText(comp);
-      if (after !== prompt.trim() || isDisabled(findGenerate() || b)) {
+      if (after !== norm(prompt) || isDisabled(findGenerate() || b)) {
         S.submitted++; log('sent #' + S.submitted); return 'ok';
       }
       // page may keep the prompt after submit; accept if a click went through the second time

@@ -4,7 +4,11 @@
 
   // header state
   var header = d.querySelector('.site-header');
-  function onScroll() { header.classList.toggle('scrolled', window.scrollY > 40); }
+  var prog = d.querySelector('.progress');
+  function onScroll() {
+    header.classList.toggle('scrolled', window.scrollY > 40);
+    if (prog) { var h = root.scrollHeight - window.innerHeight; prog.style.setProperty('--p', h > 0 ? Math.min(1, window.scrollY / h) : 0); }
+  }
   onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
 
   // mobile menu
@@ -17,6 +21,9 @@
   }
   burger.addEventListener('click', function () { setMenu(!nav.classList.contains('open')); });
   nav.addEventListener('click', function (e) { if (e.target.tagName === 'A') setMenu(false); });
+
+  // stagger children of grids
+  d.querySelectorAll('.dish-grid > .dish, .gallery > .g, .cake-card').forEach(function (el, i) { el.style.setProperty('--d', ((i % 4) * 0.08) + 's'); });
 
   // reveal on scroll
   var items = d.querySelectorAll('.reveal');

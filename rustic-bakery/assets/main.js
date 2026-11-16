@@ -110,11 +110,12 @@
   d.querySelectorAll('.rail').forEach(function (rail) {
     var ctl = d.createElement('div'); ctl.className = 'rail-ctl';
     var arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-    ctl.innerHTML = '<button class="prev" aria-label="Previous">' + arrow + '</button><button class="next" aria-label="Next">' + arrow + '</button>';
+    ctl.innerHTML = '<div class="rail-bar" aria-hidden="true"><i></i></div><div class="btns"><button class="prev" aria-label="Previous">' + arrow + '</button><button class="next" aria-label="Next">' + arrow + '</button></div>';
+    var fill = ctl.querySelector('.rail-bar i');
     rail.parentNode.insertBefore(ctl, rail.nextSibling);
     var pv = ctl.querySelector('.prev'), nx = ctl.querySelector('.next');
     function step() { var k = rail.children[0]; return k ? k.getBoundingClientRect().width + 16 : 300; }
-    function upd() { pv.disabled = rail.scrollLeft < 8; nx.disabled = rail.scrollLeft > rail.scrollWidth - rail.clientWidth - 8; }
+    function upd() { var mx = rail.scrollWidth - rail.clientWidth; ctl.style.setProperty('--f', Math.max(.12, mx > 0 ? (rail.scrollLeft + rail.clientWidth * .35) / (mx + rail.clientWidth * .35) : 1).toFixed(3)); fill.parentNode.style.setProperty('--f', ctl.style.getPropertyValue('--f')); pv.disabled = rail.scrollLeft < 8; nx.disabled = rail.scrollLeft > rail.scrollWidth - rail.clientWidth - 8; }
     pv.addEventListener('click', function () { rail.scrollBy({ left: -step() * 2, behavior: reduce ? 'auto' : 'smooth' }); });
     nx.addEventListener('click', function () { rail.scrollBy({ left: step() * 2, behavior: reduce ? 'auto' : 'smooth' }); });
     rail.addEventListener('scroll', function () { win.requestAnimationFrame(upd); }, { passive: true });

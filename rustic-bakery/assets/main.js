@@ -7,7 +7,7 @@
   var header = d.querySelector('.site-header');
   var prog = d.querySelector('.progress');
   var dock = d.querySelector('.dock');
-  var lastY = win.scrollY, ticking = false;
+  var lastY = win.scrollY, ticking = false, acc = 0, lastVH = win.innerHeight, dockHidden = false;
 
   function onScroll() {
     var y = win.scrollY;
@@ -16,15 +16,21 @@
       var h = root.scrollHeight - win.innerHeight;
       prog.style.setProperty('--p', h > 0 ? Math.min(1, y / h) : 0);
     }
-    // dock: hide while scrolling down, show on scroll up / near the end
+    // dock: hide on sustained scroll down, show on sustained scroll up.
+    // Ignore jumps caused by the mobile browser toolbar resizing the viewport.
     if (dock) {
-      var delta = y - lastY;
       var nearEnd = root.scrollHeight - (y + win.innerHeight) < 120;
-      if (Math.abs(delta) > 8) {
-        dock.classList.toggle('hide', delta > 0 && y > 200 && !nearEnd);
-        lastY = y;
+      var vh = win.innerHeight;
+      if (vh !== lastVH) { lastVH = vh; lastY = y; acc = 0; }
+      else {
+        var delta = y - lastY; lastY = y;
+        if (y < 0 || y > root.scrollHeight - vh) delta = 0; // rubber-band
+        acc = (delta * acc < 0) ? delta : acc + delta;
+        if (acc > 40 && y > 200) { dockHidden = true; acc = 0; }
+        else if (acc < -24) { dockHidden = false; acc = 0; }
       }
-      if (nearEnd || y < 120) dock.classList.remove('hide');
+      if (nearEnd || y < 120) dockHidden = false;
+      dock.classList.toggle('hide', dockHidden);
     }
     ticking = false;
   }

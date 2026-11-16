@@ -7,12 +7,13 @@
   var header = d.querySelector('.site-header');
   var prog = d.querySelector('.progress');
   var dock = d.querySelector('.dock');
+  var topbar = d.querySelector('.topbar');
   var heroBg = d.querySelector('.hero-bg');
   var lastY = win.scrollY, ticking = false;
 
   function onScroll() {
     var y = win.scrollY;
-    header.classList.toggle('scrolled', y > 40);
+    header.classList.toggle('scrolled', y >= (topbar ? topbar.offsetHeight : 0));
     if (heroBg && !reduce && y < win.innerHeight * 1.2) heroBg.style.transform = 'scale(1.06) translate3d(0,' + (y * 0.16).toFixed(1) + 'px,0)';
     if (prog) {
       var h = root.scrollHeight - win.innerHeight;

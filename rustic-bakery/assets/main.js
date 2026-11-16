@@ -7,11 +7,13 @@
   var header = d.querySelector('.site-header');
   var prog = d.querySelector('.progress');
   var dock = d.querySelector('.dock');
+  var heroBg = d.querySelector('.hero-bg');
   var lastY = win.scrollY, ticking = false;
 
   function onScroll() {
     var y = win.scrollY;
     header.classList.toggle('scrolled', y > 40);
+    if (heroBg && !reduce && y < win.innerHeight * 1.2) heroBg.style.transform = 'scale(1.06) translate3d(0,' + (y * 0.16).toFixed(1) + 'px,0)';
     if (prog) {
       var h = root.scrollHeight - win.innerHeight;
       prog.style.setProperty('--p', h > 0 ? Math.min(1, y / h) : 0);
@@ -84,6 +86,82 @@
     track.addEventListener('scroll', function () { win.requestAnimationFrame(sync); }, { passive: true });
     sync();
   });
+
+
+  /* ---------- statement: words fill in as you scroll ---------- */
+  d.querySelectorAll('[data-fill]').forEach(function (el) {
+    var words = el.textContent.trim().split(/\s+/);
+    el.setAttribute('aria-label', words.join(' '));
+    el.innerHTML = words.map(function (w) { return '<span class="w" aria-hidden="true">' + w.replace(/&/g, '&amp;') + '</span>'; }).join(' ');
+    var spans = el.querySelectorAll('.w'), n = spans.length, ticking2 = false;
+    function fill() {
+      var r = el.getBoundingClientRect(), vh = win.innerHeight;
+      var p = (vh * 0.82 - r.top) / (r.height + vh * 0.18);
+      var on = Math.max(0, Math.min(n, Math.round(p * n * 1.15)));
+      for (var i = 0; i < n; i++) spans[i].classList.toggle('on', i < on);
+      ticking2 = false;
+    }
+    win.addEventListener('scroll', function () { if (!ticking2) { ticking2 = true; win.requestAnimationFrame(fill); } }, { passive: true });
+    win.addEventListener('resize', fill); fill();
+  });
+
+  /* ---------- rails: arrows + mouse drag ---------- */
+  var fine = win.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  d.querySelectorAll('.rail').forEach(function (rail) {
+    var ctl = d.createElement('div'); ctl.className = 'rail-ctl';
+    var arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+    ctl.innerHTML = '<button class="prev" aria-label="Previous">' + arrow + '</button><button class="next" aria-label="Next">' + arrow + '</button>';
+    rail.parentNode.insertBefore(ctl, rail.nextSibling);
+    var pv = ctl.querySelector('.prev'), nx = ctl.querySelector('.next');
+    function step() { var k = rail.children[0]; return k ? k.getBoundingClientRect().width + 16 : 300; }
+    function upd() { pv.disabled = rail.scrollLeft < 8; nx.disabled = rail.scrollLeft > rail.scrollWidth - rail.clientWidth - 8; }
+    pv.addEventListener('click', function () { rail.scrollBy({ left: -step() * 2, behavior: reduce ? 'auto' : 'smooth' }); });
+    nx.addEventListener('click', function () { rail.scrollBy({ left: step() * 2, behavior: reduce ? 'auto' : 'smooth' }); });
+    rail.addEventListener('scroll', function () { win.requestAnimationFrame(upd); }, { passive: true });
+    win.addEventListener('resize', upd); upd();
+    if (!fine) return;
+    var down = false, sx = 0, sl = 0, moved = 0;
+    rail.addEventListener('pointerdown', function (e) { if (e.pointerType !== 'mouse') return; down = true; moved = 0; sx = e.clientX; sl = rail.scrollLeft; });
+    win.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 6) { rail.classList.add('drag'); rail.scrollLeft = sl - dx; }
+    });
+    win.addEventListener('pointerup', function () { if (!down) return; down = false; setTimeout(function () { rail.classList.remove('drag'); }, 0); });
+    rail.addEventListener('click', function (e) { if (moved > 6) { e.stopPropagation(); e.preventDefault(); moved = 0; } }, true);
+  });
+
+  /* ---------- cursor + index preview (mouse only) ---------- */
+  if (fine && !reduce) {
+    var cur = d.createElement('div'); cur.className = 'cursor'; cur.setAttribute('aria-hidden', 'true'); d.body.appendChild(cur);
+    var pvEl = d.createElement('div'); pvEl.className = 'pv'; pvEl.setAttribute('aria-hidden', 'true'); d.body.appendChild(pvEl);
+    var idx = d.querySelector('[data-index]'), pvImgs = {};
+    if (idx) idx.querySelectorAll('a').forEach(function (a) {
+      var im = d.createElement('img'); im.alt = ''; im.src = a.getAttribute('data-img'); pvEl.appendChild(im); pvImgs[a.getAttribute('href')] = im;
+    });
+    var mx = -200, my = -200, cx = -200, cy = -200, px = -200, py = -200, mode = '', raf = 0;
+    function loop() {
+      cx += (mx - cx) * 0.22; cy += (my - cy) * 0.22; px += (mx - px) * 0.12; py += (my - py) * 0.12;
+      cur.style.transform = 'translate3d(' + cx + 'px,' + cy + 'px,0) scale(' + (mode ? 1 : 0.3) + ')';
+      pvEl.style.transform = 'translate3d(' + (px + 28) + 'px,' + (py - 150) + 'px,0) rotate(' + ((mx - px) * 0.05).toFixed(2) + 'deg) scale(' + (pvEl.classList.contains('on') ? 1 : 0.8) + ')';
+      raf = win.requestAnimationFrame(loop);
+    }
+    loop();
+    d.addEventListener('mousemove', function (e) {
+      mx = e.clientX; my = e.clientY;
+      var t = e.target, m = '';
+      if (t.closest) {
+        if (t.closest('.rail')) m = 'Drag';
+        if (t.closest('img[data-lightbox]')) m = 'View';
+      }
+      if (m !== mode) { mode = m; cur.textContent = m; cur.classList.toggle('on', !!m); }
+      var a = t.closest && t.closest('[data-index] a');
+      var on = !!a;
+      pvEl.classList.toggle('on', on);
+      if (a) { var key = a.getAttribute('href'); for (var k in pvImgs) pvImgs[k].classList.toggle('on', k === key); }
+    }, { passive: true });
+    d.addEventListener('mouseleave', function () { mode = ''; cur.classList.remove('on'); pvEl.classList.remove('on'); });
+  }
 
   /* ---------- lightbox with swipe + arrows ---------- */
   var lb = d.getElementById('lightbox'), lbImg = lb.querySelector('img');

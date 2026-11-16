@@ -164,6 +164,25 @@
     d.addEventListener('mouseleave', function () { mode = ''; cur.classList.remove('on'); pvEl.classList.remove('on'); });
   }
 
+
+  /* ---------- hot table: dish explorer ---------- */
+  d.querySelectorAll('[data-dexp]').forEach(function (list) {
+    var items = Array.prototype.slice.call(list.querySelectorAll('li'));
+    var wide = function () { return win.matchMedia('(min-width:861px)').matches; };
+    function pick(li, toggle) {
+      var was = li.classList.contains('on');
+      items.forEach(function (x) { x.classList.remove('on'); x.querySelector('button').setAttribute('aria-expanded', 'false'); });
+      if (toggle && was && !wide()) return;
+      li.classList.add('on'); li.querySelector('button').setAttribute('aria-expanded', 'true');
+    }
+    items.forEach(function (li) {
+      var b = li.querySelector('button');
+      b.addEventListener('click', function () { pick(li, true); });
+      b.addEventListener('focus', function () { if (wide()) pick(li); });
+      if (fine) b.addEventListener('mouseenter', function () { if (wide()) pick(li); });
+    });
+  });
+
   /* ---------- lightbox with swipe + arrows ---------- */
   var lb = d.getElementById('lightbox'), lbImg = lb.querySelector('img');
   var prev = lb.querySelector('.lb-prev'), next = lb.querySelector('.lb-next'), count = lb.querySelector('.lb-count');

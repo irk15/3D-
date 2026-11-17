@@ -439,6 +439,7 @@ body.has-audio .spk{display:flex}
     <div class="seg">
       <button id="btnEE" class="on" onclick="setExam('EE')">Écrit</button>
       <button id="btnEO"           onclick="setExam('EO')">Oral</button>
+      <button id="btnBOB"          onclick="setExam('BOB')">🧽 Bob</button>
     </div>
   </div>
   <div class="topbar-r2">
@@ -3534,6 +3535,30 @@ const D={
    ]},
   ],
  },
+ BOB:{
+  A:[
+  {id:'bob',fr:'Bob l\'Éponge',en:'Learn French with SpongeBob',c:'#FFC400',l:true,items:[
+    {t:'p',lv:2,fr:'être en train de + infinitif',en:'to be in the middle of doing something',ex:'Il est en train de regarder un film.',exE:'He is watching a movie.'},
+    {t:'v',lv:1,fr:'un cauchemar',wc:'nm',en:'a nightmare',ex:'J\'ai fait un cauchemar horrible cette nuit.',exE:'I had a horrible nightmare last night.'},
+    {t:'p',lv:1,fr:'Réveille-toi !',en:'Wake up! (imperative of se réveiller)',ex:'Réveille-toi, il est déjà huit heures !',exE:'Wake up, it\'s already eight o\'clock!'},
+    {t:'v',lv:1,fr:'une commande',wc:'nf',en:'an order (from commander, to order)',ex:'Le client a passé une commande de dix pizzas.',exE:'The customer placed an order for ten pizzas.'},
+    {t:'v',lv:1,fr:'un mauvais rêve',wc:'nm',en:'a bad dream',ex:'Ce n\'était qu\'un mauvais rêve.',exE:'It was only a bad dream.'},
+    {t:'p',lv:2,fr:'Mais dis donc !',en:'Wow! / Goodness! / Hey!',ex:'Mais dis donc, tu as vu cette voiture ?',exE:'Wow, did you see that car?'},
+    {t:'p',lv:2,fr:'J\'y peux rien.',en:'I can\'t help it. / I can\'t do anything about it.',ex:'Il pleut depuis ce matin, j\'y peux rien.',exE:'It\'s been raining since this morning, I can\'t do anything about it.'},
+    {t:'p',lv:2,fr:'tout ce qui me chante',en:'anything I want / whatever I feel like',ex:'En vacances, je fais tout ce qui me chante.',exE:'On vacation, I do whatever I feel like.'},
+    {t:'p',lv:2,fr:'comme deux gouttes d\'eau',en:'like two peas in a pod (identical)',ex:'Les deux frères se ressemblent comme deux gouttes d\'eau.',exE:'The two brothers look exactly alike.'},
+    {t:'v',lv:1,fr:'un frère jumeau',wc:'nm',en:'a twin brother',ex:'Il a un frère jumeau qui habite à Montréal.',exE:'He has a twin brother who lives in Montreal.'},
+    {t:'v',lv:2,fr:'un bel inconnu',wc:'nm',en:'a handsome stranger',ex:'Elle a rencontré un bel inconnu à la fête.',exE:'She met a handsome stranger at the party.'},
+    {t:'v',lv:1,fr:'la pêche à la méduse',wc:'nf',en:'jellyfishing (fishing for jellyfish)',ex:'Bob adore la pêche à la méduse.',exE:'SpongeBob loves jellyfishing.'},
+    {t:'v',lv:1,fr:'Carlo',wc:'nm',en:'Squidward (his French name in the show)',ex:'Carlo joue de la clarinette chez lui.',exE:'Squidward plays the clarinet at home.'},
+    {t:'p',lv:1,fr:'Moi aussi.',en:'Me too.',ex:'J\'adore ce dessin animé. — Moi aussi !',exE:'I love this cartoon. — Me too!'},
+    {t:'v',lv:1,fr:'une formule secrète',wc:'nf',en:'a secret formula',ex:'Le restaurant garde sa formule secrète dans un coffre.',exE:'The restaurant keeps its secret formula in a safe.'},
+    {t:'p',lv:2,fr:'C\'est vraiment ma chance.',en:'That\'s just my luck. (often ironic)',ex:'Mon train vient de partir… C\'est vraiment ma chance !',exE:'My train just left… That\'s just my luck!'},
+    {t:'p',lv:2,fr:'Il va falloir + infinitif',en:'It will be necessary to… / we\'ll have to…',ex:'Il va falloir partir plus tôt demain.',exE:'We\'ll have to leave earlier tomorrow.'},
+    {t:'v',lv:2,fr:'améliorer / j\'améliore',wc:'v',en:'to improve (something)',ex:'J\'améliore ma recette chaque semaine.',exE:'I improve my recipe every week.'},
+   ]},
+  ],
+ },
 };
 
 /* ═══════════════════════════════════════════════
@@ -3646,7 +3671,7 @@ function updateChrome(cur,tot,knCnt){
   document.getElementById('progLabel').textContent=tot?`${cur} / ${tot}`:'— / —';
   document.getElementById('knownRow').textContent=knCnt>0?`${knCnt} ✓`:'';
   ['A','B'].forEach(s=>document.getElementById('btn'+s).className=(sec===s?'on':''));
-  ['EE','EO'].forEach(e=>document.getElementById('btn'+e).className=(exam===e?'on':''));
+  ['EE','EO','BOB'].forEach(e=>document.getElementById('btn'+e).className=(exam===e?'on':''));
   ['All','Vocab','Phrase'].forEach(id=>{
     const f2=id.toLowerCase();
     document.getElementById('f'+id).className='filt-tab'+(filt===f2?'':filt==='all'&&f2==='all'?'':'')+((filt===f2||(f2==='all'&&filt==='all'))?'on':' on'.replace(' on',''));
@@ -3658,11 +3683,12 @@ function updateChrome(cur,tot,knCnt){
 }
 
 function render(dir){
+  document.querySelector('.topbar-r2').style.display=exam==='BOB'?'none':'';
   renderTopics();
   renderCard(dir);
   document.documentElement.style.setProperty('--accent',topic().c);
   ['A','B'].forEach(s=>document.getElementById('btn'+s).className=(sec===s?'on':''));
-  ['EE','EO'].forEach(e=>document.getElementById('btn'+e).className=(exam===e?'on':''));
+  ['EE','EO','BOB'].forEach(e=>document.getElementById('btn'+e).className=(exam===e?'on':''));
 }
 
 /* ═══════════════════════════════════════════════

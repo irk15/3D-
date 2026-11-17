@@ -1131,6 +1131,47 @@ const EXTRA={
   {id:'stain',t:'Water-marked',txt:"a faint water stain discolouring one corner"}]}
 };
 
+/* ================= LOW-ANGLE POWER SHOTS: added to every mode's shot list (so Endless rotates through them) and angle list ================= */
+(function(){
+  const L=(id,em,t,d,txt,ang)=>({id,em,t,d,txt,ang});
+  const PERSON=[
+    L('lo_power','🦸','Low power shot','hip height, towering',"a low-angle power shot from hip height with the lens tilted up, the subject towering and dominant, the horizon dropped below their feet","from hip height, lens tilted up, subject towering over the camera"),
+    L('lo_worm',"🪱","Worm's-eye",'ground level, huge',"a worm's-eye shot from just above ground level, camera tilted steeply up so the subject rises enormous against the sky","from just above ground level, camera tilted steeply up"),
+    L('lo_knee','🦵','Knee-level up','legs elongated',"a knee-level low angle looking up the full length of the body, legs elongated, shoes and ground close to the lens","from knee height looking up the whole length of the figure"),
+    L('lo_stride','🚶','Floor-level stride','walking at lens',"a floor-level wide shot with the camera on the ground and the subject striding toward it, foreground texture sharp and the figure looming","with the camera on the ground as the subject strides towards it"),
+    L('lo_chin','😤','Chin-up from below','jaw & neck',"a low three-quarter angle from below the chin line, jaw and neck dominant, eyes looking down into the lens with quiet authority","from below the chin line, looking up at the jaw and down-turned eyes"),
+    L('lo_dutch','📐','Low Dutch tilt','tilted, dynamic',"a low Dutch-tilt angle, the camera tilted up and rolled a few degrees, the subject leaning into frame with the background cutting diagonally behind","from low down with the camera rolled a few degrees in a Dutch tilt"),
+    L('lo_sil','🌅','Low silhouette','against the sky',"a low angle shooting up against bright sky so the subject cuts a strong shape with a hard rim of edge light","from low down shooting up into bright sky, the subject edge-lit"),
+    L('lo_stairs','🪜','Foot of the stairs','steps above',"a low angle from the foot of a staircase looking up at the subject standing on the steps above, the stairs leading the eye up to them","from the foot of a staircase looking up at the subject on the steps"),
+    L('lo_puddle','💧','Puddle mirror low','double figure',"a ground-level shot just over a shallow puddle so the subject appears twice, towering above and mirrored below, camera tilted slightly up","from ground level over a puddle, the subject mirrored in the water")
+  ];
+  const PRODUCT=[
+    L('lo_phero','🏆','Low hero product','monumental',"a low-angle hero shot with the lens at table level looking up, the product monumental against a soft graded backdrop","from table level looking up, the product monumental"),
+    L('lo_pworm',"🪱","Surface-level up",'macro low',"a surface-level shot with the lens almost on the table, tilted up so the product rises like architecture with the foreground edge sharp","with the lens almost resting on the surface, tilted up"),
+    L('lo_pplinth','🗿','Plinth from below','pedestal',"a shot from below the plinth edge looking up, the product lit from above like a monument","from below the plinth edge looking up at the product"),
+    L('lo_pdutch','📐','Low tilt product','dynamic',"a low tilted angle, the product leaning diagonally through the frame with a hard edge light","from low down with a slight tilt")
+  ];
+  const ROOM=[
+    L('lo_rfloor','🪑','Floor-level wide','looks bigger',"a floor-level wide shot with the camera a hand's width off the floor, the room stretching away and the ceiling looming","from a hand's width off the floor, wide, ceiling looming"),
+    L('lo_rup','⬆️','Low up the walls','tall room',"a low angle in a corner looking up the walls to the ceiling line, emphasising height and volume","low in a corner looking up the walls to the ceiling"),
+    L('lo_rsofa','🛋️','Seat-height low','sofa level',"a seat-height low angle across the furniture, foreground textures sharp and the room opening up above","at seat height, low across the furniture"),
+    L('lo_rdoor','🚪','Low through the door','framed',"a low angle through a doorway, the room framed by the door edges and the floor leading in","low through a doorway with the floor leading in")
+  ];
+  const BOUDOIR=[
+    L('lo_bfoot','🛏️','From the foot of the bed','soft, draped',"a low angle from the foot of the bed with the subject reclined against pillows in soft focus beyond the draped linen, everything tastefully covered","from the foot of the bed, subject reclined in soft focus beyond the linen"),
+    L('lo_bfloor','🪟','Floor-level window light','low, glowing',"a floor-level frame with the camera low on the boards, the subject standing in the window light as a soft glowing shape, tastefully covered","from floor level, the subject a soft glowing shape in the window light"),
+    L('lo_bchin','😌','Chin-up soft','from below',"a soft low three-quarter angle from just below the chin line, eyes lowered to the lens, shoulders and robe covered","from just below the chin line, soft and intimate")
+  ];
+  const MAP={snap:PERSON,studio:PERSON,cinema:PERSON,editorial:PERSON,portrait:PERSON,fantasy:PERSON,doc:PERSON,product:PRODUCT,interior:ROOM,boudoir:BOUDOIR};
+  Object.keys(MAP).forEach(k=>{
+    const c=CFG[k];if(!c)return;
+    MAP[k].forEach(o=>{
+      if(!c.SHOT.some(x=>x.id===o.id))c.SHOT.push({id:o.id,em:o.em,t:o.t,d:o.d,txt:o.txt});
+      if(c.ANG&&!c.ANG.some(x=>x.n===o.t))c.ANG.push({n:o.t,txt:o.ang});
+    });
+  });
+})();
+
 const MODELIST=[['snap','📱','Snapchat'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
   ['portrait','🎭','Portrait'],['doc','📰','Street'],['fantasy','🌌','Fantasy'],['product','📦','Product'],
   ['cctv','🎥','CCTV'],['webcam','💻','Webcam'],['interior','🏠','Interior'],['boudoir','🌹','Boudoir']];

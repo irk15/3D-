@@ -353,6 +353,7 @@ button{font-family:inherit;}
           <label><input type="checkbox" id="ev_light" checked> Light</label>
           <label><input type="checkbox" id="ev_shot" checked> Shot</label>
           <label><input type="checkbox" id="ev_pose" checked> Pose</label>
+          <label><input type="checkbox" id="ev_comp" checked> Group pose</label>
           <label><input type="checkbox" id="ev_vibe" checked> Mood</label>
           <label><input type="checkbox" id="ev_grit" checked> Finish</label>
           <label><input type="checkbox" id="ev_real" checked> Realism</label>
@@ -1172,6 +1173,70 @@ const EXTRA={
   });
 })();
 
+/* ================= GROUP MODE: 2 or 3 women, compositions with each other (Endless rotates them) ================= */
+const DUO=[
+ {id:'d_back',em:'🔙',t:'Back to back',d:'shoulders touching',txt:"standing back to back with shoulders touching and arms folded, both looking toward the camera, their bodies forming a strong symmetrical V"},
+ {id:'d_lean',em:'💞',t:'Head on shoulder',d:'leaning in',txt:"one resting her head on the other's shoulder, both facing the camera with their bodies angled in toward each other"},
+ {id:'d_mirror',em:'🪞',t:'Mirrored stance',d:'side by side',txt:"standing side by side in mirrored poses, outer hips popped, inner hands joined between them"},
+ {id:'d_whisper',em:'🤫',t:'Whisper',d:'secret',txt:"one whispering into the other's ear, the listener smiling toward the camera, heads close and a hand resting on a shoulder"},
+ {id:'d_stagger',em:'📶',t:'Height stagger',d:'standing + low',txt:"one standing while the other is seated or crouched in front of her, a clear height stagger with overlapping silhouettes"},
+ {id:'d_arm',em:'🚶‍♀️',t:'Arm in arm walk',d:'toward lens',txt:"walking toward the camera arm in arm, mid-stride and slightly out of step, laughing at each other"},
+ {id:'d_profile',em:'👥',t:'Face to face',d:'two profiles',txt:"facing each other in profile with foreheads almost touching, the camera catching both profiles in one clean frame"},
+ {id:'d_hair',em:'💇‍♀️',t:'Hair braiding',d:'one behind',txt:"one standing behind the other braiding her hair, the seated one looking up over her shoulder into the lens"},
+ {id:'d_diag',em:'↗️',t:'Diagonal lounge',d:'reclined',txt:"reclined along a diagonal with heads at opposite corners of the frame and legs overlapping, both looking up at the camera"},
+ {id:'d_hug',em:'🤗',t:'Hug from behind',d:'chin on shoulder',txt:"one hugging the other from behind with her chin on her shoulder, the woman in front holding the embracing arms"},
+ {id:'d_power',em:'🦸‍♀️',t:'Power stance',d:'shoulder to shoulder',txt:"standing shoulder to shoulder in a wide confident stance with cool, level expressions, presence emphasised by the framing"},
+ {id:'d_run',em:'🏃‍♀️',t:'Hand in hand run',d:'hair flying',txt:"mid-run hand in hand with hair flying, one half a step ahead and glancing back at the other"},
+ {id:'d_chat',em:'💬',t:'Close chat',d:'seated, candid',txt:"sitting close with knees angled toward each other, one mid-story and gesturing, the other laughing, caught unposed"},
+ {id:'d_depth',em:'🎯',t:'Focus & blur',d:'depth layers',txt:"one in sharp focus in the foreground while the other stands softly out of focus a step behind, looking past her into the lens"}
+];
+const TRIO=[
+ {id:'t_tri',em:'🔺',t:'Triangle',d:'clear apex',txt:"arranged in a tight triangle, one woman forward at the apex and the other two behind at her shoulders"},
+ {id:'t_line',em:'➖',t:'Line abreast',d:'centre forward',txt:"standing in a line abreast, evenly spaced with shoulders overlapping, the centre woman a half step forward"},
+ {id:'t_height',em:'📶',t:'Height cascade',d:'three levels',txt:"staggered at three heights, one standing, one perched on a ledge or step, one seated at the front, a diagonal cascade of faces"},
+ {id:'t_huddle',em:'🫂',t:'Huddle',d:'heads together',txt:"heads close together in a three-way huddle, all three looking up into the lens with conspiratorial smiles"},
+ {id:'t_walk',em:'🚶‍♀️',t:'Walk abreast',d:'arms linked',txt:"walking toward the camera abreast with arms linked, the centre woman slightly ahead, mid-laugh"},
+ {id:'t_sofa',em:'🛋️',t:'Sofa pile',d:'legs overlapping',txt:"piled together on a sofa with legs overlapping and heads at different levels, the middle woman looking at the lens while the others look at her"},
+ {id:'t_flank',em:'🎭',t:'Centre & flanks',d:'framing her',txt:"one woman at the centre looking straight into the lens while the other two turn in toward her with tilted heads, framing her symmetrically"},
+ {id:'t_star',em:'⭐',t:'Back to back to back',d:'three-way star',txt:"standing back to back to back in a three-way star, each facing a different direction with an outward-looking pose"},
+ {id:'t_wall',em:'🧱',t:'Wall lean row',d:'relaxed stagger',txt:"leaning in a row along a wall, each in a different relaxed pose with ankles crossed and body angles staggered"},
+ {id:'t_chain',em:'🔗',t:'Chain of care',d:'hair, collar, lens',txt:"a chain of small gestures: the first adjusting the second's hair, the second fixing the third's collar, the third looking at the lens"},
+ {id:'t_power',em:'🦸‍♀️',t:'Power formation',d:'wide triangle',txt:"standing in a wide triangular power formation, the front woman at the apex and the other two a step behind at her shoulders, expressions cool and direct"},
+ {id:'t_spin',em:'💃',t:'Twirl & cheer',d:'one in motion',txt:"one woman mid-twirl at the centre while the other two laugh and clap at the edges, the twirl's hem caught in motion"},
+ {id:'t_ots',em:'👀',t:'Rippling glances',d:'over the shoulder',txt:"three overlapping over-the-shoulder looks, each woman turning her head back toward the lens in a rippling sequence"},
+ {id:'t_floor',em:'⭕',t:'Floor circle',d:'from above',txt:"sitting on the floor in a loose circle facing inward, seen from above, three faces turned up to the lens"}
+];
+const DEFW=['long dark wavy hair','a sleek blonde bob','tight auburn curls'];
+function groupInfo(v){
+  const n=S.group==='duo'?2:S.group==='trio'?3:0;if(!n)return null;
+  const L=n===2?DUO:TRIO;
+  let comp=S.comp==='__own'?(S.own.comp||'').trim():'';
+  if(S.comp!=='__own'){const o=find(L,S.comp)||L[0];comp=o.txt;}
+  const nm=['first','second','third'],w=[1,2,3].slice(0,n).map(i=>(S.own['w'+i]||'').trim()||('with '+DEFW[i-1]));
+  const parts=w.map((d,i)=>`the ${nm[i]} ${d}`).join(', ');
+  const who=`${n===2?'two women':'three women'}${v.subject?' ('+v.subject+')':''}, exactly ${n===2?'two':'three'} people in frame: ${parts}, each with a clearly different face, hair and build and no one duplicated`;
+  return {n,who,comp};
+}
+function renderGroup(p){
+  const n=S.group==='duo'?2:S.group==='trio'?3:0,L=n===2?DUO:n===3?TRIO:null;
+  let h=`<div class="rowBlk"><div class="rowT">Group size<span>who is in the frame</span></div><div class="pills" id="gSize">`+
+    [['','Solo'],['duo','👭 2 women'],['trio','👯 3 women']].map(([id,t])=>`<button class="pill ${(S.group||'')===id?'on':''}" data-id="${id}">${t}</button>`).join('')+`</div></div>`;
+  if(!L){p.innerHTML=h+`<div class="rowT" style="margin-top:8px">Pick 2 or 3 women to get compositions of them together. Endless then rotates a new arrangement every prompt. Leave Subject empty or describe them together (e.g. “friends in their twenties”).</div>`;}
+  else{
+    h+=`<div class="rowBlk"><div class="rowT">The women<span>optional · blank = auto distinct looks</span></div>`+
+      [1,2,3].slice(0,n).map(i=>`<div class="ownBox show"><input data-w="${i}" placeholder="Woman ${i}: ${DEFW[i-1]}" value="${(S.own['w'+i]||'').replace(/"/g,'&quot;')}"></div>`).join('')+`</div>`;
+    h+=`<div class="rowT" style="margin:8px 0 4px">Composition together<span>nothing picked = first one</span></div><div class="grid">`+
+      L.map(o=>`<button class="opt ${S.comp===o.id?'on':''}" data-id="${o.id}"><span class="em">${o.em}</span><span class="t">${o.t}</span><span class="d">${o.d}</span></button>`).join('')+
+      `<button class="opt own ${S.comp==='__own'?'on':''}" data-id="__own"><span class="em">✎</span><span class="t">Write your own</span><span class="d">type it</span></button></div>
+       <div class="ownBox ${S.comp==='__own'?'show':''}"><input id="ownComp" placeholder="✎ how the women pose together…" value="${(S.own.comp||'').replace(/"/g,'&quot;')}"></div>`;
+    p.innerHTML=h;
+    p.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{S.comp=S.comp===b.dataset.id?null:b.dataset.id;renderTabs();renderPane();refresh();});
+    p.querySelectorAll('input[data-w]').forEach(i=>i.oninput=()=>{S.own['w'+i.dataset.w]=i.value;refresh();});
+    if($('ownComp'))$('ownComp').oninput=e=>{S.own.comp=e.target.value;refresh();};
+  }
+  p.querySelectorAll('#gSize .pill').forEach(b=>b.onclick=()=>{S.group=b.dataset.id||null;S.comp=null;renderTabs();renderPane();refresh();});
+}
+
 const MODELIST=[['snap','📱','Snapchat'],['studio','✨','Photoshoot'],['cinema','🎬','Cinematic'],['editorial','✦','Editorial'],
   ['portrait','🎭','Portrait'],['doc','📰','Street'],['fantasy','🌌','Fantasy'],['product','📦','Product'],
   ['cctv','🎥','CCTV'],['webcam','💻','Webcam'],['interior','🏠','Interior'],['boudoir','🌹','Boudoir']];
@@ -1199,6 +1264,7 @@ const find=(a,id)=>a.find(x=>x.id===id);
 const PANES=[{k:'where',n:'Setting'},{k:'light',n:'Light'},{k:'shot',n:'Shot'},{k:'pose',n:'Pose'},{k:'vibe',n:'Mood'},
   {k:'grit',n:'Finish'},{k:'real',n:'✦ Realism'},{k:'era',n:'✦ Era'}];
 const REALKEYS=['air','motion','flaws'], ERAKEYS=['era','cond'];
+PANES.push({k:'group',n:'👭 Group'});
 
 function rollGrit(){const p=[...C().GRIT].sort(()=>Math.random()-.5).slice(0,2);S.grit=p;}
 function pick(arr,key,id){const s=id||S[key];if(s==='__own')return (S.own[key]||'').trim();
@@ -1241,13 +1307,15 @@ function refSpec(){
 function makePrompt(shotId,angTxt,beat){
   const c=C(),v={subject:$('fSubject').value.trim(),outfit:$('fOutfit').value.trim(),
     scene:$('fScene').value.trim(),expr:$('fExpr').value.trim()};
-  const who=v.subject||'the subject';
-  const wear=v.outfit?` wearing ${v.outfit}`:'';
+  const G=groupInfo(v);
+  const who=G?G.who:(v.subject||'the subject');
+  const VB=G?c.verb.replace(/ of an adult woman$/,'').replace(/an adult woman/,'adult women'):c.verb;
+  const wear=v.outfit?(G?` each wearing ${v.outfit}`:` wearing ${v.outfit}`):'';
   const expr=v.expr||(beat&&beat.mood&&!S.vibe?beat.mood:pick(c.VIBE,'vibe'));
   const w=pick(c.WHERE,'where'), sh=pick(c.SHOT,'shot',shotId);
   const wObj=S.where&&S.where!=='__own'?find(c.WHERE,S.where):null, lightLocked=S.light&&!(wObj&&S.light===wObj.light); // light only counts as the user's choice if it differs from the scene default
   const l=beat&&beat.light&&!lightLocked?pick(c.LIGHT,'light',beat.light):pick(c.LIGHT,'light');
-  const po=c.POSE?(beat&&beat.pose?pick(c.POSE,'pose',beat.pose):pick(c.POSE,'pose')):'';
+  const po=G?G.comp:(c.POSE?(beat&&beat.pose?pick(c.POSE,'pose',beat.pose):pick(c.POSE,'pose')):'');
   const moment=beat&&beat.act?beat.act:'';
   const series=beat&&beat.total?`Frame ${beat.i+1} of ${beat.total} from one continuous photoshoot: the same subject with identical face, hair and styling, the same outfit and the same location and colour grade as every other frame in the series, only the moment, pose and framing change.`:'';
   const grit=(S.own.grit||'').trim()||S.grit[0]+', and '+S.grit[1];
@@ -1257,10 +1325,10 @@ function makePrompt(shotId,angTxt,beat){
   const air=X('air'),motion=X('motion'),flaws=X('flaws'),era=X('era'),cond=X('cond');
   const R=curRatio(),Z=curSize(),RS=refSpec();
   const outLine=`Aspect ratio ${R}.`;
-  const notLike=`It must not look like ${c.notLike}.`;
+  const notLike=`It must not look like ${c.notLike}.`+(G?' It must not show extra people, merged or duplicated faces, or fused limbs.':'');
 
   if(FMT==='narrative'){
-    let p=`${c.verb} of ${who}${wear}`;
+    let p=`${VB} of ${who}${wear}`;
     if(expr)p+=`, ${expr}`;
     p+='. ';
     if(setting)p+=`${M==='snap'?'The moment is':'Set'} ${setting}. `;
@@ -1280,8 +1348,8 @@ function makePrompt(shotId,angTxt,beat){
     return p;
   }
   if(FMT==='json'){
-    const o={deliverable:lowA(c.verb),
-      image_type:lowA(c.verb),
+    const o={deliverable:lowA(VB),
+      image_type:lowA(VB),
       subject:{who,outfit:v.outfit||undefined,expression:expr||undefined,imperfections:flaws||undefined},
       scene:{setting:w||undefined,details:v.scene||undefined,atmosphere:air||undefined},
       framing:sh||undefined,pose:po||undefined,moment:moment||undefined,camera_angle:angTxt||undefined,lighting:l||undefined,
@@ -1302,7 +1370,7 @@ function makePrompt(shotId,angTxt,beat){
   // ---- Brief 2.1: labelled art-direction brief (Nano Banana 2.1's native format) ----
   const sec=[];
   const add=(label,lines)=>{const t=lines.filter(Boolean).join('\n');if(t)sec.push(label+'\n'+t);};
-  add('DELIVERABLE',[`Create ${lowA(c.verb)}.`]);
+  add('DELIVERABLE',[`Create ${lowA(VB)}.`]);
   add('SUBJECT',[`${cap(who)}${wear}${expr?', '+expr:''}.`]);
   add('SCENE',[setting?`${cap(setting)}.`:'']);
   add('MOMENT',[moment?`${cap(moment)}.`:'']);
@@ -1370,6 +1438,7 @@ function bindRows(p){
 
 function renderPane(){
   const c=C(),p=$('pane');
+  if(PT==='group'){renderGroup(p);return;}
   if(PT==='real'){p.innerHTML=rowsHTML(REALKEYS);bindRows(p);return;}
   if(PT==='era'){p.innerHTML=rowsHTML(ERAKEYS);bindRows(p);return;}
   if(PT==='grit'){
@@ -1591,6 +1660,7 @@ function endShuffle(){
   if(V('light'))set('light',c.LIGHT);
   if(V('shot'))set('shot',c.SHOT);
   if(V('pose')&&c.POSE)set('pose',c.POSE);
+  if(S.group&&V('comp')&&S.comp!=='__own'){const o=endPick('comp'+S.group,S.group==='duo'?DUO:TRIO);if(o)S.comp=o.id;}
   if(V('vibe'))set('vibe',c.VIBE);
   if(V('grit')&&!(S.own.grit||'').trim())rollGrit();
   if(V('real'))REALKEYS.forEach(k=>{if(S[k]==='__own')return;const o=endPick('x'+k,EXTRA[k].o);S[k]=(o&&Math.random()<.7)?o.id:null;});

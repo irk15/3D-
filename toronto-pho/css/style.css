@@ -339,7 +339,7 @@ details.sp li{padding:10px 0;border-bottom:1px dashed var(--line);font-size:15px
   .phero{padding-top:calc(var(--hdr) + var(--s8))}
   .ftr-big{font-size:21vw}
 }
-.mnav{position:fixed;inset:0;z-index:55;background:var(--ink);color:var(--tx-inv);padding:calc(var(--hdr) + var(--s6) + env(safe-area-inset-top)) 28px var(--s7);display:none;flex-direction:column;gap:var(--s2);transform:translateY(-100%);transition:transform .5s var(--ease);visibility:hidden}
+.mnav{position:fixed;inset:0;z-index:55;background:var(--ink);color:var(--tx-inv);padding:calc(var(--hdr) + var(--s6) + env(safe-area-inset-top)) 28px var(--s7);flex-direction:column;gap:var(--s2);transform:translateY(-100%);transition:transform .5s var(--ease);visibility:hidden}
 .mnav.open{transform:none;visibility:visible}
 .mnav a{font:400 clamp(2.4rem,11vw,3.6rem)/1.1 var(--serif);text-decoration:none;padding:6px 0;border-bottom:1px solid var(--line-inv)}
 .mnav a em{color:var(--broth)}
@@ -353,3 +353,4 @@ details.sp li{padding:10px 0;border-bottom:1px dashed var(--line);font-size:15px
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
   .rv{opacity:1;transform:none}.noodle{stroke-dashoffset:0}
 }
+body:has(.mnav.open) .dock{transform:translateY(calc(100% + 30px))}

@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js';
+import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js?v=3';
 import * as ENV from './environment.js';
 
 const $ = id => document.getElementById(id);

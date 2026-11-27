@@ -7,8 +7,9 @@ let source;
 export async function loadSoldier(manager) { source = await new GLTFLoader(manager).loadAsync('assets/soldier.glb'); }
 
 const V = () => new THREE.Vector3();
-const a = V(), b = V(), c = V(), d = V(), want = V(), chest = V(), grip = V(), fore = V(), dir = V(), pole = V(), elbow = V();
+const a = V(), b = V(), c = V(), d = V(), want = V(), chest = V(), grip = V(), hold = V(), fore = V(), dir = V(), pole = V(), elbow = V();
 const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+const curl = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), .95);
 
 // rotate `bone` so that the segment bone -> child points along world direction `to`
 function point(bone, child, to, k = 1) {
@@ -17,6 +18,11 @@ function point(bone, child, to, k = 1) {
   bone.getWorldQuaternion(qb); qa.multiply(qb);
   bone.parent.getWorldQuaternion(qb).invert();
   qb.multiply(qa); bone.quaternion.slerp(qb, k); bone.updateWorldMatrix(false, true);
+}
+const UP = new THREE.Vector3(0, 1, 0);
+function yaw(bone, angle) {
+  bone.getWorldQuaternion(qb); qa.setFromAxisAngle(UP, angle).multiply(qb);
+  bone.parent.getWorldQuaternion(qb).invert(); bone.quaternion.copy(qb.multiply(qa)); bone.updateWorldMatrix(false, true);
 }
 // two-bone IK: shoulder -> elbow -> hand reaches `target`
 function reach(upper, lower, hand, target, bend) {
@@ -51,7 +57,7 @@ function rifle() {
 
 export function soldier(p) {
   const root = new THREE.Group(), tilt = new THREE.Group(); root.add(tilt);
-  const model = clone(source.scene); model.rotation.y = p.turn ?? Math.PI / 2; model.scale.setScalar(p.scale || 1.22); tilt.add(model);
+  const model = clone(source.scene); model.rotation.y = -Math.PI / 2; model.scale.setScalar(p.scale || 1.22); tilt.add(model);
   const bones = {};
   model.traverse(o => {
     if (/^mixamorig/.test(o.name)) bones[o.name.replace(/^mixamorig:?/, '')] = o;
@@ -61,6 +67,7 @@ export function soldier(p) {
       if (/visor/i.test(o.material.name)) { o.material.emissive.set(p.visor); o.material.emissiveIntensity = 1.6; }
     }
   });
+  const fingers = Object.keys(bones).filter(n => /Hand(Index|Middle|Ring|Pinky)[123]$/.test(n)).map(n => [bones[n], bones[n].quaternion.clone()]);
   const mixer = new THREE.AnimationMixer(model), actions = {};
   for (const clip of source.animations) if (clip.name !== 'TPose') { actions[clip.name] = mixer.clipAction(clip); actions[clip.name].play(); actions[clip.name].setEffectiveWeight(0); }
   const gun = rifle(); root.add(gun.g);
@@ -68,11 +75,11 @@ export function soldier(p) {
   if (p.band) {
     band = new THREE.Group(); root.add(band);
     const m = new THREE.MeshStandardMaterial({ color: p.band, emissive: p.band, emissiveIntensity: .35, roughness: .7, side: THREE.DoubleSide });
-    const tail = new THREE.Mesh(new THREE.PlaneGeometry(.55, .08, 8, 1), m); tail.position.x = -.4; band.add(tail);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(.165, .032, 8, 24), m); ring.rotation.x = Math.PI / 2; band.add(ring);
+    const tail = new THREE.Mesh(new THREE.PlaneGeometry(.34, .045, 8, 1), m); tail.position.x = -.29; band.add(tail);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.128, .017, 8, 28), m); ring.rotation.x = Math.PI / 2; band.add(ring);
     band.userData = { tail, base: tail.geometry.attributes.position.array.slice() };
   }
-  Object.assign(root.userData, { tilt, model, bones, mixer, actions, gun: gun.g, flash: gun.flash, band, w: { Idle: 1, Run: 0, Walk: 0 }, t: Math.random() * 3 });
+  Object.assign(root.userData, { fingers, tilt, model, bones, mixer, actions, gun: gun.g, flash: gun.flash, band, w: { Idle: 1, Run: 0, Walk: 0 }, t: Math.random() * 3 });
   return root;
 }
 
@@ -96,22 +103,43 @@ export function pose(o, e, dt) {
     point(B.LeftUpLeg, B.LeftLeg, want.set(.9 * f, -.35, 0)); point(B.LeftLeg, B.LeftFoot, want.set(-.35 * f, -1, 0));
     point(B.RightUpLeg, B.RightLeg, want.set(-.15 * f, -1, 0)); point(B.RightLeg, B.RightFoot, want.set(-.95 * f, -.3, 0));
   }
-  if (!e.prone) point(B.Spine1, B.Spine2, want.set((.1 + (run ? .12 : 0) - Math.sin(aim) * .22) * f, 1, 0), .8);
-  else point(B.Neck, B.Head, want.set(.25 * f, 1, 0));
-  B.RightArm.getWorldPosition(chest); B.LeftArm.getWorldPosition(fore); chest.lerp(fore, .35);
-  grip.copy(chest).addScaledVector(dir, .3); grip.y -= .17 - Math.max(0, dir.y) * .06;
-  fore.copy(grip).addScaledVector(dir, .42);
-  reach(B.RightArm, B.RightForeArm, B.RightHand, grip, want.set(-.5 * f, -1, .5 * f).clone());
-  reach(B.LeftArm, B.LeftForeArm, B.LeftHand, fore, want.set(0, -1, -.6 * f).clone());
+  if (!air && !run && !e.prone) {
+    // braced firing stance: left foot forward, knees soft
+    point(B.LeftUpLeg, B.LeftLeg, want.set(.42 * f, -.9, -.1 * f)); point(B.LeftLeg, B.LeftFoot, want.set(-.04 * f, -1, 0));
+    point(B.RightUpLeg, B.RightLeg, want.set(-.2 * f, -.96, .12 * f)); point(B.RightLeg, B.RightFoot, want.set(-.46 * f, -.89, 0));
+    u.tilt.updateWorldMatrix(true, true);
+    const foot = Math.min(B.LeftFoot.getWorldPosition(a).y, B.RightFoot.getWorldPosition(b).y) - o.getWorldPosition(c).y;
+    u.tilt.position.y += .13 - foot; u.tilt.updateWorldMatrix(true, true);
+  }
+  if (!e.prone) {
+    point(B.Spine, B.Spine1, want.set((.14 + (run ? .1 : 0) - Math.sin(aim) * .16) * f, 1, 0));
+    point(B.Spine1, B.Spine2, want.set((.16 + (run ? .08 : 0) - Math.sin(aim) * .24) * f, 1, 0));
+    yaw(B.Spine2, -.42);            // blade the shoulders behind the rifle
+    yaw(B.Neck, .36);               // eyes stay down the sights
+    point(B.Neck, B.Head, want.set((.34 - Math.sin(aim) * .2) * f, 1, .08 * f), .9);
+  } else point(B.Neck, B.Head, want.set(.25 * f, 1, 0));
+  // stock tucked into the right shoulder, support hand under the handguard
+  B.RightArm.getWorldPosition(chest); B.LeftArm.getWorldPosition(fore); chest.lerp(fore, .3);
+  const lift = Math.abs(dir.y);
+  grip.copy(chest).addScaledVector(dir, .32); grip.y -= .12 - Math.max(0, dir.y) * .04; grip.x += f * lift * .24; grip.z += .06 * f;
+  // targets are the wrists, so they sit just behind and below the parts the fingers wrap around
+  hold.copy(grip).addScaledVector(dir, -.07); hold.y -= .05;
+  fore.copy(grip).addScaledVector(dir, .24); fore.y -= .055; fore.z -= .02 * f;
+  reach(B.RightArm, B.RightForeArm, B.RightHand, hold, want.set(-.35 * f, -1, .7 * f).clone());
+  reach(B.LeftArm, B.LeftForeArm, B.LeftHand, fore, want.set(.1 * f, -1, -.35 * f).clone());
+  // hands follow the rifle, fingers closed
+  point(B.RightHand, B.RightHandMiddle1, want.copy(dir).setY(dir.y - .25));
+  point(B.LeftHand, B.LeftHandMiddle1, want.copy(dir).setY(dir.y + .3).setZ(.8 * f));
+  for (const [bone, base] of u.fingers) bone.quaternion.copy(base).multiply(curl);
   // gun and headband live in the soldier's local space
   o.worldToLocal(u.gun.position.copy(grip));
   u.gun.position.y += .03; u.gun.rotation.set(0, 0, aim);
   if (u.band) {
     B.Head.getWorldPosition(a); B.HeadTop_End.getWorldPosition(b);
-    o.worldToLocal(u.band.position.copy(a).lerp(b, .5));
+    o.worldToLocal(u.band.position.copy(a).lerp(b, .66));
     u.band.rotation.z = -u.lie * .4;
     const g = u.band.userData.tail.geometry.attributes.position, base = u.band.userData.base;
-    for (let i = 0; i < g.count; i++) { const x = base[i * 3], k = (.28 - x) / .55; g.setY(i, base[i * 3 + 1] + Math.sin(u.t * 14 + x * 14) * .07 * k - (run || air ? 0 : k * k * .3)); }
+    for (let i = 0; i < g.count; i++) { const x = base[i * 3], k = (.17 - x) / .34; g.setY(i, base[i * 3 + 1] + Math.sin(u.t * 14 + x * 14) * .07 * k - (run || air ? 0 : k * k * .3)); }
     g.needsUpdate = true;
   }
 }
@@ -175,6 +203,6 @@ export function die(o, dt, grounded) {
   const g = u.gun.position;
   d.gv.y -= 16 * dt; g.addScaledVector(d.gv, dt); u.gun.rotation.z += d.spin * dt;
   if (grounded && g.y < .09) { g.y = .09; d.gv.y *= -.25; d.gv.x *= .5; d.gv.z *= .4; d.spin = 0; u.gun.rotation.z += (Math.round(u.gun.rotation.z / Math.PI) * Math.PI - u.gun.rotation.z) * Math.min(1, dt * 14); u.gun.rotation.x += (1.45 - u.gun.rotation.x) * Math.min(1, dt * 9); }
-  if (u.band) { B.Head.getWorldPosition(a); B.HeadTop_End.getWorldPosition(b); o.worldToLocal(u.band.position.copy(a).lerp(b, .5)); u.band.rotation.z = angle; }
+  if (u.band) { B.Head.getWorldPosition(a); B.HeadTop_End.getWorldPosition(b); o.worldToLocal(u.band.position.copy(a).lerp(b, .66)); u.band.rotation.z = angle; }
   const hit = !d.landed && grounded && Math.abs(angle) > 1.4; if (hit) d.landed = true; return hit;
 }

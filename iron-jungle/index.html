@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Iron Jungle</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{height:100%;overflow:hidden;background:#0b0a10;color:#fff;font-family:system-ui,sans-serif;touch-action:none}
+canvas{display:block}
+#hud{position:fixed;top:10px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;font-weight:700;letter-spacing:.08em;text-shadow:0 2px 6px #000;pointer-events:none}
+#score{font-size:22px;font-variant-numeric:tabular-nums}#lives{color:#ff4b4b;font-size:18px}#weapon{font-size:12px;color:#ffc66b}
+.top{display:flex;gap:8px;pointer-events:auto}
+button{font:inherit;color:#fff;background:#0008;border:1px solid #fff4;border-radius:8px;padding:8px 12px;cursor:pointer}
+.top button{font-size:12px}
+#bossbar{position:fixed;top:70px;left:20%;right:20%;height:8px;background:#0009;border:1px solid #fff5}
+#bossfill{height:100%;background:linear-gradient(90deg,#ff2d16,#ffa030)}
+#toast{position:fixed;top:22%;width:100%;text-align:center;font-weight:800;font-size:22px;letter-spacing:.2em;color:#7fe9ff;text-shadow:0 0 18px #000;opacity:0;pointer-events:none}
+#menu{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;background:radial-gradient(ellipse,#0004,#000c);z-index:5}
+#title{font-size:clamp(34px,9vw,84px);font-weight:900;font-style:italic;letter-spacing:.03em;background:linear-gradient(#fff3c8,#ff8a1f 55%,#b3200c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 12px #000);padding:0 .15em}
+#sub{max-width:440px;opacity:.9}
+#go{font-size:18px;font-weight:800;padding:13px 40px;background:#d63b12;border-color:#ffb36b}
+#help{font-size:12px;opacity:.7;line-height:1.7}
+[hidden]{display:none!important}
+#pad,.act{position:fixed;border-radius:50%;background:#ffffff14;border:1.5px solid #ffffff55;touch-action:none;display:none;z-index:2}
+#pad{left:max(18px,env(safe-area-inset-left));bottom:28px;width:140px;height:140px}
+#knob{position:absolute;left:45px;top:45px;width:48px;height:48px;border-radius:50%;background:#fff6;pointer-events:none}
+.act{width:78px;height:78px;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
+#bf{right:22px;bottom:96px;background:#d63b1255}#bj{right:112px;bottom:28px}
+@media (pointer:coarse){#pad{display:block}.act{display:flex}}
+</style></head><body>
+<div id="hud"><div><div id="score">000000</div><div id="lives"></div><div id="weapon"></div></div><div class="top"><button id="mute">Sound on</button><button id="pause">Pause</button></div></div>
+<div id="bossbar" hidden><div id="bossfill"></div></div><div id="toast"></div>
+<div id="pad"><div id="knob"></div></div><div class="act" id="bj">JUMP</div><div class="act" id="bf">FIRE</div>
+<div id="menu"><h1 id="title">IRON JUNGLE</h1><p id="sub">Cross the jungle, grab the spread gun and destroy the Iron Bastion. You have 5 lives.</p><button id="go">Start mission</button>
+<p id="help">Keyboard: arrows or WASD move and aim · Space jump · J or X fire · P pause<br>Phone: turn sideways for the best view · Down lies prone · Down + Jump drops from a platform</p></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"}}</script>
+<script type="module" src="game.js"></script>
+</body></html>

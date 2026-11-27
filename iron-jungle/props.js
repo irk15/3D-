@@ -28,7 +28,7 @@ export function buildProps(scene, rnd, mats, gaps, end) {
       add(g, B(w, .06, 1.58), woodDark, 0, h - .03, 0);
     },
     barrels(g, w, h) {
-      for (const [x, z, m] of [[-w / 4, .25, red], [w / 4, -.1, olive], [-w / 6, -.75, rust]]) { add(g, C(w / 4, w / 4, h, 20), m, x, h / 2, z); for (const y of [.08, h * .35, h * .68, h - .03]) add(g, T(w / 4 + .005, .028), steel, x, y, z, Math.PI / 2); add(g, C(.07, .07, .05), steel, x + .1, h + .01, z); }
+      for (const [x, z, m] of [[-w / 4, .25, olive], [w / 4, -.1, oliveDark], [-w / 6, -.75, rust]]) { add(g, C(w / 4, w / 4, h, 20), m, x, h / 2, z); for (const y of [.08, h * .35, h * .68, h - .03]) add(g, T(w / 4 + .005, .028), steel, x, y, z, Math.PI / 2); add(g, C(.07, .07, .05), steel, x + .1, h + .01, z); }
     },
     sandbags(g, w, h) {
       const rows = 4, bh = h / rows;
@@ -42,7 +42,8 @@ export function buildProps(scene, rnd, mats, gaps, end) {
     }
   };
   const blocks = [];
-  [[8, 'barrels', 1.3, 1.1], [13.6, 'crate', 1.2, 1.2], [26, 'sandbags', 1.5, 1], [57.6, 'crate', 1.2, 1.2], [67.5, 'log', 1, 1], [74, 'crate', 1.2, 1.2], [89, 'sandbags', 1.5, 1], [105.8, 'crate', 1.1, 1.2], [125.5, 'barrels', 1.3, 1.1], [130.4, 'crate', 1.2, 1.2], [144, 'log', 1, 1], [178, 'sandbags', 1.5, 1], [185.6, 'crate', 1.2, 1.2], [198, 'barrels', 1.3, 1.1]].forEach(([x, type, w, h]) => {
+  // every obstacle keeps clear room around low platforms, gaps and its neighbours so nobody gets wedged
+  [[8, 'barrels', 1.3, 1.1], [26, 'sandbags', 1.5, 1], [86.5, 'crate', 1.2, 1.2], [117.5, 'barrels', 1.3, 1.1], [145, 'log', 1, 1], [173, 'crate', 1.2, 1.2], [178.5, 'sandbags', 1.5, 1], [197.5, 'barrels', 1.3, 1.1]].forEach(([x, type, w, h]) => {
     obstacles[type](group(x), w, h); blocks.push({ x1: x - w / 2, x2: x + w / 2, y: 0, top: h });
   });
 

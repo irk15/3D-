@@ -3,9 +3,9 @@ import * as THREE from 'three';
 
 export function skyMaterial(time) {
   return new THREE.ShaderMaterial({
-    side: THREE.BackSide, fog: false, depthWrite: false, uniforms: { t: time },
+    side: THREE.BackSide, fog: false, depthWrite: false, uniforms: { t: time, storm: { value: 0 }, flash: { value: 0 } },
     vertexShader: 'varying vec3 p;void main(){p=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader: `uniform float t;varying vec3 p;
+    fragmentShader: `uniform float t,storm,flash;varying vec3 p;
     float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),f.x),mix(h2(i+vec2(0,1)),h2(i+1.),f.x),f.y);}
     float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n2(p);p*=2.03;a*=.5;}return s;}
@@ -15,6 +15,8 @@ export function skyMaterial(time) {
     c+=vec3(1.,.6,.25)*(pow(s,1400.)*7.+pow(s,60.)*.7+pow(s,6.)*.22);
     vec2 uv=d.xz/(max(h,0.)+.16);float cl=smoothstep(.48,.82,fbm(uv*vec2(1.1,2.4)+vec2(t*.008,0.)))*smoothstep(.0,.08,h)*(1.-smoothstep(.45,.75,h));
     vec3 cc=mix(vec3(.16,.08,.15),vec3(1.25,.5,.22),pow(s,3.)*.85+.1);c=mix(c,cc,cl*.85);
+    float sc=fbm(uv*vec2(1.4,2.2)+vec2(t*.045,t*.01));vec3 n=mix(vec3(.012,.02,.045),vec3(.07,.1,.17),sc)+vec3(.04,.07,.13)*(1.-smoothstep(0.,.3,h));
+    c=mix(c,n,storm*.94)+vec3(.55,.65,1.)*flash*(.25+sc*sc);
     gl_FragColor=vec4(c,1.);}`
   });
 }

@@ -29,12 +29,23 @@ button{font:inherit;color:#fff;background:#0008;border:1px solid #fff4;border-ra
 #levels{display:flex;gap:8px}#levels button{font-weight:700;padding:9px 16px}#levels button[aria-pressed=true]{background:#ffb341;color:#201005;border-color:#ffe0a8}#levelnote{font-size:13px;color:#ffd391;min-height:1.2em}
 #menu{overflow-y:auto;justify-content:safe center}
 @media (max-height:520px){#menu{gap:7px;padding:10px}#title{font-size:34px}#sub{font-size:13px}#help{font-size:10px;line-height:1.5}#go{padding:9px 32px}}
+#bf{bottom:112px}#bn{width:62px;height:62px;right:118px;bottom:118px;background:#4a7a2a66;font-size:11px}
+#progress{position:fixed;top:22px;left:32%;right:32%;height:3px;background:#fff4;border-radius:3px}#progress i{position:absolute;top:-4px;width:11px;height:11px;margin-left:-5px;border-radius:50%;box-shadow:0 0 6px #000}#progress::after{content:'★';position:absolute;right:-18px;top:-9px;color:#ff5a30}
+#combo{position:fixed;top:92px;right:16px;font-weight:900;font-style:italic;font-size:22px;color:#ffc23a;text-shadow:0 2px 8px #000;pointer-events:none}
+#setup{display:flex;flex-direction:column;align-items:center}.row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+#codein{width:100px;font:800 16px system-ui;letter-spacing:.2em;text-align:center;text-transform:uppercase;color:#fff;background:#0009;border:1px solid #fff6;border-radius:8px;padding:8px;-webkit-user-select:text;user-select:text}
+#lobby{display:flex;flex-direction:column;gap:8px}#code{font:900 34px ui-monospace,monospace;letter-spacing:.25em;color:#ffd391;-webkit-user-select:text;user-select:text}#players{font-weight:800}#lobbyinfo{font-size:13px;max-width:440px}
+#levels.locked{pointer-events:none;opacity:.55}#go:disabled{opacity:.55}
+@media (max-height:520px){#menu{gap:5px;padding:8px}#title{font-size:28px}#sub{font-size:12px}#code{font-size:24px}#levels button,#setup button,#codein{padding:6px 11px;font-size:13px}#go{font-size:15px;padding:7px 28px}}
+@media (max-width:620px){#progress{display:none}}
 </style></head><body>
 <div id="hud"><div><div id="score">000000</div><div id="lives"></div><div id="weapon"></div></div><div class="top"><button id="mute">Sound on</button><button id="pause">Pause</button></div></div>
-<div id="bossbar" hidden><div id="bossfill"></div></div><div id="toast"></div>
-<div id="pad"><div id="knob"></div></div><div class="act" id="bj">JUMP</div><div class="act" id="bf">FIRE</div>
-<div id="menu"><h1 id="title">IRON JUNGLE</h1><p id="sub">Cross the jungle, grab the spread gun and destroy the Iron Bastion. Choose your difficulty.</p><div id="levels" role="group" aria-label="Difficulty"><button data-level="easy">Recruit</button><button data-level="normal">Soldier</button><button data-level="hard">Commando</button></div><div id="levelnote"></div><button id="go" disabled>Loading</button>
-<p id="help">Keyboard: arrows or WASD move and aim · Space jump · J or X fire · P pause<br>Phone: turn sideways for the best view · Down lies prone · Jump over crates, barrels and logs<br><small>Credits: soldier model from Mixamo via three.js examples · HDR sky from Poly Haven (CC0) · grass texture from opengameart.org (CC BY 3.0)</small></p></div>
+<div id="bossbar" hidden><div id="bossfill"></div></div><div id="progress" hidden></div><div id="combo"></div><div id="toast"></div>
+<div id="pad"><div id="knob"></div></div><div class="act" id="bj">JUMP</div><div class="act" id="bf">FIRE</div><div class="act" id="bn">NADE</div>
+<div id="menu"><h1 id="title">IRON JUNGLE</h1><p id="sub">Survive the storm, take down the gunship and destroy the Iron Bastion. Play solo or with up to 3 friends.</p><div id="levels" role="group" aria-label="Difficulty"><button data-level="easy">Recruit</button><button data-level="normal">Soldier</button><button data-level="hard">Commando</button></div><div id="levelnote"></div>
+<div id="setup"><div id="joinrow" class="row"><button id="create">Create co-op room</button><input id="codein" maxlength="5" placeholder="CODE" aria-label="Room code" autocomplete="off" autocapitalize="characters"><button id="join">Join</button></div>
+<div id="lobby" hidden><div class="row"><span id="code"></span><button id="copy">Copy invite link</button><button id="leave">Leave room</button></div><div id="players" class="row"></div><div id="lobbyinfo"></div></div></div><button id="go" disabled>Loading</button>
+<p id="help">Keyboard: arrows or WASD move and aim · Space jump · J or X fire · G grenade · P pause<br>Phone: turn sideways for the best view · Down lies prone · Jump over crates, barrels and logs<br><small>Credits: soldier model from Mixamo via three.js examples · HDR sky from Poly Haven (CC0) · grass texture from opengameart.org (CC BY 3.0)</small></p></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"}}</script>
-<script type="module" src="game.js?v=4"></script>
+<script type="module" src="game.js?v=5"></script>
 </body></html>

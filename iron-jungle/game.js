@@ -5,9 +5,11 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js?v=3';
-import * as ENV from './environment.js';
-import { buildProps } from './props.js?v=4';
+import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js?v=5';
+import * as ENV from './environment.js?v=5';
+import { buildProps } from './props.js?v=5';
+import { createWeather, createMusic } from './weather.js?v=5';
+import { createCoop, COLORS } from './coop.js?v=5';
 
 const $ = id => document.getElementById(id);
 let seed = 7;
@@ -42,7 +44,7 @@ const envReady = new HDRLoader(manager).loadAsync('assets/sunrise.hdr').then(hdr
   const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromEquirectangular(hdr).texture; scene.environmentIntensity = .55; hdr.dispose(); pm.dispose();
 });
 
-scene.add(new THREE.HemisphereLight(0x8fa6d8, 0x2a2014, .55));
+const hemi = new THREE.HemisphereLight(0x8fa6d8, 0x2a2014, .55); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffa860, 3.9);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 20, bottom: -14, far: 90 });
@@ -213,16 +215,18 @@ function sfx(k) {
     s.connect(f).connect(g); s.start(t); s.stop(t + d);
   } else {
     const o = ac.createOscillator(); o.type = 'square';
-    const [a, b, d] = { jump: [220, 440, .12], power: [440, 1320, .3], hurt: [300, 60, .4] }[k];
+    const [a, b, d] = { jump: [220, 440, .12], power: [440, 1320, .3], hurt: [300, 60, .4], laser: [1500, 250, .14], rocket: [180, 70, .25], nade: [500, 200, .12] }[k];
     o.frequency.setValueAtTime(a, t); o.frequency.exponentialRampToValueAtTime(b, t + d);
     g.gain.setValueAtTime(.08, t); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); o.start(t); o.stop(t + d);
   }
 }
+let music;
 function initAudio() {
   if (ac) { ac.resume(); return; }
   try {
     ac = new AudioContext(); noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    music = createMusic(ac, noiseBuf);
   } catch { ac = null; }
 }
 
@@ -245,35 +249,88 @@ setLevel(level);
 
 // ---------- entities ----------
 let hero, ready = false;
-function makeHero() {
-  hero = soldier({ tint: 0x86a8d4, visor: 0x2fb8ff, band: 0xff2214 }); scene.add(hero);
-  const l = new THREE.PointLight(0xbfd8ff, 8, 5, 2); l.position.set(0, 1.8, 1.8); hero.add(l);
+function makeSoldierFor(slot) {
+  const c = COLORS[slot], o = soldier(c); scene.add(o);
+  const l = new THREE.PointLight(c.visor, 6, 5, 2); l.position.set(0, 1.8, 1.8); o.add(l); return o;
 }
+let heroSlot = -1;
+function makeHero(slot = 0) {
+  if (slot === heroSlot) return;
+  if (hero) scene.remove(hero);
+  hero = makeSoldierFor(slot); heroSlot = slot;
+}
+const remotes = new Map();
 let P, enemies = [], bullets = [], pickups = [], score = 0, lives, state = 'title', camX = 0, boss, checkpoint = 2, time = 0;
 const bGeo = cap(.035, .5); bGeo.rotateZ(Math.PI / 2);
 const bMat = glow(0xffc060, 2.2), bSpread = glow(0xff6030, 2.6), eMat = glow(0xff2858, 4), eGeo = ball(.15);
 const halo = c => new THREE.SpriteMaterial({ map: softTex, color: c, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false });
 const eHalo = halo(0xff2050), bHalo = halo(0xff9a30);
+const laserGeo = cap(.045, 1.6); laserGeo.rotateZ(Math.PI / 2);
+const lMat = glow(0x40ff9a, 3.4), rocketGeo = cap(.11, .45); rocketGeo.rotateZ(Math.PI / 2);
 function shoot(x, y, a, speed, enemy, mat) {
   const m = mesh(enemy ? eGeo : bGeo, mat || (enemy ? eMat : bMat), x, y, 0, scene, false); m.rotation.z = a;
   const halo = new THREE.Sprite(enemy ? eHalo : bHalo); halo.scale.set(enemy ? .9 : .55, enemy ? .9 : .55, 1); m.add(halo);
   const k = enemy ? diff().speed : 1;
-  bullets.push({ m, vx: Math.cos(a) * speed * k, vy: Math.sin(a) * speed * k, enemy, life: enemy ? 3.2 / k : 1.1 });
+  const b = { m, vx: Math.cos(a) * speed * k, vy: Math.sin(a) * speed * k, enemy, life: enemy ? 3.2 / k : 1.1, dmg: 1 };
+  bullets.push(b); return b;
 }
-function addEnemy(type, x, y = 0) {
-  let o, e = { type, x, y, vx: 0, vy: 0, on: true, cd: rnd(.6, 1.8), flash: 0 };
+// enemy shots are announced to teammates so each player can dodge them on their own screen
+function enemyShot(x, y, a, speed) { shoot(x, y, a, speed, true); if (net.playing && net.host) net.send({ t: 'ef', x: +x.toFixed(2), y: +y.toFixed(2), a: +a.toFixed(3), s: speed }); sfx('eshot'); }
+const WEAPONS = { rifle: { name: 'RIFLE', cd: .12 }, spread: { name: 'SPREAD GUN', cd: .17, color: 0xff7a30 }, laser: { name: 'LASER', cd: .22, color: 0x40ff9a }, rocket: { name: 'ROCKET', cd: .5, color: 0xff3a3a }, nade: { name: '+3 GRENADES', color: 0x38e0ff } };
+// ghost shots are copies of a teammate's fire: seen but harmless here
+function fireWeapon(w, sx, sy, a, ghost) {
+  if (w === 'laser') { const b = shoot(sx, sy, a, 40, false, lMat); b.m.geometry = laserGeo; b.dmg = 2; b.pierce = new Set(); b.ghost = ghost; }
+  else if (w === 'rocket') { const b = shoot(sx, sy, a, 17, false, glow(0xff8030, 2.5)); b.m.geometry = rocketGeo; b.rocket = true; b.life = 1.5; b.ghost = ghost; }
+  else for (const off of w === 'spread' ? [-.28, -.14, 0, .14, .28] : [0]) shoot(sx, sy, a + off, 26, false, w === 'spread' ? bSpread : bMat).ghost = ghost;
+}
+let grenades = [];
+const nadeGeo = ball(.15), nadeMat = std(0x394a28, .5, .6);
+function throwNade(x, y, vx, vy, ghost) {
+  const m = mesh(nadeGeo, nadeMat, x, y, .2); mesh(ball(.05), glow(0xff4020, 4), 0, .14, 0, m, false);
+  grenades.push({ m, vx, vy, t: 1.25, ghost });
+}
+// splash damage from grenades, rockets and fuel drums
+function blast(x, y, radius, dmg, ghost) {
+  explode(x, Math.max(y, .4), radius / 2.6);
+  if (ghost) return;
+  for (const e of enemies) { const cy = e.type === 'drone' || e.type === 'gunship' ? e.y : e.y + e.h / 2; if (!e.gone && Math.hypot(Math.max(0, Math.abs(e.x - x) - e.w), cy - y) < radius) damage(e, e.type === 'drum' ? 9 : dmg, Math.sign(e.x - x) || 1); }
+}
+function updateGrenades(dt) {
+  for (let i = grenades.length - 1; i >= 0; i--) {
+    const n = grenades[i], p = n.m.position; n.t -= dt; n.vy -= 26 * dt; p.x += n.vx * dt; p.y += n.vy * dt; n.m.rotation.z -= dt * 12;
+    const overGap = gaps.some(g => p.x > g[0] && p.x < g[1]);
+    if (p.y < .15 && !overGap && p.y > -.5) { p.y = .15; n.vy *= -.42; n.vx *= .62; }
+    const touch = enemies.some(e => !e.gone && Math.abs(p.x - e.x) < e.w + .15 && p.y > e.y - .5 && p.y < e.y + e.h + .1);
+    if (n.t <= 0 || touch || p.y < -4) { scene.remove(n.m); grenades.splice(i, 1); blast(p.x, p.y, 3.2, 8, n.ghost); }
+  }
+}
+let nextId = 1;
+function addEnemy(type, x, y = 0, id = nextId++) {
+  let o, e = { id, type, x, y, vx: 0, vy: 0, on: true, cd: rnd(.6, 1.8), flash: 0 };
   if (type === 'run' || type === 'gun') {
     o = soldier(type === 'gun' ? { tint: 0xe08a70, visor: 0xff2a10 } : { tint: 0xc8b078, visor: 0xff6a10 }); e.hp = type === 'gun' ? 3 : 1; e.face = -1; o.rotation.y = Math.PI; e.h = 1.8; e.w = .45;
   } else if (type === 'turret') {
     o = new THREE.Group(); mesh(cyl(.7, .95, .7), steel, 0, .35, 0, o); mesh(ball(.55), rust, 0, .8, 0, o);
     const piv = new THREE.Group(); piv.position.y = .85; o.add(piv); mesh(box(1.2, .22, .22), steel, .65, 0, 0, piv); mesh(ball(.13), glow(0xff3020), 0, .15, .52, piv, false);
     o.userData.piv = piv; e.hp = 8; e.h = 1.35; e.w = .8;
+  } else if (type === 'drum') {
+    o = new THREE.Group(); mesh(cyl(.45, .45, 1.1, 20), std(0xc01c10, .4, .5, { emissive: 0x3a0400 }), 0, .55, 0, o); for (const h of [.25, .85]) mesh(cyl(.47, .47, .1, 20), std(0xffc21a, .5, .3, { emissive: 0x332200 }), 0, h, 0, o);
+    mesh(ball(.07), glow(0xff9020, 4), 0, .58, .48, o, false); e.hp = 2; e.h = 1.1; e.w = .46;
+  } else if (type === 'gunship') {
+    o = new THREE.Group(); const hull = std(0x39432f, .45, .7);
+    mesh(cap(.9, 2.4), hull, 0, 0, 0, o).rotation.z = Math.PI / 2; mesh(ball(.7), std(0x14262e, .05, .9), -1.55, .12, .25, o); mesh(cyl(.14, .4, 3.2, 10), hull, 3, .35, 0, o).rotation.z = -Math.PI / 2 + .15; mesh(box(.15, 1.3, .1), rust, 4.5, .8, 0, o);
+    for (const z of [-1.1, 1.1]) { mesh(box(1.1, .12, .9), hull, .2, -.45, z, o); mesh(cyl(.22, .22, 1.3, 12), steel, -.1, -.7, z * 1.15, o).rotation.z = Math.PI / 2; }
+    mesh(cyl(.14, .14, .7, 8), steel, 0, 1.2, 0, o);
+    const rotor = new THREE.Group(); rotor.position.y = 1.55; o.add(rotor); for (const a of [0, Math.PI / 2]) mesh(box(7.4, .05, .26), std(0x101012, .6, .4), 0, 0, 0, rotor).rotation.y = a;
+    mesh(ball(.2), glow(0xff2010, 4), -.9, -.75, .75, o, false); const lamp = new THREE.PointLight(0xff4030, 14, 8, 2); lamp.position.set(-1, -1.4, 1); o.add(lamp);
+    o.userData.main = rotor; e.hp = e.max = Math.round(diff().boss * .6); e.h = 1.9; e.w = 2.1; e.n = 0; e.base = y;
   } else if (type === 'drone') {
     o = new THREE.Group(); mesh(ball(.42), steel, 0, 0, 0, o).scale.y = .65; mesh(ball(.14), glow(0xff3020, 4), -.3, -.03, .3, o, false);
     o.userData.rot = [-.75, .75].map(s => mesh(box(.8, .04, .12), rust, s, .24, 0, o)); e.hp = 2; e.h = .6; e.w = .6; e.base = y;
   }
-  o.position.set(x, y, 0); scene.add(o); e.o = o; enemies.push(e); return e;
+  o.position.set(x, y, 0); scene.add(o); e.o = o; enemies.push(e); if (type === 'gunship') gunship = e; return e;
 }
+let gunship;
 function makeBoss() {
   const o = new THREE.Group(), armor = std(0x3b4148, .4, .85);
   mesh(box(5, 8, 4), armor, 1.4, 4, -.4, o); mesh(box(5.6, .6, 4.6), rust, 1.4, 8.2, -.4, o);
@@ -281,36 +338,38 @@ function makeBoss() {
   const core = mesh(ball(.75), glow(0xff3a18, 2.5), -1.15, 2.2, 0, o, false);
   const guns = [4.6, 6.6].map(y => { const p = new THREE.Group(); p.position.set(-1.3, y, .5); o.add(p); mesh(ball(.5), steel, 0, 0, 0, p); mesh(box(1.5, .3, .3), armor, -.8, 0, 0, p); return p; });
   o.position.set(BOSSX + 6, 0, 0); scene.add(o);
-  boss = { type: 'boss', o, core, guns, x: BOSSX + 4.85, y: 1.2, w: .9, h: 2.1, hp: diff().boss, max: diff().boss, cd: 2, flash: 0, n: 0 };
+  boss = { id: 9999, type: 'boss', o, core, guns, x: BOSSX + 4.85, y: 1.2, w: .9, h: 2.1, hp: diff().boss, max: diff().boss, cd: 2, flash: 0, n: 0 };
   enemies.push(boss);
 }
-function addPickup(x, y) {
-  const o = new THREE.Group(); mesh(new THREE.OctahedronGeometry(.38), glow(0x38e0ff, 2.4), 0, 0, 0, o, false);
-  const r = mesh(new THREE.TorusGeometry(.6, .05, 8, 32), glow(0x38e0ff, 1.5), 0, 0, 0, o, false); o.position.set(x, y, 0); scene.add(o); pickups.push({ o, r, x, y });
+function addPickup(x, y, kind) {
+  const c = WEAPONS[kind].color, o = new THREE.Group(); mesh(kind === 'nade' ? ball(.3) : new THREE.OctahedronGeometry(.38), glow(c, 2.2), 0, 0, 0, o, false);
+  const r = mesh(new THREE.TorusGeometry(.6, .05, 8, 32), glow(c, 1.5), 0, 0, 0, o, false); o.position.set(x, y, 0); scene.add(o); pickups.push({ o, r, x, y, kind });
 }
 let spawns = [];
 function reset() {
+  grenades.forEach(n => scene.remove(n.m)); grenades = []; gunship = null; nextId = 1; combo = 0; comboT = 0; clock0 = 0; shots = 0; hits = 0; gunshipSent = false; dead.clear();
   [...enemies, ...pickups, ...corpses].forEach(e => scene.remove(e.o)); corpses.length = 0; scorches.splice(0).forEach(d => scene.remove(d)); bullets.forEach(b => scene.remove(b.m));
   enemies = []; bullets = []; pickups = []; boss = null; score = 0; lives = diff().lives; checkpoint = 2; camX = 2; time = 0;
-  P = { x: 2, y: 0, vx: 0, vy: 0, on: true, face: 1, aim: 0, cd: 0, inv: 2, spread: false, dead: 0, drop: 0, slow: 0 };
+  P = { x: 2 + (net.playing ? net.slot * 1.1 : 0), y: 0, vx: 0, vy: 0, on: true, face: 1, aim: 0, cd: 0, inv: 2, weapon: 'rifle', nades: 3, dead: 0, drop: 0, slow: 0, shot: 0 };
   revive(hero); hero.rotation.y = 0; hero.visible = true;
-  spawns = [[16, 'run'], [18, 'gun', 2.6], [24, 'run'], [30, 'turret'], [34, 'gun', 2.8], [40, 'drone', 4.5], [43, 'run'], [56, 'run'], [58, 'run'], [63, 'gun', 2.6], [70, 'turret'], [75, 'drone', 5], [85, 'gun', 5.2], [90, 'run'], [104, 'turret'], [110, 'gun', 2.7], [114, 'run'], [116, 'drone', 4], [120, 'turret', 5], [128, 'run'], [132, 'run'], [136, 'gun', 2.7], [145, 'drone', 5], [148, 'drone', 3.6], [162, 'turret'], [165, 'gun', 2.8], [173, 'gun', 5.1], [180, 'run'], [182, 'run'], [185, 'drone', 4.5], [190, 'turret', 2.7], [196, 'gun'], [200, 'run'], [203, 'turret']];
+  spawns = [[16, 'run'], [18, 'gun', 2.6], [24, 'run'], [11, 'drum'], [41.5, 'turret'], [34, 'gun', 2.8], [40, 'drone', 4.5], [43, 'run'], [56, 'run'], [58, 'run'], [63, 'gun', 2.6], [55.8, 'drum'], [70.3, 'turret'], [75, 'drone', 5], [85, 'gun', 5.2], [90, 'run'], [89.5, 'drum'], [110, 'gun', 2.7], [114, 'run'], [116, 'drone', 4], [120, 'turret', 5], [121.5, 'drum'], [124.8, 'turret'], [128, 'run'], [132, 'run'], [136, 'gun', 2.7], [145, 'drone', 5], [148, 'drone', 3.6], [182.5, 'turret'], [165, 'gun', 2.8], [173, 'gun', 5.1], [180, 'run'], [182, 'run'], [185, 'drone', 4.5], [190, 'turret', 2.7], [196, 'gun'], [200, 'run'], [203, 'turret'], [207, 'drum'], [212, 'drum']];
   if (diff().extra) spawns.push([27, 'run'], [46, 'drone', 4.2], [66, 'run'], [80, 'gun', 2.8], [94, 'drone', 4.6], [112, 'run'], [137, 'turret', 2.7], [157, 'run'], [170, 'drone', 3.8], [188, 'run'], [199, 'drone', 4.4]);
   spawns.sort((a, b) => a[0] - b[0]);
-  addPickup(41, 6); addPickup(120, 7); addPickup(173, 6.2);
+  addPickup(41, 6, 'spread'); addPickup(62, 4, 'nade'); addPickup(85, 6.6, 'laser'); addPickup(120, 7, 'rocket'); addPickup(136, 4.1, 'nade'); addPickup(173, 6.5, 'spread'); addPickup(192, 4.1, 'laser'); addPickup(209, 1.4, 'nade');
 }
 
 // ---------- input ----------
 const keys = {}, touch = {};
-const map = { ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', ArrowUp: 'u', KeyW: 'u', ArrowDown: 'd', KeyS: 'd', Space: 'j', KeyK: 'j', KeyJ: 'f', KeyX: 'f', KeyZ: 'j' };
+const map = { ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', ArrowUp: 'u', KeyW: 'u', ArrowDown: 'd', KeyS: 'd', Space: 'j', KeyK: 'j', KeyJ: 'f', KeyX: 'f', KeyZ: 'j', KeyG: 'n', KeyL: 'n' };
 addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
   if (map[e.code]) { keys[map[e.code]] = true; e.preventDefault(); }
-  if (e.code === 'Enter' && state !== 'play') start();
+  if (e.code === 'Enter' && e.target.tagName !== 'INPUT' && state !== 'play' && !net.active) start();
   if (e.code === 'KeyP' && (state === 'play' || state === 'pause')) togglePause();
   if (e.code === 'KeyM') toggleMute();
 });
 addEventListener('keyup', e => { if (map[e.code]) keys[map[e.code]] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (state === 'play') togglePause(); });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (state === 'play' && !net.playing) togglePause(); });
 const pad = $('pad'), pointers = new Map();
 function dirFrom(ev) {
   const r = pad.getBoundingClientRect(), dx = (ev.clientX - r.left) / r.width - .5, dy = (ev.clientY - r.top) / r.height - .5;
@@ -320,27 +379,35 @@ function dirFrom(ev) {
 pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); pointers.set(e.pointerId, 1); dirFrom(e); });
 pad.addEventListener('pointermove', e => { if (pointers.has(e.pointerId)) dirFrom(e); });
 for (const n of ['pointerup', 'pointercancel']) pad.addEventListener(n, e => { pointers.delete(e.pointerId); touch.l = touch.r = touch.u = touch.d = false; $('knob').style.transform = ''; });
-for (const [id, k] of [['bj', 'j'], ['bf', 'f']]) {
+for (const [id, k] of [['bj', 'j'], ['bf', 'f'], ['bn', 'n']]) {
   const b = $(id); b.addEventListener('pointerdown', e => { b.setPointerCapture(e.pointerId); touch[k] = true; });
   for (const n of ['pointerup', 'pointercancel']) b.addEventListener(n, () => touch[k] = false);
 }
 addEventListener('contextmenu', e => e.preventDefault());
 const down = k => keys[k] || touch[k];
-function togglePause() { state = state === 'play' ? 'pause' : 'play'; if (state === 'pause') show('PAUSED', 'Take a breath, soldier.', 'Resume'); else $('menu').hidden = true; }
+function togglePause() { if (net.playing) return; state = state === 'play' ? 'pause' : 'play'; if (state === 'pause') show('PAUSED', 'Take a breath, soldier.', 'Resume'); else $('menu').hidden = true; }
 function toggleMute() { muted = !muted; $('mute').textContent = muted ? 'Sound off' : 'Sound on'; }
-$('mute').onclick = toggleMute; $('pause').onclick = () => { if (state === 'play' || state === 'pause') togglePause(); };
+$('mute').onclick = toggleMute; $('pause').onclick = () => {
+  if (net.active) { net.leave(); $('levels').classList.remove('locked'); toMenu('You left the co-op game.'); } else if (state === 'play' || state === 'pause') togglePause();
+};
 function show(t, s, b) { $('title').textContent = t; $('sub').textContent = s; $('go').textContent = b; $('menu').hidden = false; }
 function start() {
   if (!ready) return;
   initAudio();
   if (state === 'pause') { togglePause(); return; }
-  reset(); state = 'play'; $('menu').hidden = true;
+  if (net.active) { if (net.host) net.start(); return; }
+  begin();
+}
+function begin() {
+  initAudio(); for (const id of [...remotes.keys()]) removeRemote(id);
+  makeHero(net.playing ? net.slot : 0); reset(); state = 'play'; $('menu').hidden = true; $('setup').hidden = true;
+  $('pause').textContent = net.playing ? 'Leave' : 'Pause'; toast(net.playing ? 'CO-OP MISSION' : 'MISSION 1: IRON JUNGLE');
 }
 $('go').onclick = start;
 
 // ---------- update ----------
 const HEAD = 1.95;
-function obstaclesNow() { return blocks.concat(enemies.filter(e => e.type === 'turret' && !e.gone).map(e => ({ x1: e.x - .75, x2: e.x + .75, y: e.y, top: e.y + 1.35, turret: e }))); }
+function obstaclesNow() { return blocks.concat(enemies.filter(e => (e.type === 'turret' || e.type === 'drum') && !e.gone).map(e => { const h = e.type === 'drum' ? .46 : .75; return { x1: e.x - h, x2: e.x + h, y: e.y, top: e.y + e.h, turret: e }; })); }
 // push a body of half-width r out of anything solid
 function collide(e, r, ox) {
   for (const b of obstaclesNow()) {
@@ -365,21 +432,25 @@ function physics(e, dt, r = .5) {
 }
 function hurt(dir = -P.face) {
   if (P.inv > 0 || P.dead > 0) return;
-  P.dead = 3; P.slow = .45; scene.userData.hurt = .8; lives--; P.spread = false; hero.visible = true; hero.userData.flash.visible = false;
+  P.dead = 3; P.slow = .45; scene.userData.hurt = .8; lives--; P.weapon = 'rifle'; hero.visible = true; hero.userData.flash.visible = false;
   P.vx = dir * 3; P.vy = Math.max(P.vy * .3, 0) + (P.on ? 2 : 3); P.prone = false;
   startDeath(hero, dir !== P.face); if (P.y > -1) wound(P.x, P.y + 1.35, dir); shake = Math.max(shake, .22); sfx('hurt');
 }
 function respawn() {
-  if (lives <= 0) { state = 'over'; show('MISSION FAILED', `${diff().name} · Score ${score}`, 'Try again'); return; }
+  if (lives <= 0) {
+    if (!net.playing) { finish(false); return; }
+    P.out = true; P.dead = 1e9; hero.visible = false; toast('YOU ARE DOWN · WATCHING YOUR TEAM'); return;
+  }
   let x = Math.max(checkpoint, camX - Math.min(4, viewHalf - 1.5));
   for (const g of gaps) if (x > g[0] - 4 && x < g[1] + 1.5) x = g[0] - 4;
   for (const b of obstaclesNow()) if (x > b.x1 - 1 && x < b.x2 + 1 && b.y < 1) x = b.x1 - 1.1;
   camX = Math.min(camX, x + viewHalf - 1.5);
-  revive(hero);
+  P.nades = Math.max(P.nades, 2); revive(hero);
   Object.assign(P, { x, y: .05, vx: 0, vy: 0, inv: 2.5, dead: 0 }); hero.visible = true;
   bullets.filter(b => b.enemy).forEach(b => b.life = 0);
 }
 function updatePlayer(dt) {
+  if (P.out) return;
   if (P.dead > 0) {
     P.dead -= dt; physics(P, dt, .9); if (P.on) P.vx *= Math.exp(-dt * 4.5);
     hero.position.set(P.x, P.y, 0); if (die(hero, dt, P.on)) { dust2(P.x, P.y); shake = Math.max(shake, .12); }
@@ -390,97 +461,253 @@ function updatePlayer(dt) {
   P.prone = d && !h && P.on && !obstaclesNow().some(b => P.y < b.top - .05 && P.y + .6 > b.y && P.x + (P.face > 0 ? 1.5 : 1.2) > b.x1 && P.x - (P.face > 0 ? 1.2 : 1.5) < b.x2);
   P.vx = P.prone ? 0 : h * 7.2;
   P.aim = u ? (h ? .75 : 1.45) : d && h ? -.7 : d && !P.on ? -1.45 : 0;
-  if (down('j') && !P.jHeld && P.on) { P.vy = 14.2; sfx('jump'); }
+  if (down('j') && !P.jHeld && P.on) { P.vy = 15.2; sfx('jump'); }
   P.jHeld = down('j');
   physics(P, dt);
-  const minX = camX - viewHalf + 1;
+  const minX = net.playing ? 0 : camX - viewHalf + 1;
   P.x = clamp(P.x, Math.max(0, minX), boss ? BOSSX + 2.6 : END);
   if (P.y < -3) { P.inv = 0; hurt(); P.dead = 1.1; }
   if (P.on && P.ground && !gaps.some(g => P.x > g[0] - 2 && P.x < g[1] + 2)) checkpoint = Math.max(checkpoint, P.x - 3);
   P.cd -= dt; P.inv -= dt;
   hero.userData.flash.visible = false;
   if (down('f') && P.cd <= 0) {
-    P.cd = P.spread ? .17 : .12;
+    P.cd = WEAPONS[P.weapon].cd;
     const a = P.face > 0 ? P.aim : Math.PI - P.aim;
     const sx = P.x + Math.cos(a) * 1.1, sy = P.y + (P.prone ? .55 : 1.55) + Math.sin(a) * 1.1;
-    for (const off of P.spread ? [-.28, -.14, 0, .14, .28] : [0]) shoot(sx, sy, a + off, 26, false, P.spread ? bSpread : bMat);
-    muzzle.position.set(sx, sy, .8); muzzle.intensity = 24; P.flashT = .045; sfx('shot');
+    fireWeapon(P.weapon, sx, sy, a, false); shots++;
+    muzzle.position.set(sx, sy, .8); muzzle.intensity = 24; P.flashT = .045; sfx(P.weapon === 'laser' ? 'laser' : P.weapon === 'rocket' ? 'rocket' : 'shot');
     puff(sx, sy, .4, { map: softTex, color: 0xffa040, k: 2.5, add: true, life: .06, size: .9, alpha: .8 });
     casing(P.x + P.face * .3, sy - .05, P.face);
+    if (net.playing) net.send({ t: 'sh', w: P.weapon, x: +sx.toFixed(2), y: +sy.toFixed(2), a: +a.toFixed(3) });
   }
+  P.nadeCd = (P.nadeCd || 0) - dt;
+  if (down('n') && !P.nHeld && P.nades > 0 && P.nadeCd <= 0) {
+    P.nades--; P.nadeCd = .45; const v = { x: P.x + P.face * .6, y: P.y + 1.7, vx: P.face * (u ? 6 : 10) + P.vx * .4, vy: u ? 13 : 8 };
+    throwNade(v.x, v.y, v.vx, v.vy, false); sfx('nade'); if (net.playing) net.send({ t: 'nd', ...v });
+  }
+  P.nHeld = down('n');
   P.flashT -= dt; hero.userData.flash.visible = P.flashT > 0; hero.userData.flash.rotation.x = time * 90;
   hero.position.set(P.x, P.y, 0); pose(hero, P, dt);
   hero.visible = P.inv <= 0 || Math.floor(P.inv * 14) % 2 === 0;
-  for (const p of pickups) if (!p.got && Math.abs(P.x - p.x) < .9 && Math.abs(P.y + 1 - p.y) < 1.3) { p.got = true; scene.remove(p.o); P.spread = true; score += 500; sfx('power'); toast('SPREAD GUN'); }
+  for (const p of pickups) if (!p.got && Math.abs(P.x - p.x) < .9 && Math.abs(P.y + 1 - p.y) < 1.3) {
+    p.got = true; scene.remove(p.o); if (p.kind === 'nade') P.nades = Math.min(9, P.nades + 3); else P.weapon = p.kind;
+    if (!net.playing || net.host) score += 500; sfx('power'); toast(WEAPONS[p.kind].name);
+  }
 }
 let toastT = 0;
+const weather = createWeather(scene, renderer, sun, hemi, sky.material);
+let storm = 0;
 function toast(t) { $('toast').textContent = t; toastT = 1.8; }
+// everyone the enemies can shoot at
+function targets() {
+  const list = []; if (P.dead <= 0) list.push({ x: P.x, y: P.y, prone: P.prone });
+  for (const r of remotes.values()) if (!r.dead && !r.out) list.push({ x: r.x, y: r.y, prone: r.prone });
+  return list;
+}
+const leaderX = () => Math.max(P.out ? 0 : P.x, ...[...remotes.values()].map(r => r.x));
+const rearX = () => Math.min(P.out ? 1e9 : P.x, ...[...remotes.values()].filter(r => !r.out).map(r => r.x));
+let gunshipSent = false;
 function updateEnemies(dt) {
-  while (spawns.length && spawns[0][0] < camX + viewHalf + 3) { const [x, t, y] = spawns.shift(); addEnemy(t, t === 'run' ? Math.max(x, camX + viewHalf + 1) : x, y || 0); }
-  if (!boss && P.x > BOSSX - 14) { makeBoss(); toast('WARNING: IRON BASTION'); }
+  const authority = !net.playing || net.host;
+  if (authority) {
+    const front = net.playing ? Math.max(leaderX() + viewHalf * .28, camX) : camX, edge = front + Math.max(viewHalf, 12);
+    while (spawns.length && spawns[0][0] < edge + 3) { const [x, t, y] = spawns.shift(); addEnemy(t, t === 'run' ? Math.max(x, edge + 1) : x, y || 0); }
+    if (!gunshipSent && leaderX() > 148) { gunshipSent = true; addEnemy('gunship', leaderX() + 16, 6.2); toast('GUNSHIP INBOUND'); }
+    if (!boss && leaderX() > BOSSX - 14) { makeBoss(); toast('WARNING: IRON BASTION'); }
+  }
+  const alive = targets();
   for (const e of enemies) {
-    const dx = P.x - e.x, ty = P.y + (P.prone ? .35 : 1.1), alive = P.dead <= 0;
-    const seen = Math.abs(e.x - camX) < viewHalf + 1;
+    // pick the nearest living player
+    let T = null; for (const t of alive) if (!T || Math.abs(t.x - e.x) < Math.abs(T.x - e.x)) T = t;
+    const dx = (T ? T.x : P.x) - e.x, ty = (T ? T.y : P.y) + (T && T.prone ? .35 : 1.1), seen = Math.abs(dx) < Math.max(viewHalf, 12) + 3;
     e.cd -= dt / diff().rate;
-    if (e.type === 'run') {
+    if (!authority) {
+      const ox = e.x, k = Math.min(1, dt * 11); e.x += ((e.tx ?? e.x) - e.x) * k; e.y += ((e.ty ?? e.y) - e.y) * k; e.vx = (e.x - ox) / Math.max(dt, .001); e.on = e.air !== 1;
+      if (e.type === 'turret') e.o.userData.piv.rotation.z = Math.atan2(ty - (e.y + .95), dx);
+      if (e.type === 'gun') { e.face = dx < 0 ? -1 : 1; e.aim = clamp(Math.atan2(ty - (e.y + 1.5), Math.abs(dx)), -.8, 1.1); }
+    } else if (e.type === 'run') {
       if (!e.dir) e.dir = dx < 0 ? -1 : 1;
       e.face = e.dir; e.vx = e.dir * 4.6 * diff().run;
       if (e.on && e.ground && gaps.some(g => e.dir < 0 ? e.x - g[1] < .8 && e.x - g[1] > 0 : g[0] - e.x < .8 && g[0] - e.x > 0)) e.vy = 13;
       if (e.on && obstaclesNow().some(b => e.y < b.top - .05 && (e.dir < 0 ? e.x - b.x2 > 0 && e.x - b.x2 < 1.5 : b.x1 - e.x > 0 && b.x1 - e.x < 1.5))) e.vy = 12;
-      physics(e, dt);
+      const before = e.x; physics(e, dt);
+      // wedged against something: turn around instead of pushing forever
+      e.stuck = Math.abs(e.x - before) < Math.abs(e.vx * dt) * .3 ? (e.stuck || 0) + dt : 0;
+      if (e.stuck > .35) { e.dir *= -1; e.stuck = 0; }
     } else if (e.type === 'gun') {
       e.face = dx < 0 ? -1 : 1; const a = Math.atan2(ty - (e.y + 1.5), Math.abs(dx));
       e.aim = clamp(a, -.8, 1.1); physics(e, dt);
-      if (e.cd <= 0 && seen && alive) { e.cd = rnd(1.4, 2.3); const sa = e.face > 0 ? e.aim : Math.PI - e.aim; shoot(e.x + Math.cos(sa) * 1.1, e.y + 1.5 + Math.sin(sa), sa, 9.5, true); sfx('eshot'); }
+      if (e.cd <= 0 && seen && T) { e.cd = rnd(1.4, 2.3); const sa = e.face > 0 ? e.aim : Math.PI - e.aim; enemyShot(e.x + Math.cos(sa) * 1.1, e.y + 1.5 + Math.sin(sa), sa, 9.5); }
     } else if (e.type === 'turret') {
       const a = Math.atan2(ty - (e.y + .95), dx); e.o.userData.piv.rotation.z = a;
-      if (e.cd <= 0 && seen && alive) { e.cd = 1.7; shoot(e.x + Math.cos(a) * 1.3, e.y + .95 + Math.sin(a) * 1.3, a, 9, true); sfx('eshot'); }
+      if (e.cd <= 0 && seen && T) { e.cd = 1.7; enemyShot(e.x + Math.cos(a) * 1.3, e.y + .95 + Math.sin(a) * 1.3, a, 9); }
     } else if (e.type === 'drone') {
-      e.x += clamp(dx, -1, 1) * 2.2 * dt; e.y = e.base + Math.sin(time * 3 + e.base) * .6; e.o.userData.rot.forEach(r => r.rotation.y += dt * 40); e.o.rotation.z = -clamp(dx * .04, -.3, .3);
-      if (e.cd <= 0 && seen && alive) { e.cd = 2.1; shoot(e.x, e.y - .3, Math.atan2(ty - e.y, dx), 8, true); sfx('eshot'); }
+      e.x += clamp(dx, -1, 1) * 2.2 * dt; e.y = e.base + Math.sin(time * 3 + e.base) * .6;
+      if (e.cd <= 0 && seen && T) { e.cd = 2.1; enemyShot(e.x, e.y - .3, Math.atan2(ty - e.y, dx), 8); }
+    } else if (e.type === 'gunship') {
+      const goal = (T ? T.x : e.x) + Math.sin(time * .7) * 6.5;
+      e.x += clamp(goal - e.x, -6, 6) * dt * 1.2; e.y = e.base + Math.sin(time * 1.9) * .7;
+      if (e.cd <= 0 && T && Math.abs(dx) < 18) {
+        e.n++;
+        if (e.n % 6 === 0) { for (const off of [-1.4, 0, 1.4]) enemyShot(e.x + off, e.y - 1, -Math.PI / 2 + off * .08, 7); e.cd = 1.5; }
+        else { enemyShot(e.x - 1, e.y - .9, Math.atan2(ty - (e.y - .9), dx + 1), 10); e.cd = e.n % 6 > 2 ? 1.1 : .28; }
+      }
     } else if (e.type === 'boss') {
-      e.core.scale.setScalar(1 + Math.sin(time * 6) * .08);
-      for (const g of e.guns) g.rotation.z = Math.atan2(ty - g.position.y, P.x - (e.o.position.x + g.position.x)) - Math.PI;
-      if (e.cd <= 0 && alive) {
+      if (e.cd <= 0 && T) {
         e.n++; const rage = e.hp < e.max / 2;
-        const g = e.guns[e.n % 2], gx = e.o.position.x + g.position.x - 1.2, gy = g.position.y, a = Math.atan2(ty - gy, P.x - gx);
-        if (e.n % 4 === 0) { for (let i = 0; i < 4; i++) shoot(e.x - 1.3, .6, Math.PI - i * .22, 8, true); }
-        else for (const off of rage ? [-.2, 0, .2] : [0]) shoot(gx, gy, a + off, 9.5, true);
-        e.cd = rage ? .75 : 1.05; sfx('eshot');
+        const g = e.guns[e.n % 2], gx = e.o.position.x + g.position.x - 1.2, gy = g.position.y, a = Math.atan2(ty - gy, T.x - gx);
+        if (e.n % 4 === 0) { for (let i = 0; i < 4; i++) enemyShot(e.x - 1.3, .6, Math.PI - i * .22, 8); }
+        else for (const off of rage ? [-.2, 0, .2] : [0]) enemyShot(gx, gy, a + off, 9.5);
+        e.cd = rage ? .75 : 1.05;
       }
     }
+    // visuals
+    if (e.type === 'drone') { e.o.userData.rot.forEach(r => r.rotation.y += dt * 40); e.o.rotation.z = -clamp(dx * .04, -.3, .3); }
+    if (e.type === 'gunship') { e.o.userData.main.rotation.y += dt * 28; e.face = dx < 0 ? 1 : -1; e.o.rotation.y += ((e.face > 0 ? 0 : Math.PI) - e.o.rotation.y) * Math.min(1, dt * 3); e.o.rotation.z = clamp(-dx * .02, -.16, .16); if (e.hp < e.max / 2 && Math.random() < dt * 14) puff(e.x + 1, e.y + .6, 0, { color: 0x222020, alpha: .6, life: 1.1, size: .8, grow: 1.5, vy: 1.4, vx: 1 }); }
+    if (e.type === 'boss') { e.core.scale.setScalar(1 + Math.sin(time * 6) * .08); for (const g of e.guns) g.rotation.z = Math.atan2(ty - g.position.y, (T ? T.x : P.x) - (e.o.position.x + g.position.x)) - Math.PI; }
     e.o.position.set(e.type === 'boss' ? e.o.position.x : e.x, e.type === 'boss' ? 0 : e.y, 0);
     if (e.type === 'run' || e.type === 'gun') pose(e.o, e, dt);
-    const cy = e.type === 'drone' ? e.y : e.y + e.h / 2;
-    if (alive && Math.abs(dx) < e.w + .25 && Math.abs(P.y + (P.prone ? .3 : .9) - cy) < e.h / 2 + (P.prone ? .2 : .6)) hurt(dx > 0 ? 1 : -1);
-    if (e.y < -5 || (e.type !== 'boss' && e.x < camX - viewHalf - 8)) e.gone = true;
+    // touching an enemy is fatal; fuel drums are only scenery until shot
+    const flying = e.type === 'drone' || e.type === 'gunship', cy = flying ? e.y : e.y + e.h / 2;
+    if (e.type !== 'drum' && P.dead <= 0 && Math.abs(P.x - e.x) < e.w + .25 && Math.abs(P.y + (P.prone ? .3 : .9) - cy) < e.h / 2 + (P.prone ? .2 : .6)) hurt(P.x < e.x ? -1 : 1);
+    if (authority && (e.y < -5 || (e.type === 'run' && (net.playing ? e.x < rearX() - 30 : e.x < camX - viewHalf - 8)) || (!net.playing && e.type !== 'boss' && e.type !== 'gunship' && e.x < camX - viewHalf - 8))) e.gone = true;
   }
 }
+const dead = new Set();
+let combo = 0, comboT = 0, clock0 = 0, shots = 0, hits = 0;
+const SCORES = { run: 100, gun: 200, drone: 250, turret: 400, drum: 50, gunship: 3000, boss: 5000 };
+// damage from this player; guests report it to the host, who owns enemy health
+function damage(e, dmg, dir) {
+  if (e.gone) return;
+  if (e.type === 'boss') { e.core.material.color.setRGB(5, 4, 3); e.flash = .05; }
+  if (net.playing && !net.host) { net.toHost({ t: 'hit', id: e.id, d: dmg, dir }); return; }
+  e.hp -= dmg; if (e.hp <= 0) killEnemy(e, dir);
+}
+function killEnemy(e, dir) {
+  if (e.gone) return;
+  e.gone = true; dead.add(e.id);
+  if (e.type !== 'drum') { combo = comboT > 0 ? combo + 1 : 1; comboT = 2.8; }
+  score += Math.round(SCORES[e.type] * diff().score * (1 + Math.min(combo - 1, 8) * .25));
+  if (net.playing && net.host) net.send({ t: 'k', id: e.id, dir });
+  deathFx(e, dir);
+  if (e.type === 'boss') { bullets.forEach(q => q.life = 0); endMission(true); }
+}
+function endMission(won) {
+  if (net.playing) { for (let i = 0; i < 3; i++) net.send({ t: 'end', won, score }); net.playing = false; }
+  finish(won);
+}
+function deathFx(e, dir) {
+  if (e.type === 'boss') { for (let i = 0; i < 6; i++) explode(e.x + rnd(-1, 3), rnd(1, 7), 1.5); }
+  else if (e.type === 'gunship') { for (let i = 0; i < 5; i++) explode(e.x + rnd(-2, 2), e.y + rnd(-1, 1), 1.3); toast('GUNSHIP DOWN'); }
+  else if (e.type === 'run' || e.type === 'gun') { e.kept = true; fall(e, dir || -e.face); sfx('hurt'); }
+  else if (e.type === 'drum') { e.gone = true; blast(e.x, e.y + .6, 3.4, 8, net.playing && !net.host); if (Math.abs(P.x - e.x) < 2.2 && Math.abs(P.y - e.y) < 2) hurt(P.x < e.x ? -1 : 1); }
+  else explode(e.x, e.type === 'drone' ? e.y : e.y + 1, e.type === 'turret' ? 1 : .6);
+}
+function finish(won, finalScore) {
+  if (state === 'won' || state === 'over') return;
+  if (finalScore !== undefined) score = finalScore;
+  state = won ? 'won' : 'over'; toastT = 0;
+  const total = score + (won ? Math.max(0, lives) * 1000 : 0), acc = shots ? Math.min(100, Math.round(hits / shots * 100)) : 0;
+  const rank = !won ? '' : lives >= diff().lives - 1 && clock0 < 150 ? 'S' : lives >= 2 ? 'A' : 'B';
+  const secs = `${Math.floor(clock0 / 60)}:${String(Math.floor(clock0 % 60)).padStart(2, '0')}`;
+  setTimeout(() => {
+    if (state !== 'won' && state !== 'over') return;
+    show(won ? `MISSION COMPLETE` : 'MISSION FAILED', `${diff().name} · Score ${total} · Time ${secs} · Accuracy ${acc}%${rank ? ' · Rank ' + rank : ''}`, net.active ? (net.host ? 'Play again' : 'Waiting for host') : won ? 'Play again' : 'Try again');
+    $('go').disabled = net.active && !net.host;
+    $('setup').hidden = false; $('lobby').hidden = !net.active; $('joinrow').hidden = net.active; if (net.active) net.refresh();
+  }, won ? 1800 : 300);
+}
+
 function updateBullets(dt) {
   for (const b of bullets) {
     b.life -= dt; const p = b.m.position; p.x += b.vx * dt; p.y += b.vy * dt;
-    if (b.life > 0 && blocks.some(o => p.x > o.x1 && p.x < o.x2 && p.y > o.y && p.y < o.top)) { b.life = 0; burst(p.x, p.y, 5, 'hit', 4); }
-    if (p.y < .02 && !gaps.some(g => p.x > g[0] && p.x < g[1])) { b.life = 0; burst(p.x, .1, 3, 'hit', 3); }
+    const stop = () => { b.life = 0; if (b.rocket) blast(p.x, p.y, 2.8, 6, b.ghost); };
+    if (b.life > 0 && blocks.some(o => p.x > o.x1 && p.x < o.x2 && p.y > o.y && p.y < o.top)) { burst(p.x, p.y, 5, 'hit', 4); stop(); }
+    if (b.life > 0 && p.y < .02 && !gaps.some(g => p.x > g[0] && p.x < g[1])) { burst(p.x, .1, 3, 'hit', 3); stop(); }
+    if (b.rocket && b.life > 0 && Math.random() < dt * 40) puff(p.x, p.y, 0, { color: 0x6a6260, alpha: .5, life: .5, size: .35, grow: 1.2 });
     if (b.enemy) {
       if (b.life > 0 && P.dead <= 0 && Math.abs(p.x - P.x) < (P.prone ? .8 : .36) && p.y > P.y + .05 && p.y < P.y + (P.prone ? .6 : 1.85)) { b.life = 0; hurt(Math.sign(b.vx) || -P.face); }
     } else if (b.life > 0) for (const e of enemies) {
-      if (e.gone || Math.abs(e.x - camX) > viewHalf + 2) continue;
-      const low = e.type === 'drone' ? e.y - .5 : e.y - .1;
+      if (e.gone || b.pierce?.has(e) || Math.abs(e.x - camX) > Math.max(viewHalf, 12) + 3) continue;
+      const low = e.type === 'drone' ? e.y - .5 : e.type === 'gunship' ? e.y - 1.1 : e.y - .1;
       if (Math.abs(p.x - e.x) < e.w && p.y > low && p.y < low + e.h + .2) {
-        b.life = 0; e.hp--; burst(p.x, p.y, 5, e.type === 'run' || e.type === 'gun' ? 'blood' : 'hit', 5);
-        if (e.type === 'boss') { e.core.material.color.setRGB(5, 4, 3); e.flash = .05; }
-        if (e.hp <= 0) {
-          e.gone = true; score += { run: 100, gun: 200, drone: 250, turret: 400, boss: 5000 }[e.type] * diff().score;
-          if (e.type === 'boss') { for (let i = 0; i < 6; i++) explode(e.x + rnd(-1, 3), rnd(1, 7), 1.5); bullets.forEach(q => q.life = 0); state = 'won'; setTimeout(() => state === 'won' && show('MISSION COMPLETE', `${diff().name} · Score ${score + lives * 1000}`, 'Play again'), 1800); }
-          else if (e.type === 'run' || e.type === 'gun') { e.kept = true; fall(e, Math.sign(b.vx) || -e.face); sfx('hurt'); }
-          else explode(e.x, e.type === 'drone' ? e.y : e.y + 1, e.type === 'turret' ? 1 : .6);
-        }
-        break;
+        burst(p.x, p.y, 5, e.type === 'run' || e.type === 'gun' ? 'blood' : 'hit', 5);
+        if (b.pierce) b.pierce.add(e); else b.life = 0;
+        if (b.rocket) blast(p.x, p.y, 2.8, 6, b.ghost);
+        else if (!b.ghost) { hits++; damage(e, b.dmg, Math.sign(b.vx) || 1); }
+        if (!b.pierce) break;
       }
     }
   }
   bullets = bullets.filter(b => { if (b.life > 0) return true; scene.remove(b.m); return false; });
-  enemies = enemies.filter(e => { if (!e.gone) return true; if (!e.kept) scene.remove(e.o); return false; });
+  enemies = enemies.filter(e => { if (!e.gone) return true; if (!e.kept) scene.remove(e.o); if (e === gunship) gunship = null; return false; });
+}
+
+// ---------- co-op ----------
+function removeRemote(id) { const r = remotes.get(id); if (r) { scene.remove(r.o); remotes.delete(id); } }
+const r2 = v => Math.round(v * 100) / 100;
+const net = createCoop({
+  level: () => level, setLevel, removeRemote,
+  begin: () => begin(),
+  myState: () => ({ x: r2(P.x), y: r2(P.y), vx: r2(P.vx), f: P.face, a: r2(P.aim), pr: P.prone ? 1 : 0, on: P.on ? 1 : 0, d: P.dead > 0 ? 1 : 0, out: P.out ? 1 : 0 }),
+  snapshot: () => ({ e: enemies.filter(e => !e.gone).map(e => [e.id, e.type, r2(e.x), r2(e.y), e.face || 1, r2(e.hp), e.on === false ? 1 : 0]), s: score, gone: [...dead].slice(-24) }),
+  remoteState(id, slot, m) {
+    let r = remotes.get(id);
+    if (!r) { r = { o: makeSoldierFor(slot), x: m.x, y: m.y, slot, pose: { face: m.f, on: true } }; remotes.set(id, r); }
+    const was = r.dead; Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, prone: !!m.pr, dead: !!m.d, out: !!m.out, last: time });
+    Object.assign(r.pose, { face: m.f, aim: m.a, vx: m.vx, on: !!m.on, prone: !!m.pr });
+    if (r.dead && !was) startDeath(r.o, true);
+    if (!r.dead && was) { revive(r.o); r.x = m.x; r.y = m.y; }
+  },
+  world(m) {
+    score = m.s;
+    const live = new Set();
+    for (const [id, type, x, y, face, hp, air] of m.e) {
+      live.add(id); if (dead.has(id)) continue;
+      let e = enemies.find(q => q.id === id);
+      if (!e) {
+        if (type === 'boss') { if (!boss) { makeBoss(); toast('WARNING: IRON BASTION'); } e = boss; }
+        else { e = addEnemy(type, x, y, id); if (type === 'gunship') toast('GUNSHIP INBOUND'); }
+      }
+      Object.assign(e, { tx: x, ty: y, face, hp, air });
+    }
+    for (const e of enemies) if (!live.has(e.id)) { if (m.gone.includes(e.id) && !dead.has(e.id)) { dead.add(e.id); e.gone = true; deathFx(e, 1); } else e.gone = true; }
+  },
+  event(m, from) {
+    if (m.t === 'sh') fireWeapon(m.w, m.x, m.y, m.a, true);
+    else if (m.t === 'nd') throwNade(m.x, m.y, m.vx, m.vy, true);
+    else if (state !== 'play') return;
+    else if (m.t === 'ef') shoot(m.x, m.y, m.a, m.s, true);
+    else if (m.t === 'hit' && net.host) { const e = enemies.find(q => q.id === m.id); if (e) damage(e, clamp(m.d, 0, 9), m.dir); }
+    else if (m.t === 'k') { const e = enemies.find(q => q.id === m.id); if (e && !e.gone) { e.gone = true; dead.add(e.id); deathFx(e, m.dir); } }
+  },
+  finish: (won, s) => finish(won, s),
+  disconnected: reason => toMenu(reason),
+  lobby(c) {
+    if (state === 'play') return;
+    $('code').textContent = c.code;
+    const n = c.peers.size + 1;
+    $('lobbyinfo').textContent = !c.room.online ? 'Connecting to the relay…' : c.host ? `${n} of 4 players in the room. Share the code, then press Start.` : c.hostId ? `Joined. ${n} players. Waiting for the host to start…` : 'Looking for that room… check the code if this takes more than a few seconds.';
+    $('players').replaceChildren(...[{ slot: c.slot, me: true }, ...c.peers.values()].filter(p => c.host || c.hostId).sort((a, b) => a.slot - b.slot).map(p => { const s = document.createElement('span'); s.style.color = COLORS[p.slot].css; s.textContent = `● P${p.slot + 1}${p.me ? ' (you)' : ''}`; return s; }));
+    if (state === 'title') { $('go').disabled = !c.host || !c.room.online; $('go').textContent = c.host ? 'Start co-op mission' : 'Waiting for host'; }
+  }
+});
+function toMenu(message) {
+  state = 'title'; toastT = 0; $('levels').classList.remove('locked'); for (const id of [...remotes.keys()]) removeRemote(id);
+  makeHero(0); reset(); P.x = 12; hero.position.set(P.x, 0, 0); pose(hero, P, .016);
+  show('IRON JUNGLE', message || 'Choose your difficulty.', 'Start mission'); $('go').disabled = false; $('setup').hidden = false; $('lobby').hidden = true; $('joinrow').hidden = false; $('pause').textContent = 'Pause';
+}
+function enterRoom() { initAudio(); state = 'title'; $('joinrow').hidden = true; $('setup').hidden = false; $('lobby').hidden = false; $('levels').classList.toggle('locked', !net.host); net.room && $('menu').removeAttribute('hidden'); $('go').disabled = true; $('go').textContent = 'Connecting'; $('code').textContent = net.code; $('lobbyinfo').textContent = 'Connecting to the relay…'; $('players').replaceChildren(); }
+$('create').onclick = () => { if (!ready) return; net.create(); enterRoom(); };
+$('join').onclick = () => { const c = $('codein').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!ready) return; if (c.length !== 5) { $('codein').focus(); $('sub').textContent = 'Enter the 5-character room code.'; return; } net.join(c); enterRoom(); };
+$('leave').onclick = () => { net.leave(); $('levels').classList.remove('locked'); toMenu(); };
+$('copy').onclick = () => { const link = location.origin + location.pathname + '?room=' + net.code; navigator.clipboard?.writeText(link).then(() => $('copy').textContent = 'Copied', () => $('copy').textContent = link); };
+function updateRemotes(dt) {
+  for (const r of remotes.values()) {
+    const k = Math.min(1, dt * 12); r.x += (r.tx - r.x) * k; r.y += (r.ty - r.y) * k; r.o.position.set(r.x, r.y, 0); r.o.visible = !r.out;
+    if (r.dead) die(r.o, dt, r.y > -.1); else pose(r.o, r.pose, dt);
+  }
+  if (net.playing && net.host && state === 'play' && P.out && [...remotes.values()].every(r => r.out)) endMission(false);
 }
 
 // ---------- loop ----------
@@ -526,7 +753,8 @@ function step(dt) {
   if (state === 'pause') return;
   if (P && P.slow > 0) { P.slow -= dt; dt *= .45; }
   time += dt; wind.value = time;
-  if (state === 'play') { updatePlayer(dt); updateEnemies(dt); updateBullets(dt); }
+  if (state === 'play') { clock0 += dt; comboT -= dt; updatePlayer(dt); updateEnemies(dt); updateBullets(dt); updateGrenades(dt); }
+  updateRemotes(dt); net.tick(dt);
   for (const p of pickups) if (!p.got) { p.o.position.y = p.y + Math.sin(time * 3) * .2; p.o.rotation.y += dt * 2; p.r.rotation.x += dt; }
   for (let i = fx.length - 1; i >= 0; i--) {
     const f = fx[i], p = f.m.position; f.life -= dt; f.vy -= f.g * dt; p.x += f.vx * dt; p.y += f.vy * dt; p.z += f.vz * dt;
@@ -542,10 +770,19 @@ function step(dt) {
   boomLight.intensity *= Math.exp(-dt * 7); muzzle.intensity *= Math.exp(-dt * 22);
   flames.forEach((f, i) => { f.scale.set(1, 1.3 + Math.sin(time * 17 + i * 3) * .3, 1); if (Math.abs(f.position.x - camX) < viewHalf + 2 && Math.random() < dt * 9) puff(f.position.x, 2.3, f.position.z, { map: softTex, color: 0xff6a18, k: 2, add: true, life: .5, size: .35, grow: -.4, vy: 1.1, vx: rnd(-.2, .2) }); });
   dust.position.y = Math.sin(time * .5) * .3;
-  if (state === 'play') { const target = boss ? BOSSX - Math.max(0, viewHalf - 8) : P.x + viewHalf * .28; camX = boss ? camX + (target - camX) * Math.min(1, dt * 2) : Math.max(camX, camX + (target - camX) * Math.min(1, dt * 6)); }
+  if (state === 'play') {
+    const focus = P.out ? leaderX() : P.x, locked = boss && focus > BOSSX - 18;
+    const target = locked ? BOSSX - Math.max(0, viewHalf - 8) : focus + viewHalf * .28, next = camX + (target - camX) * Math.min(1, dt * (locked ? 2 : 6));
+    camX = locked || net.playing ? next : Math.max(camX, next);
+  }
+  // the weather turns as the squad pushes deeper into the jungle
+  const wanted = state === 'title' ? 0 : THREE.MathUtils.smoothstep(camX, 88, 132);
+  storm += (wanted - storm) * Math.min(1, dt * 1.5);
+  weather.update(dt, camX, storm, () => setTimeout(() => sfx('boom'), 350));
+  music?.(state === 'play' && !muted, !!(boss || gunship));
   if (state === 'title') camX = 12 + Math.sin(time * .15) * 8;
   shake *= Math.exp(-dt * 6);
-  const lookY = portrait ? .5 : clamp(P.y * .45, 0, 3) + 3.2;
+  const lookY = portrait ? .5 : clamp(P.out ? 0 : P.y * .45, 0, 3) + 3.2;
   camera.position.set(camX + (Math.random() - .5) * shake, lookY + 1.8 + (Math.random() - .5) * shake, dist);
   camera.lookAt(camX, lookY, 0);
   sky.position.copy(camera.position); water.position.y = -3.4 + Math.sin(time) * .06;
@@ -553,13 +790,19 @@ function step(dt) {
   toastT -= dt; $('toast').style.opacity = clamp(toastT, 0, 1);
   $('score').textContent = String(score).padStart(6, '0');
   $('lives').textContent = '♥'.repeat(Math.max(0, lives));
-  $('weapon').textContent = P.spread ? 'SPREAD' : 'RIFLE';
-  $('bossbar').hidden = !(boss && boss.hp > 0);
-  if (boss) { $('bossfill').style.width = Math.max(0, boss.hp / boss.max * 100) + '%'; if (boss.flash > 0) { boss.flash -= dt; if (boss.flash <= 0) boss.core.material.color.set(0xff3a18).multiplyScalar(2.5); } }
+  $('weapon').textContent = `${WEAPONS[P.weapon].name} · GRENADES ${P.nades}`;
+  $('combo').textContent = state === 'play' && combo > 1 && comboT > 0 ? `COMBO ×${combo}` : '';
+  const big = boss && boss.hp > 0 ? boss : gunship && !gunship.gone ? gunship : null;
+  $('bossbar').hidden = !big; $('progress').hidden = !!big || state === 'title';
+  if (big) $('bossfill').style.width = Math.max(0, big.hp / (big.max || 1) * 100) + '%';
+  else { const dots = [{ x: P.x, slot: net.playing ? net.slot : 0 }, ...remotes.values()]; const box = $('progress'); while (box.children.length > dots.length) box.lastChild.remove(); dots.forEach((d, i) => { const el = box.children[i] || box.appendChild(document.createElement('i')); el.style.left = clamp(d.x / BOSSX * 100, 0, 100) + '%'; el.style.background = COLORS[d.slot].css; }); }
+  if (boss && boss.flash > 0) { boss.flash -= dt; if (boss.flash <= 0) boss.core.material.color.set(0xff3a18).multiplyScalar(2.5); }
 }
 Promise.all([loadSoldier(manager), envReady]).then(() => {
   makeHero(); reset(); hero.position.set(P.x, P.y, 0); P.x = 12; hero.position.x = 12; pose(hero, P, .016);
   ready = true; $('go').textContent = 'Start mission'; $('go').disabled = false;
+  const invite = new URLSearchParams(location.search).get('room');
+  if (invite) { $('codein').value = invite.toUpperCase().slice(0, 5); $('sub').textContent = 'You were invited. Tap Join to enter the room.'; }
   renderer.setAnimationLoop(() => { clock.update(); const raw = clock.getDelta(); watchSpeed(raw); step(Math.min(raw, 1 / 30)); composer.render(); });
 }).catch(err => { console.error(err); $('go').textContent = 'Could not load. Refresh to retry'; });
-window.__game = { setLevel, blocks, obstaclesNow, hurt, get ready() { return ready; }, start, step, keys, get P() { return P; }, get boss() { return boss; }, get state() { return state; }, get enemies() { return enemies; }, get lives() { return lives; }, set lives(v) { lives = v; }, render: () => composer.render(), halt: () => renderer.setAnimationLoop(null) };
+window.__game = { net, remotes, begin, damage, throwNade, get gunship() { return gunship; }, get score() { return score; }, setLevel, blocks, obstaclesNow, hurt, get ready() { return ready; }, start, step, keys, get P() { return P; }, get boss() { return boss; }, get state() { return state; }, get enemies() { return enemies; }, get lives() { return lives; }, set lives(v) { lives = v; }, render: () => composer.render(), halt: () => renderer.setAnimationLoop(null) };

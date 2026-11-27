@@ -1,0 +1,81 @@
+name: IELTS daily video
+on:
+  schedule:
+    - cron: '30 12 * * *'   # 12:30 UTC = 7:30am Toronto (winter) / 8:30am (summer)
+  workflow_dispatch:
+    inputs:
+      episode:
+        description: 'Episode file to publish (blank = next in queue)'
+        required: false
+      dry_run:
+        description: 'Render only, do not upload'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency: ielts-daily
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults: { run: { working-directory: ielts-channel } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "ielts-channel", sparse-checkout-cone-mode: true }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Pick episode
+        id: pick
+        run: |
+          EP="${{ github.event.inputs.episode }}"
+          if [ -z "$EP" ]; then EP=$(python3 engine/next_episode.py) || { echo "queue empty"; echo "empty=1" >> $GITHUB_OUTPUT; exit 0; }; fi
+          echo "ep=$EP" >> $GITHUB_OUTPUT; echo "Episode: $EP"
+      - name: Install system + python + node deps
+        if: steps.pick.outputs.empty != '1'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -q kokoro-onnx soundfile numpy scipy google-api-python-client google-auth
+          cd engine && npm install --silent
+      - name: Cache Kokoro model
+        if: steps.pick.outputs.empty != '1'
+        id: kcache
+        uses: actions/cache@v4
+        with: { path: ielts-channel/engine/models, key: kokoro-v1.0 }
+      - name: Download Kokoro model
+        if: steps.pick.outputs.empty != '1' && steps.kcache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p engine/models && cd engine/models
+          curl -fsSL -O https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+          curl -fsSL -O https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+      - name: Render episode
+        if: steps.pick.outputs.empty != '1'
+        run: python3 engine/run_episode.py "${{ steps.pick.outputs.ep }}" --out out/current --workers "$(nproc)"
+      - name: Upload to YouTube
+        id: up
+        if: steps.pick.outputs.empty != '1' && github.event.inputs.dry_run != 'true'
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: ${{ vars.YT_PRIVACY || 'private' }}
+        run: python3 engine/upload_youtube.py out/current
+      - name: Record as published
+        if: steps.up.outputs.video_id != ''
+        run: |
+          ID=$(python3 -c "import json;print(json.load(open('${{ steps.pick.outputs.ep }}'))['id'])")
+          python3 engine/mark_published.py "$ID" "${{ steps.up.outputs.video_id }}"
+          git config user.name "ielts-bot"; git config user.email "ielts-bot@users.noreply.github.com"
+          git add state/published.json && git commit -m "IELTS: published $ID" && git push
+      - name: Keep the render as an artifact (dry runs and 7-day backup)
+        if: steps.pick.outputs.empty != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ielts-render
+          path: |
+            ielts-channel/out/current/video.mp4
+            ielts-channel/out/current/thumbnail.jpg
+            ielts-channel/out/current/captions_en.srt
+            ielts-channel/out/current/youtube.json
+          retention-days: 7

@@ -1,0 +1,6 @@
+engine/models/
+engine/node_modules/
+out/
+__pycache__/
+*.tmp.mp4
+engine/models

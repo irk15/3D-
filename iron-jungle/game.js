@@ -7,6 +7,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js?v=3';
 import * as ENV from './environment.js';
+import { buildProps } from './props.js?v=4';
 
 const $ = id => document.getElementById(id);
 let seed = 7;
@@ -77,11 +78,11 @@ function ground(x1, x2) {
 const gaps = [[48, 51.2], [96, 99.4], [152, 155.6]];
 ground(-20, 48); ground(51.2, 96); ground(99.4, 152); ground(155.6, END + 30);
 const steel = std(0x777b7e, .42, .8, { normalMap: rockNormal, normalScale: new THREE.Vector2(.15, .15) }), rust = std(0xa05a30, .68, .55, { map: rockMap });
-ENV.grassField(scene, wind, rnd, solids.map(s => [s.x1, s.x2]));
+ENV.grassField(scene, wind, rnd, solids.filter(s => s.ground).map(s => [s.x1, s.x2]));
 function platform(x, y, w) {
   mesh(box(w, .28, 2.4), steel, x, y - .14, 0);
   mesh(box(w, .07, .08), rust, x, y - .02, 1.22);
-  for (const s of [-1, 1]) mesh(cyl(.09, .12, y, 8), rust, x + s * (w / 2 - .3), y / 2, -.9);
+  for (const s of [-1, 1]) mesh(cyl(.09, .12, y, 8), rust, x + s * (w / 2 - .3), y / 2, -1.14);
   solids.push({ x1: x - w / 2, x2: x + w / 2, y });
 }
 [[18, 2.6, 6], [34, 2.8, 5], [41, 5, 4], [62, 2.6, 7], [78, 2.8, 5], [85, 5.2, 5], [110, 2.7, 6], [120, 5, 6], [136, 2.7, 8], [165, 2.8, 5], [173, 5.1, 5], [190, 2.7, 6]].forEach(p => platform(...p));
@@ -127,16 +128,8 @@ for (let layer = 0; layer < 3; layer++) {
   mesh(new THREE.ShapeGeometry(s), new THREE.MeshBasicMaterial({ color: [0x14201c, 0x30242f, 0x5a3640][layer] }), 0, 0, -34 - layer * 28, scene, false);
 }
 // props
-const crateMat = std(0x78845a, .7, .25, { map: rockMap, normalMap: rockNormal });
-for (let x = 7; x < 205; x += rnd(11, 22)) {
-  if (gaps.some(g => x > g[0] - 2 && x < g[1] + 2)) continue;
-  for (let i = 0; i < 9; i++) { const bag = mesh(cap(.17, .45), std(0x8a7552, 1, 0, { normalMap: rockNormal }), x + (i % 5) * .66 + (i > 4 ? .33 : 0), i > 4 ? .43 : .15, -2.75); bag.rotation.z = Math.PI / 2; bag.scale.set(1, 1, 1.25); }
-}
-for (let x = 9; x < 205; x += rnd(9, 17)) {
-  if (gaps.some(g => x > g[0] - 2 && x < g[1] + 2)) continue;
-  if (rnd() > .5) { const c = mesh(box(1.1, .9, 1), crateMat, x, .45, -1.9); c.rotation.y = rnd(-.4, .4); }
-  else for (let i = 0; i < 2; i++) mesh(cyl(.42, .42, 1.15, 16), rust, x + i * .9, .57, -1.9);
-}
+const blocks = buildProps(scene, rnd, { rock: rockMat, rockNormal, steel, rust, bark, grass: grassMap }, gaps, END);
+for (const b of blocks) solids.push({ x1: b.x1 - .3, x2: b.x2 + .3, y: b.top, ground: true, block: true });
 // torches
 const flames = [];
 for (let x = 4; x < 215; x += 21) {
@@ -201,7 +194,7 @@ function updateCorpses(dt) {
     const over = gaps.some(g => o.position.x > g[0] && o.position.x < g[1]);
     let grounded = false;
     if (c.y <= c.floor && !over) { c.y = c.floor; c.vy = 0; grounded = true; c.vx *= Math.exp(-dt * 4.5); }
-    o.position.x += c.vx * dt; o.position.y = c.y - Math.max(0, c.t - 3.2) * .45;
+    const body = { x: o.position.x + c.vx * dt, y: c.y }; collide(body, .9, o.position.x); o.position.x = body.x; o.position.y = c.y - Math.max(0, c.t - 3.2) * .45;
     if (die(o, dt, grounded)) dust2(o.position.x - Math.sign(c.vx) * .2, c.floor);
     if (c.t > 4.4 || c.y < -8) { scene.remove(o); corpses.splice(i, 1); }
   }
@@ -233,6 +226,23 @@ function initAudio() {
   } catch { ac = null; }
 }
 
+// ---------- difficulty ----------
+const LEVELS = {
+  easy: { name: 'Recruit', lives: 7, speed: .72, rate: 1.55, boss: 55, run: .85, extra: false, score: 1, note: '7 lives · slower enemy fire · weaker boss' },
+  normal: { name: 'Soldier', lives: 5, speed: 1, rate: 1, boss: 90, run: 1, extra: false, score: 1.5, note: '5 lives · the standard fight' },
+  hard: { name: 'Commando', lives: 3, speed: 1.28, rate: .68, boss: 140, run: 1.18, extra: true, score: 2, note: '3 lives · fast fire · more enemies · double score' }
+};
+let level = 'normal';
+try { if (LEVELS[localStorage.ironLevel]) level = localStorage.ironLevel; } catch { /* storage unavailable */ }
+const diff = () => LEVELS[level];
+function setLevel(l) {
+  level = l; try { localStorage.ironLevel = l; } catch { /* storage unavailable */ }
+  document.querySelectorAll('[data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === l));
+  $('levelnote').textContent = diff().note;
+}
+document.querySelectorAll('[data-level]').forEach(b => b.onclick = () => setLevel(b.dataset.level));
+setLevel(level);
+
 // ---------- entities ----------
 let hero, ready = false;
 function makeHero() {
@@ -247,7 +257,8 @@ const eHalo = halo(0xff2050), bHalo = halo(0xff9a30);
 function shoot(x, y, a, speed, enemy, mat) {
   const m = mesh(enemy ? eGeo : bGeo, mat || (enemy ? eMat : bMat), x, y, 0, scene, false); m.rotation.z = a;
   const halo = new THREE.Sprite(enemy ? eHalo : bHalo); halo.scale.set(enemy ? .9 : .55, enemy ? .9 : .55, 1); m.add(halo);
-  bullets.push({ m, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, enemy, life: enemy ? 3.2 : 1.1 });
+  const k = enemy ? diff().speed : 1;
+  bullets.push({ m, vx: Math.cos(a) * speed * k, vy: Math.sin(a) * speed * k, enemy, life: enemy ? 3.2 / k : 1.1 });
 }
 function addEnemy(type, x, y = 0) {
   let o, e = { type, x, y, vx: 0, vy: 0, on: true, cd: rnd(.6, 1.8), flash: 0 };
@@ -270,7 +281,7 @@ function makeBoss() {
   const core = mesh(ball(.75), glow(0xff3a18, 2.5), -1.15, 2.2, 0, o, false);
   const guns = [4.6, 6.6].map(y => { const p = new THREE.Group(); p.position.set(-1.3, y, .5); o.add(p); mesh(ball(.5), steel, 0, 0, 0, p); mesh(box(1.5, .3, .3), armor, -.8, 0, 0, p); return p; });
   o.position.set(BOSSX + 6, 0, 0); scene.add(o);
-  boss = { type: 'boss', o, core, guns, x: BOSSX + 4.85, y: 1.2, w: .9, h: 2.1, hp: 90, max: 90, cd: 2, flash: 0, n: 0 };
+  boss = { type: 'boss', o, core, guns, x: BOSSX + 4.85, y: 1.2, w: .9, h: 2.1, hp: diff().boss, max: diff().boss, cd: 2, flash: 0, n: 0 };
   enemies.push(boss);
 }
 function addPickup(x, y) {
@@ -280,10 +291,12 @@ function addPickup(x, y) {
 let spawns = [];
 function reset() {
   [...enemies, ...pickups, ...corpses].forEach(e => scene.remove(e.o)); corpses.length = 0; scorches.splice(0).forEach(d => scene.remove(d)); bullets.forEach(b => scene.remove(b.m));
-  enemies = []; bullets = []; pickups = []; boss = null; score = 0; lives = 5; checkpoint = 2; camX = 2; time = 0;
+  enemies = []; bullets = []; pickups = []; boss = null; score = 0; lives = diff().lives; checkpoint = 2; camX = 2; time = 0;
   P = { x: 2, y: 0, vx: 0, vy: 0, on: true, face: 1, aim: 0, cd: 0, inv: 2, spread: false, dead: 0, drop: 0, slow: 0 };
   revive(hero); hero.rotation.y = 0; hero.visible = true;
   spawns = [[16, 'run'], [18, 'gun', 2.6], [24, 'run'], [30, 'turret'], [34, 'gun', 2.8], [40, 'drone', 4.5], [43, 'run'], [56, 'run'], [58, 'run'], [63, 'gun', 2.6], [70, 'turret'], [75, 'drone', 5], [85, 'gun', 5.2], [90, 'run'], [104, 'turret'], [110, 'gun', 2.7], [114, 'run'], [116, 'drone', 4], [120, 'turret', 5], [128, 'run'], [132, 'run'], [136, 'gun', 2.7], [145, 'drone', 5], [148, 'drone', 3.6], [162, 'turret'], [165, 'gun', 2.8], [173, 'gun', 5.1], [180, 'run'], [182, 'run'], [185, 'drone', 4.5], [190, 'turret', 2.7], [196, 'gun'], [200, 'run'], [203, 'turret']];
+  if (diff().extra) spawns.push([27, 'run'], [46, 'drone', 4.2], [66, 'run'], [80, 'gun', 2.8], [94, 'drone', 4.6], [112, 'run'], [137, 'turret', 2.7], [157, 'run'], [170, 'drone', 3.8], [188, 'run'], [199, 'drone', 4.4]);
+  spawns.sort((a, b) => a[0] - b[0]);
   addPickup(41, 6); addPickup(120, 7); addPickup(173, 6.2);
 }
 
@@ -326,11 +339,29 @@ function start() {
 $('go').onclick = start;
 
 // ---------- update ----------
-function physics(e, dt) {
-  const oy = e.y; e.vy -= 34 * dt; e.x += e.vx * dt; e.y += e.vy * dt; e.on = false;
-  if (e.vy <= 0) for (const s of solids) {
-    if (e.x > s.x1 - .2 && e.x < s.x2 + .2 && oy >= s.y - .02 && e.y <= s.y && !(e.drop > 0 && !s.ground)) { e.y = s.y; e.vy = 0; e.on = true; e.ground = s.ground; }
+const HEAD = 1.95;
+function obstaclesNow() { return blocks.concat(enemies.filter(e => e.type === 'turret' && !e.gone).map(e => ({ x1: e.x - .75, x2: e.x + .75, y: e.y, top: e.y + 1.35, turret: e }))); }
+// push a body of half-width r out of anything solid
+function collide(e, r, ox) {
+  for (const b of obstaclesNow()) {
+    if (b.turret === e || e.y >= b.top - .05 || e.y + 1.7 <= b.y) continue;
+    if (e.x + r > b.x1 && e.x - r < b.x2) { e.x = ox < (b.x1 + b.x2) / 2 ? b.x1 - r : b.x2 + r; e.blocked = true; }
   }
+  if (e.y < -.3) for (const g of gaps) if (e.x > g[0] - .5 && e.x < g[1] + .5) e.x = clamp(e.x, g[0] + .4, g[1] - .4);
+}
+function physics(e, dt, r = .5) {
+  const oy = e.y, ox = e.x; e.vy -= 34 * dt; e.x += e.vx * dt; e.y += e.vy * dt; e.on = false; e.blocked = false;
+  if (e.vy <= 0) {
+    let top = -Infinity, hit;
+    for (const s of solids) if (e.x > s.x1 - .2 && e.x < s.x2 + .2 && oy >= s.y - .02 && e.y <= s.y && s.y > top) { top = s.y; hit = s; }
+    for (const b of obstaclesNow()) if (b.turret && b.turret !== e && e.x > b.x1 - .5 && e.x < b.x2 + .5 && oy >= b.top - .02 && e.y <= b.top && b.top > top) { top = b.top; hit = { ground: true }; }
+    if (hit) { e.y = top; e.vy = 0; e.on = true; e.ground = hit.ground; }
+  } else for (const s of solids) {
+    // heads bump against the underside of platforms
+    const under = s.y - .3;
+    if (!s.ground && e.x > s.x1 - .25 && e.x < s.x2 + .25 && oy + HEAD <= under + .02 && e.y + HEAD > under) { e.y = under - HEAD; e.vy = 0; }
+  }
+  collide(e, r, ox);
 }
 function hurt(dir = -P.face) {
   if (P.inv > 0 || P.dead > 0) return;
@@ -339,27 +370,28 @@ function hurt(dir = -P.face) {
   startDeath(hero, dir !== P.face); if (P.y > -1) wound(P.x, P.y + 1.35, dir); shake = Math.max(shake, .22); sfx('hurt');
 }
 function respawn() {
-  if (lives <= 0) { state = 'over'; show('MISSION FAILED', `Score ${score}`, 'Try again'); return; }
+  if (lives <= 0) { state = 'over'; show('MISSION FAILED', `${diff().name} · Score ${score}`, 'Try again'); return; }
   let x = Math.max(checkpoint, camX - Math.min(4, viewHalf - 1.5));
   for (const g of gaps) if (x > g[0] - 4 && x < g[1] + 1.5) x = g[0] - 4;
+  for (const b of obstaclesNow()) if (x > b.x1 - 1 && x < b.x2 + 1 && b.y < 1) x = b.x1 - 1.1;
   camX = Math.min(camX, x + viewHalf - 1.5);
   revive(hero);
-  Object.assign(P, { x, y: 2.5, vx: 0, vy: 0, inv: 2.5, dead: 0 }); hero.visible = true;
+  Object.assign(P, { x, y: .05, vx: 0, vy: 0, inv: 2.5, dead: 0 }); hero.visible = true;
   bullets.filter(b => b.enemy).forEach(b => b.life = 0);
 }
 function updatePlayer(dt) {
   if (P.dead > 0) {
-    P.dead -= dt; P.drop = 0; physics(P, dt); if (P.on) P.vx *= Math.exp(-dt * 4.5);
+    P.dead -= dt; physics(P, dt, .9); if (P.on) P.vx *= Math.exp(-dt * 4.5);
     hero.position.set(P.x, P.y, 0); if (die(hero, dt, P.on)) { dust2(P.x, P.y); shake = Math.max(shake, .12); }
     if (P.dead <= 0) respawn(); return;
   }
   const h = (down('r') ? 1 : 0) - (down('l') ? 1 : 0), u = down('u'), d = down('d');
   if (h) P.face = h;
-  P.prone = d && !h && P.on;
+  P.prone = d && !h && P.on && !obstaclesNow().some(b => P.y < b.top - .05 && P.y + .6 > b.y && P.x + (P.face > 0 ? 1.5 : 1.2) > b.x1 && P.x - (P.face > 0 ? 1.2 : 1.5) < b.x2);
   P.vx = P.prone ? 0 : h * 7.2;
   P.aim = u ? (h ? .75 : 1.45) : d && h ? -.7 : d && !P.on ? -1.45 : 0;
-  if (down('j') && !P.jHeld && P.on) { if (d && !P.ground) { P.drop = .25; } else { P.vy = 14.2; sfx('jump'); } }
-  P.jHeld = down('j'); P.drop -= dt;
+  if (down('j') && !P.jHeld && P.on) { P.vy = 14.2; sfx('jump'); }
+  P.jHeld = down('j');
   physics(P, dt);
   const minX = camX - viewHalf + 1;
   P.x = clamp(P.x, Math.max(0, minX), boss ? BOSSX + 2.6 : END);
@@ -389,11 +421,12 @@ function updateEnemies(dt) {
   for (const e of enemies) {
     const dx = P.x - e.x, ty = P.y + (P.prone ? .35 : 1.1), alive = P.dead <= 0;
     const seen = Math.abs(e.x - camX) < viewHalf + 1;
-    e.cd -= dt;
+    e.cd -= dt / diff().rate;
     if (e.type === 'run') {
       if (!e.dir) e.dir = dx < 0 ? -1 : 1;
-      e.face = e.dir; e.vx = e.dir * 4.6;
+      e.face = e.dir; e.vx = e.dir * 4.6 * diff().run;
       if (e.on && e.ground && gaps.some(g => e.dir < 0 ? e.x - g[1] < .8 && e.x - g[1] > 0 : g[0] - e.x < .8 && g[0] - e.x > 0)) e.vy = 13;
+      if (e.on && obstaclesNow().some(b => e.y < b.top - .05 && (e.dir < 0 ? e.x - b.x2 > 0 && e.x - b.x2 < 1.5 : b.x1 - e.x > 0 && b.x1 - e.x < 1.5))) e.vy = 12;
       physics(e, dt);
     } else if (e.type === 'gun') {
       e.face = dx < 0 ? -1 : 1; const a = Math.atan2(ty - (e.y + 1.5), Math.abs(dx));
@@ -426,6 +459,7 @@ function updateEnemies(dt) {
 function updateBullets(dt) {
   for (const b of bullets) {
     b.life -= dt; const p = b.m.position; p.x += b.vx * dt; p.y += b.vy * dt;
+    if (b.life > 0 && blocks.some(o => p.x > o.x1 && p.x < o.x2 && p.y > o.y && p.y < o.top)) { b.life = 0; burst(p.x, p.y, 5, 'hit', 4); }
     if (p.y < .02 && !gaps.some(g => p.x > g[0] && p.x < g[1])) { b.life = 0; burst(p.x, .1, 3, 'hit', 3); }
     if (b.enemy) {
       if (b.life > 0 && P.dead <= 0 && Math.abs(p.x - P.x) < (P.prone ? .8 : .36) && p.y > P.y + .05 && p.y < P.y + (P.prone ? .6 : 1.85)) { b.life = 0; hurt(Math.sign(b.vx) || -P.face); }
@@ -436,8 +470,8 @@ function updateBullets(dt) {
         b.life = 0; e.hp--; burst(p.x, p.y, 5, e.type === 'run' || e.type === 'gun' ? 'blood' : 'hit', 5);
         if (e.type === 'boss') { e.core.material.color.setRGB(5, 4, 3); e.flash = .05; }
         if (e.hp <= 0) {
-          e.gone = true; score += { run: 100, gun: 200, drone: 250, turret: 400, boss: 5000 }[e.type];
-          if (e.type === 'boss') { for (let i = 0; i < 6; i++) explode(e.x + rnd(-1, 3), rnd(1, 7), 1.5); bullets.forEach(q => q.life = 0); state = 'won'; setTimeout(() => state === 'won' && show('MISSION COMPLETE', `Score ${score + lives * 1000}`, 'Play again'), 1800); }
+          e.gone = true; score += { run: 100, gun: 200, drone: 250, turret: 400, boss: 5000 }[e.type] * diff().score;
+          if (e.type === 'boss') { for (let i = 0; i < 6; i++) explode(e.x + rnd(-1, 3), rnd(1, 7), 1.5); bullets.forEach(q => q.life = 0); state = 'won'; setTimeout(() => state === 'won' && show('MISSION COMPLETE', `${diff().name} · Score ${score + lives * 1000}`, 'Play again'), 1800); }
           else if (e.type === 'run' || e.type === 'gun') { e.kept = true; fall(e, Math.sign(b.vx) || -e.face); sfx('hurt'); }
           else explode(e.x, e.type === 'drone' ? e.y : e.y + 1, e.type === 'turret' ? 1 : .6);
         }
@@ -528,4 +562,4 @@ Promise.all([loadSoldier(manager), envReady]).then(() => {
   ready = true; $('go').textContent = 'Start mission'; $('go').disabled = false;
   renderer.setAnimationLoop(() => { clock.update(); const raw = clock.getDelta(); watchSpeed(raw); step(Math.min(raw, 1 / 30)); composer.render(); });
 }).catch(err => { console.error(err); $('go').textContent = 'Could not load. Refresh to retry'; });
-window.__game = { hurt, get ready() { return ready; }, start, step, keys, get P() { return P; }, get boss() { return boss; }, get state() { return state; }, get enemies() { return enemies; }, get lives() { return lives; }, set lives(v) { lives = v; }, render: () => composer.render(), halt: () => renderer.setAnimationLoop(null) };
+window.__game = { setLevel, blocks, obstaclesNow, hurt, get ready() { return ready; }, start, step, keys, get P() { return P; }, get boss() { return boss; }, get state() { return state; }, get enemies() { return enemies; }, get lives() { return lives; }, set lives(v) { lives = v; }, render: () => composer.render(), halt: () => renderer.setAnimationLoop(null) };

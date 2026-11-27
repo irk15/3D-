@@ -26,12 +26,15 @@ button{font:inherit;color:#fff;background:#0008;border:1px solid #fff4;border-ra
 .act{width:78px;height:78px;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
 #bf{right:22px;bottom:96px;background:#d63b1255}#bj{right:112px;bottom:28px}
 @media (pointer:coarse){#pad{display:block}.act{display:flex}}
+#levels{display:flex;gap:8px}#levels button{font-weight:700;padding:9px 16px}#levels button[aria-pressed=true]{background:#ffb341;color:#201005;border-color:#ffe0a8}#levelnote{font-size:13px;color:#ffd391;min-height:1.2em}
+#menu{overflow-y:auto;justify-content:safe center}
+@media (max-height:520px){#menu{gap:7px;padding:10px}#title{font-size:34px}#sub{font-size:13px}#help{font-size:10px;line-height:1.5}#go{padding:9px 32px}}
 </style></head><body>
 <div id="hud"><div><div id="score">000000</div><div id="lives"></div><div id="weapon"></div></div><div class="top"><button id="mute">Sound on</button><button id="pause">Pause</button></div></div>
 <div id="bossbar" hidden><div id="bossfill"></div></div><div id="toast"></div>
 <div id="pad"><div id="knob"></div></div><div class="act" id="bj">JUMP</div><div class="act" id="bf">FIRE</div>
-<div id="menu"><h1 id="title">IRON JUNGLE</h1><p id="sub">Cross the jungle, grab the spread gun and destroy the Iron Bastion. You have 5 lives.</p><button id="go" disabled>Loading</button>
-<p id="help">Keyboard: arrows or WASD move and aim · Space jump · J or X fire · P pause<br>Phone: turn sideways for the best view · Down lies prone · Down + Jump drops from a platform<br><small>Credits: soldier model from Mixamo via three.js examples · HDR sky from Poly Haven (CC0) · grass texture from opengameart.org (CC BY 3.0)</small></p></div>
+<div id="menu"><h1 id="title">IRON JUNGLE</h1><p id="sub">Cross the jungle, grab the spread gun and destroy the Iron Bastion. Choose your difficulty.</p><div id="levels" role="group" aria-label="Difficulty"><button data-level="easy">Recruit</button><button data-level="normal">Soldier</button><button data-level="hard">Commando</button></div><div id="levelnote"></div><button id="go" disabled>Loading</button>
+<p id="help">Keyboard: arrows or WASD move and aim · Space jump · J or X fire · P pause<br>Phone: turn sideways for the best view · Down lies prone · Jump over crates, barrels and logs<br><small>Credits: soldier model from Mixamo via three.js examples · HDR sky from Poly Haven (CC0) · grass texture from opengameart.org (CC BY 3.0)</small></p></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"}}</script>
-<script type="module" src="game.js?v=3"></script>
+<script type="module" src="game.js?v=4"></script>
 </body></html>

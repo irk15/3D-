@@ -57,7 +57,7 @@ export function grassField(scene, wind, rnd, ranges) {
   geo.computeVertexNormals();
   const spots = [];
   for (const [x1, x2] of ranges) for (let x = x1 + .1; x < x2 - .1; x += .11) {
-    spots.push([x + rnd(-.1, .1), rnd(-3.8, -.9)]); spots.push([x + rnd(-.1, .1), rnd(-3.8, -1.4)]);
+    spots.push([x + rnd(-.1, .1), rnd(-3.9, -1.7)]); spots.push([x + rnd(-.1, .1), rnd(-3.9, -2)]);
     if (rnd() > .55) spots.push([x, rnd(1.7, 2.95)]);
   }
   // split into chunks so off-screen grass is culled

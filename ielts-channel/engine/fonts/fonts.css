@@ -1,0 +1,11 @@
+/* Bundled so the render works on a clean GitHub Actions runner. All four families are SIL Open Font License. */
+@font-face{font-family:'Inter';font-weight:400;src:url(Inter-Regular.otf)}
+@font-face{font-family:'Inter';font-weight:500;src:url(Inter-Medium.otf)}
+@font-face{font-family:'Inter';font-weight:600;src:url(Inter-SemiBold.otf)}
+@font-face{font-family:'Inter';font-weight:700;src:url(Inter-Bold.otf)}
+@font-face{font-family:'Inter';font-weight:800;src:url(Inter-ExtraBold.otf)}
+@font-face{font-family:'Inter Display';font-weight:700;src:url(InterDisplay-Bold.otf)}
+@font-face{font-family:'Inter Display';font-weight:800;src:url(InterDisplay-ExtraBold.otf)}
+@font-face{font-family:'Inter Display';font-weight:900;src:url(InterDisplay-Black.otf)}
+@font-face{font-family:'Gelasio';font-weight:400 700;src:url(Gelasio-VF.ttf)}
+@font-face{font-family:'Lora';font-style:italic;font-weight:400 700;src:url(Lora-Italic-VF.ttf)}

@@ -1,0 +1,251 @@
+{
+ "id": "ep001",
+ "task_type": "letter",
+ "meta": {
+  "kick": "IELTS General Training · Writing Task 1",
+  "sub": "The damaged sofa letter",
+  "noun": "letter",
+  "essay": false,
+  "scroll": false,
+  "taskBullets": true,
+  "cheatHead": "CHEAT SHEET · BAND 6 → BAND 8 LETTERS"
+ },
+ "voice": {
+  "name": "af_heart",
+  "speed": 0.88
+ },
+ "title_lines": [
+  "Can you hear the difference between a Band 6 letter, and a Band 8 letter?",
+  "Today: a complaint about a damaged sofa. Same task. Same facts. Very different scores."
+ ],
+ "task": [
+  [
+   "You recently bought a sofa from an online furniture store.",
+   "It arrived damaged."
+  ],
+  [
+   "Write a letter to the company."
+  ],
+  [
+   "In your letter, describe what you ordered and what was wrong."
+  ],
+  [
+   "Explain how the problem has affected you."
+  ],
+  [
+   "Say what you want the company to do."
+  ]
+ ],
+ "band6": {
+  "blocks": [
+   [
+    "Dear Sir or Madam,"
+   ],
+   [
+    "I am writing to complain about the sofa I bought from your website last week.",
+    "My order number is 48213."
+   ],
+   [
+    "I ordered a grey three-seater sofa and it arrived on Friday.",
+    "However, when I opened the box, I saw that one leg was broken and there was a big mark on the front.",
+    "It also looks different from the photo on your website because the colour is much darker."
+   ],
+   [
+    "This problem has made me very upset.",
+    "I invited my family for dinner this weekend, so now I cannot use the sofa.",
+    "I also tried to call your customer service many times but nobody answered the phone, and this wasted a lot of my time."
+   ],
+   [
+    "I would like you to send me a new sofa as soon as possible.",
+    "If you can't do this, I want my money back.",
+    "Please reply quickly."
+   ],
+   [
+    "Yours faithfully,",
+    "Sam Taylor"
+   ]
+  ],
+  "flags": [
+   [
+    "a big mark",
+    "Vague vocabulary",
+    "“Big mark” is basic. Band 8 names the problem precisely."
+   ],
+   [
+    "very upset",
+    "Overused words",
+    "“Very” plus an adjective keeps the range limited."
+   ],
+   [
+    "I invited",
+    "Tense error",
+    "A result in the present needs “I have invited” or “I had arranged”."
+   ],
+   [
+    "If you can't do this, I want my money back.",
+    "Tone slips",
+    "Contractions and blunt demands feel too informal."
+   ]
+  ],
+  "verdict": [
+   [
+    "ok",
+    "Covers every point",
+    "The message is clear and all three bullets are answered."
+   ],
+   [
+    "no",
+    "Basic, repeated vocabulary",
+    "Safe words, little range."
+   ],
+   [
+    "no",
+    "Tone slips, small errors",
+    "Informal moments in a formal letter."
+   ]
+  ],
+  "verdict_speech": [
+   "It covers every point, and the message is clear.",
+   "But the vocabulary is basic and repeated.",
+   "The tone slips, and there are small errors."
+  ]
+ },
+ "band8": {
+  "blocks": [
+   [
+    "Dear Sir or Madam,"
+   ],
+   [
+    "I am writing to express my disappointment with the sofa I purchased from your website last week (order 48213), which arrived in an unacceptable condition."
+   ],
+   [
+    "I ordered a grey three-seater, and it was delivered on Friday.",
+    "Unfortunately, one of the legs had snapped off during transit, and a prominent stain ran across the front cushion.",
+    "Moreover, the fabric is noticeably darker than the colour shown online, so it does not match the product I chose."
+   ],
+   [
+    "This situation has caused considerable inconvenience.",
+    "I had arranged a family dinner for this weekend, and I now have nowhere for my guests to sit.",
+    "In addition, I attempted to contact your customer service team on several occasions, but nobody answered my calls, which only added to my frustration."
+   ],
+   [
+    "I would therefore be grateful if you could arrange for a replacement to be delivered by the end of next week.",
+    "Should this not be possible, I would expect a full refund.",
+    "I look forward to your prompt response."
+   ],
+   [
+    "Yours faithfully,",
+    "Sam Taylor"
+   ]
+  ],
+  "flags": [
+   [
+    "express my disappointment",
+    "Purposeful opening",
+    "States the reason at once, in a formal register."
+   ],
+   [
+    "a prominent stain",
+    "Precise vocabulary",
+    "A specific, natural pairing of words."
+   ],
+   [
+    "Moreover,",
+    "Cohesive devices",
+    "Links ideas smoothly without sounding mechanical."
+   ],
+   [
+    "nowhere for my guests to sit",
+    "Impact, developed",
+    "Shows the effect instead of just saying “upset”."
+   ],
+   [
+    "I would expect a full refund.",
+    "Polite but firm",
+    "Conditional language keeps the tone professional."
+   ]
+  ],
+  "verdict": [
+   [
+    "ok",
+    "Same facts, fully developed",
+    "Every point is explained with detail."
+   ],
+   [
+    "ok",
+    "Precise, natural language",
+    "Wide range, with only rare slips."
+   ],
+   [
+    "ok",
+    "Formal tone, connected ideas",
+    "Polite, firm and easy to follow."
+   ]
+  ],
+  "verdict_speech": [
+   "Same facts. But now every point is fully developed.",
+   "The language is precise and natural.",
+   "And the tone is formal, polite, and firm."
+  ]
+ },
+ "upgrades": [
+  {
+   "label": "Tone",
+   "band6": "I want my money back.",
+   "band8": "I would expect a full refund.",
+   "speech": "One. Tone. Instead of: I want my money back. Write: I would expect a full refund."
+  },
+  {
+   "label": "Vocabulary",
+   "band6": "a big mark",
+   "band8": "a prominent stain",
+   "speech": "Two. Vocabulary. Replace: a big mark. With: a prominent stain."
+  },
+  {
+   "label": "Linking",
+   "band6": "It also looks different",
+   "band8": "Moreover, the fabric is noticeably darker",
+   "speech": "Three. Linking. Swap the plain word also, for linkers like: moreover, and, in addition."
+  },
+  {
+   "label": "Development",
+   "band6": "This problem has made me very upset.",
+   "band8": "I now have nowhere for my guests to sit.",
+   "speech": "Four. Development. Don't just say you were upset. Show the impact."
+  }
+ ],
+ "your_turn": {
+  "q": "This problem has made me very upset.",
+  "ans": "This situation has caused me considerable inconvenience.",
+  "pause": 10
+ },
+ "phrase_bank": [
+  "I am writing to express my disappointment with…",
+  "I would be grateful if you could…",
+  "Should this not be possible, I would expect…",
+  "I look forward to your prompt response."
+ ],
+ "speech_fix": [
+  [
+   "48213",
+   "four eight two one three"
+  ],
+  [
+   "three-seater",
+   "three seater"
+  ]
+ ],
+ "thumb": {
+  "kicker": "IELTS WRITING · TASK 1 LETTER",
+  "left": "“I want my money back.”",
+  "right": "“I would expect a full refund.”"
+ },
+ "youtube": {
+  "topic": "Damaged Sofa Complaint",
+  "tags": [
+   "complaint letter",
+   "formal letter IELTS",
+   "IELTS letter writing"
+  ]
+ }
+}

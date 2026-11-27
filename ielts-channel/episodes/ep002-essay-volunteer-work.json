@@ -1,0 +1,241 @@
+{
+ "id": "ep002",
+ "task_type": "essay",
+ "meta": {
+  "kick": "IELTS General Training · Writing Task 2",
+  "sub": "The volunteering essay",
+  "noun": "essay",
+  "essay": true,
+  "scroll": true,
+  "taskBullets": false,
+  "cheatHead": "CHEAT SHEET · BAND 6 → BAND 8 ESSAYS"
+ },
+ "voice": {
+  "name": "af_heart",
+  "speed": 0.9
+ },
+ "title_lines": [
+  "Can you hear the difference between a Band 6 essay, and a Band 8 essay?",
+  "Today: an essay about volunteer work. Same task. Same topic. Very different scores."
+ ],
+ "task": [
+  [
+   "Some people think that all students should do unpaid volunteer work in their community as part of their studies."
+  ],
+  [
+   "To what extent do you agree or disagree?"
+  ],
+  [
+   "Give reasons for your answer, and include any relevant examples from your own knowledge or experience."
+  ],
+  [
+   "Write at least 250 words."
+  ]
+ ],
+ "band6": {
+  "blocks": [
+   [
+    "Nowadays, some people think that students should do volunteer work in their community as a part of their studies.",
+    "I agree with this opinion because it can give many benefits for students and for society."
+   ],
+   [
+    "Firstly, volunteer work helps students to learn important skills.",
+    "When students work in a team to help other people, they learn how to communicate and how to solve problems.",
+    "For example, if a student helps in a food bank, he must speak with many different people and organise the food.",
+    "These skills are very useful when they find a job in the future.",
+    "Students can also make new friends when they do volunteer work together."
+   ],
+   [
+    "Secondly, volunteer work is good for the community.",
+    "There are many people who need help, like old people or poor families.",
+    "If students spend some time to help them, the community will be more better.",
+    "Also, students can feel proud of themselves because they did something good, and I think everyone can enjoy living in a place where people care about each other."
+   ],
+   [
+    "However, some people say that students are already very busy with their homework and exams, so volunteer work can give them too much stress.",
+    "I think this is true sometimes, but the school can make a short programme, for example two hours every week, so students have enough time and do not feel tired."
+   ],
+   [
+    "In conclusion, I believe that volunteer work should be a part of the school studies because it teaches students useful skills and helps the community.",
+    "The schools should organise it carefully."
+   ]
+  ],
+  "flags": [
+   [
+    "it can give many benefits",
+    "Word choice",
+    "“Give benefits” sounds unnatural. Band 8 writes “bring” or “offer”."
+   ],
+   [
+    "Firstly,",
+    "Mechanical linking",
+    "Firstly, Secondly and In conclusion are safe but predictable."
+   ],
+   [
+    "very useful",
+    "Basic vocabulary",
+    "“Very” plus a common adjective keeps the range limited."
+   ],
+   [
+    "more better",
+    "Grammar error",
+    "A double comparative. It should simply be “better”."
+   ],
+   [
+    "I think this is true sometimes,",
+    "Thin development",
+    "The opposing view is mentioned, but barely explained."
+   ]
+  ],
+  "verdict": [
+   [
+    "ok",
+    "Clear position, relevant ideas",
+    "The task is answered and the essay is easy to follow."
+   ],
+   [
+    "no",
+    "Ideas stated, not developed",
+    "Few explanations, and only a thin example."
+   ],
+   [
+    "no",
+    "Mechanical linking, grammar slips",
+    "Safe linkers, and errors like “more better”."
+   ]
+  ],
+  "verdict_speech": [
+   "The position is clear, and the ideas are relevant.",
+   "But the ideas are stated, not developed.",
+   "The linking is mechanical, and there are grammar slips."
+  ]
+ },
+ "band8": {
+  "blocks": [
+   [
+    "It is often suggested that every student should carry out unpaid community work as part of their education.",
+    "I strongly agree with this view, since such experience develops young people’s character while also benefiting the wider community."
+   ],
+   [
+    "To begin with, volunteering exposes students to situations that a classroom can rarely replicate.",
+    "A teenager who helps at a local food bank, for instance, learns to cooperate with strangers, manage tasks under pressure and respond with empathy to people from very different backgrounds.",
+    "These qualities are highly valued by employers, and they are difficult to acquire through textbooks alone."
+   ],
+   [
+    "Moreover, communities gain tangible support from this arrangement.",
+    "Many organisations that assist elderly residents or low-income families are chronically understaffed, so a steady flow of student helpers can make a genuine difference.",
+    "Such placements also give students a meaningful sense of purpose beyond their exams.",
+    "Over time, students who have contributed in this way are also more likely to remain civically engaged as adults, which strengthens social cohesion.",
+    "By contrast, voluntary schemes tend to attract only those who are already motivated, leaving the majority without these opportunities."
+   ],
+   [
+    "Admittedly, critics argue that learners are already overloaded with coursework, and that compulsory volunteering could add to their stress.",
+    "While this concern is understandable, it can be addressed through sensible planning.",
+    "A modest commitment of two hours per week, scheduled within the school timetable, would leave ample room for study."
+   ],
+   [
+    "In conclusion, the personal and social advantages of community service far outweigh the practical difficulties.",
+    "Schools should therefore make it a compulsory, well-organised part of the curriculum."
+   ]
+  ],
+  "flags": [
+   [
+    "I strongly agree with this view,",
+    "Clear position",
+    "Stated in the introduction and echoed in the conclusion."
+   ],
+   [
+    "A teenager who helps at a local food bank, for instance,",
+    "Fully developed idea",
+    "A claim, an explanation and a specific example."
+   ],
+   [
+    "highly valued by employers,",
+    "Natural collocation",
+    "Word partners that native writers actually use."
+   ],
+   [
+    "Admittedly,",
+    "Counter-argument",
+    "Concedes the opposing view before answering it."
+   ],
+   [
+    "While this concern is understandable, it can be addressed through sensible planning.",
+    "Complex sentences",
+    "A contrast clause handled with full control."
+   ]
+  ],
+  "verdict": [
+   [
+    "ok",
+    "Position clear, ideas fully developed",
+    "Claim, explanation and example in every paragraph."
+   ],
+   [
+    "ok",
+    "Wide, natural vocabulary",
+    "Precise word choices with only rare slips."
+   ],
+   [
+    "ok",
+    "Smooth, flexible cohesion",
+    "Ideas flow, and the other side is handled with control."
+   ]
+  ],
+  "verdict_speech": [
+   "Same topic. But now every idea is fully developed.",
+   "The language is precise and natural.",
+   "And the essay flows, with the other side handled with control."
+  ]
+ },
+ "upgrades": [
+  {
+   "label": "Position",
+   "band6": "I agree because it can give many benefits.",
+   "band8": "I strongly agree, since it builds character and helps the community.",
+   "speech": "One. Position. Instead of: I agree because it can give many benefits. Write: I strongly agree, since it builds character and helps the community."
+  },
+  {
+   "label": "Development",
+   "band6": "He must speak with many different people.",
+   "band8": "Students learn to cooperate with strangers and work under pressure.",
+   "speech": "Two. Development. Don't just state a fact. Explain it, and give an example. Instead of: he must speak with many different people. Write: students learn to cooperate with strangers, and work under pressure."
+  },
+  {
+   "label": "Linking",
+   "band6": "Firstly… Secondly… In conclusion…",
+   "band8": "To begin with… Moreover… Admittedly…",
+   "speech": "Three. Linking. Vary your linkers. Instead of: firstly, and secondly. Try: to begin with, moreover, and admittedly."
+  },
+  {
+   "label": "Counterpoint",
+   "band6": "I think this is true sometimes, but…",
+   "band8": "While this concern is understandable, it can be addressed…",
+   "speech": "Four. Counterpoint. Answer the other side with control. Write: while this concern is understandable, it can be addressed through sensible planning."
+  }
+ ],
+ "your_turn": {
+  "q": "These skills are very useful when they find a job in the future.",
+  "ans": "These qualities are highly valued by employers.",
+  "pause": 10
+ },
+ "phrase_bank": [
+  "I strongly agree with this view, since…",
+  "To begin with, … Moreover, …",
+  "Admittedly, critics argue that…",
+  "The advantages far outweigh the difficulties."
+ ],
+ "speech_fix": [],
+ "thumb": {
+  "kicker": "IELTS WRITING · TASK 2 ESSAY",
+  "left": "“the community will be more better”",
+  "right": "“advantages far outweigh the difficulties”"
+ },
+ "youtube": {
+  "topic": "Volunteer Work",
+  "tags": [
+   "volunteer work essay",
+   "agree or disagree essay"
+  ]
+ }
+}

@@ -1,0 +1,267 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+:root{--ink:#0B0F1F;--paper:#F5F0E6;--b6:#FF7A59;--b8:#3FD8A8;--mut:#8D93B3;--tx:#EEF0FA}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--ink);font-family:'Inter','Inter Display',sans-serif;color:var(--tx)}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:linear-gradient(180deg,#0A0E1E,#12172E)}
+#bg,#content,#chrome{position:absolute;inset:0}
+.orb{position:absolute;width:1300px;height:1300px;border-radius:50%;filter:blur(30px)}
+.dot{position:absolute;width:5px;height:5px;border-radius:50%;background:#AEB6FF}
+#grain{position:absolute;inset:0;opacity:.06;background-size:220px 220px;mix-blend-mode:overlay}
+#vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.38) 100%)}
+.kick{position:absolute;left:96px;top:56px;font:600 19px 'Inter';letter-spacing:.2em;color:var(--mut);text-transform:uppercase}
+.chip{position:absolute;right:96px;top:46px;display:flex;align-items:center;gap:12px;padding:10px 22px;border-radius:999px;background:rgba(255,255,255,.07);border:1.5px solid var(--acc);font:700 22px 'Inter Display';letter-spacing:.12em;color:var(--tx)}
+.chip i{width:12px;height:12px;border-radius:50%;background:var(--acc);display:block}
+.foot{position:absolute;left:96px;bottom:42px;font:500 18px 'Inter';color:#6C7296;letter-spacing:.02em}
+.chap{position:absolute;right:96px;bottom:38px;display:flex;gap:26px;font:600 16px 'Inter';letter-spacing:.14em;text-transform:uppercase}
+.chap span{color:#5D6388;position:relative;padding-bottom:6px}
+.chap span.on{color:var(--tx)}
+.chap span.on:after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:2px;background:var(--acc)}
+.prog{position:absolute;left:0;bottom:0;height:6px;width:1920px;background:rgba(255,255,255,.07)}
+.prog b{position:absolute;left:0;top:0;height:6px;background:linear-gradient(90deg,var(--b6),var(--b8))}
+.prog u{position:absolute;top:0;width:3px;height:6px;background:var(--ink)}
+.paper{position:absolute;left:96px;top:118px;width:1130px;height:880px;background:var(--paper);border-radius:22px;padding:52px 76px;box-shadow:0 30px 80px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06)}
+.paper.task{left:300px;top:150px;width:1320px;height:800px;padding:60px 90px}
+.lw{height:776px;overflow:hidden;margin-top:-4px;-webkit-mask-image:linear-gradient(transparent 0,#000 30px,#000 calc(100% - 56px),transparent 100%)}
+.letter{position:relative;padding:26px 0 90px;font:400 27.5px/1.52 'Gelasio',serif;color:#1B1D2B}
+.letter p{margin:0 0 17px} .letter p.sal,.letter p.sig{margin-bottom:14px}
+.taskhead{font:700 20px 'Inter';letter-spacing:.22em;color:#8B8470;margin-bottom:26px}
+.taskt{font:400 38px/1.5 'Gelasio',serif;color:#1B1D2B}
+.taskt p{margin:0 0 26px}
+.taskt p.bul{position:relative;padding-left:46px;margin-bottom:16px}
+.taskt p.bul:before{content:'';position:absolute;left:8px;top:.62em;width:14px;height:14px;background:#2B2F4A;transform:rotate(45deg);border-radius:2px}
+.w{border-radius:5px}
+.side{position:absolute;left:1268px;top:118px;width:556px}
+.sidehead{font:700 19px 'Inter';letter-spacing:.2em;color:var(--mut);margin:6px 0 20px}
+.note{padding:20px 26px 22px;margin-bottom:16px;border-radius:16px}
+.note h4{font:700 27px 'Inter Display';margin-bottom:7px}
+.note p{font:400 21px/1.42 'Inter';color:#B8BDDB}
+.empty{font:italic 400 24px/1.5 'Lora',serif;color:#6C7296;padding:10px 4px}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.big{font:900 168px/1 'Inter Display';letter-spacing:-.03em;white-space:nowrap}
+.sub{font:italic 400 58px/1.25 'Lora',serif;color:#D4D8F0;margin-top:34px}
+.tag{font:400 36px/1.4 'Inter';color:var(--mut);margin-top:34px}
+.lab{font:700 34px 'Inter';color:var(--tx);margin-bottom:16px}
+.num{font:900 460px/0.9 'Inter Display';letter-spacing:-.05em;color:var(--acc)}
+.sm{font:500 26px 'Inter';color:var(--mut);margin-top:30px;letter-spacing:.03em}
+.verd{position:absolute;left:260px;top:210px;width:1400px}
+.h2{font:700 22px 'Inter';letter-spacing:.24em;color:var(--mut);margin-bottom:34px}
+.vr{display:flex;align-items:center;gap:34px;padding:34px 44px;margin-bottom:24px;border-radius:24px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.09)}
+.ico{flex:none;width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 46px 'Inter'}
+.ico.ok{background:rgba(63,216,168,.18);color:var(--b8);border:2.5px solid var(--b8)}
+.ico.no{background:rgba(255,122,89,.18);color:var(--b6);border:2.5px solid var(--b6)}
+.vr h3{font:700 48px/1.1 'Inter Display';margin-bottom:8px}
+.vr p{font:400 27px 'Inter';color:#B8BDDB}
+.cmp{position:absolute;left:96px;right:96px;top:132px}
+.row{display:grid;grid-template-columns:240px 1fr 70px 1fr;align-items:center;gap:22px;margin-bottom:18px}
+.lab2{font:700 24px 'Inter Display';letter-spacing:.06em}
+.card{padding:24px 30px;border-radius:18px;font:400 31px/1.3 'Gelasio',serif;min-height:158px;display:flex;flex-direction:column;justify-content:center}
+.card small{font:700 17px 'Inter';letter-spacing:.2em;margin-bottom:10px}
+.card.l{background:rgba(255,122,89,.10);border:1.5px solid rgba(255,122,89,.38);color:#F1D9D2}
+.card.l small{color:var(--b6)}
+.card.r2{background:rgba(63,216,168,.12);border:1.5px solid rgba(63,216,168,.5);color:#E4F7EF}
+.card.r2 small{color:var(--b8)}
+.arr{font:400 46px 'Inter';color:var(--mut);text-align:center}
+.turn{position:absolute;left:96px;right:96px;top:170px}
+.turn h1{font:italic 400 66px/1.2 'Lora',serif;color:#E3E6F7;margin:14px 0 72px}
+.tgrid{display:grid;grid-template-columns:1fr 200px 1fr;align-items:center}
+.tcard{height:370px;padding:44px 50px;border-radius:26px;font:400 46px/1.4 'Gelasio',serif;display:flex;flex-direction:column;justify-content:center}
+.tcard small{font:700 19px 'Inter';letter-spacing:.2em;margin-bottom:14px}
+.tcard.l{background:rgba(255,122,89,.10);border:1.5px solid rgba(255,122,89,.4);color:#F5DDD6}
+.tcard.l small{color:var(--b6)}
+.tcard.r{background:rgba(63,216,168,.12);border:1.5px solid var(--b8);color:#E8F9F2}
+.tcard.r small{color:var(--b8)}
+.tcard.ph{background:rgba(255,255,255,.035);border:2px dashed rgba(255,255,255,.22);color:#7A80A6;font-style:italic}
+.cmt{margin:64px auto 0;width:max-content;display:flex;align-items:center;gap:16px;padding:18px 34px;border-radius:999px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);font:600 28px 'Inter'}
+.cheat{position:absolute;left:96px;right:96px;top:128px}
+.cgrid{display:grid;grid-template-columns:1fr 780px;gap:34px}
+.up{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.upc{padding:30px 32px;border-radius:22px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);min-height:352px}
+.upc b{display:block;font:700 24px 'Inter';letter-spacing:.14em;color:var(--mut);margin-bottom:20px;text-transform:uppercase}
+.upc .a{font:400 30px/1.35 'Gelasio',serif;color:#F1B6A7;text-decoration:line-through;text-decoration-color:rgba(255,122,89,.7)}
+.upc .z{font:400 34px/1.35 'Gelasio',serif;color:#BFF3DF;margin-top:16px}
+.bank{background:var(--paper);border-radius:24px;padding:42px 46px;color:#1B1D2B;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.bank b{display:block;font:700 20px 'Inter';letter-spacing:.22em;color:#8B8470;margin-bottom:20px}
+.bank p{font:400 35px/1.4 'Gelasio',serif;padding:30px 0;border-top:1.5px solid #DDD5C2}
+.bank p:first-of-type{border-top:none}
+.snap{position:absolute;right:96px;bottom:92px;padding:14px 26px;border-radius:999px;border:1.5px solid var(--b8);color:var(--b8);font:700 20px 'Inter';letter-spacing:.2em}
+.follow{margin-top:56px;display:flex;align-items:center;gap:20px;padding:24px 44px;border-radius:999px;background:linear-gradient(90deg,rgba(255,122,89,.2),rgba(63,216,168,.2));border:1.5px solid rgba(255,255,255,.25);font:700 32px 'Inter Display';letter-spacing:.08em}
+</style></head>
+<body><div id="stage"><div id="bg"></div><div id="content"></div><div id="chrome"></div></div>
+<script>
+const J = window.T, T = J.scenes, TOTAL = J.total, META = J.meta || {};
+const cl = x => Math.min(1, Math.max(0, x));
+const eo = x => 1 - Math.pow(1 - x, 3);
+const eob = x => { x = cl(x); return 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2); };
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const RGB = {6:'255,122,89', 8:'63,216,168', 0:'120,130,255'};
+const KICK = META.kick || 'IELTS General Training · Writing Task 1';
+const FOOT = '<div class="foot">Sample answers written for study. Not an official IELTS score.</div>';
+const CH = [['Task',[1]],['Band 6',[2,3,4]],['Band 8',[5,6,7]],['Upgrades',[8]],['Your turn',[9]],['Cheat sheet',[10,11]]];
+const NOFOOT = new Set(['title','turn','cheat','outro','compare','task']);
+
+const bg = document.getElementById('bg'), content = document.getElementById('content'), chrome = document.getElementById('chrome');
+// persistent background
+const orbA = document.createElement('div'); orbA.className='orb'; bg.appendChild(orbA);
+const orbB = document.createElement('div'); orbB.className='orb'; bg.appendChild(orbB);
+const dots = []; for (let i=0;i<46;i++){ const d=document.createElement('div'); d.className='dot'; bg.appendChild(d); dots.push({el:d, x:(Math.sin(i*91.7)*.5+.5)*1920, o:(Math.sin(i*37.1)*.5+.5), sp:.012+(Math.sin(i*13.3)*.5+.5)*.02, sz:2+(Math.sin(i*5.7)*.5+.5)*4}); }
+const grain = document.createElement('div'); grain.id='grain';
+grain.style.backgroundImage = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>\")";
+bg.appendChild(grain); const vig=document.createElement('div'); vig.id='vig'; bg.appendChild(vig);
+
+function chapterOf(i){ for (let c=0;c<CH.length;c++) if (CH[c][1].includes(i)) return c; return -1; }
+
+function karaoke(sc, t, isTask){
+  const kd=sc.kd, times=kd.times, N=times.length, band=sc.band||0, acc=RGB[band||8];
+  const flagOf={}, fp={};
+  kd.flags.forEach((f,fi)=>{ const p=eo(cl((t-times[f.b])/0.5)); for(let j=f.a;j<=f.b;j++){ flagOf[j]=fi; } fp[fi]=p; });
+  let html='';
+  kd.blocks.forEach((b,bi)=>{
+    const cls = isTask ? (bi===0?'':(META.taskBullets===false?'':'bul')) : (META.essay?'':(bi===0?'sal':(bi===kd.blocks.length-1?'sig':'')));
+    let p='';
+    b.forEach(s=>{
+      s.words.forEach((w,j)=>{
+        const idx=s.first+j, st=times[idx], en=idx+1<N?times[idx+1]:1e9;
+        const read=eo(cl((t-st)/0.2)), op=0.26+0.74*read;
+        const hl = t<st?0:cl((t-st)/0.09)*(1-cl((t-en)/0.25));
+        let style=`opacity:${op.toFixed(3)};`;
+        const fi=flagOf[idx]; let extra='';
+        const hlbg=`rgba(${acc},${(0.42*hl).toFixed(3)})`;
+        if (fi!==undefined && fp[fi]>0){
+          const f=kd.flags[fi], p_=fp[fi], last=idx===f.b, first=idx===f.a;
+          const inside = idx<f.b && j+1<s.words.length;
+          if (band===6){
+            style+=`text-decoration:underline wavy rgba(229,80,58,${p_.toFixed(3)});text-decoration-thickness:2.5px;text-underline-offset:6px;background:${hlbg};box-shadow:0 0 0 3px ${hlbg};`;
+          } else {
+            style+=`background-color:${hlbg};background-image:linear-gradient(rgba(189,235,216,${p_.toFixed(3)}),rgba(189,235,216,${p_.toFixed(3)}));background-repeat:no-repeat;background-size:${(p_*100).toFixed(1)}% 100%;box-shadow:0 0 0 2px rgba(189,235,216,${p_.toFixed(3)});text-decoration:underline;text-decoration-color:rgba(29,158,120,${p_.toFixed(3)});text-decoration-thickness:2.5px;text-underline-offset:6px;`;
+          }
+          p += `<span class="w" style="${style}">${esc(w)}${inside?' ':''}</span>${inside?'':' '}`;
+        } else {
+          style+=`background:${hlbg};box-shadow:0 0 0 3px ${hlbg};`;
+          p += `<span class="w" style="${style}">${esc(w)}</span> `;
+        }
+      });
+      if (cls==='sig') p+='<br>';
+    });
+    html+=`<p class="${cls}">${p}</p>`;
+  });
+  if (isTask) return `<div class="paper task"><div class="taskhead">THE TASK</div><div class="taskt">${html}</div></div>`;
+  let notes='', shownN=0;
+  kd.flags.forEach((f,fi)=>{
+    const tb=times[f.b]; if (t<tb) return; shownN++;
+    const p=eo(cl((t-tb)/0.55)); const tn = fi+1<kd.flags.length? times[kd.flags[fi+1].b] : 1e9;
+    const n = p*(1-eo(cl((t-tn)/0.5)));
+    const bc=`color-mix(in srgb, rgb(${acc}) ${(45+55*n).toFixed(0)}%, transparent)`;
+    const tc=`color-mix(in srgb, rgb(${acc}) ${(100*n).toFixed(0)}%, #EEF0FA)`;
+    notes+=`<div class="note" style="opacity:${p.toFixed(3)};transform:translateY(${((1-p)*28).toFixed(1)}px);background:rgba(255,255,255,${(0.055+0.055*n).toFixed(3)});border-left:5px solid ${bc};box-shadow:0 12px 40px rgba(0,0,0,${(0.3*n).toFixed(2)})"><h4 style="color:${tc}">${esc(f.title)}</h4><p>${esc(f.body)}</p></div>`;
+  });
+  if (!shownN) notes='<div class="empty">Listen for the language the examiner rewards — or penalises.</div>';
+  return `<div class="paper"><div class="lw"><div class="letter">${html}</div></div></div><div class="side"><div class="sidehead">WHAT THE EXAMINER NOTICES</div>${notes}</div>`;
+}
+
+function body(i, t){
+  const sc=T[i], band=sc.band||0;
+  if (sc.kind==='title'){
+    const p1=eo(cl((t-0.1)/0.8)), p2=eob((t-0.55)/0.55), p3=eo(cl((t-1.0)/0.7)), p4=eo(cl((t-sc.starts[1])/0.6));
+    return `<div class="center"><div class="big"><span style="display:inline-block;color:var(--b6);opacity:${p1};transform:translateX(${-140*(1-p1)}px)">Band 6</span> <span style="display:inline-block;transform:scale(${(0.5+0.5*p2).toFixed(3)});opacity:${cl(p2)}">vs</span> <span style="display:inline-block;color:var(--b8);opacity:${eo(cl((t-0.2)/0.8))};transform:translateX(${140*(1-eo(cl((t-0.2)/0.8)))}px)">Band 8</span></div>
+      <div style="width:${(520*p3).toFixed(0)}px;height:3px;background:linear-gradient(90deg,var(--b6),var(--b8));margin-top:40px;border-radius:2px"></div>
+      <div class="sub" style="opacity:${p3};transform:translateY(${(1-p3)*20}px)">${META.sub||'The damaged sofa letter'}</div>
+      <div class="tag" style="opacity:${p4};transform:translateY(${(1-p4)*14}px)">Same task. Same facts. Very different scores.</div></div>`;
+  }
+  if (sc.kind==='task') return karaoke(sc,t,true);
+  if (sc.kind==='letter') return karaoke(sc,t,false);
+  if (sc.kind==='lead'){
+    const p=eob((t-0.05)/0.75), q=eo(cl((t-0.25)/0.5)), r=eo(cl((t-0.7)/0.5));
+    const glow=(0.30+0.12*Math.sin(t*3)).toFixed(3);
+    return `<div class="center"><div class="lab" style="letter-spacing:${(0.2+0.12*q).toFixed(3)}em;opacity:${q}">THE BAND ${sc.band} ANSWER</div><div class="num" style="transform:scale(${(0.7+0.3*p).toFixed(3)});opacity:${cl(p*1.4)};text-shadow:0 0 120px rgba(${RGB[band]},${glow})">${sc.band}</div><div class="sm" style="opacity:${r}">Typical features of a Band ${sc.band} ${META.noun||'letter'}</div></div>`;
+  }
+  if (sc.kind==='verdict'){
+    let rows='';
+    sc.items.forEach((it,k)=>{
+      const p=eo(cl((t-sc.starts[k])/0.55)), pi=eob((t-sc.starts[k]-0.12)/0.5);
+      rows+=`<div class="vr" style="opacity:${p};transform:translateX(${-70*(1-p)}px)"><div class="ico ${it[0]}" style="transform:scale(${pi.toFixed(3)})">${it[0]==='ok'?'✓':'✕'}</div><div><h3>${esc(it[1])}</h3><p>${esc(it[2])}</p></div></div>`;
+    });
+    return `<div class="verd"><div class="h2">THE VERDICT · BAND ${sc.band}</div>${rows}</div>`;
+  }
+  if (sc.kind==='compare'){
+    let rows=''; const n=sc.rows.length;
+    sc.rows.forEach((r,j)=>{
+      const t0=sc.starts[j+1]; if (t<t0) return;
+      const nxt = j+1<n? sc.starts[j+2] : 1e9;
+      const cur = 1-eo(cl((t-nxt)/0.5));
+      const pa=eo(cl((t-t0)/0.5)), pb=eo(cl((t-t0-0.2)/0.4)), pc=eo(cl((t-t0-0.45)/0.5));
+      rows+=`<div class="row"><div class="lab2" style="opacity:${pa};color:color-mix(in srgb,#EEF0FA ${(40+60*cur).toFixed(0)}%,#6C7296)">${j+1}. ${esc(r[0])}</div><div class="card l" style="opacity:${pa};transform:translateX(${-50*(1-pa)}px)"><small>BAND 6</small>${esc(r[1])}</div><div class="arr" style="opacity:${pb}">→</div><div class="card r2" style="opacity:${pc};transform:translateX(${50*(1-pc)}px);box-shadow:0 0 ${(60*cur).toFixed(0)}px rgba(63,216,168,${(0.24*cur).toFixed(3)})"><small>BAND 8</small>${esc(r[2])}</div></div>`;
+    });
+    return `<div class="cmp"><div class="h2">FOUR UPGRADES YOU CAN STEAL</div>${rows}</div>`;
+  }
+  if (sc.kind==='turn'){
+    const s=sc.starts, P=sc.pause, tp=s[3];
+    const pq=eo(cl((t-s[1])/0.55)), ringIn=eo(cl((t-s[2])/0.5));
+    const rem = t<tp? P : Math.max(0, P-(t-tp)); const prog = t<tp?0:cl((t-tp)/P);
+    const done = t>=tp+P;
+    const C=2*Math.PI*66;
+    const ansStart=s[5], ansEnd=s[6]-0.5; const chars=Math.floor(sc.ans.length*cl((t-ansStart)/Math.max(0.5,(ansEnd-ansStart))));
+    const showAns = t>=ansStart; const pr=eo(cl((t-ansStart)/0.4));
+    const ringOp = ringIn*(1-eo(cl((t-s[4]-0.3)/0.5)));
+    const caret = Math.floor(t*2)%2===0?'|':' ';
+    const right = showAns
+      ? `<div class="tcard r" style="opacity:${pr};box-shadow:0 0 ${(70*pr).toFixed(0)}px rgba(63,216,168,.25)"><small>ONE BAND 8 ANSWER</small>${esc(sc.ans.slice(0,chars))}</div>`
+      : `<div class="tcard ph" style="opacity:${ringIn}"><small style="color:#7A80A6">YOUR BAND 8 VERSION</small>Write it now${caret}</div>`;
+    const pc=eo(cl((t-s[6])/0.5));
+    return `<div class="turn"><div class="h2" style="margin-bottom:0">YOUR TURN</div><h1>Upgrade this sentence to Band 8</h1>
+      <div class="tgrid"><div class="tcard l" style="opacity:${pq};transform:translateX(${-50*(1-pq)}px)"><small>BAND 6</small>${esc(sc.q)}</div>
+      <div style="display:flex;justify-content:center;opacity:${ringOp.toFixed(3)}"><svg width="170" height="170" viewBox="0 0 170 170"><circle cx="85" cy="85" r="66" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="9"/><circle cx="85" cy="85" r="66" fill="none" stroke="${done?'#3FD8A8':'#EEF0FA'}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*prog).toFixed(1)}" transform="rotate(-90 85 85)"/><text x="85" y="104" text-anchor="middle" font-family="Inter Display" font-weight="800" font-size="58" fill="#EEF0FA">${done?'✓':Math.ceil(rem)}</text></svg></div>
+      ${right}</div>
+      <div class="cmt" style="opacity:${pc};transform:translateY(${(1-pc)*16}px)"><span style="font-size:32px">💬</span>Drop your version in the comments</div></div>`;
+  }
+  if (sc.kind==='cheat'){
+    let up='';
+    sc.rows.forEach((r,j)=>{ const p=eo(cl((t-sc.starts[0]-0.15-0.28*j)/0.5)); up+=`<div class="upc" style="opacity:${p};transform:translateY(${(1-p)*24}px)"><b>${j+1}. ${esc(r[0])}</b><div class="a">${esc(r[1])}</div><div class="z">${esc(r[2])}</div></div>`; });
+    let ph=''; sc.phrases.forEach((s,j)=>{ const p=eo(cl((t-sc.starts[0]-0.9-0.3*j)/0.5)); ph+=`<p style="opacity:${p};transform:translateX(${(1-p)*30}px)">${esc(s)}</p>`; });
+    const sn=eo(cl((t-sc.starts[1])/0.5))*(0.75+0.25*Math.sin(t*4));
+    return `<div class="cheat"><div class="h2">${META.cheatHead||'CHEAT SHEET · BAND 6 → BAND 8 LETTERS'}</div><div class="cgrid"><div class="up">${up}</div><div class="bank"><b>PHRASE BANK</b>${ph}</div></div></div><div class="snap" style="opacity:${sn.toFixed(3)}">📸 SCREENSHOT THIS</div>`;
+  }
+  if (sc.kind==='outro'){
+    const p1=eo(cl((t-0.1)/0.7)), p2=eo(cl((t-0.5)/0.6)), p3=eob((t-sc.starts[1])/0.6);
+    return `<div class="center"><div class="big" style="font-size:128px;opacity:${p1};transform:translateY(${(1-p1)*30}px)">Practise <span style="color:var(--b8)">one</span> upgrade.</div><div class="sub" style="opacity:${p2}">In your very next ${META.noun||'letter'}.</div><div class="follow" style="opacity:${cl(p3)};transform:scale(${(0.85+0.15*p3).toFixed(3)})"><span style="font-size:34px">🔔</span>FOLLOW · A NEW COMPARISON EVERY DAY</div></div>`;
+  }
+  return '';
+}
+
+window.nscenes = T.length;
+window.sceneDur = i => T[i].dur;
+window.draw = function(i, t){
+  const sc=T[i], band=sc.band||0, G=sc.start+t, dur=sc.dur;
+  const fade = eo(cl(t/0.45))*cl((dur-t)/0.35);
+  document.documentElement.style.setProperty('--acc', `rgb(${RGB[band||8]})`);
+  // background motion
+  orbA.style.cssText=`left:${(-300+140*Math.sin(G*0.11)).toFixed(1)}px;top:${(620+80*Math.cos(G*0.09)).toFixed(1)}px;background:radial-gradient(circle,rgba(${RGB[band]},${(0.17*fade+0.05).toFixed(3)}),transparent 62%)`;
+  orbB.style.cssText=`left:${(1000+120*Math.cos(G*0.08)).toFixed(1)}px;top:${(-620+90*Math.sin(G*0.1)).toFixed(1)}px;background:radial-gradient(circle,rgba(110,120,255,.13),transparent 62%)`;
+  dots.forEach(d=>{ const y=1130-((G*d.sp+d.o)%1)*1250; d.el.style.cssText=`left:${(d.x+14*Math.sin(G*.4+d.o*9)).toFixed(1)}px;top:${y.toFixed(1)}px;width:${d.sz}px;height:${d.sz}px;opacity:${(0.10+0.14*Math.abs(Math.sin(G*.7+d.o*20))).toFixed(3)}`; });
+  // content with entrance/exit and slow push
+  const push=1+0.012*(t/dur);
+  content.style.cssText=`opacity:${fade.toFixed(3)};transform:translateY(${((1-eo(cl(t/0.5)))*16).toFixed(1)}px) scale(${push.toFixed(4)});transform-origin:50% 50%`;
+  content.innerHTML = body(i,t);
+  if (META.scroll && sc.kind==='letter'){
+    const L = content.querySelector('.letter'), sp = L.querySelectorAll('.w'), times = sc.kd.times, N = times.length;
+    let idx=-1; for (let j=0;j<N;j++){ if (times[j]<=t) idx=j; else break; }
+    const maxOff = Math.max(0, L.offsetHeight-776);
+    const tg = j => Math.min(maxOff, Math.max(0, sp[Math.max(0,Math.min(N-1,j))].offsetTop-300));
+    let off = tg(idx<0?0:idx);
+    if (idx+1<N){ const s=eo(cl((t-(times[idx+1]-0.5))/0.5)); off = off*(1-s)+tg(idx+1)*s; }
+    L.style.transform=`translateY(${(-off).toFixed(1)}px)`;
+  }
+  // chrome
+  const c=chapterOf(i);
+  let h='';
+  h+=`<div class="kick">${KICK}</div>`;
+  if (band) h+=`<div class="chip" style="opacity:${fade.toFixed(3)};--acc:rgb(${RGB[band]})"><i></i>BAND ${band}</div>`;
+  if (!NOFOOT.has(sc.kind)) h+=FOOT;
+  h+=`<div class="chap">${CH.map((x,k)=>`<span class="${k===c?'on':''}">${x[0]}</span>`).join('')}</div>`;
+  let ticks=''; CH.forEach(x=>{ const s=T[x[1][0]].start/TOTAL*1920; ticks+=`<u style="left:${s.toFixed(1)}px"></u>`; });
+  h+=`<div class="prog"><b style="width:${(G/TOTAL*1920).toFixed(1)}px"></b>${ticks}</div>`;
+  chrome.innerHTML=h;
+};
+</script></body></html>

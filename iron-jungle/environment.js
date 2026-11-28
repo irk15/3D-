@@ -3,19 +3,24 @@ import * as THREE from 'three';
 
 export function skyMaterial(time) {
   return new THREE.ShaderMaterial({
-    side: THREE.BackSide, fog: false, depthWrite: false, uniforms: { t: time, storm: { value: 0 }, flash: { value: 0 } },
+    side: THREE.BackSide, fog: false, depthWrite: false, uniforms: { t: time, storm: { value: 0 }, flash: { value: 0 }, aurora: { value: 0 },
+      c0: { value: new THREE.Color(.85, .34, .13) }, c1: { value: new THREE.Color(.22, .14, .26) }, c2: { value: new THREE.Color(.025, .05, .13) }, cs: { value: new THREE.Color(1, .6, .25) },
+      s0: { value: new THREE.Color(.012, .02, .045) }, s1: { value: new THREE.Color(.07, .1, .17) } },
     vertexShader: 'varying vec3 p;void main(){p=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader: `uniform float t,storm,flash;varying vec3 p;
+    fragmentShader: `uniform float t,storm,flash,aurora;uniform vec3 c0,c1,c2,cs,s0,s1;varying vec3 p;
     float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),f.x),mix(h2(i+vec2(0,1)),h2(i+1.),f.x),f.y);}
     float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n2(p);p*=2.03;a*=.5;}return s;}
     void main(){vec3 d=normalize(p);float h=d.y;
-    vec3 c=mix(vec3(.85,.34,.13),vec3(.22,.14,.26),smoothstep(-.02,.2,h));c=mix(c,vec3(.025,.05,.13),smoothstep(.18,.65,h));
+    vec3 c=mix(c0,c1,smoothstep(-.02,.2,h));c=mix(c,c2,smoothstep(.18,.65,h));
     vec3 sd=normalize(vec3(.3,.12,-1.));float s=max(dot(d,sd),0.);
-    c+=vec3(1.,.6,.25)*(pow(s,1400.)*7.+pow(s,60.)*.7+pow(s,6.)*.22);
+    c+=cs*(pow(s,1400.)*7.+pow(s,60.)*.7+pow(s,6.)*.22);
     vec2 uv=d.xz/(max(h,0.)+.16);float cl=smoothstep(.48,.82,fbm(uv*vec2(1.1,2.4)+vec2(t*.008,0.)))*smoothstep(.0,.08,h)*(1.-smoothstep(.45,.75,h));
-    vec3 cc=mix(vec3(.16,.08,.15),vec3(1.25,.5,.22),pow(s,3.)*.85+.1);c=mix(c,cc,cl*.85);
-    float sc=fbm(uv*vec2(1.4,2.2)+vec2(t*.045,t*.01));vec3 n=mix(vec3(.012,.02,.045),vec3(.07,.1,.17),sc)+vec3(.04,.07,.13)*(1.-smoothstep(0.,.3,h));
+    vec3 cc=mix(c1*.7,cs*vec3(1.25,.85,.8),pow(s,3.)*.85+.1);c=mix(c,cc,cl*.85);
+    float sc=fbm(uv*vec2(1.4,2.2)+vec2(t*.045,t*.01));vec3 n=mix(s0,s1,sc)+s1*.6*(1.-smoothstep(0.,.3,h));
+    // northern lights: wavy green curtains
+    float wave=h-.2-.07*sin(d.x*7.+t*.25)-.05*fbm(vec2(d.x*5.,t*.05));
+    c+=aurora*(1.-storm*.7)*vec3(.1,.9,.55)*exp(-abs(wave)*22.)*(.35+.65*fbm(vec2(d.x*38.+t*.2,h*3.)));
     c=mix(c,n,storm*.94)+vec3(.55,.65,1.)*flash*(.25+sc*sc);
     gl_FragColor=vec4(c,1.);}`
   });
@@ -53,12 +58,12 @@ function sway(mat, wind, amount) {
 export function frondMaterial(tex, wind) {
   return sway(new THREE.MeshStandardMaterial({ map: tex, alphaTest: .45, side: THREE.DoubleSide, roughness: .58, emissive: 0x0b1204 }), wind, .045);
 }
-export function grassField(scene, wind, rnd, ranges) {
+export function grassField(scene, wind, rnd, ranges, hsl = [.17, .3, .45, .65, .1, .27], density = 1) {
   const geo = new THREE.PlaneGeometry(.07, .42, 1, 3); geo.translate(0, .21, 0);
   const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const t = p.getY(i) / .42; p.setX(i, p.getX(i) * (1 - t * .92)); p.setZ(i, t * t * .12); }
   geo.computeVertexNormals();
   const spots = [];
-  for (const [x1, x2] of ranges) for (let x = x1 + .1; x < x2 - .1; x += .11) {
+  for (const [x1, x2] of ranges) for (let x = x1 + .1; x < x2 - .1; x += .11 / density) {
     spots.push([x + rnd(-.1, .1), rnd(-3.9, -1.7)]); spots.push([x + rnd(-.1, .1), rnd(-3.9, -2)]);
     if (rnd() > .55) spots.push([x, rnd(1.7, 2.95)]);
   }
@@ -68,7 +73,7 @@ export function grassField(scene, wind, rnd, ranges) {
   const m = new THREE.Object3D(), col = new THREE.Color();
   for (const list of chunks.values()) {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
-    list.forEach(([x, z], i) => { m.position.set(x, 0, z); m.rotation.set(0, rnd(-1.2, 1.2), rnd(-.25, .25)); m.scale.setScalar(z > 1 ? rnd(.35, .7) : rnd(.6, 1.35)); m.updateMatrix(); im.setMatrixAt(i, m.matrix); im.setColorAt(i, col.setHSL(rnd(.17, .3), rnd(.45, .65), rnd(.1, .27))); });
+    list.forEach(([x, z], i) => { m.position.set(x, 0, z); m.rotation.set(0, rnd(-1.2, 1.2), rnd(-.25, .25)); m.scale.setScalar(z > 1 ? rnd(.35, .7) : rnd(.6, 1.35)); m.updateMatrix(); im.setMatrixAt(i, m.matrix); im.setColorAt(i, col.setHSL(rnd(hsl[0], hsl[1]), rnd(hsl[2], hsl[3]), rnd(hsl[4], hsl[5]))); });
     im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
   }
 }
@@ -98,15 +103,15 @@ export function softTexture(inner = 'rgba(255,255,255,1)', size = 128, puffs = 0
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 // slanted sun shafts and low mist banks
-export function atmosphere(scene, rnd, end) {
+export function atmosphere(scene, rnd, end, theme) {
   const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const g = cv.getContext('2d');
   const h = g.createLinearGradient(0, 0, 64, 0); h.addColorStop(0, '#000'); h.addColorStop(.5, '#fff'); h.addColorStop(1, '#000'); g.fillStyle = h; g.fillRect(0, 0, 64, 256);
   const v = g.createLinearGradient(0, 0, 0, 256); v.addColorStop(0, '#fff'); v.addColorStop(1, '#000'); g.globalCompositeOperation = 'multiply'; g.fillStyle = v; g.fillRect(0, 0, 64, 256);
-  const shaft = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), color: 0xff9a4a, transparent: true, opacity: .13, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const shaft = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), color: theme.shaft[0], transparent: true, opacity: theme.shaft[1], blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
   const shafts = [];
   for (let x = -5; x < end + 20; x += rnd(7, 15)) { const m = new THREE.Mesh(new THREE.PlaneGeometry(rnd(1, 3.2), 22), shaft); m.position.set(x, 6, rnd(-15, -5)); m.rotation.z = -.5; scene.add(m); shafts.push(m); }
   const fogTex = softTexture('rgba(255,255,255,1)', 128, 14), mist = [];
-  const mm = new THREE.SpriteMaterial({ map: fogTex, color: 0xb98a8c, transparent: true, opacity: .16, depthWrite: false });
+  const mm = new THREE.SpriteMaterial({ map: fogTex, color: theme.mist, transparent: true, opacity: .16, depthWrite: false });
   for (let x = -20; x < end + 30; x += rnd(4, 8)) { const s = new THREE.Sprite(mm); s.position.set(x, rnd(-.2, 1.2), rnd(-18, -6)); s.scale.set(rnd(9, 15), rnd(2.5, 4), 1); scene.add(s); mist.push(s); }
   return { shaft, mist };
 }

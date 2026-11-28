@@ -6,12 +6,13 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js?v=5';
-import * as ENV from './environment.js?v=5';
-import { buildProps } from './props.js?v=8';
-import { createWeather, createMusic } from './weather.js?v=5';
+import * as ENV from './environment.js?v=9';
+import { createWorld } from './world.js?v=9';
+import { STAGES } from './levels.js?v=9';
+import { createWeather, createMusic } from './weather.js?v=9';
 import { loadHelicopter, helicopter } from './heli.js?v=7';
-import { loadModels, turret, drone, prop, placeProps } from './models.js?v=8';
-import { createCoop, COLORS } from './coop.js?v=5';
+import { loadModels, turret, drone, prop } from './models.js?v=9';
+import { createCoop, COLORS } from './coop.js?v=9';
 
 const $ = id => document.getElementById(id);
 let seed = 7;
@@ -66,87 +67,18 @@ const cyl = (a, b, h, s = 12) => new THREE.CylinderGeometry(a, b, h, s);
 const ball = r => new THREE.SphereGeometry(r, 14, 10);
 
 // ---------- level ----------
-const solids = [];
-const rockMap = tex('rock.jpg'), rockNormal = tex('rock-n.jpg', 1, 1, false);
-const rockMat = std(0x77685f, .95, 0, { map: rockMap, normalMap: rockNormal, normalScale: new THREE.Vector2(1.6, 1.6) });
-const grassMap = tex('grass.jpg');
-function ground(x1, x2) {
-  const w = x2 - x1, cx = (x1 + x2) / 2;
-  mesh(box(w, 6, 7), rockMat, cx, -3.2, -.5);
-  const top = grassMap.clone(); top.repeat.set(w / 5, 1.45);
-  mesh(box(w + .15, .25, 7.2), std(0xa8a878, .92, 0, { map: top }), cx, -.125, -.5);
-  ENV.cliff(scene, rockMat, rnd, x1, x2);
-  for (let x = x1 + .5; x < x2 - .4; x += rnd(.9, 2.4)) { const r = mesh(new THREE.IcosahedronGeometry(rnd(.2, .5), 1), rockMat, x, rnd(-3.3, -.9), 3.2); r.rotation.set(rnd(0, 3), rnd(0, 3), 0); r.scale.y = rnd(.5, .8); }
-  solids.push({ x1, x2, y: 0, ground: true });
+const world = createWorld({ scene, texLoader, wind, END });
+const { steel, rust, rockMat } = world;
+let stage = 1, level_ = null, solids = [], gaps = [], blocks = [], flames = [], dust, water, air = { mist: [] };
+const mission = () => STAGES[stage - 1];
+function buildStage() {
+  ({ solids, gaps, blocks, flames, dust, water, air } = level_ = world.build(mission(), stage));
+  const t = mission().theme, u = sky.material.uniforms;
+  ['c0', 'c1', 'c2', 'cs'].forEach((k, i) => u[k].value.setRGB(...t.sky[i])); u.s0.value.setRGB(...t.storm[0]); u.s1.value.setRGB(...t.storm[1]); u.aurora.value = t.aurora;
+  scene.fog.density = t.density; rim.color.set(t.rim); hemi.color.set(t.hemi[0]); hemi.groundColor.set(t.hemi[1]);
+  weather.setTheme(t); storm = 0;
+  if (quality === 0) air.mist.forEach(m => m.visible = false);
 }
-const gaps = [[48, 51.2], [96, 99.4], [152, 155.6]];
-ground(-20, 48); ground(51.2, 96); ground(99.4, 152); ground(155.6, END + 30);
-const steel = std(0x777b7e, .42, .8, { normalMap: rockNormal, normalScale: new THREE.Vector2(.15, .15) }), rust = std(0xa05a30, .68, .55, { map: rockMap });
-ENV.grassField(scene, wind, rnd, solids.filter(s => s.ground).map(s => [s.x1, s.x2]));
-function platform(x, y, w) {
-  mesh(box(w, .28, 2.4), steel, x, y - .14, 0);
-  mesh(box(w, .07, .08), rust, x, y - .02, 1.22);
-  for (const s of [-1, 1]) mesh(cyl(.09, .12, y, 8), rust, x + s * (w / 2 - .3), y / 2, -1.14);
-  solids.push({ x1: x - w / 2, x2: x + w / 2, y });
-}
-[[18, 2.6, 6], [34, 2.8, 5], [41, 5, 4], [62, 2.6, 7], [78, 2.8, 5], [85, 5.2, 5], [110, 2.7, 6], [120, 5, 6], [136, 2.7, 8], [165, 2.8, 5], [173, 5.1, 5], [190, 2.7, 6]].forEach(p => platform(...p));
-
-const water = ENV.water(scene, tex('water-n.jpg', 1, 1, false), END + 80, END / 2);
-const air = ENV.atmosphere(scene, rnd, END);
-
-// foliage (instanced)
-const leaf = ENV.frondGeometry(), dummy = new THREE.Object3D(), col = new THREE.Color();
-const leafMaterial = ENV.frondMaterial(ENV.frondTexture(rnd), wind);
-function fronds(list) {
-  const chunks = new Map(); for (const l of list) { const k = Math.floor(l[0] / 24); if (!chunks.has(k)) chunks.set(k, []); chunks.get(k).push(l); }
-  for (const part of chunks.values()) {
-    const im = new THREE.InstancedMesh(leaf, leafMaterial, part.length);
-    part.forEach((l, i) => { dummy.position.set(l[0], l[1], l[2]); dummy.rotation.set(l[4], l[5], l[6], 'YXZ'); dummy.scale.setScalar(l[3]); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); im.setColorAt(i, col.setHSL(rnd(.2, .32), rnd(.45, .7), rnd(.16, .34))); });
-    im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
-  }
-}
-const bush = [], crown = [];
-for (let x = -20; x < END + 30; x += .55) {
-  if (gaps.some(g => x > g[0] - .6 && x < g[1] + .6)) continue;
-  const z = rnd(-3.8, -2.2);
-  for (let i = 0; i < 4; i++) bush.push([x, 0, z, rnd(.3, .75), rnd(.2, 1), rnd(0, 6.3), rnd(-.4, .4)]);
-}
-fronds(bush);
-const bark = std(0x6a4a34, 1, 0, { map: rockMap, normalMap: rockNormal });
-for (let x = -24; x < END + 40; x += rnd(1.8, 3.8)) {
-  const z = rnd(-22, -6), h = rnd(5, 11);
-  const tg = new THREE.CylinderGeometry(.13, .3, h + 3, 9, 14), tp = tg.attributes.position;
-  for (let i = 0; i < tp.count; i++) { const ring = 1 + (Math.round((tp.getY(i) / (h + 3) + .5) * 14) % 2) * .13; tp.setX(i, tp.getX(i) * ring); tp.setZ(i, tp.getZ(i) * ring); }
-  const t = mesh(tg, bark, x, h / 2 - 1.5, z, scene, false); t.rotation.z = rnd(-.09, .09);
-  const tx = x - Math.sin(t.rotation.z) * h / 2;
-  for (let i = 0; i < 11; i++) crown.push([tx, h, z, rnd(.9, 1.7), rnd(.9, 1.6), i * .58 + rnd(0, .4), 0]);
-  for (let i = 0; i < 5; i++) crown.push([x + rnd(-1.5, 1.5), -.4, z + rnd(-1, 1), rnd(.8, 1.5), rnd(.2, .9), rnd(0, 6.3), 0]);
-}
-fronds(crown);
-mesh(box(END + 100, 1, 30), std(0x101a0c, 1), END / 2, -4.2, -19, scene, false);
-for (let layer = 0; layer < 3; layer++) {
-  const s = new THREE.Shape(); s.moveTo(-120, -20);
-  let h = 9;
-  for (let x = -120; x <= END + 140; x += 1.6) { h = clamp(h + rnd(-1.1, 1.1), 4, 14); s.lineTo(x, h + layer * 7 + Math.sin(x * .09 + layer * 2) * 3 + rnd(-.25, .25)); }
-  s.lineTo(END + 140, -20);
-  mesh(new THREE.ShapeGeometry(s), new THREE.MeshBasicMaterial({ color: [0x14201c, 0x30242f, 0x5a3640][layer] }), 0, 0, -34 - layer * 28, scene, false);
-}
-// props
-const blocks = buildProps(scene, rnd, { rock: rockMat, rockNormal, steel, rust, bark, grass: grassMap }, gaps, END);
-for (const b of blocks) solids.push({ x1: b.x1 - .3, x2: b.x2 + .3, y: b.top, ground: true, block: true });
-// torches
-const flames = [];
-for (let x = 4; x < 215; x += 21) {
-  mesh(cyl(.06, .08, 2, 6), bark, x, 1, -2.4);
-  const f = mesh(ball(.17), glow(0xff7a22, 4), x, 2.15, -2.4, scene, false); flames.push(f);
-}
-// fireflies / embers
-const dustGeo = new THREE.BufferGeometry();
-const dp = new Float32Array(600 * 3);
-for (let i = 0; i < 600; i++) dp.set([rnd(-20, END), rnd(0, 10), rnd(-9, 5)], i * 3);
-dustGeo.setAttribute('position', new THREE.BufferAttribute(dp, 3));
-const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: new THREE.Color(0xffb46a).multiplyScalar(2), size: .06, transparent: true, opacity: .7 }));
-scene.add(dust);
 
 // ---------- fx ----------
 const fx = [], sparkGeo = new THREE.BoxGeometry(.16, .035, .035), debrisGeo = new THREE.IcosahedronGeometry(.09, 0), casingGeo = cyl(.025, .025, .11, 6);
@@ -251,6 +183,24 @@ function setLevel(l) {
 document.querySelectorAll('[data-level]').forEach(b => b.onclick = () => setLevel(b.dataset.level));
 setLevel(level);
 
+// ---------- missions ----------
+// carry: score brought forward from the missions already won in this run
+let carry = 0, total = 0;
+function markStage() {
+  document.querySelectorAll('[data-stage]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.stage === stage));
+}
+function setStage(n, force = false) {
+  n = clamp(n | 0, 1, STAGES.length);
+  if (n === stage && level_ && !force) return;
+  stage = n; markStage(); try { localStorage.ironStage = n; } catch { /* storage unavailable */ }
+  if (!ready) return;
+  if (state === 'won' || state === 'over') { state = 'title'; $('title').textContent = mission().name; $('go').textContent = net.active ? 'Start co-op mission' : 'Start mission'; }
+  buildStage(); reset(); P.x = 12; hero.position.set(P.x, 0, 0); pose(hero, P, .016);
+}
+try { const saved = +localStorage.ironStage; if (STAGES[saved - 1]) stage = saved; } catch { /* storage unavailable */ }
+document.querySelectorAll('[data-stage]').forEach(b => b.onclick = () => { carry = 0; setStage(+b.dataset.stage, state === 'won' || state === 'over'); });
+markStage();
+
 // ---------- entities ----------
 let hero, ready = false;
 function makeSoldierFor(slot) {
@@ -314,7 +264,7 @@ let nextId = 1;
 function addEnemy(type, x, y = 0, id = nextId++) {
   let o, e = { id, type, x, y, vx: 0, vy: 0, on: true, cd: rnd(.6, 1.8), flash: 0 };
   if (type === 'run' || type === 'gun') {
-    o = soldier(type === 'gun' ? { tint: 0xe08a70, visor: 0xff2a10 } : { tint: 0xc8b078, visor: 0xff6a10 }); e.hp = type === 'gun' ? 3 : 1; e.face = -1; o.rotation.y = Math.PI; e.h = 1.8; e.w = .45;
+    o = soldier(type === 'gun' ? { tint: 0xe08a70, visor: 0xff2a10 } : mission().enemy); e.hp = type === 'gun' ? 3 : 1; e.face = -1; o.rotation.y = Math.PI; e.h = 1.8; e.w = .45;
   } else if (type === 'turret') {
     o = turret(); mesh(ball(.07), glow(0xff3020, 4), 0, .42, .5, o, false); e.hp = 8; e.h = 1.5; e.w = .8;
   } else if (type === 'drum') {
@@ -333,13 +283,13 @@ function addEnemy(type, x, y = 0, id = nextId++) {
 }
 let gunship;
 function makeBoss() {
-  const o = new THREE.Group(), armor = std(0x3b4148, .4, .85);
+  const o = new THREE.Group(), look = mission().bossColor, armor = std(look[0], .4, .85), hp = Math.round(diff().boss * mission().boss);
   mesh(box(5, 8, 4), armor, 1.4, 4, -.4, o); mesh(box(5.6, .6, 4.6), rust, 1.4, 8.2, -.4, o);
   for (let y = 1; y < 8; y += 1.6) mesh(box(.2, .2, 4.2), steel, -1.15, y, -.4, o);
-  const core = mesh(ball(.75), glow(0xff3a18, 2.5), -1.15, 2.2, 0, o, false);
+  const core = mesh(ball(.75), glow(look[1], 2.5), -1.15, 2.2, 0, o, false);
   const guns = [4.6, 6.6].map(y => { const p = new THREE.Group(); p.position.set(-1.3, y, .5); o.add(p); mesh(ball(.5), steel, 0, 0, 0, p); mesh(box(1.5, .3, .3), armor, -.8, 0, 0, p); return p; });
   o.position.set(BOSSX + 6, 0, 0); scene.add(o);
-  boss = { id: 9999, type: 'boss', o, core, guns, x: BOSSX + 4.85, y: 1.2, w: .9, h: 2.1, hp: diff().boss, max: diff().boss, cd: 2, flash: 0, n: 0 };
+  boss = { id: 9999, type: 'boss', o, core, guns, x: BOSSX + 4.85, y: 1.2, w: .9, h: 2.1, hp, max: hp, cd: 2, flash: 0, n: 0 };
   enemies.push(boss);
 }
 function addPickup(x, y, kind) {
@@ -348,15 +298,15 @@ function addPickup(x, y, kind) {
 }
 let spawns = [];
 function reset() {
-  grenades.forEach(n => scene.remove(n.m)); grenades = []; gunship = null; nextId = 1; combo = 0; comboT = 0; clock0 = 0; shots = 0; hits = 0; gunshipSent = false; dead.clear();
+  grenades.forEach(n => scene.remove(n.m)); grenades = []; gunship = null; nextId = 1; combo = 0; comboT = 0; clock0 = 0; shots = 0; hits = 0; shipsSent = 0; dead.clear();
   [...enemies, ...pickups, ...corpses].forEach(e => scene.remove(e.o)); corpses.length = 0; scorches.splice(0).forEach(d => scene.remove(d)); bullets.forEach(b => scene.remove(b.m));
   enemies = []; bullets = []; pickups = []; boss = null; score = 0; lives = diff().lives; checkpoint = 2; camX = 2; time = 0;
   P = { x: 2 + (net.playing ? net.slot * 1.1 : 0), y: 0, vx: 0, vy: 0, on: true, face: 1, aim: 0, cd: 0, inv: 3, weapon: 'rifle', nades: 3, hp: diff().hp, calm: 0, dead: 0, drop: 0, slow: 0, shot: 0 };
   revive(hero); hero.rotation.y = 0; hero.visible = true;
-  spawns = [[16, 'run'], [18, 'gun', 2.6], [24, 'run'], [11, 'drum'], [41.5, 'turret'], [34, 'gun', 2.8], [40, 'drone', 4.5], [43, 'run'], [56, 'run'], [58, 'run'], [63, 'gun', 2.6], [55.8, 'drum'], [70.3, 'turret'], [75, 'drone', 5], [85, 'gun', 5.2], [90, 'run'], [89.5, 'drum'], [110, 'gun', 2.7], [114, 'run'], [116, 'drone', 4], [120, 'turret', 5], [121.5, 'drum'], [124.8, 'turret'], [128, 'run'], [132, 'run'], [136, 'gun', 2.7], [145, 'drone', 5], [148, 'drone', 3.6], [182.5, 'turret'], [165, 'gun', 2.8], [173, 'gun', 5.1], [180, 'run'], [182, 'run'], [185, 'drone', 4.5], [190, 'turret', 2.7], [196, 'gun'], [200, 'run'], [203, 'turret'], [207, 'drum'], [212, 'drum']];
-  if (diff().extra) spawns.push([27, 'run'], [46, 'drone', 4.2], [66, 'run'], [80, 'gun', 2.8], [94, 'drone', 4.6], [112, 'run'], [137, 'turret', 2.7], [157, 'run'], [170, 'drone', 3.8], [188, 'run'], [199, 'drone', 4.4]);
+  spawns = mission().spawns.map(s => [...s]);
+  if (diff().extra) spawns.push(...mission().extra.map(s => [...s]));
   spawns.sort((a, b) => a[0] - b[0]);
-  addPickup(41, 6, 'spread'); addPickup(62, 4, 'nade'); addPickup(85, 6.6, 'laser'); addPickup(120, 7, 'rocket'); addPickup(136, 4.1, 'nade'); addPickup(173, 6.5, 'spread'); addPickup(192, 4.1, 'laser'); addPickup(209, 1.4, 'nade');
+  for (const p of mission().pickups) addPickup(...p);
 }
 
 // ---------- input ----------
@@ -389,20 +339,24 @@ const down = k => keys[k] || touch[k];
 function togglePause() { if (net.playing) return; state = state === 'play' ? 'pause' : 'play'; if (state === 'pause') show('PAUSED', 'Take a breath, soldier.', 'Resume'); else $('menu').hidden = true; }
 function toggleMute() { muted = !muted; $('mute').textContent = muted ? 'Sound off' : 'Sound on'; }
 $('mute').onclick = toggleMute; $('pause').onclick = () => {
-  if (net.active) { net.leave(); $('levels').classList.remove('locked'); toMenu('You left the co-op game.'); } else if (state === 'play' || state === 'pause') togglePause();
+  if (net.active) { net.leave(); toMenu('You left the co-op game.'); } else if (state === 'play' || state === 'pause') togglePause();
 };
 function show(t, s, b) { $('title').textContent = t; $('sub').textContent = s; $('go').textContent = b; $('menu').hidden = false; }
 function start() {
   if (!ready) return;
   initAudio();
   if (state === 'pause') { togglePause(); return; }
+  // after a win the button moves on to the next mission
+  if (state === 'won' && (!net.active || net.host)) {
+    const more = stage < STAGES.length; carry = more ? total : 0; setStage(more ? stage + 1 : 1);
+  }
   if (net.active) { if (net.host) net.start(); return; }
   begin();
 }
 function begin() {
   initAudio(); for (const id of [...remotes.keys()]) removeRemote(id);
-  makeHero(net.playing ? net.slot : 0); reset(); state = 'play'; $('menu').hidden = true; $('setup').hidden = true;
-  $('pause').textContent = net.playing ? 'Leave' : 'Pause'; toast(net.playing ? 'CO-OP MISSION' : 'MISSION 1: IRON JUNGLE');
+  makeHero(net.playing ? net.slot : 0); reset(); score = carry; state = 'play'; $('menu').hidden = true; $('setup').hidden = true;
+  $('pause').textContent = net.playing ? 'Leave' : 'Pause'; toast(`MISSION ${stage}: ${mission().name}`);
 }
 $('go').onclick = start;
 
@@ -515,13 +469,13 @@ function targets() {
 }
 const leaderX = () => Math.max(P.out ? 0 : P.x, ...[...remotes.values()].map(r => r.x));
 const rearX = () => Math.min(P.out ? 1e9 : P.x, ...[...remotes.values()].filter(r => !r.out).map(r => r.x));
-let gunshipSent = false;
+let shipsSent = 0;
 function updateEnemies(dt) {
   const authority = !net.playing || net.host;
   if (authority) {
     const front = net.playing ? Math.max(leaderX() + viewHalf * .28, camX) : camX, edge = front + Math.max(viewHalf, 12);
     while (spawns.length && spawns[0][0] < edge + 3) { const [x, t, y] = spawns.shift(); addEnemy(t, t === 'run' ? Math.max(x, edge + 1) : x, y || 0); }
-    if (!gunshipSent && leaderX() > 148) { gunshipSent = true; addEnemy('gunship', leaderX() + 16, 6.2); toast('GUNSHIP INBOUND'); }
+    if (leaderX() > (mission().gunships[shipsSent] ?? 1e9) && !(gunship && !gunship.gone)) { shipsSent++; addEnemy('gunship', leaderX() + 16, 6.2); toast('GUNSHIP INBOUND'); }
     if (!boss && leaderX() > BOSSX - 14) { makeBoss(); toast('WARNING: IRON BASTION'); }
   }
   const alive = targets();
@@ -618,12 +572,13 @@ function finish(won, finalScore) {
   if (state === 'won' || state === 'over') return;
   if (finalScore !== undefined) score = finalScore;
   state = won ? 'won' : 'over'; toastT = 0;
-  const total = score + (won ? Math.max(0, lives) * 1000 : 0), acc = shots ? Math.min(100, Math.round(hits / shots * 100)) : 0;
+  total = score + (won ? Math.max(0, lives) * 1000 : 0);
+  const last = stage === STAGES.length, acc = shots ? Math.min(100, Math.round(hits / shots * 100)) : 0;
   const rank = !won ? '' : lives >= diff().lives - 1 && clock0 < 150 ? 'S' : lives >= 2 ? 'A' : 'B';
   const secs = `${Math.floor(clock0 / 60)}:${String(Math.floor(clock0 % 60)).padStart(2, '0')}`;
   setTimeout(() => {
     if (state !== 'won' && state !== 'over') return;
-    show(won ? `MISSION COMPLETE` : 'MISSION FAILED', `${diff().name} · Score ${total} · Time ${secs} · Accuracy ${acc}%${rank ? ' · Rank ' + rank : ''}`, net.active ? (net.host ? 'Play again' : 'Waiting for host') : won ? 'Play again' : 'Try again');
+    show(won ? (last ? 'CAMPAIGN COMPLETE' : `MISSION ${stage} COMPLETE`) : 'MISSION FAILED', `${diff().name} · Score ${total} · Time ${secs} · Accuracy ${acc}%${rank ? ' · Rank ' + rank : ''}`, net.active ? (net.host ? (won ? (last ? 'Play again' : 'Next mission') : 'Try again') : 'Waiting for host') : won ? (last ? 'Play again' : 'Next mission') : 'Try again');
     $('go').disabled = net.active && !net.host;
     $('setup').hidden = false; $('lobby').hidden = !net.active; $('joinrow').hidden = net.active; if (net.active) net.refresh();
   }, won ? 1800 : 300);
@@ -658,7 +613,7 @@ function updateBullets(dt) {
 function removeRemote(id) { const r = remotes.get(id); if (r) { scene.remove(r.o); remotes.delete(id); } }
 const r2 = v => Math.round(v * 100) / 100;
 const net = createCoop({
-  level: () => level, setLevel, removeRemote,
+  level: () => `${level}:${stage}`, setLevel: s => { const [d, n] = String(s).split(':'); if (LEVELS[d]) setLevel(d); setStage(+n || 1); }, removeRemote,
   begin: () => begin(),
   myState: () => ({ x: r2(P.x), y: r2(P.y), vx: r2(P.vx), f: P.face, a: r2(P.aim), pr: P.prone ? 1 : 0, on: P.on ? 1 : 0, d: P.dead > 0 ? 1 : 0, out: P.out ? 1 : 0 }),
   snapshot: () => ({ e: enemies.filter(e => !e.gone).map(e => [e.id, e.type, r2(e.x), r2(e.y), e.face || 1, r2(e.hp), e.on === false ? 1 : 0]), s: score, gone: [...dead].slice(-24) }),
@@ -704,14 +659,14 @@ const net = createCoop({
   }
 });
 function toMenu(message) {
-  state = 'title'; toastT = 0; $('levels').classList.remove('locked'); for (const id of [...remotes.keys()]) removeRemote(id);
+  state = 'title'; carry = 0; toastT = 0; $('levels').classList.remove('locked'); $('stages').classList.remove('locked'); for (const id of [...remotes.keys()]) removeRemote(id);
   makeHero(0); reset(); P.x = 12; hero.position.set(P.x, 0, 0); pose(hero, P, .016);
   show('IRON JUNGLE', message || 'Choose your difficulty.', 'Start mission'); $('go').disabled = false; $('setup').hidden = false; $('lobby').hidden = true; $('joinrow').hidden = false; $('pause').textContent = 'Pause';
 }
-function enterRoom() { initAudio(); state = 'title'; $('joinrow').hidden = true; $('setup').hidden = false; $('lobby').hidden = false; $('levels').classList.toggle('locked', !net.host); net.room && $('menu').removeAttribute('hidden'); $('go').disabled = true; $('go').textContent = 'Connecting'; $('code').textContent = net.code; $('lobbyinfo').textContent = 'Connecting to the relay…'; $('players').replaceChildren(); }
+function enterRoom() { initAudio(); state = 'title'; $('joinrow').hidden = true; $('setup').hidden = false; $('lobby').hidden = false; $('levels').classList.toggle('locked', !net.host); $('stages').classList.toggle('locked', !net.host); carry = 0; net.room && $('menu').removeAttribute('hidden'); $('go').disabled = true; $('go').textContent = 'Connecting'; $('code').textContent = net.code; $('lobbyinfo').textContent = 'Connecting to the relay…'; $('players').replaceChildren(); }
 $('create').onclick = () => { if (!ready) return; net.create(); enterRoom(); };
 $('join').onclick = () => { const c = $('codein').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!ready) return; if (c.length !== 5) { $('codein').focus(); $('sub').textContent = 'Enter the 5-character room code.'; return; } net.join(c); enterRoom(); };
-$('leave').onclick = () => { net.leave(); $('levels').classList.remove('locked'); toMenu(); };
+$('leave').onclick = () => { net.leave(); toMenu(); };
 $('copy').onclick = () => { const link = location.origin + location.pathname + '?room=' + net.code; navigator.clipboard?.writeText(link).then(() => $('copy').textContent = 'Copied', () => $('copy').textContent = link); };
 function updateRemotes(dt) {
   for (const r of remotes.values()) {
@@ -787,7 +742,7 @@ function step(dt) {
     camX = locked || net.playing ? next : Math.max(camX, next);
   }
   // the weather turns as the squad pushes deeper into the jungle
-  const wanted = state === 'title' ? 0 : THREE.MathUtils.smoothstep(camX, 88, 132);
+  const wanted = state === 'title' ? 0 : THREE.MathUtils.smoothstep(camX, ...mission().theme.stormAt);
   storm += (wanted - storm) * Math.min(1, dt * 1.5);
   weather.update(dt, camX, storm, () => setTimeout(() => sfx('boom'), 350));
   music?.(state === 'play' && !muted, !!(boss || gunship));
@@ -809,15 +764,14 @@ function step(dt) {
   $('bossbar').hidden = !big; $('progress').hidden = !!big || state === 'title';
   if (big) $('bossfill').style.width = Math.max(0, big.hp / (big.max || 1) * 100) + '%';
   else { const dots = [{ x: P.x, slot: net.playing ? net.slot : 0 }, ...remotes.values()]; const box = $('progress'); while (box.children.length > dots.length) box.lastChild.remove(); dots.forEach((d, i) => { const el = box.children[i] || box.appendChild(document.createElement('i')); el.style.left = clamp(d.x / BOSSX * 100, 0, 100) + '%'; el.style.background = COLORS[d.slot].css; }); }
-  if (boss && boss.flash > 0) { boss.flash -= dt; if (boss.flash <= 0) boss.core.material.color.set(0xff3a18).multiplyScalar(2.5); }
+  if (boss && boss.flash > 0) { boss.flash -= dt; if (boss.flash <= 0) boss.core.material.color.set(mission().bossColor[1]).multiplyScalar(2.5); }
 }
 Promise.all([loadSoldier(manager), loadHelicopter(manager), loadModels(manager), envReady]).then(() => {
-  placeProps(scene, blocks);
-  for (const pad of blocks.pads) { const h = helicopter(6.4, false); h.position.set(pad.x, h.userData.height / 2, pad.z); h.rotation.y = pad.turn; scene.add(h); }
+  buildStage();
   makeHero(); reset(); hero.position.set(P.x, P.y, 0); P.x = 12; hero.position.x = 12; pose(hero, P, .016);
   ready = true; $('go').textContent = 'Start mission'; $('go').disabled = false;
   const invite = new URLSearchParams(location.search).get('room');
   if (invite) { $('codein').value = invite.toUpperCase().slice(0, 5); $('sub').textContent = 'You were invited. Tap Join to enter the room.'; }
   renderer.setAnimationLoop(() => { clock.update(); const raw = clock.getDelta(); watchSpeed(raw); step(Math.min(raw, 1 / 30)); composer.render(); });
 }).catch(err => { console.error(err); $('go').textContent = 'Could not load. Refresh to retry'; });
-window.__game = { net, remotes, begin, damage, throwNade, get gunship() { return gunship; }, get score() { return score; }, setLevel, blocks, obstaclesNow, hurt, get ready() { return ready; }, start, step, keys, get P() { return P; }, get boss() { return boss; }, get state() { return state; }, get enemies() { return enemies; }, get lives() { return lives; }, set lives(v) { lives = v; }, render: () => composer.render(), halt: () => renderer.setAnimationLoop(null) };
+window.__game = { net, remotes, begin, damage, throwNade, get gunship() { return gunship; }, get score() { return score; }, setLevel, setStage, get stage() { return stage; }, get blocks() { return blocks; }, get gaps() { return gaps; }, obstaclesNow, hurt, get ready() { return ready; }, start, step, keys, get P() { return P; }, get boss() { return boss; }, get state() { return state; }, get enemies() { return enemies; }, get lives() { return lives; }, set lives(v) { lives = v; }, render: () => composer.render(), halt: () => renderer.setAnimationLoop(null) };

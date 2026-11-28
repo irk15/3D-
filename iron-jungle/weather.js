@@ -1,29 +1,48 @@
-// Dusk turns into a storm night as the mission goes deeper: rain, lightning and darker light.
+// Weather that closes in as the mission goes deeper: rain and lightning, a sandstorm or a blizzard.
 import * as THREE from 'three';
 
+// fall: units per second · slant: sideways drift per unit of height · dash: the streak drawn for each drop
+const KINDS = {
+  rain: { color: 0x9fc0ee, fall: 26, wind: 0, slant: .18, dash: [.13, .72], base: .0, peak: .42 },
+  sand: { color: 0xffcf8a, fall: 1.2, wind: -24, slant: 0, dash: [.9, .03], base: .0, peak: .5 },
+  snow: { color: 0xf0f8ff, fall: 2.4, wind: -2.5, slant: .3, dash: [.07, .07], base: .45, peak: .95 }
+};
+
 export function createWeather(scene, renderer, sun, hemi, skyMat) {
-  const N = 900, pos = new Float32Array(N * 6), seeds = Array.from({ length: N }, () => [Math.random() * 56 - 28, Math.random() * 22, Math.random() * 24 - 12, .7 + Math.random() * .6]);
+  const N = 1100, pos = new Float32Array(N * 6), seeds = Array.from({ length: N }, () => [Math.random() * 56 - 28, Math.random() * 22, Math.random() * 24 - 12, .7 + Math.random() * .6]);
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const rain = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x9fc0ee, transparent: true, opacity: 0, depthWrite: false }));
-  rain.frustumCulled = false; scene.add(rain);
-  const dusk = new THREE.Color(0x7a5560), night = new THREE.Color(0x14223a), sunDusk = new THREE.Color(0xffa860), sunNight = new THREE.Color(0x7f9cff);
-  let flash = 0, next = 4;
+  const lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+  // snow is drawn as soft flakes
+  const flakes = new THREE.Points(geo, new THREE.PointsMaterial({ size: .09, transparent: true, opacity: 0, depthWrite: false }));
+  for (const o of [lines, flakes]) { o.frustumCulled = false; scene.add(o); }
+  const calm = new THREE.Color(), wild = new THREE.Color(), sunCalm = new THREE.Color(), sunWild = new THREE.Color();
+  let flash = 0, next = 4, theme, kind;
   return {
+    setTheme(t) {
+      theme = t; kind = KINDS[t.precip]; flash = 0;
+      calm.set(t.fog[0]); wild.set(t.fog[1]); sunCalm.set(t.sun[0]); sunWild.set(t.sun[1]);
+      lines.material.color.set(kind.color); flakes.material.color.set(kind.color);
+    },
     update(dt, camX, storm, onThunder) {
-      next -= dt; if (storm > .55 && next <= 0) { next = 4 + Math.random() * 7; flash = 1; onThunder(); }
+      if (!theme) return;
+      next -= dt; if (theme.lightning && storm > .55 && next <= 0) { next = 4 + Math.random() * 7; flash = 1; onThunder(); }
       flash *= Math.exp(-dt * 7);
       const bolt = flash * (Math.random() > .35 ? 1 : .3);
       skyMat.uniforms.storm.value = storm; skyMat.uniforms.flash.value = bolt;
-      scene.fog.color.copy(dusk).lerp(night, storm);
-      sun.color.copy(sunDusk).lerp(sunNight, storm); sun.intensity = 3.9 - storm * 2.3 + bolt * 5;
-      hemi.intensity = .55 - storm * .12 + bolt * 1.5; scene.environmentIntensity = .55 - storm * .3;
-      renderer.toneMappingExposure = 1.08 + storm * .08;
-      rain.material.opacity = storm * .42; rain.visible = storm > .02;
-      if (!rain.visible) return;
+      scene.fog.color.copy(calm).lerp(wild, storm);
+      sun.color.copy(sunCalm).lerp(sunWild, storm); sun.intensity = theme.sunPower[0] + (theme.sunPower[1] - theme.sunPower[0]) * storm + bolt * 5;
+      hemi.intensity = theme.hemi[2] - storm * .12 + bolt * 1.5; scene.environmentIntensity = .55 - storm * .25;
+      renderer.toneMappingExposure = theme.exposure + storm * .06;
+      const amount = Math.max(theme.precipBase, storm), snow = theme.precip === 'snow';
+      const opacity = (kind.base + (kind.peak - kind.base) * storm) * (theme.precipBase ? 1 : Math.min(1, storm * 1.5));
+      lines.material.opacity = flakes.material.opacity = opacity;
+      lines.visible = !snow && amount > .02; flakes.visible = snow && amount > .02;
+      if (!lines.visible && !flakes.visible) return;
       for (let i = 0; i < N; i++) {
-        const s = seeds[i]; s[1] -= dt * 26 * s[3]; if (s[1] < -1) s[1] += 22;
-        const x = camX + s[0] + s[1] * .18;
-        pos.set([x, s[1], s[2], x + .13, s[1] + .72, s[2]], i * 6);
+        const s = seeds[i]; s[1] -= dt * kind.fall * s[3]; if (s[1] < -1) s[1] += 22;
+        s[0] += dt * kind.wind * s[3]; if (s[0] < -28) s[0] += 56;
+        const x = camX + s[0] + s[1] * kind.slant + (snow ? Math.sin(s[1] * 2 + i) * .35 : 0), y = theme.precip === 'sand' ? s[1] * .5 : s[1];
+        pos.set([x, y, s[2], x + kind.dash[0], y + kind.dash[1], s[2]], i * 6);
       }
       geo.attributes.position.needsUpdate = true;
     }

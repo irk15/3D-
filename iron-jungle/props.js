@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export function buildProps(scene, rnd, mats, gaps, end) {
-  const { rock, rockNormal, steel, rust, bark } = mats;
+export function buildProps(scene, rnd, mats, gaps, end, def) {
+  const { rock, rockNormal, steel, rust, bark } = mats, theme = def.theme;
   const M = (color, roughness = .8, metalness = .05, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
   const grain = { normalMap: rockNormal, normalScale: new THREE.Vector2(.5, .5) };
   const wood = M(0x8a6038, .85, 0, grain), woodDark = M(0x4d321e, .9, 0, grain), olive = M(0x596238, .65, .35, grain), oliveDark = M(0x333a24, .7, .35),
-    canvas = M(0x7c7248, .95, 0, { ...grain, side: THREE.DoubleSide }), sand = M(0x9a8258, 1, 0, grain), rubber = M(0x121214, .9, .05),
-    stone = M(0x8d8878, .95, 0, { map: rock.map, normalMap: rockNormal }), moss = M(0x4c6a2c, 1, 0, grain), red = M(0x8c2a1a, .55, .45, grain),
+    canvas = M(theme.canvas, .95, 0, { ...grain, side: THREE.DoubleSide }), sand = M(0x9a8258, 1, 0, grain), rubber = M(0x121214, .9, .05),
+    stone = M(0x8d8878, .95, 0, { map: rock.map, normalMap: rockNormal }), moss = M(theme.moss, 1, 0, grain), red = M(0x8c2a1a, .55, .45, grain),
     glass = M(0x1a3038, .08, .9), lamp = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff3020).multiplyScalar(3) }), warm = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffb050).multiplyScalar(2.2) });
   const root = new THREE.Group();
   const add = (g, geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); g.add(m); return m; };
@@ -34,8 +34,8 @@ export function buildProps(scene, rnd, mats, gaps, end) {
     }
   };
   const blocks = []; blocks.pads = []; blocks.swaps = []; blocks.depots = [];
-  // every obstacle keeps clear room around low platforms, gaps and its neighbours so nobody gets wedged
-  [[8, 'barrels', 1.3, 1.1], [26, 'sandbags', 1.5, 1], [86.5, 'crate', 1.2, 1.2], [117.5, 'barrels', 1.3, 1.1], [145, 'log', 1, 1], [173, 'crate', 1.2, 1.2], [178.5, 'sandbags', 1.5, 1], [197.5, 'barrels', 1.3, 1.1]].forEach(([x, type, w, h]) => {
+  // every obstacle keeps clear room around low platforms, gaps and its neighbours so nobody gets wedged (see levels.js)
+  def.obstacles.forEach(([x, type, w, h]) => {
     // crates and drums use downloaded models, placed by models.js once loaded
     if (obstacles[type]) obstacles[type](group(x), w, h); else blocks.swaps.push({ x, type, w, h });
     blocks.push({ x1: x - w / 2, x2: x + w / 2, y: 0, top: h });
@@ -95,7 +95,7 @@ export function buildProps(scene, rnd, mats, gaps, end) {
       for (let x = -2.8; x < 3; x += .22) add(g, T(.17, .008), steel, x, 1.65, 0, 0, 1.1);
     }
   };
-  const order = ['tent', 'supplies', 'jeep', 'fence', 'tower', 'head', 'tank', 'temple', 'antenna', 'heli'];
+  const order = theme.scenery;
   let n = 0;
   for (let x = 3; x < end - 6; x += 7.2, n++) {
     let px = x; for (const g of gaps) if (px > g[0] - 3.5 && px < g[1] + 3.5) px = g[1] + 3.6;
@@ -112,7 +112,7 @@ export function buildProps(scene, rnd, mats, gaps, end) {
   }
   // raised jungle floor so the scenery has ground to stand on
   const spans = [[-24, gaps[0][0]], ...gaps.map((g, i) => [g[1], gaps[i + 1] ? gaps[i + 1][0] : end + 34])];
-  for (const [a, b] of spans) add(root, B(b - a, 3.6, 7.6), M(0x3a4424, 1, 0, { map: mats.grass, normalMap: rockNormal }), (a + b) / 2, -1.95, -7.7);
+  for (const [a, b] of spans) add(root, B(b - a, 3.6, 7.6), M(theme.floor[0], 1, 0, { map: theme.floor[1] ? mats.grass : null, normalMap: rockNormal }), (a + b) / 2, -1.95, -7.7);
 
   // merge static meshes per material and per stretch of level to keep draw calls low
   root.updateMatrixWorld(true);

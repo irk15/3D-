@@ -41,7 +41,7 @@ export function buildProps(scene, rnd, mats, gaps, end) {
       for (let i = 0; i < 7; i++) boulder(g, .16, rnd(-.3, .3), h - .06, rnd(-1, 1), moss, .35);
     }
   };
-  const blocks = [];
+  const blocks = []; blocks.pads = [];
   // every obstacle keeps clear room around low platforms, gaps and its neighbours so nobody gets wedged
   [[8, 'barrels', 1.3, 1.1], [26, 'sandbags', 1.5, 1], [86.5, 'crate', 1.2, 1.2], [117.5, 'barrels', 1.3, 1.1], [145, 'log', 1, 1], [173, 'crate', 1.2, 1.2], [178.5, 'sandbags', 1.5, 1], [197.5, 'barrels', 1.3, 1.1]].forEach(([x, type, w, h]) => {
     obstacles[type](group(x), w, h); blocks.push({ x1: x - w / 2, x2: x + w / 2, y: 0, top: h });
@@ -85,12 +85,6 @@ export function buildProps(scene, rnd, mats, gaps, end) {
       for (const x of [-.48, .48]) add(g, new THREE.SphereGeometry(.17, 12, 8), warm, x, 2.2, 1.02).scale.set(1.2, .6, .5);
       for (let i = 0; i < 12; i++) boulder(g, .3, rnd(-1.2, 1.2), rnd(.4, 3.3), rnd(-.2, .5), moss, .35);
     },
-    heli(g) {
-      add(g, cap(.9, 2.2), olive, 0, 1.15, 0, 0, 0, Math.PI / 2 - .12); add(g, new THREE.SphereGeometry(.74, 20, 14), glass, 1.55, 1.28, .22);
-      add(g, C(.14, .38, 3.4), olive, -2.9, 1.75, 0, 0, 0, Math.PI / 2 - .2); add(g, B(.12, 1.2, .08), oliveDark, -4.5, 2.4, 0, 0, 0, .3); for (const r of [.4, 1.97]) add(g, B(.08, 1.3, .1), steel, -4.4, 2.05, .2, 0, 0, r);
-      add(g, C(.12, .12, .7), steel, .1, 2.2, 0); add(g, B(5.6, .06, .28), rubber, .1, 2.55, 0, 0, .35, -.14); add(g, B(3, .06, .28), rubber, .1, 2.5, .3, .2, -1.2, .22);
-      for (const z of [-.8, .8]) { add(g, C(.07, .07, 3, 8), steel, .1, .18, z, 0, 0, Math.PI / 2 - .06); for (const x of [-.7, .9]) add(g, C(.05, .05, .9, 6), steel, x, .6, z * .75, z > 0 ? -.4 : .4); }
-    },
     tank(g) {
       add(g, C(1.1, 1.1, 3, 24), rust, 0, 1.7, 0, 0, 0, Math.PI / 2); for (const x of [-1.5, 1.5]) add(g, new THREE.SphereGeometry(1.1, 24, 12), rust, x, 1.7, 0).scale.x = .35;
       for (const x of [-1, 0, 1]) add(g, T(1.12, .045), steel, x, 1.7, 0, 0, Math.PI / 2); for (const x of [-1.1, 1.1]) add(g, B(.3, 1.2, 1.9), oliveDark, x, .5, 0);
@@ -117,7 +111,9 @@ export function buildProps(scene, rnd, mats, gaps, end) {
   for (let x = 3; x < end - 6; x += 7.2, n++) {
     let px = x; for (const g of gaps) if (px > g[0] - 3.5 && px < g[1] + 3.5) px = g[1] + 3.6;
     const type = order[n % order.length], deep = type === 'temple' || type === 'tower' || type === 'antenna';
-    scenery[type](group(px, 0, deep ? -7.4 : -5.4, rnd(-.35, .35)));
+    // helicopter pads are filled in by game.js once the model has loaded
+    if (type === 'heli') blocks.pads.push({ x: px, z: -6.4, turn: rnd(-.35, .35) });
+    else scenery[type](group(px, 0, deep ? -7.4 : -5.4, rnd(-.35, .35)));
   }
   for (let x = -18; x < end + 28; x += rnd(1.2, 3)) {
     if (inGap(x, 1)) continue;

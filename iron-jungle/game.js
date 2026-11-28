@@ -7,8 +7,9 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js?v=5';
 import * as ENV from './environment.js?v=5';
-import { buildProps } from './props.js?v=5';
+import { buildProps } from './props.js?v=7';
 import { createWeather, createMusic } from './weather.js?v=5';
+import { loadHelicopter, helicopter } from './heli.js?v=7';
 import { createCoop, COLORS } from './coop.js?v=5';
 
 const $ = id => document.getElementById(id);
@@ -321,13 +322,11 @@ function addEnemy(type, x, y = 0, id = nextId++) {
     o = new THREE.Group(); mesh(cyl(.45, .45, 1.1, 20), std(0xc01c10, .4, .5, { emissive: 0x3a0400 }), 0, .55, 0, o); for (const h of [.25, .85]) mesh(cyl(.47, .47, .1, 20), std(0xffc21a, .5, .3, { emissive: 0x332200 }), 0, h, 0, o);
     mesh(ball(.07), glow(0xff9020, 4), 0, .58, .48, o, false); e.hp = 2; e.h = 1.1; e.w = .46;
   } else if (type === 'gunship') {
-    o = new THREE.Group(); const hull = std(0x39432f, .45, .7);
-    mesh(cap(.9, 2.4), hull, 0, 0, 0, o).rotation.z = Math.PI / 2; mesh(ball(.7), std(0x14262e, .05, .9), -1.55, .12, .25, o); mesh(cyl(.14, .4, 3.2, 10), hull, 3, .35, 0, o).rotation.z = -Math.PI / 2 + .15; mesh(box(.15, 1.3, .1), rust, 4.5, .8, 0, o);
-    for (const z of [-1.1, 1.1]) { mesh(box(1.1, .12, .9), hull, .2, -.45, z, o); mesh(cyl(.22, .22, 1.3, 12), steel, -.1, -.7, z * 1.15, o).rotation.z = Math.PI / 2; }
-    mesh(cyl(.14, .14, .7, 8), steel, 0, 1.2, 0, o);
-    const rotor = new THREE.Group(); rotor.position.y = 1.55; o.add(rotor); for (const a of [0, Math.PI / 2]) mesh(box(7.4, .05, .26), std(0x101012, .6, .4), 0, 0, 0, rotor).rotation.y = a;
-    mesh(ball(.2), glow(0xff2010, 4), -.9, -.75, .75, o, false); const lamp = new THREE.PointLight(0xff4030, 14, 8, 2); lamp.position.set(-1, -1.4, 1); o.add(lamp);
-    o.userData.main = rotor; e.hp = e.max = Math.round(diff().boss * .6); e.h = 1.9; e.w = 2.1; e.n = 0; e.base = y;
+    o = new THREE.Group(); const body = helicopter(8.2); o.add(body);
+    mesh(ball(.12), glow(0xff2010, 4), -2.6, -.7, .8, o, false); const lamp = new THREE.PointLight(0xff4030, 14, 8, 2); lamp.position.set(-2, -1.4, 1.4); o.add(lamp);
+    // the key light stays on the camera side whichever way the aircraft turns
+    const lights = new THREE.Group(), fill = new THREE.PointLight(0xbcd0ff, 42, 12, 2); fill.position.set(-.5, 1.2, 4); lights.add(fill); o.add(lights); o.userData.lights = lights;
+    o.userData.spin = body.userData.spin; e.hp = e.max = Math.round(diff().boss * .6); e.h = 2.3; e.w = 2.9; e.n = 0; e.base = y;
   } else if (type === 'drone') {
     o = new THREE.Group(); mesh(ball(.42), steel, 0, 0, 0, o).scale.y = .65; mesh(ball(.14), glow(0xff3020, 4), -.3, -.03, .3, o, false);
     o.userData.rot = [-.75, .75].map(s => mesh(box(.8, .04, .12), rust, s, .24, 0, o)); e.hp = 2; e.h = .6; e.w = .6; e.base = y;
@@ -577,7 +576,7 @@ function updateEnemies(dt) {
     }
     // visuals
     if (e.type === 'drone') { e.o.userData.rot.forEach(r => r.rotation.y += dt * 40); e.o.rotation.z = -clamp(dx * .04, -.3, .3); }
-    if (e.type === 'gunship') { e.o.userData.main.rotation.y += dt * 28; e.face = dx < 0 ? 1 : -1; e.o.rotation.y += ((e.face > 0 ? 0 : Math.PI) - e.o.rotation.y) * Math.min(1, dt * 3); e.o.rotation.z = clamp(-dx * .02, -.16, .16); if (e.hp < e.max / 2 && Math.random() < dt * 14) puff(e.x + 1, e.y + .6, 0, { color: 0x222020, alpha: .6, life: 1.1, size: .8, grow: 1.5, vy: 1.4, vx: 1 }); }
+    if (e.type === 'gunship') { e.o.userData.spin(dt); e.face = dx < 0 ? 1 : -1; e.o.rotation.y += ((e.face > 0 ? .32 : Math.PI - .32) - e.o.rotation.y) * Math.min(1, dt * 3); e.o.rotation.z = clamp(-dx * .02, -.16, .16); e.o.userData.lights.rotation.y = -e.o.rotation.y; if (e.hp < e.max / 2 && Math.random() < dt * 14) puff(e.x + 1, e.y + .6, 0, { color: 0x222020, alpha: .6, life: 1.1, size: .8, grow: 1.5, vy: 1.4, vx: 1 }); }
     if (e.type === 'boss') { e.core.scale.setScalar(1 + Math.sin(time * 6) * .08); for (const g of e.guns) g.rotation.z = Math.atan2(ty - g.position.y, (T ? T.x : P.x) - (e.o.position.x + g.position.x)) - Math.PI; }
     e.o.position.set(e.type === 'boss' ? e.o.position.x : e.x, e.type === 'boss' ? 0 : e.y, 0);
     if (e.type === 'run' || e.type === 'gun') pose(e.o, e, dt);
@@ -814,7 +813,8 @@ function step(dt) {
   else { const dots = [{ x: P.x, slot: net.playing ? net.slot : 0 }, ...remotes.values()]; const box = $('progress'); while (box.children.length > dots.length) box.lastChild.remove(); dots.forEach((d, i) => { const el = box.children[i] || box.appendChild(document.createElement('i')); el.style.left = clamp(d.x / BOSSX * 100, 0, 100) + '%'; el.style.background = COLORS[d.slot].css; }); }
   if (boss && boss.flash > 0) { boss.flash -= dt; if (boss.flash <= 0) boss.core.material.color.set(0xff3a18).multiplyScalar(2.5); }
 }
-Promise.all([loadSoldier(manager), envReady]).then(() => {
+Promise.all([loadSoldier(manager), loadHelicopter(manager), envReady]).then(() => {
+  for (const pad of blocks.pads) { const h = helicopter(6.4, false); h.position.set(pad.x, h.userData.height / 2, pad.z); h.rotation.y = pad.turn; scene.add(h); }
   makeHero(); reset(); hero.position.set(P.x, P.y, 0); P.x = 12; hero.position.x = 12; pose(hero, P, .016);
   ready = true; $('go').textContent = 'Start mission'; $('go').disabled = false;
   const invite = new URLSearchParams(location.search).get('room');

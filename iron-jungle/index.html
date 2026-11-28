@@ -38,8 +38,9 @@ button{font:inherit;color:#fff;background:#0008;border:1px solid #fff4;border-ra
 #levels.locked{pointer-events:none;opacity:.55}#go:disabled{opacity:.55}
 @media (max-height:520px){#menu{gap:5px;padding:8px}#title{font-size:28px}#sub{font-size:12px}#code{font-size:24px}#levels button,#setup button,#codein{padding:6px 11px;font-size:13px}#go{font-size:15px;padding:7px 28px}}
 @media (max-width:620px){#progress{display:none}}
+#health{display:flex;gap:3px;margin:2px 0 4px}#health i{width:18px;height:7px;border-radius:2px;background:#5dff8a;box-shadow:0 0 6px #0008}#health i.off{background:#ffffff30}
 </style></head><body>
-<div id="hud"><div><div id="score">000000</div><div id="lives"></div><div id="weapon"></div></div><div class="top"><button id="mute">Sound on</button><button id="pause">Pause</button></div></div>
+<div id="hud"><div><div id="score">000000</div><div id="lives"></div><div id="health" aria-label="Health"></div><div id="weapon"></div></div><div class="top"><button id="mute">Sound on</button><button id="pause">Pause</button></div></div>
 <div id="bossbar" hidden><div id="bossfill"></div></div><div id="progress" hidden></div><div id="combo"></div><div id="toast"></div>
 <div id="pad"><div id="knob"></div></div><div class="act" id="bj">JUMP</div><div class="act" id="bf">FIRE</div><div class="act" id="bn">NADE</div>
 <div id="menu"><h1 id="title">IRON JUNGLE</h1><p id="sub">Survive the storm, take down the gunship and destroy the Iron Bastion. Play solo or with up to 3 friends.</p><div id="levels" role="group" aria-label="Difficulty"><button data-level="easy">Recruit</button><button data-level="normal">Soldier</button><button data-level="hard">Commando</button></div><div id="levelnote"></div>
@@ -47,5 +48,5 @@ button{font:inherit;color:#fff;background:#0008;border:1px solid #fff4;border-ra
 <div id="lobby" hidden><div class="row"><span id="code"></span><button id="copy">Copy invite link</button><button id="leave">Leave room</button></div><div id="players" class="row"></div><div id="lobbyinfo"></div></div></div><button id="go" disabled>Loading</button>
 <p id="help">Keyboard: arrows or WASD move and aim · Space jump · J or X fire · G grenade · P pause<br>Phone: turn sideways for the best view · Down lies prone · Jump over crates, barrels and logs<br><small>Credits: soldier model from Mixamo via three.js examples · HDR sky from Poly Haven (CC0) · grass texture from opengameart.org (CC BY 3.0)</small></p></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"}}</script>
-<script type="module" src="game.js?v=5"></script>
+<script type="module" src="game.js?v=6"></script>
 </body></html>

@@ -231,10 +231,12 @@ function initAudio() {
 }
 
 // ---------- difficulty ----------
+// hp: hits per life · wait: pause before an enemy's first shot · aim: how far their shots stray (radians)
+// max: enemy bullets in the air at once · safe/guard: protection after respawning / after a hit · heal: seconds to regain one hit
 const LEVELS = {
-  easy: { name: 'Recruit', lives: 7, speed: .72, rate: 1.55, boss: 55, run: .85, extra: false, score: 1, note: '7 lives · slower enemy fire · weaker boss' },
-  normal: { name: 'Soldier', lives: 5, speed: 1, rate: 1, boss: 90, run: 1, extra: false, score: 1.5, note: '5 lives · the standard fight' },
-  hard: { name: 'Commando', lives: 3, speed: 1.28, rate: .68, boss: 140, run: 1.18, extra: true, score: 2, note: '3 lives · fast fire · more enemies · double score' }
+  easy: { name: 'Recruit', lives: 7, hp: 6, speed: .55, rate: 2.4, wait: 2.2, aim: .2, max: 3, safe: 5, guard: 2, heal: 5, boss: 45, run: .7, extra: false, score: 1, note: '7 lives · 6 hits each · health refills · slow enemy fire' },
+  normal: { name: 'Soldier', lives: 5, hp: 4, speed: .72, rate: 1.65, wait: 1.5, aim: .11, max: 4, safe: 4, guard: 1.5, heal: 8, boss: 75, run: .85, extra: false, score: 1.5, note: '5 lives · 4 hits each · a fair fight' },
+  hard: { name: 'Commando', lives: 3, hp: 2, speed: 1.05, rate: 1, wait: .8, aim: .04, max: 8, safe: 3, guard: 1, heal: 0, boss: 130, run: 1.1, extra: true, score: 2, note: '3 lives · 2 hits each · more enemies · double score' }
 };
 let level = 'normal';
 try { if (LEVELS[localStorage.ironLevel]) level = localStorage.ironLevel; } catch { /* storage unavailable */ }
@@ -275,7 +277,9 @@ function shoot(x, y, a, speed, enemy, mat) {
   bullets.push(b); return b;
 }
 // enemy shots are announced to teammates so each player can dodge them on their own screen
-function enemyShot(x, y, a, speed) { shoot(x, y, a, speed, true); if (net.playing && net.host) net.send({ t: 'ef', x: +x.toFixed(2), y: +y.toFixed(2), a: +a.toFixed(3), s: speed }); sfx('eshot'); }
+function enemyShot(x, y, a, speed) {
+  if (bullets.filter(b => b.enemy && b.life > 0).length >= diff().max * (net.playing ? 1 + remotes.size * .5 : 1)) return;
+  a += rnd(-diff().aim, diff().aim); shoot(x, y, a, speed, true); if (net.playing && net.host) net.send({ t: 'ef', x: +x.toFixed(2), y: +y.toFixed(2), a: +a.toFixed(3), s: speed }); sfx('eshot'); }
 const WEAPONS = { rifle: { name: 'RIFLE', cd: .12 }, spread: { name: 'SPREAD GUN', cd: .17, color: 0xff7a30 }, laser: { name: 'LASER', cd: .22, color: 0x40ff9a }, rocket: { name: 'ROCKET', cd: .5, color: 0xff3a3a }, nade: { name: '+3 GRENADES', color: 0x38e0ff } };
 // ghost shots are copies of a teammate's fire: seen but harmless here
 function fireWeapon(w, sx, sy, a, ghost) {
@@ -350,7 +354,7 @@ function reset() {
   grenades.forEach(n => scene.remove(n.m)); grenades = []; gunship = null; nextId = 1; combo = 0; comboT = 0; clock0 = 0; shots = 0; hits = 0; gunshipSent = false; dead.clear();
   [...enemies, ...pickups, ...corpses].forEach(e => scene.remove(e.o)); corpses.length = 0; scorches.splice(0).forEach(d => scene.remove(d)); bullets.forEach(b => scene.remove(b.m));
   enemies = []; bullets = []; pickups = []; boss = null; score = 0; lives = diff().lives; checkpoint = 2; camX = 2; time = 0;
-  P = { x: 2 + (net.playing ? net.slot * 1.1 : 0), y: 0, vx: 0, vy: 0, on: true, face: 1, aim: 0, cd: 0, inv: 2, weapon: 'rifle', nades: 3, dead: 0, drop: 0, slow: 0, shot: 0 };
+  P = { x: 2 + (net.playing ? net.slot * 1.1 : 0), y: 0, vx: 0, vy: 0, on: true, face: 1, aim: 0, cd: 0, inv: 3, weapon: 'rifle', nades: 3, hp: diff().hp, calm: 0, dead: 0, drop: 0, slow: 0, shot: 0 };
   revive(hero); hero.rotation.y = 0; hero.visible = true;
   spawns = [[16, 'run'], [18, 'gun', 2.6], [24, 'run'], [11, 'drum'], [41.5, 'turret'], [34, 'gun', 2.8], [40, 'drone', 4.5], [43, 'run'], [56, 'run'], [58, 'run'], [63, 'gun', 2.6], [55.8, 'drum'], [70.3, 'turret'], [75, 'drone', 5], [85, 'gun', 5.2], [90, 'run'], [89.5, 'drum'], [110, 'gun', 2.7], [114, 'run'], [116, 'drone', 4], [120, 'turret', 5], [121.5, 'drum'], [124.8, 'turret'], [128, 'run'], [132, 'run'], [136, 'gun', 2.7], [145, 'drone', 5], [148, 'drone', 3.6], [182.5, 'turret'], [165, 'gun', 2.8], [173, 'gun', 5.1], [180, 'run'], [182, 'run'], [185, 'drone', 4.5], [190, 'turret', 2.7], [196, 'gun'], [200, 'run'], [203, 'turret'], [207, 'drum'], [212, 'drum']];
   if (diff().extra) spawns.push([27, 'run'], [46, 'drone', 4.2], [66, 'run'], [80, 'gun', 2.8], [94, 'drone', 4.6], [112, 'run'], [137, 'turret', 2.7], [157, 'run'], [170, 'drone', 3.8], [188, 'run'], [199, 'drone', 4.4]);
@@ -430,8 +434,14 @@ function physics(e, dt, r = .5) {
   }
   collide(e, r, ox);
 }
-function hurt(dir = -P.face) {
-  if (P.inv > 0 || P.dead > 0) return;
+function hurt(dir = -P.face, lethal = false) {
+  if (P.dead > 0 || (P.inv > 0 && !lethal)) return;
+  P.calm = 0;
+  // armour takes the hit until it runs out
+  if (!lethal && --P.hp > 0) {
+    P.inv = diff().guard; scene.userData.hurt = .45; shake = Math.max(shake, .14); wound(P.x, P.y + (P.prone ? .35 : 1.35), dir); sfx('hurt'); return;
+  }
+  P.hp = 0;
   P.dead = 3; P.slow = .45; scene.userData.hurt = .8; lives--; P.weapon = 'rifle'; hero.visible = true; hero.userData.flash.visible = false;
   P.vx = dir * 3; P.vy = Math.max(P.vy * .3, 0) + (P.on ? 2 : 3); P.prone = false;
   startDeath(hero, dir !== P.face); if (P.y > -1) wound(P.x, P.y + 1.35, dir); shake = Math.max(shake, .22); sfx('hurt');
@@ -446,7 +456,8 @@ function respawn() {
   for (const b of obstaclesNow()) if (x > b.x1 - 1 && x < b.x2 + 1 && b.y < 1) x = b.x1 - 1.1;
   camX = Math.min(camX, x + viewHalf - 1.5);
   P.nades = Math.max(P.nades, 2); revive(hero);
-  Object.assign(P, { x, y: .05, vx: 0, vy: 0, inv: 2.5, dead: 0 }); hero.visible = true;
+  Object.assign(P, { x, y: .05, vx: 0, vy: 0, inv: diff().safe, hp: diff().hp, calm: 0, dead: 0 }); hero.visible = true;
+  for (const e of enemies) e.cd = Math.max(e.cd, diff().wait);
   bullets.filter(b => b.enemy).forEach(b => b.life = 0);
 }
 function updatePlayer(dt) {
@@ -466,9 +477,10 @@ function updatePlayer(dt) {
   physics(P, dt);
   const minX = net.playing ? 0 : camX - viewHalf + 1;
   P.x = clamp(P.x, Math.max(0, minX), boss ? BOSSX + 2.6 : END);
-  if (P.y < -3) { P.inv = 0; hurt(); P.dead = 1.1; }
+  if (P.y < -3) { hurt(-P.face, true); P.dead = 1.1; }
   if (P.on && P.ground && !gaps.some(g => P.x > g[0] - 2 && P.x < g[1] + 2)) checkpoint = Math.max(checkpoint, P.x - 3);
   P.cd -= dt; P.inv -= dt;
+  if (diff().heal && P.hp < diff().hp && (P.calm += dt) >= diff().heal) { P.hp++; P.calm = 0; }
   hero.userData.flash.visible = false;
   if (down('f') && P.cd <= 0) {
     P.cd = WEAPONS[P.weapon].cd;
@@ -519,8 +531,10 @@ function updateEnemies(dt) {
   for (const e of enemies) {
     // pick the nearest living player
     let T = null; for (const t of alive) if (!T || Math.abs(t.x - e.x) < Math.abs(T.x - e.x)) T = t;
-    const dx = (T ? T.x : P.x) - e.x, ty = (T ? T.y : P.y) + (T && T.prone ? .35 : 1.1), seen = Math.abs(dx) < Math.max(viewHalf, 12) + 3;
+    const dx = (T ? T.x : P.x) - e.x, ty = (T ? T.y : P.y) + (T && T.prone ? .35 : 1.1);
+    const seen = net.playing ? Math.abs(dx) < 13 : Math.abs(e.x - camX) < viewHalf - .8;
     e.cd -= dt / diff().rate;
+    if (!seen && e.type !== 'boss') e.cd = Math.max(e.cd, diff().wait / diff().rate);
     if (!authority) {
       const ox = e.x, k = Math.min(1, dt * 11); e.x += ((e.tx ?? e.x) - e.x) * k; e.y += ((e.ty ?? e.y) - e.y) * k; e.vx = (e.x - ox) / Math.max(dt, .001); e.on = e.air !== 1;
       if (e.type === 'turret') e.o.userData.piv.rotation.z = Math.atan2(ty - (e.y + .95), dx);
@@ -790,6 +804,8 @@ function step(dt) {
   toastT -= dt; $('toast').style.opacity = clamp(toastT, 0, 1);
   $('score').textContent = String(score).padStart(6, '0');
   $('lives').textContent = '♥'.repeat(Math.max(0, lives));
+  $('health').replaceChildren(...($('health').children.length === diff().hp ? $('health').children : Array.from({ length: diff().hp }, () => document.createElement('i'))));
+  [...$('health').children].forEach((el, i) => el.classList.toggle('off', i >= P.hp));
   $('weapon').textContent = `${WEAPONS[P.weapon].name} · GRENADES ${P.nades}`;
   $('combo').textContent = state === 'play' && combo > 1 && comboT > 0 ? `COMBO ×${combo}` : '';
   const big = boss && boss.hp > 0 ? boss : gunship && !gunship.gone ? gunship : null;

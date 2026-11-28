@@ -7,9 +7,10 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { loadSoldier, soldier, pose, startDeath, die, revive } from './characters.js?v=5';
 import * as ENV from './environment.js?v=5';
-import { buildProps } from './props.js?v=7';
+import { buildProps } from './props.js?v=8';
 import { createWeather, createMusic } from './weather.js?v=5';
 import { loadHelicopter, helicopter } from './heli.js?v=7';
+import { loadModels, turret, drone, prop, placeProps } from './models.js?v=8';
 import { createCoop, COLORS } from './coop.js?v=5';
 
 const $ = id => document.getElementById(id);
@@ -315,12 +316,10 @@ function addEnemy(type, x, y = 0, id = nextId++) {
   if (type === 'run' || type === 'gun') {
     o = soldier(type === 'gun' ? { tint: 0xe08a70, visor: 0xff2a10 } : { tint: 0xc8b078, visor: 0xff6a10 }); e.hp = type === 'gun' ? 3 : 1; e.face = -1; o.rotation.y = Math.PI; e.h = 1.8; e.w = .45;
   } else if (type === 'turret') {
-    o = new THREE.Group(); mesh(cyl(.7, .95, .7), steel, 0, .35, 0, o); mesh(ball(.55), rust, 0, .8, 0, o);
-    const piv = new THREE.Group(); piv.position.y = .85; o.add(piv); mesh(box(1.2, .22, .22), steel, .65, 0, 0, piv); mesh(ball(.13), glow(0xff3020), 0, .15, .52, piv, false);
-    o.userData.piv = piv; e.hp = 8; e.h = 1.35; e.w = .8;
+    o = turret(); mesh(ball(.07), glow(0xff3020, 4), 0, .42, .5, o, false); e.hp = 8; e.h = 1.5; e.w = .8;
   } else if (type === 'drum') {
-    o = new THREE.Group(); mesh(cyl(.45, .45, 1.1, 20), std(0xc01c10, .4, .5, { emissive: 0x3a0400 }), 0, .55, 0, o); for (const h of [.25, .85]) mesh(cyl(.47, .47, .1, 20), std(0xffc21a, .5, .3, { emissive: 0x332200 }), 0, h, 0, o);
-    mesh(ball(.07), glow(0xff9020, 4), 0, .58, .48, o, false); e.hp = 2; e.h = 1.1; e.w = .46;
+    o = new THREE.Group(); o.add(prop('Barrel_01', .92, 1.1, .92));
+    mesh(ball(.06), glow(0xff9020, 4), 0, .95, .48, o, false); e.hp = 2; e.h = 1.1; e.w = .46;
   } else if (type === 'gunship') {
     o = new THREE.Group(); const body = helicopter(8.2); o.add(body);
     mesh(ball(.12), glow(0xff2010, 4), -2.6, -.7, .8, o, false); const lamp = new THREE.PointLight(0xff4030, 14, 8, 2); lamp.position.set(-2, -1.4, 1.4); o.add(lamp);
@@ -328,8 +327,7 @@ function addEnemy(type, x, y = 0, id = nextId++) {
     const lights = new THREE.Group(), fill = new THREE.PointLight(0xbcd0ff, 42, 12, 2); fill.position.set(-.5, 1.2, 4); lights.add(fill); o.add(lights); o.userData.lights = lights;
     o.userData.spin = body.userData.spin; e.hp = e.max = Math.round(diff().boss * .6); e.h = 2.3; e.w = 2.9; e.n = 0; e.base = y;
   } else if (type === 'drone') {
-    o = new THREE.Group(); mesh(ball(.42), steel, 0, 0, 0, o).scale.y = .65; mesh(ball(.14), glow(0xff3020, 4), -.3, -.03, .3, o, false);
-    o.userData.rot = [-.75, .75].map(s => mesh(box(.8, .04, .12), rust, s, .24, 0, o)); e.hp = 2; e.h = .6; e.w = .6; e.base = y;
+    o = drone(); mesh(ball(.07), glow(0xff3020, 4), 0, .42, .5, o, false); e.hp = 2; e.h = .9; e.w = .75; e.base = y;
   }
   o.position.set(x, y, 0); scene.add(o); e.o = o; enemies.push(e); if (type === 'gunship') gunship = e; return e;
 }
@@ -536,7 +534,7 @@ function updateEnemies(dt) {
     if (!seen && e.type !== 'boss') e.cd = Math.max(e.cd, diff().wait / diff().rate);
     if (!authority) {
       const ox = e.x, k = Math.min(1, dt * 11); e.x += ((e.tx ?? e.x) - e.x) * k; e.y += ((e.ty ?? e.y) - e.y) * k; e.vx = (e.x - ox) / Math.max(dt, .001); e.on = e.air !== 1;
-      if (e.type === 'turret') e.o.userData.piv.rotation.z = Math.atan2(ty - (e.y + .95), dx);
+      if (e.type === 'turret') e.o.userData.aim(Math.atan2(ty - (e.y + 1.09), dx));
       if (e.type === 'gun') { e.face = dx < 0 ? -1 : 1; e.aim = clamp(Math.atan2(ty - (e.y + 1.5), Math.abs(dx)), -.8, 1.1); }
     } else if (e.type === 'run') {
       if (!e.dir) e.dir = dx < 0 ? -1 : 1;
@@ -552,11 +550,11 @@ function updateEnemies(dt) {
       e.aim = clamp(a, -.8, 1.1); physics(e, dt);
       if (e.cd <= 0 && seen && T) { e.cd = rnd(1.4, 2.3); const sa = e.face > 0 ? e.aim : Math.PI - e.aim; enemyShot(e.x + Math.cos(sa) * 1.1, e.y + 1.5 + Math.sin(sa), sa, 9.5); }
     } else if (e.type === 'turret') {
-      const a = Math.atan2(ty - (e.y + .95), dx); e.o.userData.piv.rotation.z = a;
-      if (e.cd <= 0 && seen && T) { e.cd = 1.7; enemyShot(e.x + Math.cos(a) * 1.3, e.y + .95 + Math.sin(a) * 1.3, a, 9); }
+      const a = Math.atan2(ty - (e.y + 1.09), dx); e.o.userData.aim(a);
+      if (e.cd <= 0 && seen && T) { e.cd = 1.7; enemyShot(e.x + Math.cos(a) * 1.5, e.y + 1.09 + Math.sin(a) * 1.5, a, 9); }
     } else if (e.type === 'drone') {
       e.x += clamp(dx, -1, 1) * 2.2 * dt; e.y = e.base + Math.sin(time * 3 + e.base) * .6;
-      if (e.cd <= 0 && seen && T) { e.cd = 2.1; enemyShot(e.x, e.y - .3, Math.atan2(ty - e.y, dx), 8); }
+      if (e.cd <= 0 && seen && T) { e.cd = 2.1; e.o.userData.fire(); enemyShot(e.x, e.y - .3, Math.atan2(ty - e.y, dx), 8); }
     } else if (e.type === 'gunship') {
       const goal = (T ? T.x : e.x) + Math.sin(time * .7) * 6.5;
       e.x += clamp(goal - e.x, -6, 6) * dt * 1.2; e.y = e.base + Math.sin(time * 1.9) * .7;
@@ -575,7 +573,7 @@ function updateEnemies(dt) {
       }
     }
     // visuals
-    if (e.type === 'drone') { e.o.userData.rot.forEach(r => r.rotation.y += dt * 40); e.o.rotation.z = -clamp(dx * .04, -.3, .3); }
+    if (e.type === 'drone') { e.o.userData.update(dt, dx); e.o.rotation.z = -clamp(dx * .04, -.3, .3); }
     if (e.type === 'gunship') { e.o.userData.spin(dt); e.face = dx < 0 ? 1 : -1; e.o.rotation.y += ((e.face > 0 ? .32 : Math.PI - .32) - e.o.rotation.y) * Math.min(1, dt * 3); e.o.rotation.z = clamp(-dx * .02, -.16, .16); e.o.userData.lights.rotation.y = -e.o.rotation.y; if (e.hp < e.max / 2 && Math.random() < dt * 14) puff(e.x + 1, e.y + .6, 0, { color: 0x222020, alpha: .6, life: 1.1, size: .8, grow: 1.5, vy: 1.4, vx: 1 }); }
     if (e.type === 'boss') { e.core.scale.setScalar(1 + Math.sin(time * 6) * .08); for (const g of e.guns) g.rotation.z = Math.atan2(ty - g.position.y, (T ? T.x : P.x) - (e.o.position.x + g.position.x)) - Math.PI; }
     e.o.position.set(e.type === 'boss' ? e.o.position.x : e.x, e.type === 'boss' ? 0 : e.y, 0);
@@ -813,7 +811,8 @@ function step(dt) {
   else { const dots = [{ x: P.x, slot: net.playing ? net.slot : 0 }, ...remotes.values()]; const box = $('progress'); while (box.children.length > dots.length) box.lastChild.remove(); dots.forEach((d, i) => { const el = box.children[i] || box.appendChild(document.createElement('i')); el.style.left = clamp(d.x / BOSSX * 100, 0, 100) + '%'; el.style.background = COLORS[d.slot].css; }); }
   if (boss && boss.flash > 0) { boss.flash -= dt; if (boss.flash <= 0) boss.core.material.color.set(0xff3a18).multiplyScalar(2.5); }
 }
-Promise.all([loadSoldier(manager), loadHelicopter(manager), envReady]).then(() => {
+Promise.all([loadSoldier(manager), loadHelicopter(manager), loadModels(manager), envReady]).then(() => {
+  placeProps(scene, blocks);
   for (const pad of blocks.pads) { const h = helicopter(6.4, false); h.position.set(pad.x, h.userData.height / 2, pad.z); h.rotation.y = pad.turn; scene.add(h); }
   makeHero(); reset(); hero.position.set(P.x, P.y, 0); P.x = 12; hero.position.x = 12; pose(hero, P, .016);
   ready = true; $('go').textContent = 'Start mission'; $('go').disabled = false;

@@ -1,0 +1,4 @@
+Photo-scanned props from Poly Haven (https://polyhaven.com), CC0 / public domain:
+Barrel_01 - Jorge Camacho; barrel_03 - Serhii Khromov; wooden_crate_02 - James Ray Cock, Jurita Burger;
+old_military_crate - Jack Mava; portable_generator - James Ray Cock; old_tyre - MP; ammo_box - DanKit.
+Textures were resized for this game.

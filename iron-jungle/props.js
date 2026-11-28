@@ -22,14 +22,6 @@ export function buildProps(scene, rnd, mats, gaps, end) {
 
   // ----- obstacles: visible size matches the collision box exactly -----
   const obstacles = {
-    crate(g, w, h) {
-      add(g, B(w - .1, h - .06, 1.5), wood, 0, h / 2, 0);
-      for (const z of [-.76, .76]) { for (const y of [.07, h - .07]) add(g, B(w, .14, .08), woodDark, 0, y, z); for (const x of [-w / 2 + .07, w / 2 - .07]) add(g, B(.14, h, .1), woodDark, x, h / 2, z); add(g, B(Math.hypot(w, h) - .25, .1, .06), woodDark, 0, h / 2, z, 0, 0, Math.atan2(h, w)); }
-      add(g, B(w, .06, 1.58), woodDark, 0, h - .03, 0);
-    },
-    barrels(g, w, h) {
-      for (const [x, z, m] of [[-w / 4, .25, olive], [w / 4, -.1, oliveDark], [-w / 6, -.75, rust]]) { add(g, C(w / 4, w / 4, h, 20), m, x, h / 2, z); for (const y of [.08, h * .35, h * .68, h - .03]) add(g, T(w / 4 + .005, .028), steel, x, y, z, Math.PI / 2); add(g, C(.07, .07, .05), steel, x + .1, h + .01, z); }
-    },
     sandbags(g, w, h) {
       const rows = 4, bh = h / rows;
       for (let r = 0; r < rows; r++) { const n = r % 2 ? 2 : 3, bw = w / n; for (let i = 0; i < n; i++) for (const z of [-.45, .2, .75]) { const m = add(g, cap(bh * .55, Math.max(.05, bw - bh * 1.1)), sand, -w / 2 + bw * (i + .5), bh * (r + .5), z + rnd(-.05, .05), 0, rnd(-.08, .08), Math.PI / 2); m.scale.set(.92, 1, 1.25); } }
@@ -41,10 +33,12 @@ export function buildProps(scene, rnd, mats, gaps, end) {
       for (let i = 0; i < 7; i++) boulder(g, .16, rnd(-.3, .3), h - .06, rnd(-1, 1), moss, .35);
     }
   };
-  const blocks = []; blocks.pads = [];
+  const blocks = []; blocks.pads = []; blocks.swaps = []; blocks.depots = [];
   // every obstacle keeps clear room around low platforms, gaps and its neighbours so nobody gets wedged
   [[8, 'barrels', 1.3, 1.1], [26, 'sandbags', 1.5, 1], [86.5, 'crate', 1.2, 1.2], [117.5, 'barrels', 1.3, 1.1], [145, 'log', 1, 1], [173, 'crate', 1.2, 1.2], [178.5, 'sandbags', 1.5, 1], [197.5, 'barrels', 1.3, 1.1]].forEach(([x, type, w, h]) => {
-    obstacles[type](group(x), w, h); blocks.push({ x1: x - w / 2, x2: x + w / 2, y: 0, top: h });
+    // crates and drums use downloaded models, placed by models.js once loaded
+    if (obstacles[type]) obstacles[type](group(x), w, h); else blocks.swaps.push({ x, type, w, h });
+    blocks.push({ x1: x - w / 2, x2: x + w / 2, y: 0, top: h });
   });
 
   // ----- scenery behind the path -----
@@ -99,11 +93,6 @@ export function buildProps(scene, rnd, mats, gaps, end) {
       for (let x = -3; x <= 3; x += 1.5) add(g, C(.07, .09, 1.7, 7), woodDark, x, .8, 0, 0, 0, rnd(-.08, .08));
       for (const y of [.55, 1.0, 1.45]) add(g, C(.012, .012, 6, 5), steel, 0, y, 0, 0, 0, Math.PI / 2);
       for (let x = -2.8; x < 3; x += .22) add(g, T(.17, .008), steel, x, 1.65, 0, 0, 1.1);
-    },
-    supplies(g) {
-      for (const [x, y, z, s] of [[-.8, .45, 0, .9], [.25, .45, -.2, .9], [-.3, 1.25, -.1, .7]]) { add(g, B(s, s, s), wood, x, y, z, 0, rnd(-.3, .3)); add(g, B(s + .04, .09, s + .04), woodDark, x, y + s / 2 - .06, z); }
-      for (let i = 0; i < 3; i++) { add(g, B(.36, .55, .2), i % 2 ? red : olive, 1.1 + i * .42, .28, .3); add(g, T(.09, .025), steel, 1.1 + i * .42, .6, .3); }
-      add(g, B(.9, .35, .4), oliveDark, .2, .18, .85, 0, .3);
     }
   };
   const order = ['tent', 'supplies', 'jeep', 'fence', 'tower', 'head', 'tank', 'temple', 'antenna', 'heli'];
@@ -113,6 +102,7 @@ export function buildProps(scene, rnd, mats, gaps, end) {
     const type = order[n % order.length], deep = type === 'temple' || type === 'tower' || type === 'antenna';
     // helicopter pads are filled in by game.js once the model has loaded
     if (type === 'heli') blocks.pads.push({ x: px, z: -6.4, turn: rnd(-.35, .35) });
+    else if (type === 'supplies') blocks.depots.push({ x: px, z: -5.2, turn: rnd(-.3, .3) });
     else scenery[type](group(px, 0, deep ? -7.4 : -5.4, rnd(-.35, .35)));
   }
   for (let x = -18; x < end + 28; x += rnd(1.2, 3)) {
